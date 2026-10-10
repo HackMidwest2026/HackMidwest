@@ -1,46 +1,87 @@
-import { useEffect, useState } from 'react'
+import { Radio, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
-import DispatcherView from './components/DispatcherView.jsx'
-import ResidentView from './components/ResidentView.jsx'
+import CitizenPortal from './components/CitizenPortal.jsx'
+import DispatchConsole from './components/DispatchConsole.jsx'
+import Navbar from './components/Navbar.jsx'
+import { useCityData } from './lib/useCityData.js'
 
-function useHashRoute() {
-  const [hash, setHash] = useState(window.location.hash || '#/')
+function useHashMode() {
+  const read = () => (window.location.hash.startsWith('#/dispatch') ? 'dispatch' : 'citizen')
+  const [mode, setModeState] = useState(read)
   useEffect(() => {
-    const on = () => setHash(window.location.hash || '#/')
+    const on = () => setModeState(read())
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])
-  return hash
+  const setMode = useCallback((m) => {
+    window.location.hash = m === 'dispatch' ? '#/dispatch' : '#/'
+  }, [])
+  return [mode, setMode]
 }
 
 export default function App() {
-  const route = useHashRoute()
+  const [mode, setMode] = useHashMode()
   const [meta, setMeta] = useState(null)
-  const [error, setError] = useState(null)
+  const [metaError, setMetaError] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [toast, setToast] = useState(null)
+  const toastTimer = useRef(null)
 
-  useEffect(() => {
-    api.meta().then(setMeta).catch((e) => setError(e.message))
+  const showToast = useCallback((message, sub) => {
+    clearTimeout(toastTimer.current)
+    setToast({ message, sub })
+    toastTimer.current = setTimeout(() => setToast(null), 6000)
   }, [])
 
-  const isDispatch = route.startsWith('#/dispatch')
+  const data = useCityData({
+    onPipelineEvent: (e) => {
+      // Announce single-report runs in the console; batch runs report their own summary.
+      if (e.report_id && e.data?.issue_id && window.location.hash.startsWith('#/dispatch')) {
+        showToast(e.data.merged ? `New report merged into #${e.data.issue_id}` : `New incident #${e.data.issue_id} opened`, 'Triaged by the agents. Awaiting your approval.')
+      }
+    },
+  })
+
+  useEffect(() => {
+    api.meta().then(setMeta).catch((e) => setMetaError(e.message))
+  }, [])
+
+  const selectedIssue = data.issues.find((i) => i.issue_id === selectedId) || null
+  const p1Count = data.issues.filter((i) => i.priority_tier === 'P1' && !['resolved', 'rejected'].includes(i.status)).length
+
   return (
-    <div className={isDispatch ? 'app app-dispatch' : 'app app-resident'}>
-      <header className="topbar">
-        <a className="brand" href="#/">
-          <span className="brand-mark">◆</span> CityOps <span className="brand-sub">Kansas City 311</span>
-        </a>
-        <nav>
-          <a className={!isDispatch ? 'active' : ''} href="#/">
-            Report a problem
-          </a>
-          <a className={isDispatch ? 'active' : ''} href="#/dispatch">
-            Dispatcher
-          </a>
-          {meta && <span className={`mode mode-${meta.mode}`}>{meta.mode === 'bedrock' ? 'Bedrock agents' : 'Mock agents'}</span>}
-        </nav>
-      </header>
-      {error && <div className="banner error">Can't reach the API: {error}</div>}
-      {meta && (isDispatch ? <DispatcherView meta={meta} /> : <ResidentView meta={meta} />)}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#FAF8FF]">
+      <Navbar mode={mode} onSetMode={setMode} stream={data.stream} engine={meta?.mode} p1Count={p1Count} />
+
+      <main className="flex-1 relative overflow-hidden">
+        {(metaError || data.error) && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1200] bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3 py-2 rounded-lg shadow">
+            Can't reach the CityCare API: {metaError || data.error}
+          </div>
+        )}
+        {meta &&
+          (mode === 'citizen' ? (
+            <CitizenPortal meta={meta} data={data} selectedIssue={selectedIssue} onSelectIssue={setSelectedId} onSwitchToDispatch={() => setMode('dispatch')} />
+          ) : (
+            <DispatchConsole meta={meta} data={data} selectedIssue={selectedIssue} onSelectIssue={setSelectedId} showToast={showToast} onSwitchToCitizen={() => setMode('citizen')} />
+          ))}
+      </main>
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[1300] bg-[#00164E] text-white p-3.5 rounded-xl shadow-2xl border border-blue-800 flex items-start gap-3 max-w-sm animate-in">
+          <div className="w-8 h-8 rounded-lg bg-[#0D9488] flex items-center justify-center shrink-0 mt-0.5 text-white">
+            <Radio className="w-4 h-4 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0 text-xs">
+            <div className="font-bold text-white leading-tight">{toast.message}</div>
+            {toast.sub && <div className="text-slate-300 text-[11px] mt-0.5 leading-snug">{toast.sub}</div>}
+          </div>
+          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white p-0.5" aria-label="Dismiss">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

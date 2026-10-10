@@ -1,5 +1,5 @@
-# CityOps API + agents. Build from the repo root so the shared /data folder is in context:
-#   docker build -f api/Dockerfile -t cityops-api .
+# CityCare API + agents. Build from the repo root so the shared /data folder is in context:
+#   docker build -f api/Dockerfile -t citycare-api .
 FROM node:22-alpine AS deps
 WORKDIR /app/api
 COPY api/package.json api/package-lock.json ./

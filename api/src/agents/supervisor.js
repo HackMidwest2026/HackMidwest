@@ -9,7 +9,7 @@ import { runPriority } from './priority.js'
 import { runRouter } from './router.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the City Supervisor agent for CityOps, assisting a Kansas City 311 dispatcher.
+const SYSTEM_PROMPT = `You are the City Supervisor agent for CityCare, assisting a Kansas City 311 dispatcher.
 Answer questions about open issues using your tools; never invent issues or numbers.
 Neighborhoods: ${city.neighborhoods.map((n) => n.name).join(', ')}.
 Use query_issues to filter (neighborhood, category, tier, hazard_only) and get_stats for totals.

@@ -1,8 +1,8 @@
 {
-  "name": "cityops-api",
+  "name": "citycare-api",
   "version": "0.1.0",
   "private": true,
-  "description": "CityOps API: Express server plus the Strands agent pipeline (intake, dedup, priority, router, supervisor).",
+  "description": "CityCare API: Express server plus the Strands agent pipeline (intake, dedup, priority, router, supervisor).",
   "type": "module",
   "main": "src/server.js",
   "engines": {

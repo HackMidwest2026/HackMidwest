@@ -2,15 +2,15 @@
 //  1. The "mock" engine: a full rule-based stand-in for each agent (no AWS needed).
 //  2. The parts code is good at in Bedrock mode: candidate filtering and the base priority
 //     score, which the LLM agents then judge or adjust.
-import { categories, departmentForCategory, findDepartment, findSubcategory, hazardPhrases } from '../lib/data.js'
+import { categories, departmentForCategory, findCategory, findDepartment, findSubcategory, hazardPhrases } from '../lib/data.js'
 import { config } from '../config.js'
 
 // ---------------- Intake ----------------
 
-export function classifyText(text) {
+export function classifyText(text, onlyCategory) {
   const t = ` ${(text || '').toLowerCase()} `
   const scored = []
-  for (const c of categories) {
+  for (const c of categories.filter((x) => !onlyCategory || x.id === onlyCategory)) {
     for (const s of c.subcategories) {
       const hits = s.keywords.filter((k) => t.includes(k))
       if (hits.length) {
@@ -26,6 +26,22 @@ export function classifyText(text) {
   const margin = runnerUp ? best.score - runnerUp.score : best.score
   const confidence = Math.min(0.97, 0.6 + 0.08 * best.score + (margin > 1 ? 0.1 : 0))
   return { category: best.category, subcategory: best.subcategory, confidence: +confidence.toFixed(2), matched: best.hits }
+}
+
+/**
+ * Combine the text classifier with the category the resident picked (if any).
+ * The pick wins unless the text clearly describes something in another category.
+ */
+export function classifyWithHint(text, hint) {
+  const general = classifyText(text)
+  if (!hint || !findCategory(hint) || hint === 'other') return { ...general, hint_used: false }
+  const within = classifyText(text, hint)
+  if (within.category === hint) return { ...within, confidence: Math.max(within.confidence, 0.85), hint_used: true }
+  if (general.category === 'other') {
+    const sub = findCategory(hint).subcategories[0]
+    return { category: hint, subcategory: sub.id, confidence: 0.55, matched: [], hint_used: true }
+  }
+  return { ...general, hint_used: false, hint_overridden: true }
 }
 
 export function detectHazards(text, subcategoryId, categoryId) {

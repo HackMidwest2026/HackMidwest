@@ -5,12 +5,12 @@ import { join } from 'node:path'
 import { before, describe, test } from 'node:test'
 
 // Isolated state, rule-based engine, no artificial delay. Must be set before importing the app.
-process.env.STATE_DIR = mkdtempSync(join(tmpdir(), 'cityops-test-'))
-process.env.CITYOPS_MODE = 'mock'
+process.env.STATE_DIR = mkdtempSync(join(tmpdir(), 'citycare-test-'))
+process.env.CITYCARE_MODE = 'mock'
 process.env.MOCK_DELAY_MS = '0'
 process.env.MOCK_BATCH_DELAY_MS = '0'
 
-const { classifyText, detectHazards, baseScore, tierFor } = await import('../src/agents/rules.js')
+const { classifyText, classifyWithHint, detectHazards, baseScore, tierFor } = await import('../src/agents/rules.js')
 const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
@@ -22,6 +22,17 @@ describe('rules', () => {
     assert.equal(classifyText('its pitch black at troost and linwood, light is out').subcategory, 'streetlight_out')
     assert.equal(classifyText('stoplight dead at 47th & prospect!!').subcategory, 'traffic_signal')
     assert.equal(classifyText('asdf qwerty').category, 'other')
+  })
+
+  test('category hint from the resident picker', () => {
+    // Vague text: the pick decides.
+    assert.equal(classifyWithHint('this is really bad, please fix', 'water').category, 'water')
+    // Text matches inside the picked category: keep the specific subcategory.
+    assert.equal(classifyWithHint('water gushing everywhere', 'water').subcategory, 'main_break')
+    // Text clearly describes something else: the text wins.
+    assert.equal(classifyWithHint('massive pothole on main', 'trash').category, 'streets')
+    // No hint: plain classification.
+    assert.equal(classifyWithHint('streetlight out').subcategory, 'streetlight_out')
   })
 
   test('detects hazard phrases without reporting overlapping fragments', () => {

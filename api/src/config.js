@@ -12,7 +12,7 @@ export const config = {
   port: num('PORT', 8080),
   // "mock": deterministic rule-based agents, no AWS needed (default, also the demo fallback).
   // "bedrock": Strands agents backed by Claude on Amazon Bedrock.
-  mode: (process.env.CITYOPS_MODE || 'mock').toLowerCase(),
+  mode: (process.env.CITYCARE_MODE || process.env.CITYOPS_MODE || 'mock').toLowerCase(),
   // Seed JSON (categories, departments, city geography, demo reports).
   dataDir: resolve(process.env.DATA_DIR || join(here, '../../data')),
   // Where runtime state (issues, reports, uploaded photos) is written.

@@ -7,7 +7,7 @@ import { baseScore, mockAdjustment, SLA_HOURS, tierFor } from './rules.js'
 import { PriorityOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Priority agent for CityOps, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Priority agent for CityCare, Kansas City's 311 triage system.
 A deterministic rubric has already scored the issue (safety hazard +40, arterial +15 / collector +8, +3 per extra report up to +15, sensitive site within 200 m +10, +2 per day open up to +10).
 Your job: adjust the base score by between -15 and +15 points ONLY for things the rubric cannot see, and explain why.
 Examples that justify raising: a hazard at night on an unlit arterial, children walking past daily, a hazard that is getting worse, water undermining a road.
