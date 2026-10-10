@@ -16,6 +16,8 @@ const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
 const { analyzePhotoWithVision } = await import('../src/agents/photo.js')
 const { createLimiter } = await import('../src/lib/limiter.js')
+const { planRoutes } = await import('../src/agents/routes.js')
+const { crewJobs, estimateRoute, SHIFT_MINUTES } = await import('../src/lib/routing.js')
 const { processBatch, processReport, seedHistory } = await import('../src/pipeline.js')
 
 describe('rules', () => {
@@ -189,6 +191,30 @@ describe('pipeline', () => {
     assert.ok(m.ground_truth.dedup_precision >= 0.95)
     assert.ok(m.ground_truth.dedup_recall >= 0.95)
     assert.ok(m.ground_truth.category_accuracy >= 0.95)
+  })
+
+  test('route plan covers every open crew job exactly once', async () => {
+    const plan = await planRoutes()
+    const crewIds = [...new Set(store.listCrews().map((c) => c.crew_id))]
+    const expected = crewIds.flatMap((id) => crewJobs(id).map((j) => j.issue_id)).sort()
+    const planned = [...plan.trips.flatMap((t) => t.stops.map((s) => s.issue_id)), ...plan.deferred.map((d) => d.issue_id)].sort()
+    assert.ok(expected.length > 5)
+    assert.deepEqual(planned, expected)
+    for (const t of plan.trips) {
+      assert.ok(t.total_min <= SHIFT_MINUTES || t.stops.length === 1, t.headline)
+      assert.match(t.headline, /: \d+ jobs? in .+, about [\d.]+ h total$/)
+      const tiers = t.stops.map((s) => s.priority_tier)
+      const firstLow = tiers.findIndex((x) => x === 'P3' || x === 'P4')
+      if (firstLow >= 0) assert.ok(!tiers.slice(firstLow).some((x) => x === 'P1' || x === 'P2'), 'urgent stops come first')
+    }
+    assert.ok(plan.totals.drive_saved_min >= 0)
+  })
+
+  test("estimate_route refuses jobs that are not the crew's", () => {
+    const [job] = crewJobs('streets_b')
+    const r = estimateRoute('water_emergency', [job.issue_id])
+    assert.equal(r.stops.length, 0)
+    assert.equal(r.errors.length, 1)
   })
 
   test('two potholes 85 m apart stay separate issues', () => {

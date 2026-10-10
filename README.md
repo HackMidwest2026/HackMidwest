@@ -66,6 +66,7 @@ In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back t
 
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.
+- **Route planning:** the Route Planner agent (Sonnet, `api/src/agents/routes.js`) groups each crew's open jobs (assigned, or recommended and awaiting approval) into one trip for today's 8-hour shift: urgent jobs first, nearby P3/P4 jobs ride along, and what does not fit is deferred with a reason. Code orders the stops and does the time math (`api/src/lib/routing.js`, simulated drive speeds and on-site minutes); the agent can call `estimate_route` to check a trip before committing. The Supervisor chat can call it as a tool ("Plan today's routes: which crew has the longest day?"). Dashboard: **Route Plans**.
 - **Photos:** when a report has a photo, a Vision agent (Haiku, image input, `api/src/agents/photo.js`) describes it first: what it shows, category, severity (low to critical) and visible hazards. Intake uses that to classify vague or photo-only reports, and Priority sees the severity. Mock mode stores photos without analyzing them.
 - **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of 80, so they reach P1 on the first report. The agent may adjust it by ±15 and must explain why.
 - Every agent returns **Zod-validated structured output**. The server re-checks LLM answers, e.g. a merge target must be one of the candidates and the SLA must match the tier.
@@ -106,6 +107,8 @@ The single-report pipeline is a **Strands `Graph`** (`buildReportGraph` in `api/
 | `GET` | `/api/stream` | SSE: `trace` events (every agent step and tool call) and `issue` updates |
 | `POST` | `/api/chat` | `{ question }` → supervisor answer |
 | `GET` | `/api/graph` | Strands Graph topology: nodes, edges, edge conditions |
+| `POST` | `/api/routes/plan` | Route Planner agent: today's crew trips, deferred jobs, drive time saved |
+| `GET` | `/api/routes` | Latest route plan |
 | `GET` | `/api/nearby?lat&lng` | Open issues near a point (pre-submit duplicate hint) |
 | `GET` | `/api/crews` | Crews with workload and active assignments |
 | `GET` | `/api/stats`, `/api/meta` | Dashboard numbers; categories, departments, crews, neighborhoods |

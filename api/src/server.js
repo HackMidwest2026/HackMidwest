@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { planRoutes } from './agents/routes.js'
 import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
@@ -208,6 +209,19 @@ app.post(
     const runId = /^[\w-]{8,64}$/.test(req.body?.client_run_id || '') ? req.body.client_run_id : randomUUID()
     const answer = await askSupervisor(question, { trace: (e) => emitTrace({ run_id: runId, ...e }) })
     res.json({ answer, run_id: runId })
+  }),
+)
+
+// Route Planner agent: group each crew's open jobs into trips for today's shift.
+app.get('/api/routes', (_req, res) => res.json(store.getLastRoutePlan()))
+
+app.post(
+  '/api/routes/plan',
+  wrap(async (req, res) => {
+    const runId = /^[\w-]{8,64}$/.test(req.body?.client_run_id || '') ? req.body.client_run_id : randomUUID()
+    const plan = await planRoutes({ runId })
+    store.setLastRoutePlan(plan)
+    res.json(plan)
   }),
 )
 

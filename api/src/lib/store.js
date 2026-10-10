@@ -16,6 +16,7 @@ function emptyState() {
     reports: [],
     crews: structuredClone(crewSeed),
     last_batch: null,
+    last_route_plan: null,
   }
 }
 
@@ -138,5 +139,12 @@ export const getCrew = (id) => state.crews.find((c) => c.crew_id === id)
 export const getLastBatch = () => state.last_batch
 export function setLastBatch(b) {
   state.last_batch = b
+  saveSoon()
+}
+
+// ---- route plans ----
+export const getLastRoutePlan = () => state.last_route_plan
+export function setLastRoutePlan(p) {
+  state.last_route_plan = p
   saveSoon()
 }

@@ -51,3 +51,19 @@ export const RouterOutput = z.object({
   suggested_sla_hours: z.number().int().positive(),
   reason: z.string().describe('Short justification naming workload and distance'),
 })
+
+export const RoutePlanOutput = z.object({
+  trips: z
+    .array(
+      z.object({
+        crew_id: z.string(),
+        issue_ids: z.array(z.number().int()).describe('Jobs this crew does on this trip; code optimizes the stop order'),
+        reason: z.string().describe('One or two sentences: why these jobs ride together'),
+      }),
+    )
+    .describe('Usually one trip per crew for today'),
+  deferred: z
+    .array(z.object({ issue_id: z.number().int(), reason: z.string() }))
+    .describe('Jobs left for a later shift, with the reason'),
+  summary: z.string().describe("Two or three sentences for the dispatcher summarizing today's plan"),
+})
