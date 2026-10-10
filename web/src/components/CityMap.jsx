@@ -245,10 +245,11 @@ export default function CityMap({
   return (
     <div className="relative w-full h-full">
       <MapContainer center={[meta.center.lat, meta.center.lng]} zoom={zoom} zoomControl={false} className="w-full h-full" scrollWheelZoom>
+        {/* Free OpenStreetMap tiles, no API key. Softened in CSS (.cc-tiles) to match the CityCare palette. */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          className="cc-tiles"
           maxZoom={19}
         />
         {onReportPin && <ClickToPin onPin={onReportPin} />}

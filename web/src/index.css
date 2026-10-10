@@ -49,6 +49,8 @@
 .cc-divicon { background: transparent; border: none; }
 .leaflet-container { font-family: inherit; background: #f8fafe; }
 .leaflet-control-attribution { font-size: 10px; }
+/* Calm the default OSM palette so markers stand out */
+.cc-tiles { filter: saturate(0.55) brightness(1.04) contrast(0.95); }
 
 /* Custom scrollbars for dense command streams */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

@@ -33,7 +33,7 @@ On first start the API seeds 13 historical reports, which become 8 open issues. 
   - **Field Crews:** crew workload and assignments.
 - **Supervisor Channel:** plain-English questions answered by the Supervisor agent.
 
-Built with React, Tailwind CSS 4, lucide icons and Leaflet (CARTO light basemap).
+Built with React, Tailwind CSS 4, lucide icons and Leaflet with free OpenStreetMap tiles (no API key). The OSM tile servers are fine for a hackathon demo; for heavier use, follow the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) or self-host tiles.
 
 Hot-reload development in Docker:
 
