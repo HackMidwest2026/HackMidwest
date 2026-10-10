@@ -16,6 +16,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       INTAKE_MODEL_ID: ${INTAKE_MODEL_ID:-us.anthropic.claude-haiku-4-5-20251001-v1:0}
+      PHOTON_URL: ${PHOTON_URL:-https://photon.komoot.io}
       REASONING_MODEL_ID: ${REASONING_MODEL_ID:-us.anthropic.claude-sonnet-4-6}
     volumes:
       - citycare-state:/app/var

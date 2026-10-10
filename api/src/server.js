@@ -8,7 +8,8 @@ import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
 import { categories, city, demoReports, departments, seedReports } from './lib/data.js'
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
-import { geocodeAddress, reverseGeocode } from './lib/geo.js'
+import { geocodeAddress, reverseGeocode, suggestAddresses } from './lib/geo.js'
+import { photonSuggest } from './lib/photon.js'
 import * as store from './lib/store.js'
 import { processBatch, processReport, seedHistory } from './pipeline.js'
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
@@ -83,6 +84,20 @@ app.get('/api/crews', (_req, res) => {
     })),
   )
 })
+
+// Address autocomplete: local KC intersections/landmarks first, then street addresses from Photon.
+app.get(
+  '/api/address-suggest',
+  wrap(async (req, res) => {
+    const q = String(req.query.q || '').trim().slice(0, 120)
+    if (q.length < 2) return res.json([])
+    const local = suggestAddresses(q, 8)
+    // Photon helps most with house numbers and named places the gazetteer doesn't know.
+    const remote = local.length < 5 || /\d+\s+\w/.test(q) ? await photonSuggest(q, 5) : []
+    const seen = new Set(local.map((s) => s.label.toLowerCase()))
+    res.json([...local, ...remote.filter((s) => !seen.has(s.label.toLowerCase()))].slice(0, 10))
+  }),
+)
 
 app.get('/api/geocode', (req, res) => res.json(geocodeAddress(String(req.query.q || ''))))
 app.get('/api/reverse-geocode', (req, res) => res.json(reverseGeocode({ lat: Number(req.query.lat), lng: Number(req.query.lng) })))

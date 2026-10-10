@@ -24,6 +24,7 @@ export const api = {
   approve: (id, body) => request('POST', `/api/issues/${id}/approve`, body),
   reject: (id, reason) => request('POST', `/api/issues/${id}/reject`, { reason }),
   setStatus: (id, status) => request('PATCH', `/api/issues/${id}`, { status }),
+  addressSuggest: (q) => request('GET', `/api/address-suggest?q=${encodeURIComponent(q)}`),
   geocode: (q) => request('GET', `/api/geocode?q=${encodeURIComponent(q)}`),
   reverseGeocode: (lat, lng) => request('GET', `/api/reverse-geocode?lat=${lat}&lng=${lng}`),
   chat: (question) => request('POST', '/api/chat', { question }),

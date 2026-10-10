@@ -19,6 +19,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { api, newRunId, subscribe } from '../api.js'
 import { CATEGORY_META, formatBytes, issueCode, OPEN_STATUSES, shortAddress, statusMeta, tierMeta } from '../lib/display.js'
+import AddressAutocomplete from './AddressAutocomplete.jsx'
 import AgentTrace from './AgentTrace.jsx'
 import CityMap from './CityMap.jsx'
 
@@ -275,22 +276,14 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 </button>
               </div>
               <div className="relative flex gap-1.5">
-                <div className="relative flex-1">
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        findAddress()
-                      }
-                    }}
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50/80 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
-                    placeholder="Cross streets, e.g. Troost & 39th"
-                  />
-                </div>
+                <AddressAutocomplete
+                  value={address}
+                  onChange={setAddress}
+                  onSelect={(sug) => placePin({ lat: sug.lat, lng: sug.lng }, sug.address)}
+                  onSubmitText={() => findAddress()}
+                  inputClassName="w-full pl-8 pr-3 py-2 bg-slate-50/80 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
+                  placeholder="Cross streets or address, e.g. Troost & 39th"
+                />
                 <button type="button" onClick={() => findAddress()} title="Find on map" className="px-2.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
                   <Search className="w-3.5 h-3.5" />
                 </button>

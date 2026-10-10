@@ -24,7 +24,7 @@ On first start the API seeds 13 historical reports, which become 8 open issues. 
 
 ## The UI
 
-- **Citizen Portal:** a full-screen map of Kansas City with a floating "Report an Issue" card. Residents pick a category (or leave it on Auto for the Intake agent), drop or drag a pin or type cross streets, attach a photo, and describe the problem. Before they submit, the card shows open incidents within 120 m. After they submit, it streams the agents' work live and shows the result (for example, "merged into #1042, P1").
+- **Citizen Portal:** a full-screen map of Kansas City with a floating "Report an Issue" card. Residents pick a category (or leave it on Auto for the Intake agent), drop or drag a pin, or type a location and pick from the suggestions dropdown, attach a photo, and describe the problem. Before they submit, the card shows open incidents within 120 m. After they submit, it streams the agents' work live and shows the result (for example, "merged into #1042, P1").
 - **Dispatch Command:** a console with five views.
   - **Command Center:** a ranked live triage stream, a tactical map with P1/P2 heatmap, crew telemetry and neighborhood layers, and an incident drawer showing the priority factors, the routing recommendation, merged reports, the agent audit trail, and Approve / Change crew / Reject.
   - **GIS Spatial Grid:** a density breakdown by neighborhood.
@@ -32,6 +32,8 @@ On first start the API seeds 13 historical reports, which become 8 open issues. 
   - **Routing Matrix:** the SLA table.
   - **Field Crews:** crew workload and assignments.
 - **Supervisor Channel:** plain-English questions answered by the Supervisor agent.
+
+Address suggestions come from the built-in KC street list first (intersections, landmarks, neighborhoods, and estimated house numbers on the grid, all offline). Street addresses fall back to [Photon](https://photon.komoot.io), a free OpenStreetMap geocoder with no API key; set `PHOTON_URL=off` to disable it.
 
 Built with React, Tailwind CSS 4, lucide icons and Leaflet with free OpenStreetMap tiles (no API key). The OSM tile servers are fine for a hackathon demo; for heavier use, follow the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) or self-host tiles.
 
@@ -102,6 +104,7 @@ The pipeline is orchestrated in code instead of a Strands `Graph`. The flow is f
 | `PATCH` | `/api/issues/:id` | `{ status }`: `in_progress`, `resolved`, … |
 | `GET` | `/api/stream` | SSE: `trace` events (every agent step and tool call) and `issue` updates |
 | `POST` | `/api/chat` | `{ question }` → supervisor answer |
+| `GET` | `/api/address-suggest?q=` | Autocomplete: `[{ label, sublabel, address, lat, lng, kind, source }]` |
 | `GET` | `/api/nearby?lat&lng` | Open issues near a point (pre-submit duplicate hint) |
 | `GET` | `/api/crews` | Crews with workload and active assignments |
 | `GET` | `/api/stats`, `/api/meta` | Dashboard numbers; categories, departments, crews, neighborhoods |

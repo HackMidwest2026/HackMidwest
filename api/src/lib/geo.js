@@ -99,3 +99,146 @@ export function nearbySensitiveSites({ lat, lng }, radiusM = 200) {
     .filter((s) => s.distance_m <= radiusM)
     .sort((a, b) => a.distance_m - b.distance_m)
 }
+
+// ---------- address autocomplete (offline gazetteer) ----------
+
+const ROAD_ORDER = { arterial: 0, collector: 1, residential: 2 }
+const SEPARATORS = /\s*(?:&|\/|@|,|\band\b|\bat\b|\bnear\b|\bby\b|\bx\b)\s*/i
+
+function norm(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** How well a typed fragment matches a street (0 = no match). Handles "39", "39th", "troo", "paseo blvd". */
+function streetScore(street, fragment) {
+  const f = norm(fragment)
+  if (!f) return 0
+  const names = [norm(street.name), ...street.aliases.map(norm)]
+  let best = 0
+  for (const n of names) {
+    if (n === f) best = Math.max(best, 4)
+    else if (n.startsWith(f)) best = Math.max(best, 3)
+    else if (n.split(' ').some((w) => w.startsWith(f))) best = Math.max(best, 2)
+    else if (f.length >= 3 && n.includes(f)) best = Math.max(best, 1)
+  }
+  return best
+}
+
+function matchStreets(fragment, axis) {
+  return city.streets
+    .filter((s) => !axis || s.axis === axis)
+    .map((s) => ({ s, score: streetScore(s, fragment) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name, undefined, { numeric: true }))
+    .map((x) => x.s)
+}
+
+function intersection(a, b) {
+  const ns = a.axis === 'ns' ? a : b
+  const ew = a.axis === 'ns' ? b : a
+  const point = { lat: ew.lat, lng: ns.lng }
+  return {
+    label: `${ns.name} & ${ew.name}`,
+    sublabel: `${neighborhoodFor(point)} · Kansas City, MO`,
+    address: `${ns.name} & ${ew.name}, Kansas City, MO`,
+    ...point,
+    kind: 'intersection',
+    source: 'gazetteer',
+  }
+}
+
+// Numbered east-west streets (39th St -> 39) with their latitude, for house-number estimates.
+const NUMBERED = city.streets
+  .filter((s) => s.axis === 'ew' && /^\d+(st|nd|rd|th) St$/.test(s.name))
+  .map((s) => ({ n: parseInt(s.name, 10), lat: s.lat }))
+  .sort((a, b) => a.n - b.n)
+
+function latForBlock(house) {
+  const n = house / 100
+  if (n < NUMBERED[0].n || n > NUMBERED.at(-1).n) return null
+  const hi = NUMBERED.findIndex((x) => x.n >= n)
+  const b = NUMBERED[hi]
+  const a = NUMBERED[Math.max(0, hi - 1)]
+  if (b.n === a.n) return b.lat
+  return +(a.lat + ((n - a.n) / (b.n - a.n)) * (b.lat - a.lat)).toFixed(6)
+}
+
+/**
+ * Suggestions for a partly typed location: "troost & 39", "39th and tro", "main", "westport",
+ * "children's mercy". Returns intersections, landmarks and neighborhoods.
+ */
+export function suggestAddresses(query, limit = 8) {
+  const q = norm(query)
+  if (q.length < 2) return []
+  const out = []
+  const seen = new Set()
+  const push = (s) => {
+    if (out.length < limit && !seen.has(s.label)) {
+      seen.add(s.label)
+      out.push(s)
+    }
+  }
+
+  const pushPlaces = () => {
+    for (const site of city.sensitive_sites) {
+      if (norm(site.name).includes(q)) {
+        push({ label: site.name, sublabel: `${site.type.replace('_', ' ')} · ${neighborhoodFor(site)}`, address: `${site.name}, Kansas City, MO`, lat: site.lat, lng: site.lng, kind: 'place', source: 'gazetteer' })
+      }
+    }
+    for (const n of city.neighborhoods) {
+      if (norm(n.name).includes(q)) {
+        push({ label: n.name, sublabel: 'Neighborhood · Kansas City, MO', address: `${n.name}, Kansas City, MO`, lat: n.lat, lng: n.lng, kind: 'neighborhood', source: 'gazetteer' })
+      }
+    }
+  }
+
+  // "4500 Main": on KC's grid, house number / 100 ≈ the numbered cross street (4500 ≈ 45th St).
+  const numbered = /^(\d{3,5})\s+(.+)$/.exec(q)
+  if (numbered) {
+    const house = Number(numbered[1])
+    for (const st of matchStreets(numbered[2], 'ns').slice(0, 2)) {
+      const lat = latForBlock(house)
+      if (lat != null) {
+        const point = { lat, lng: st.lng }
+        push({
+          label: `${house} ${st.name}`,
+          sublabel: `Approximate · ${reverseGeocode(point).address.replace(', Kansas City, MO', '')} · ${neighborhoodFor(point)}`,
+          address: `${house} ${st.name}, Kansas City, MO`,
+          ...point,
+          kind: 'address',
+          source: 'gazetteer',
+        })
+      }
+    }
+  }
+
+  const parts = (query || '').split(SEPARATORS).map(norm).filter(Boolean)
+  if (parts.length >= 2) {
+    // "A & B": first fragment picks streets, second picks cross streets on the other axis.
+    for (const a of matchStreets(parts[0]).slice(0, 3)) {
+      for (const b of matchStreets(parts[1], a.axis === 'ns' ? 'ew' : 'ns').slice(0, limit)) push(intersection(a, b))
+    }
+    pushPlaces()
+  } else {
+    // One fragment: maybe "troost 39" (two streets without a separator), else list a street's crossings.
+    const words = q.split(' ')
+    for (let i = 1; i < words.length && out.length === 0; i++) {
+      const left = words.slice(0, i).join(' ')
+      const right = words.slice(i).join(' ')
+      for (const a of matchStreets(left).slice(0, 2)) {
+        for (const b of matchStreets(right, a.axis === 'ns' ? 'ew' : 'ns').slice(0, limit)) push(intersection(a, b))
+      }
+    }
+    // Named places before a street's crossings, so "westport" offers the neighborhood first.
+    pushPlaces()
+    for (const s of matchStreets(q).slice(0, 2)) {
+      const crossings = city.streets
+        .filter((x) => x.axis !== s.axis)
+        // Busiest cross streets first so the list starts with useful corners.
+        .sort((x, y) => ROAD_ORDER[x.road_type] - ROAD_ORDER[y.road_type])
+      for (const c of crossings) push(intersection(s, c))
+    }
+  }
+
+  return out
+}

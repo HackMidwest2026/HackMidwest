@@ -11,7 +11,7 @@ process.env.MOCK_DELAY_MS = '0'
 process.env.MOCK_BATCH_DELAY_MS = '0'
 
 const { classifyText, classifyWithHint, detectHazards, baseScore, tierFor } = await import('../src/agents/rules.js')
-const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
+const { geocodeAddress, roadType, suggestAddresses } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
 const { processBatch, processReport, seedHistory } = await import('../src/pipeline.js')
@@ -57,6 +57,20 @@ describe('geo', () => {
     const g = geocodeAddress('Huge pothole on Troost near 39th')
     assert.equal(g.found, true)
     assert.match(g.address, /Troost Ave & 39th St/)
+  })
+
+  test('address suggestions from partial input', () => {
+    for (const q of ['troost & 39', '39th and tro', 'troost 39']) {
+      assert.equal(suggestAddresses(q)[0]?.label, 'Troost Ave & 39th St', q)
+    }
+    const westport = suggestAddresses('westport').map((s) => s.label)
+    assert.ok(westport.includes('Westport'), 'neighborhood offered')
+    assert.equal(suggestAddresses("children's")[0].kind, 'place')
+    assert.deepEqual(suggestAddresses('x'), [])
+    // House numbers on the KC grid: 3900 Troost sits at 39th St.
+    const est = suggestAddresses('3900 troost')[0]
+    assert.equal(est.label, '3900 Troost Ave')
+    assert.ok(Math.abs(est.lat - 39.0574) < 0.0005)
   })
 
   test('road type picks the highest class nearby', () => {
