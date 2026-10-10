@@ -64,7 +64,8 @@ In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back t
 
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.
-- **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). The agent may adjust it by ±15 and must explain why.
+- **Photos:** when a report has a photo, a Vision agent (Haiku, image input, `api/src/agents/photo.js`) describes it first: what it shows, category, severity (low to critical) and visible hazards. Intake uses that to classify vague or photo-only reports, and Priority sees the severity. Mock mode stores photos without analyzing them.
+- **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of 80, so they reach P1 on the first report. The agent may adjust it by ±15 and must explain why.
 - Every agent returns **Zod-validated structured output**. The server re-checks LLM answers, e.g. a merge target must be one of the candidates and the SLA must match the tier.
 
 ## Demo numbers (mock engine, synthetic data)
@@ -80,7 +81,7 @@ api/                     Node service (Express 5) + agents          → owners A
   src/agents/            intake, dedup, priority, router, supervisor (Strands) + rules.js (mock engine)
   src/tools/cityTools.js tool functions shared by both engines
   src/lib/               store (JSON-persisted), geo (KC gazetteer), events (trace bus), data loader
-  src/pipeline.js        orchestration: single-report and batch paths
+  src/pipeline.js        Strands Graph for single reports; batch path
   src/server.js          REST + SSE
   test/                  node:test suite
 web/                     React (Vite) + Tailwind + Leaflet: Citizen Portal and Dispatch console → owner D
@@ -88,7 +89,7 @@ data/                    categories, departments/crews (simulated), KC geography
 scripts/generate-demo-data.js   regenerates data/seed_reports.json and data/demo_reports.json
 ```
 
-The pipeline is orchestrated in code instead of a Strands `Graph`. The flow is fixed (Intake → Dedup → Priority → Router), and the merge-or-create branch and the database writes between steps are plain code. Code orchestration also lets the batch path run intake and triage in parallel while keeping dedup serialized. Each step is still its own Strands `Agent` with its own tools, model tier and schema. The supervisor uses the agents-as-tools pattern.
+The single-report pipeline is a **Strands `Graph`** (`buildReportGraph` in `api/src/pipeline.js`): `intake → dedup → priority → router`, one node per agent. Nodes share the report and issue ids through the graph's app state. The `priority → router` edge is conditional: a report merged into an issue a dispatcher already approved re-scores it but does not re-route it. `GET /api/graph` returns the topology for the UI. The batch path reuses the same steps but schedules them in code, so it can run intake in parallel, keep dedup serialized and triage each touched issue once. The supervisor uses the agents-as-tools pattern.
 
 ## API contract
 
@@ -102,6 +103,7 @@ The pipeline is orchestrated in code instead of a Strands `Graph`. The flow is f
 | `PATCH` | `/api/issues/:id` | `{ status }`: `in_progress`, `resolved`, … |
 | `GET` | `/api/stream` | SSE: `trace` events (every agent step and tool call) and `issue` updates |
 | `POST` | `/api/chat` | `{ question }` → supervisor answer |
+| `GET` | `/api/graph` | Strands Graph topology: nodes, edges, edge conditions |
 | `GET` | `/api/nearby?lat&lng` | Open issues near a point (pre-submit duplicate hint) |
 | `GET` | `/api/crews` | Crews with workload and active assignments |
 | `GET` | `/api/stats`, `/api/meta` | Dashboard numbers; categories, departments, crews, neighborhoods |
@@ -114,4 +116,4 @@ Trace event shape (see `api/src/lib/events.js`): `{ event_id, ts, run_id, report
 - **AWS:** credentials and Bedrock model access for Claude Haiku-class and Sonnet-class in one region. Then set `CITYCARE_MODE=bedrock` and the model IDs, and run one report end to end. The Bedrock path has not yet been run against a live account; it has been checked only up to the credential step.
 - **KC 311 data:** confirm the dataset ID on data.kcmo.org, then import an extract to seed real history and check the category mapping in `data/categories.json`.
 - **Geography:** `data/city.json` uses approximate straight-line street positions and hand-picked sites. Verify the sensitive sites, or swap in Amazon Location Service or Nominatim.
-- **Not built yet (stretch):** photo analysis (photos are stored, and `analyze_photo` is a stub), Titan embeddings for semantic dedup (currently bag-of-words similarity), map clustering, resident notifications, equity adjustment, AgentCore deploy.
+- **Not built yet (stretch):** Titan embeddings for semantic dedup (currently bag-of-words similarity), map clustering, resident notifications, equity adjustment, AgentCore deploy.

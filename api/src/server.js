@@ -10,7 +10,7 @@ import { categories, city, demoReports, departments, seedReports } from './lib/d
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
 import { geocodeAddress, reverseGeocode } from './lib/geo.js'
 import * as store from './lib/store.js'
-import { processBatch, processReport, seedHistory } from './pipeline.js'
+import { GRAPH_TOPOLOGY, processBatch, processReport, seedHistory } from './pipeline.js'
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
 
 const app = express()
@@ -49,6 +49,8 @@ function savePhoto(dataUrl) {
 // ---------- meta ----------
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, mode: config.mode, models: config.mode === 'bedrock' ? config.models : null }))
+
+app.get('/api/graph', (_req, res) => res.json(GRAPH_TOPOLOGY))
 
 app.get('/api/meta', (_req, res) =>
   res.json({
@@ -93,11 +95,16 @@ app.post(
   '/api/reports',
   wrap(async (req, res) => {
     const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
-    if (!text || !String(text).trim()) return res.status(400).json({ error: 'Describe the problem in a few words.' })
     const photo_url = photo ? savePhoto(photo) : null
+    if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
+    // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
+    if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
     // client_run_id lets the resident page pick its own run out of the live trace stream.
     const runId = /^[\w-]{8,64}$/.test(client_run_id || '') ? client_run_id : randomUUID()
-    const result = await processReport({ raw_text: String(text).trim(), lat, lng, address, photo_url, reporter_contact, category_hint }, { runId })
+    const result = await processReport(
+      { raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact, category_hint },
+      { runId },
+    )
     res.status(201).json({ ...result, issue: issueView(result.issue, { withReports: true }) })
   }),
 )

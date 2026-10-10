@@ -1,11 +1,11 @@
 // The CityCare pipeline: Intake -> Dedup -> (merge | create) -> Priority -> Router -> dispatcher.
 //
-// The flow is deterministic, so it is orchestrated in code (a "workflow" over Strands agents)
-// rather than letting agents hand off to each other. That keeps it debuggable and lets the
-// batch path parallelize the independent steps:
-//   single report:  intake -> dedup -> priority -> router
+// The flow is deterministic, so agents don't hand off to each other on their own:
+//   single report:  a Strands Graph, intake -> dedup -> priority -> router (see buildReportGraph)
 //   batch:          intake (parallel) -> dedup (serial, it mutates issues) -> priority+router per touched issue (parallel)
 import { randomUUID } from 'node:crypto'
+import { TextBlock } from '@strands-agents/sdk'
+import { BeforeMultiAgentInvocationEvent, Graph, Node, Status } from '@strands-agents/sdk/multiagent'
 import { config, isBedrock } from './config.js'
 import { runDedup } from './agents/dedup.js'
 import { runIntake } from './agents/intake.js'
@@ -91,6 +91,7 @@ async function intakeStep(report, ctx) {
     description: out.description,
     hazard_flags: out.hazard_flags,
     classifier_confidence: out.confidence,
+    photo_analysis: out.photo_analysis ?? null,
   })
 }
 
@@ -145,29 +146,118 @@ async function dedupStep(report, ctx) {
   })
 }
 
-async function triageStep(issueId, ctx) {
-  let issue = store.getIssue(issueId)
-  const p = await runPriority(issue, ctx)
-  issue = store.updateIssue(issueId, {
+async function priorityStep(issueId, ctx) {
+  const p = await runPriority(store.getIssue(issueId), ctx)
+  const issue = store.updateIssue(issueId, {
     priority_score: p.priority_score,
     priority_tier: p.priority_tier,
     priority_factors: p.priority_factors,
   })
-  // Once a dispatcher has approved an issue, new reports only re-score it; routing stays as approved.
-  if (['new', 'triaged'].includes(issue.status)) {
-    const r = await runRouter(issue, ctx)
-    issue = store.updateIssue(issueId, {
-      recommended_department: r.department_id,
-      recommended_crew: r.crew_id,
-      routing_reason: r.reason,
-      suggested_sla_hours: r.suggested_sla_hours,
-      status: 'triaged',
-      status_history:
-        issue.status === 'new' ? [...issue.status_history, { status: 'triaged', at: new Date().toISOString(), by: 'pipeline' }] : issue.status_history,
-    })
-  }
   emitIssueUpdate(issue)
   return issue
+}
+
+// Once a dispatcher has approved an issue, new reports only re-score it; routing stays as approved.
+const isRoutable = (issue) => ['new', 'triaged'].includes(issue.status)
+
+async function routerStep(issueId, ctx) {
+  let issue = store.getIssue(issueId)
+  const r = await runRouter(issue, ctx)
+  issue = store.updateIssue(issueId, {
+    recommended_department: r.department_id,
+    recommended_crew: r.crew_id,
+    routing_reason: r.reason,
+    suggested_sla_hours: r.suggested_sla_hours,
+    status: 'triaged',
+    status_history:
+      issue.status === 'new' ? [...issue.status_history, { status: 'triaged', at: new Date().toISOString(), by: 'pipeline' }] : issue.status_history,
+  })
+  emitIssueUpdate(issue)
+  return issue
+}
+
+async function triageStep(issueId, ctx) {
+  const issue = await priorityStep(issueId, ctx)
+  return isRoutable(issue) ? routerStep(issueId, ctx) : issue
+}
+
+// ---------- Strands Graph (single-report path) ----------
+//
+//   intake ──► dedup ──► priority ──[issue not yet approved]──► router
+//
+// Each node wraps one agent step. Nodes share the report and issue ids through the graph's
+// app state; the per-run trace context travels in invocationState. The conditional edge is
+// how a report merged into an already-approved issue gets re-scored without re-routing.
+// The batch path below reuses the same steps but schedules them itself, so it can run intake
+// in parallel, keep dedup serialized and triage each touched issue once.
+
+export const GRAPH_TOPOLOGY = {
+  nodes: [
+    { id: 'intake', description: 'Classify the raw report (Haiku)' },
+    { id: 'dedup', description: 'Merge into an existing issue or create a new one' },
+    { id: 'priority', description: 'Rubric score plus agent adjustment' },
+    { id: 'router', description: 'Recommend department, crew and SLA' },
+  ],
+  edges: [
+    { source: 'intake', target: 'dedup' },
+    { source: 'dedup', target: 'priority' },
+    { source: 'priority', target: 'router', condition: 'issue is new or triaged (not yet approved)' },
+  ],
+}
+
+class StepNode extends Node {
+  constructor(id, description, run) {
+    super(id, { description })
+    this.run = run
+  }
+
+  async *handle(_input, state, options) {
+    const message = await this.run(options.invocationState.ctx, state.app)
+    return { content: [new TextBlock(message)] }
+  }
+}
+
+function buildReportGraph() {
+  const describe = (id) => GRAPH_TOPOLOGY.nodes.find((n) => n.id === id).description
+  const nodes = [
+    new StepNode('intake', describe('intake'), async (ctx, app) => {
+      const r = await intakeStep(store.getReport(app.get('report_id')), ctx)
+      return `${r.category}/${r.subcategory}`
+    }),
+    new StepNode('dedup', describe('dedup'), async (ctx, app) => {
+      const { issue, merged } = await dedupStep(store.getReport(app.get('report_id')), ctx)
+      app.set('issue_id', issue.issue_id)
+      app.set('merged', merged)
+      return `${merged ? 'merged into' : 'created'} issue #${issue.issue_id}`
+    }),
+    new StepNode('priority', describe('priority'), async (ctx, app) => {
+      const issue = await priorityStep(app.get('issue_id'), ctx)
+      app.set('routable', isRoutable(issue))
+      return `${issue.priority_tier} (${issue.priority_score}/100)`
+    }),
+    new StepNode('router', describe('router'), async (ctx, app) => {
+      const issue = await routerStep(app.get('issue_id'), ctx)
+      return `${issue.recommended_department} / ${issue.recommended_crew}`
+    }),
+  ]
+  const edges = GRAPH_TOPOLOGY.edges.map(({ source, target }) =>
+    target === 'router' ? { source, target, handler: (state) => state.app.get('routable') === true } : [source, target],
+  )
+  return new Graph({ id: 'cityops-report', nodes, edges, maxConcurrency: 1, maxSteps: 10, timeout: 180_000 })
+}
+
+/** Runs the report graph and returns its app state ({ report_id, issue_id, merged, routable }). */
+async function runReportGraph(report, ctx) {
+  const graph = buildReportGraph()
+  let app
+  graph.addHook(BeforeMultiAgentInvocationEvent, (e) => {
+    app = e.state.app
+    app.set('report_id', report.report_id)
+  })
+  const result = await graph.invoke(`Triage resident report ${report.report_id}: ${report.raw_text}`, { invocationState: { ctx } })
+  const failed = result.results.find((r) => r.status === Status.FAILED)
+  if (failed) throw failed.error ?? new Error(`Graph node ${failed.nodeId} failed.`)
+  return app.getAll()
 }
 
 // ---------- public API ----------
@@ -178,9 +268,8 @@ export async function processReport(input, { runId = randomUUID(), ...opts } = {
   const ctx = makeCtx({ runId, reportId: report.report_id, sink: events, ...opts })
   ctx.trace({ agent: 'pipeline', status: 'started', message: `Report ${report.report_id} received at ${report.address}.`, data: { lat: report.lat, lng: report.lng } })
   try {
-    await intakeStep(report, ctx)
-    const { issue, merged } = await dedupStep(store.getReport(report.report_id), ctx)
-    const final = await triageStep(issue.issue_id, ctx)
+    const { issue_id, merged } = await runReportGraph(report, ctx)
+    const final = store.getIssue(issue_id)
     ctx.trace({
       agent: 'pipeline',
       status: 'completed',

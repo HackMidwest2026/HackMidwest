@@ -14,6 +14,7 @@ const { classifyText, classifyWithHint, detectHazards, baseScore, tierFor } = aw
 const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
+const { analyzePhotoWithVision } = await import('../src/agents/photo.js')
 const { processBatch, processReport, seedHistory } = await import('../src/pipeline.js')
 
 describe('rules', () => {
@@ -50,6 +51,33 @@ describe('rules', () => {
     assert.equal(tierFor(79), 'P2')
     assert.equal(tierFor(39), 'P4')
   })
+
+  test('critical hazards reach the P1 floor on their first report', () => {
+    const ctx = { road: { road_type: 'arterial', street: 'Main St' }, sites: [], days_open: 0 }
+    const signal = baseScore({ subcategory: 'traffic_signal', hazard_flags: ['inherent_safety_hazard'], report_count: 1 }, ctx)
+    assert.equal(signal.base_score, 80)
+    assert.ok(signal.factors.some((f) => f.factor === 'critical_hazard' && f.points === 25))
+    const tree = (flags) => baseScore({ subcategory: 'fallen_tree', hazard_flags: flags, report_count: 1 }, ctx).base_score
+    assert.equal(tree(['inherent_safety_hazard', 'road_blocked']), 80)
+    assert.equal(tree(['inherent_safety_hazard']), 55)
+    const pothole = baseScore({ subcategory: 'pothole', hazard_flags: ['vehicle_damage_risk'], report_count: 1 }, ctx)
+    assert.equal(pothole.base_score, 55)
+  })
+})
+
+describe('photo', () => {
+  test('vision agent only reads images the server saved under /uploads', async () => {
+    for (const photo_url of ['/etc/passwd', '../.env', '/uploads/notes.txt', 'https://example.com/x.jpg']) {
+      const r = await analyzePhotoWithVision({ photo_url })
+      assert.equal(r.analyzed, false, photo_url)
+    }
+  })
+
+  test('a photo-only report still runs through the pipeline', async () => {
+    const r = await processReport({ raw_text: '(photo only, no description)', photo_url: '/uploads/missing.jpg', lat: 39.0912, lng: -94.5555 })
+    assert.equal(r.report.photo_analysis.analyzed, false)
+    assert.ok(r.issue.issue_id)
+  })
 })
 
 describe('geo', () => {
@@ -79,6 +107,18 @@ describe('pipeline', () => {
     assert.equal(r.issue.recommended_department, 'pw_streets')
     const agents = new Set(r.issue.agent_trace.map((e) => e.agent))
     for (const a of ['intake', 'dedup', 'priority', 'router']) assert.ok(agents.has(a), `trace has ${a}`)
+  })
+
+  test('report on an approved issue re-scores it but skips the router edge', async () => {
+    store.updateIssue(1042, { status: 'approved', recommended_crew: 'streets_c' })
+    const r = await processReport({ raw_text: 'Still a big pothole at Troost and 39th', lat: 39.0576, lng: -94.5716 })
+    assert.equal(r.issue.issue_id, 1042)
+    assert.equal(r.issue.status, 'approved')
+    assert.equal(r.issue.recommended_crew, 'streets_c')
+    const run = r.issue.agent_trace.filter((e) => e.run_id === r.run_id).map((e) => e.agent)
+    assert.ok(run.includes('priority'))
+    assert.ok(!run.includes('router'))
+    store.updateIssue(1042, { status: 'triaged' })
   })
 
   test('demo batch collapses 50 reports into the true issues', async () => {
