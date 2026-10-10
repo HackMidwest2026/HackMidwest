@@ -87,6 +87,22 @@ describe('geo', () => {
     assert.match(g.address, /Troost Ave & 39th St/)
   })
 
+  test('geocodes 18th & Vine and named landmarks', () => {
+    assert.match(geocodeAddress('Graffiti all over the wall at 18th and Vine').address, /^Vine St & 18th St/)
+    assert.match(geocodeAddress('graffiti at 18th & vine').address, /^Vine St & 18th St/)
+    const station = geocodeAddress('Pothole right outside Union Station')
+    assert.equal(station.precision, 'landmark')
+    assert.match(station.address, /^Union Station/)
+    assert.equal(geocodeAddress('Streetlight out by the Plaza').found, true)
+  })
+
+  test('"water main" and similar phrases do not pick the wrong street', () => {
+    assert.match(geocodeAddress('Water main break gushing at Broadway and Westport Rd').address, /^Broadway Blvd & Westport Rd/)
+    assert.match(geocodeAddress('Big oak tree down across Troost at 39th').address, /^Troost Ave & 39th St/)
+    assert.match(geocodeAddress('Traffic signal dark at Main and 31st').address, /^Main St & 31st St/)
+    assert.equal(geocodeAddress('water main break somewhere').found, false)
+  })
+
   test('road type picks the highest class nearby', () => {
     assert.equal(roadType({ lat: 39.0574, lng: -94.5715 }).road_type, 'arterial')
   })
