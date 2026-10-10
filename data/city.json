@@ -14,11 +14,7 @@
     "examples": {
       "report_text": "Huge pothole on Troost near 39th, almost wrecked my car",
       "address": "Troost & 39th",
-      "supervisor_questions": [
-        "What are the most dangerous open issues in Midtown?",
-        "What's most urgent in Westport?",
-        "How many issues are open?"
-      ]
+      "supervisor_questions": ["What are the most dangerous open issues in Midtown?", "What's most urgent in Westport?", "How many issues are open?"]
     }
   },
   "center": {
@@ -26,447 +22,80 @@
     "lng": -94.575
   },
   "streets": [
-    {
-      "name": "State Line Rd",
-      "aliases": [
-        "state line"
-      ],
-      "axis": "ns",
-      "lng": -94.6075,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Wornall Rd",
-      "aliases": [
-        "wornall"
-      ],
-      "axis": "ns",
-      "lng": -94.5935,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Broadway Blvd",
-      "aliases": [
-        "broadway"
-      ],
-      "axis": "ns",
-      "lng": -94.5915,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Main St",
-      "aliases": [
-        "main"
-      ],
-      "axis": "ns",
-      "lng": -94.5857,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Grand Blvd",
-      "aliases": [
-        "grand"
-      ],
-      "axis": "ns",
-      "lng": -94.5815,
-      "road_type": "collector"
-    },
-    {
-      "name": "Gillham Rd",
-      "aliases": [
-        "gillham"
-      ],
-      "axis": "ns",
-      "lng": -94.5795,
-      "road_type": "collector"
-    },
-    {
-      "name": "Oak St",
-      "aliases": [
-        "oak"
-      ],
-      "axis": "ns",
-      "lng": -94.5775,
-      "road_type": "collector"
-    },
-    {
-      "name": "Holmes St",
-      "aliases": [
-        "holmes"
-      ],
-      "axis": "ns",
-      "lng": -94.5755,
-      "road_type": "residential"
-    },
-    {
-      "name": "Harrison St",
-      "aliases": [
-        "harrison"
-      ],
-      "axis": "ns",
-      "lng": -94.5735,
-      "road_type": "residential"
-    },
-    {
-      "name": "Troost Ave",
-      "aliases": [
-        "troost"
-      ],
-      "axis": "ns",
-      "lng": -94.5715,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Forest Ave",
-      "aliases": [
-        "forest"
-      ],
-      "axis": "ns",
-      "lng": -94.569,
-      "road_type": "residential"
-    },
-    {
-      "name": "Paseo Blvd",
-      "aliases": [
-        "paseo",
-        "the paseo"
-      ],
-      "axis": "ns",
-      "lng": -94.565,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Woodland Ave",
-      "aliases": [
-        "woodland"
-      ],
-      "axis": "ns",
-      "lng": -94.5605,
-      "road_type": "residential"
-    },
-    {
-      "name": "Prospect Ave",
-      "aliases": [
-        "prospect"
-      ],
-      "axis": "ns",
-      "lng": -94.5545,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Indiana Ave",
-      "aliases": [
-        "indiana"
-      ],
-      "axis": "ns",
-      "lng": -94.544,
-      "road_type": "collector"
-    },
-    {
-      "name": "Benton Blvd",
-      "aliases": [
-        "benton"
-      ],
-      "axis": "ns",
-      "lng": -94.5365,
-      "road_type": "collector"
-    },
-    {
-      "name": "Van Brunt Blvd",
-      "aliases": [
-        "van brunt"
-      ],
-      "axis": "ns",
-      "lng": -94.5205,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Independence Ave",
-      "aliases": [
-        "independence"
-      ],
-      "axis": "ew",
-      "lat": 39.1062,
-      "road_type": "arterial"
-    },
-    {
-      "name": "12th St",
-      "aliases": [
-        "12th"
-      ],
-      "axis": "ew",
-      "lat": 39.0995,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Truman Rd",
-      "aliases": [
-        "truman"
-      ],
-      "axis": "ew",
-      "lat": 39.0952,
-      "road_type": "arterial"
-    },
-    {
-      "name": "18th St",
-      "aliases": [
-        "18th"
-      ],
-      "axis": "ew",
-      "lat": 39.0917,
-      "road_type": "collector"
-    },
-    {
-      "name": "31st St",
-      "aliases": [
-        "31st"
-      ],
-      "axis": "ew",
-      "lat": 39.0699,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Linwood Blvd",
-      "aliases": [
-        "linwood"
-      ],
-      "axis": "ew",
-      "lat": 39.068,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Armour Blvd",
-      "aliases": [
-        "armour"
-      ],
-      "axis": "ew",
-      "lat": 39.0631,
-      "road_type": "collector"
-    },
-    {
-      "name": "39th St",
-      "aliases": [
-        "39th"
-      ],
-      "axis": "ew",
-      "lat": 39.0574,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Westport Rd",
-      "aliases": [
-        "westport rd",
-        "westport road"
-      ],
-      "axis": "ew",
-      "lat": 39.0535,
-      "road_type": "arterial"
-    },
-    {
-      "name": "43rd St",
-      "aliases": [
-        "43rd"
-      ],
-      "axis": "ew",
-      "lat": 39.049,
-      "road_type": "collector"
-    },
-    {
-      "name": "47th St",
-      "aliases": [
-        "47th"
-      ],
-      "axis": "ew",
-      "lat": 39.0428,
-      "road_type": "arterial"
-    },
-    {
-      "name": "Emanuel Cleaver II Blvd",
-      "aliases": [
-        "emanuel cleaver",
-        "cleaver"
-      ],
-      "axis": "ew",
-      "lat": 39.037,
-      "road_type": "arterial"
-    },
-    {
-      "name": "51st St",
-      "aliases": [
-        "51st"
-      ],
-      "axis": "ew",
-      "lat": 39.0353,
-      "road_type": "residential"
-    },
-    {
-      "name": "55th St",
-      "aliases": [
-        "55th"
-      ],
-      "axis": "ew",
-      "lat": 39.0285,
-      "road_type": "collector"
-    },
-    {
-      "name": "63rd St",
-      "aliases": [
-        "63rd"
-      ],
-      "axis": "ew",
-      "lat": 39.0136,
-      "road_type": "arterial"
-    },
-    {
-      "name": "71st St",
-      "aliases": [
-        "71st"
-      ],
-      "axis": "ew",
-      "lat": 38.999,
-      "road_type": "residential"
-    },
-    {
-      "name": "75th St",
-      "aliases": [
-        "75th"
-      ],
-      "axis": "ew",
-      "lat": 38.9917,
-      "road_type": "arterial"
-    },
-    {
-      "name": "85th St",
-      "aliases": [
-        "85th"
-      ],
-      "axis": "ew",
-      "lat": 38.9737,
-      "road_type": "arterial"
-    }
+    {"name": "State Line Rd", "aliases": ["state line"], "axis": "ns", "lng": -94.6075, "road_type": "arterial"},
+    {"name": "Wornall Rd", "aliases": ["wornall"], "axis": "ns", "lng": -94.5935, "road_type": "arterial"},
+    {"name": "Broadway Blvd", "aliases": ["broadway"], "axis": "ns", "lng": -94.5915, "road_type": "arterial"},
+    {"name": "Main St", "aliases": ["main"], "axis": "ns", "lng": -94.5857, "road_type": "arterial"},
+    {"name": "Grand Blvd", "aliases": ["grand"], "axis": "ns", "lng": -94.5815, "road_type": "collector"},
+    {"name": "Gillham Rd", "aliases": ["gillham"], "axis": "ns", "lng": -94.5795, "road_type": "collector"},
+    {"name": "Oak St", "aliases": ["oak"], "axis": "ns", "lng": -94.5775, "road_type": "collector"},
+    {"name": "Holmes St", "aliases": ["holmes"], "axis": "ns", "lng": -94.5755, "road_type": "residential"},
+    {"name": "Harrison St", "aliases": ["harrison"], "axis": "ns", "lng": -94.5735, "road_type": "residential"},
+    {"name": "Troost Ave", "aliases": ["troost"], "axis": "ns", "lng": -94.5715, "road_type": "arterial"},
+    {"name": "Forest Ave", "aliases": ["forest"], "axis": "ns", "lng": -94.569, "road_type": "residential"},
+    {"name": "Paseo Blvd", "aliases": ["paseo", "the paseo"], "axis": "ns", "lng": -94.565, "road_type": "arterial"},
+    {"name": "Vine St", "aliases": ["vine"], "axis": "ns", "lng": -94.562, "road_type": "residential"},
+    {"name": "Woodland Ave", "aliases": ["woodland"], "axis": "ns", "lng": -94.5605, "road_type": "residential"},
+    {"name": "Prospect Ave", "aliases": ["prospect"], "axis": "ns", "lng": -94.5545, "road_type": "arterial"},
+    {"name": "Indiana Ave", "aliases": ["indiana"], "axis": "ns", "lng": -94.544, "road_type": "collector"},
+    {"name": "Benton Blvd", "aliases": ["benton"], "axis": "ns", "lng": -94.5365, "road_type": "collector"},
+    {"name": "Van Brunt Blvd", "aliases": ["van brunt"], "axis": "ns", "lng": -94.5205, "road_type": "arterial"},
+    {"name": "Independence Ave", "aliases": ["independence"], "axis": "ew", "lat": 39.1062, "road_type": "arterial"},
+    {"name": "12th St", "aliases": ["12th"], "axis": "ew", "lat": 39.0995, "road_type": "arterial"},
+    {"name": "Truman Rd", "aliases": ["truman"], "axis": "ew", "lat": 39.0952, "road_type": "arterial"},
+    {"name": "18th St", "aliases": ["18th"], "axis": "ew", "lat": 39.0917, "road_type": "collector"},
+    {"name": "31st St", "aliases": ["31st"], "axis": "ew", "lat": 39.0699, "road_type": "arterial"},
+    {"name": "Linwood Blvd", "aliases": ["linwood"], "axis": "ew", "lat": 39.068, "road_type": "arterial"},
+    {"name": "Armour Blvd", "aliases": ["armour"], "axis": "ew", "lat": 39.0631, "road_type": "collector"},
+    {"name": "39th St", "aliases": ["39th"], "axis": "ew", "lat": 39.0574, "road_type": "arterial"},
+    {"name": "Westport Rd", "aliases": ["westport rd", "westport road"], "axis": "ew", "lat": 39.0535, "road_type": "arterial"},
+    {"name": "43rd St", "aliases": ["43rd"], "axis": "ew", "lat": 39.049, "road_type": "collector"},
+    {"name": "47th St", "aliases": ["47th"], "axis": "ew", "lat": 39.0428, "road_type": "arterial"},
+    {"name": "Emanuel Cleaver II Blvd", "aliases": ["emanuel cleaver", "cleaver"], "axis": "ew", "lat": 39.037, "road_type": "arterial"},
+    {"name": "51st St", "aliases": ["51st"], "axis": "ew", "lat": 39.0353, "road_type": "residential"},
+    {"name": "55th St", "aliases": ["55th"], "axis": "ew", "lat": 39.0285, "road_type": "collector"},
+    {"name": "63rd St", "aliases": ["63rd"], "axis": "ew", "lat": 39.0136, "road_type": "arterial"},
+    {"name": "71st St", "aliases": ["71st"], "axis": "ew", "lat": 38.999, "road_type": "residential"},
+    {"name": "75th St", "aliases": ["75th"], "axis": "ew", "lat": 38.9917, "road_type": "arterial"},
+    {"name": "85th St", "aliases": ["85th"], "axis": "ew", "lat": 38.9737, "road_type": "arterial"}
   ],
   "neighborhoods": [
-    {
-      "name": "Downtown",
-      "lat": 39.1,
-      "lng": -94.583
-    },
-    {
-      "name": "Crossroads",
-      "lat": 39.0905,
-      "lng": -94.581
-    },
-    {
-      "name": "18th & Vine",
-      "lat": 39.0915,
-      "lng": -94.562
-    },
-    {
-      "name": "Northeast",
-      "lat": 39.11,
-      "lng": -94.535
-    },
-    {
-      "name": "Midtown",
-      "lat": 39.065,
-      "lng": -94.576
-    },
-    {
-      "name": "Westport",
-      "lat": 39.0535,
-      "lng": -94.59
-    },
-    {
-      "name": "Country Club Plaza",
-      "lat": 39.042,
-      "lng": -94.592
-    },
-    {
-      "name": "Ivanhoe",
-      "lat": 39.043,
-      "lng": -94.555
-    },
-    {
-      "name": "Troost Corridor",
-      "lat": 39.04,
-      "lng": -94.5715
-    },
-    {
-      "name": "Brookside",
-      "lat": 39.0136,
-      "lng": -94.59
-    },
-    {
-      "name": "Waldo",
-      "lat": 38.991,
-      "lng": -94.592
-    },
-    {
-      "name": "Swope Park area",
-      "lat": 39.005,
-      "lng": -94.545
-    }
+    {"name": "Downtown", "lat": 39.1, "lng": -94.583},
+    {"name": "Crossroads", "lat": 39.0905, "lng": -94.581},
+    {"name": "18th & Vine", "lat": 39.0915, "lng": -94.562},
+    {"name": "Northeast", "lat": 39.11, "lng": -94.535},
+    {"name": "Midtown", "lat": 39.065, "lng": -94.576},
+    {"name": "Westport", "lat": 39.0535, "lng": -94.59},
+    {"name": "Country Club Plaza", "lat": 39.042, "lng": -94.592},
+    {"name": "Ivanhoe", "lat": 39.043, "lng": -94.555},
+    {"name": "Troost Corridor", "lat": 39.04, "lng": -94.5715},
+    {"name": "Brookside", "lat": 39.0136, "lng": -94.59},
+    {"name": "Waldo", "lat": 38.991, "lng": -94.592},
+    {"name": "Swope Park area", "lat": 39.005, "lng": -94.545}
+  ],
+  "landmarks": [
+    {"name": "18th & Vine Jazz District", "aliases": ["18th and vine", "18th & vine", "jazz district", "jazz museum", "negro leagues museum"], "lat": 39.0913, "lng": -94.562},
+    {"name": "Union Station", "aliases": ["union station"], "lat": 39.0848, "lng": -94.5859},
+    {"name": "Crown Center", "aliases": ["crown center"], "lat": 39.0822, "lng": -94.5815},
+    {"name": "National WWI Museum and Memorial", "aliases": ["liberty memorial", "wwi museum", "world war i museum", "ww1 museum"], "lat": 39.0806, "lng": -94.5862},
+    {"name": "Power & Light District", "aliases": ["power and light", "power & light", "p&l district"], "lat": 39.0975, "lng": -94.5833},
+    {"name": "T-Mobile Center", "aliases": ["t-mobile center", "t mobile center", "sprint center"], "lat": 39.0973, "lng": -94.58},
+    {"name": "Kauffman Center", "aliases": ["kauffman center"], "lat": 39.094, "lng": -94.5873},
+    {"name": "City Market", "aliases": ["city market", "river market"], "lat": 39.1094, "lng": -94.5826},
+    {"name": "Country Club Plaza", "aliases": ["country club plaza", "the plaza"], "lat": 39.042, "lng": -94.5917},
+    {"name": "Nelson-Atkins Museum", "aliases": ["nelson-atkins", "nelson atkins", "the nelson"], "lat": 39.045, "lng": -94.581},
+    {"name": "Loose Park", "aliases": ["loose park"], "lat": 39.0325, "lng": -94.596}
   ],
   "sensitive_sites": [
-    {
-      "name": "University Health Truman Medical Center",
-      "type": "hospital",
-      "lat": 39.085,
-      "lng": -94.576
-    },
-    {
-      "name": "Children's Mercy Hospital",
-      "type": "hospital",
-      "lat": 39.084,
-      "lng": -94.5775
-    },
-    {
-      "name": "Saint Luke's Hospital",
-      "type": "hospital",
-      "lat": 39.056,
-      "lng": -94.588
-    },
-    {
-      "name": "Research Medical Center",
-      "type": "hospital",
-      "lat": 39.023,
-      "lng": -94.56
-    },
-    {
-      "name": "Lincoln College Preparatory Academy",
-      "type": "school",
-      "lat": 39.0835,
-      "lng": -94.556
-    },
-    {
-      "name": "Paseo Academy",
-      "type": "school",
-      "lat": 39.04,
-      "lng": -94.565
-    },
-    {
-      "name": "Westport neighborhood elementary (approx.)",
-      "type": "school",
-      "lat": 39.057,
-      "lng": -94.5728
-    },
-    {
-      "name": "Border Star Montessori",
-      "type": "school",
-      "lat": 39.012,
-      "lng": -94.591
-    },
-    {
-      "name": "Waldo senior center (approx.)",
-      "type": "senior_center",
-      "lat": 38.992,
-      "lng": -94.5935
-    },
-    {
-      "name": "Northeast Middle School",
-      "type": "school",
-      "lat": 39.107,
-      "lng": -94.537
-    }
+    {"name": "University Health Truman Medical Center", "type": "hospital", "lat": 39.085, "lng": -94.576},
+    {"name": "Children's Mercy Hospital", "type": "hospital", "lat": 39.084, "lng": -94.5775},
+    {"name": "Saint Luke's Hospital", "type": "hospital", "lat": 39.056, "lng": -94.588},
+    {"name": "Research Medical Center", "type": "hospital", "lat": 39.023, "lng": -94.56},
+    {"name": "Lincoln College Preparatory Academy", "type": "school", "lat": 39.0835, "lng": -94.556},
+    {"name": "Paseo Academy", "type": "school", "lat": 39.04, "lng": -94.565},
+    {"name": "Westport neighborhood elementary (approx.)", "type": "school", "lat": 39.057, "lng": -94.5728},
+    {"name": "Border Star Montessori", "type": "school", "lat": 39.012, "lng": -94.591},
+    {"name": "Waldo senior center (approx.)", "type": "senior_center", "lat": 38.992, "lng": -94.5935},
+    {"name": "Northeast Middle School", "type": "school", "lat": 39.107, "lng": -94.537}
   ]
 }

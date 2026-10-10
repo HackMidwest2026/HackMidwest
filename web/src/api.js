@@ -30,6 +30,8 @@ export const api = {
   chat: (question) => request('POST', '/api/chat', { question }),
   runDemoBatch: () => request('POST', '/api/demo/batch', {}),
   resetDemo: () => request('POST', '/api/demo/reset', {}),
+  routes: () => request('GET', '/api/routes'),
+  planRoutes: () => request('POST', '/api/routes/plan', {}),
 }
 
 /** Subscribe to the live trace/issue stream. Returns an unsubscribe function. */

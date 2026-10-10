@@ -130,7 +130,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
     setError(null)
     setResult(null)
     setEvents([])
-    if (!text.trim()) return setError('Describe the problem in a few words.')
+    if (!text.trim() && !photo) return setError('Describe the problem in a few words, or attach a photo.')
     runId.current = newRunId()
     setBusy(true)
     try {

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { planRoutes } from './agents/routes.js'
 import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
@@ -10,7 +11,8 @@ import { categories, city, cityProfile, demoReports, departments, seedReports } 
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
 import * as store from './lib/store.js'
-import { processBatch, processReport, seedHistory } from './pipeline.js'
+import { bedrockLimiter } from './agents/llm.js'
+import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
 
 const app = express()
@@ -48,7 +50,16 @@ function savePhoto(dataUrl) {
 
 // ---------- meta ----------
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, mode: config.mode, models: config.mode === 'bedrock' ? config.models : null }))
+app.get('/api/health', (_req, res) =>
+  res.json({
+    ok: true,
+    mode: config.mode,
+    models: config.mode === 'bedrock' ? config.models : null,
+    ...(config.mode === 'bedrock' && { report_queue: reportQueue.stats(), bedrock_calls: bedrockLimiter.stats() }),
+  }),
+)
+
+app.get('/api/graph', (_req, res) => res.json(GRAPH_TOPOLOGY))
 
 app.get('/api/meta', (_req, res) =>
   res.json({
@@ -116,11 +127,16 @@ app.post(
   '/api/reports',
   wrap(async (req, res) => {
     const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
-    if (!text || !String(text).trim()) return res.status(400).json({ error: 'Describe the problem in a few words.' })
     const photo_url = photo ? savePhoto(photo) : null
+    if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
+    // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
+    if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
     // client_run_id lets the resident page pick its own run out of the live trace stream.
     const runId = /^[\w-]{8,64}$/.test(client_run_id || '') ? client_run_id : randomUUID()
-    const result = await processReport({ raw_text: String(text).trim(), lat, lng, address, photo_url, reporter_contact, category_hint }, { runId })
+    const result = await processReport(
+      { raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact, category_hint },
+      { runId },
+    )
     res.status(201).json({ ...result, issue: issueView(result.issue, { withReports: true }) })
   }),
 )
@@ -216,6 +232,19 @@ app.post(
     const runId = /^[\w-]{8,64}$/.test(req.body?.client_run_id || '') ? req.body.client_run_id : randomUUID()
     const answer = await askSupervisor(question, { trace: (e) => emitTrace({ run_id: runId, ...e }) })
     res.json({ answer, run_id: runId })
+  }),
+)
+
+// Route Planner agent: group each crew's open jobs into trips for today's shift.
+app.get('/api/routes', (_req, res) => res.json(store.getLastRoutePlan()))
+
+app.post(
+  '/api/routes/plan',
+  wrap(async (req, res) => {
+    const runId = /^[\w-]{8,64}$/.test(req.body?.client_run_id || '') ? req.body.client_run_id : randomUUID()
+    const plan = await planRoutes({ runId })
+    store.setLastRoutePlan(plan)
+    res.json(plan)
   }),
 )
 

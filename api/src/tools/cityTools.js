@@ -28,8 +28,8 @@ export const geocodeAddress = async ({ text }) => (await locateText(text)) || { 
 export const reverseGeocode = ({ lat, lng }) => describePoint({ lat, lng })
 
 export function analyzePhoto({ photo_url }) {
-  // Stretch goal: send the image to a vision-capable model. Until then, report that it was not analyzed.
-  return { analyzed: false, photo_url, note: 'Photo stored for the dispatcher; automated photo analysis is not enabled yet.' }
+  // Rule-based stand-in. In Bedrock mode the Vision agent (agents/photo.js) analyzes the photo instead.
+  return { analyzed: false, photo_url, note: 'Photo stored for the dispatcher; photo analysis runs in Bedrock mode.' }
 }
 
 function issueBrief(issue, origin, text) {

@@ -28,30 +28,48 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function mentionedStreets(text) {
-  const t = ` ${text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ')} `
+// Phrases that contain a street alias but mean something else in a 311 report ("water main").
+const NOT_A_STREET = /\b(water|gas|sewer|storm) mains?\b|\bmains? (break|broke|leak)\w*/g
+
+const normalize = (text) => ` ${(text || '').toLowerCase().replace(NOT_A_STREET, ' ').replace(/[^a-z0-9&\- ]/g, ' ')} `
+
+/** Every mention of a known street, with its position in the normalized text. */
+function streetMentions(t) {
   const hits = []
   for (const s of city.streets) {
     for (const alias of [s.name.toLowerCase(), ...s.aliases]) {
-      const idx = t.search(new RegExp(`\\b${escapeRe(alias)}\\b`))
-      if (idx >= 0) {
-        hits.push({ street: s, idx })
-        break
-      }
+      for (const m of t.matchAll(new RegExp(`\\b${escapeRe(alias)}\\b`, 'g'))) hits.push({ street: s, idx: m.index })
     }
   }
-  return hits.sort((a, b) => a.idx - b.idx).map((h) => h.street)
+  return hits.sort((a, b) => a.idx - b.idx)
 }
 
-/** Geocode free text like "Troost near 39th" to the intersection of the first N-S and E-W streets named. */
+const findLandmark = (t) => (city.landmarks || []).find((l) => [l.name.toLowerCase(), ...l.aliases].some((a) => t.includes(a)))
+
+/**
+ * Geocode free text like "Troost near 39th" to an intersection. When several streets are
+ * named, the N-S / E-W pair mentioned closest together wins ("water main break at Broadway
+ * and Westport Rd" -> Broadway & Westport Rd). Falls back to a named landmark.
+ */
 export function geocodeAddress(text) {
-  const streets = mentionedStreets(text || '')
-  const ns = streets.find((s) => s.axis === 'ns')
-  const ew = streets.find((s) => s.axis === 'ew')
-  if (ns && ew) {
+  const t = normalize(text)
+  const hits = streetMentions(t)
+  let best = null
+  for (const a of hits.filter((h) => h.street.axis === 'ns')) {
+    for (const b of hits.filter((h) => h.street.axis === 'ew')) {
+      const gap = Math.abs(a.idx - b.idx)
+      if (!best || gap < best.gap) best = { ns: a.street, ew: b.street, gap }
+    }
+  }
+  if (best) {
+    const { ns, ew } = best
     return { found: true, lat: ew.lat, lng: ns.lng, address: withSuffix(`${ns.name} & ${ew.name}`), precision: 'intersection' }
   }
-  const only = ns || ew
+  const landmark = findLandmark(t)
+  if (landmark) {
+    return { found: true, lat: landmark.lat, lng: landmark.lng, address: withSuffix(landmark.name), precision: 'landmark' }
+  }
+  const only = hits[0]?.street
   if (only) {
     return { found: false, reason: `Only one street recognised (${only.name}); need a cross street.`, street: only.name }
   }

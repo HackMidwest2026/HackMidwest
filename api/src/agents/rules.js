@@ -156,8 +156,24 @@ export function baseScore(issue, ctx) {
   const days = Math.floor(ctx.days_open)
   if (days > 0) add('days_open', Math.min(10, days * 2), `${days} day${days === 1 ? '' : 's'} open`)
 
+  // An immediate danger to life is P1 even on its first report; the additive rubric alone
+  // tops out around 70 for a single report (safety 40 + arterial 15 + agent 15).
+  const subtotal = factors.reduce((s, f) => s + f.points, 0)
+  if (isCriticalHazard(issue) && subtotal < CRITICAL_FLOOR) {
+    add('critical_hazard', CRITICAL_FLOOR - subtotal, `Critical hazard (${issue.subcategory.replaceAll('_', ' ')}): raised to the P1 floor`)
+  }
+
   const score = factors.reduce((s, f) => s + f.points, 0)
   return { base_score: Math.min(100, score), factors }
+}
+
+const CRITICAL_FLOOR = 80
+const CRITICAL_SUBCATEGORIES = new Set(['traffic_signal', 'open_manhole', 'main_break'])
+
+/** Signal out, open manhole, main break, or a fallen tree blocking the road. */
+export function isCriticalHazard(issue) {
+  if (CRITICAL_SUBCATEGORIES.has(issue.subcategory)) return true
+  return issue.subcategory === 'fallen_tree' && issue.hazard_flags.includes('road_blocked')
 }
 
 /** Rule-based stand-in for the LLM's ±15 judgment adjustment. */

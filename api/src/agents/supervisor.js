@@ -2,11 +2,12 @@
 // using the data tools plus the Priority and Router agents wrapped as tools.
 import { z } from 'zod'
 import { city, cityLabel } from '../lib/data.js'
-import { getIssue as storeGetIssue } from '../lib/store.js'
+import { getIssue as storeGetIssue, setLastRoutePlan } from '../lib/store.js'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runText } from './llm.js'
 import { runPriority } from './priority.js'
 import { runRouter } from './router.js'
+import { planRoutes } from './routes.js'
 import { runStep } from './step.js'
 
 const SYSTEM_PROMPT = `You are the City Supervisor agent for CityCare, assisting a 311 dispatcher in ${cityLabel}.
@@ -14,6 +15,7 @@ Answer questions about open issues using your tools; never invent issues or numb
 ${city.neighborhoods.length ? `Known neighborhoods: ${city.neighborhoods.map((n) => n.name).join(', ')}.` : 'Areas are named by the neighborhood or district of each issue.'}
 Use query_issues to filter (neighborhood, category, tier, hazard_only) and get_stats for totals.
 Use ask_priority_agent or ask_router_agent when the dispatcher asks why an issue is ranked or routed the way it is.
+Use ask_route_planner when the dispatcher asks about crew routes, trips, today's schedule or which crew is busiest.
 Answer in at most 5 short lines. Cite issues as #<issue_id> with their address and score.`
 
 // Specialist agents run against a copy so a "why?" question never changes stored state.
@@ -52,6 +54,21 @@ function toolSpecs(ctx) {
       fn: async ({ issue_id }) => {
         const issue = storeGetIssue(issue_id)
         return issue ? runRouter(structuredClone(issue), quietCtx(ctx)) : { error: 'not found' }
+      },
+    },
+    {
+      name: 'ask_route_planner',
+      description: "Ask the Route Planner agent to plan today's crew trips. Returns each crew's trip (jobs, minutes, reason) and deferred jobs. The plan also appears on the Route Plans screen.",
+      input: z.object({}),
+      fn: async () => {
+        const plan = await planRoutes()
+        setLastRoutePlan(plan)
+        return {
+          summary: plan.summary,
+          totals: plan.totals,
+          trips: plan.trips.map((t) => ({ headline: t.headline, total_min: t.total_min, issue_ids: t.stops.map((s) => s.issue_id), reason: t.reason })),
+          deferred: plan.deferred,
+        }
       },
     },
   ]

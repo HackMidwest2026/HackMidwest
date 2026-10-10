@@ -3,12 +3,54 @@
 // for different reports never share conversation history.
 import { Agent, BedrockModel, tool } from '@strands-agents/sdk'
 import { config } from '../config.js'
+import { createLimiter } from '../lib/limiter.js'
+
+/** Shared by every agent, so bursts of reports, the batch and chat all stay under the quota. */
+export const bedrockLimiter = createLimiter({
+  maxConcurrent: config.bedrock.maxConcurrent,
+  perMinute: config.bedrock.requestsPerMinute,
+})
+
+const THROTTLE_RETRIES = 3
+const isThrottle = (err) => /throttl|too many requests|rate exceeded/i.test(`${err?.name} ${err?.message}`)
+
+/**
+ * A BedrockModel whose every model call waits for a limiter slot first. If Bedrock still
+ * throttles (the account quota is lower than our limits), all calls pause briefly and this
+ * one retries, so a burst slows down instead of dropping to the rule-based fallback.
+ */
+class LimitedBedrockModel extends BedrockModel {
+  async *stream(messages, options) {
+    for (let attempt = 0; ; attempt++) {
+      const release = await bedrockLimiter.acquire()
+      let started = false
+      try {
+        for await (const event of super.stream(messages, options)) {
+          started = true
+          yield event
+        }
+        return
+      } catch (err) {
+        if (started || attempt >= THROTTLE_RETRIES || !isThrottle(err)) throw err
+        bedrockLimiter.pause(5000 * 2 ** attempt)
+      } finally {
+        release()
+      }
+    }
+  }
+}
 
 const models = {}
 
 export function modelFor(tier) {
   const modelId = tier === 'intake' ? config.models.intake : config.models.reasoning
-  models[modelId] ??= new BedrockModel({ region: config.awsRegion, modelId, maxTokens: 4096 })
+  models[modelId] ??= new LimitedBedrockModel({
+    region: config.awsRegion,
+    modelId,
+    maxTokens: 4096,
+    // If a throttle still gets through, back off and retry before the step falls back to rules.
+    clientConfig: { maxAttempts: 4, retryMode: 'adaptive' },
+  })
   return { model: models[modelId], modelId }
 }
 

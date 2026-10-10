@@ -4,3 +4,4 @@ api/var/
 .env
 *.log
 .DS_Store
+web/.vite/

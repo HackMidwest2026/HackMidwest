@@ -259,6 +259,7 @@ export default function CityMap({
   showLegend = mode === 'citizen',
   onViewChange,
   fitToIssues = false,
+  routes = [],
 }) {
   const [showLayerMenu, setShowLayerMenu] = useState(false)
   const visible = issues.filter(
@@ -318,6 +319,14 @@ export default function CityMap({
                 />
               )),
           )}
+
+        {/* Route Planner trips: yard -> stops -> yard, one colour per crew. */}
+        {routes.map((r) => (
+          <Polyline key={`trip-${r.id}`} positions={r.points} pathOptions={{ color: r.color, weight: 4, opacity: 0.85 }} />
+        ))}
+        {routes.map((r) => (
+          <Circle key={`yard-${r.id}`} center={r.points[0]} radius={90} pathOptions={{ color: r.color, weight: 2, fillColor: '#fff', fillOpacity: 1 }} />
+        ))}
 
         {visible.map((i) => (
           <IssueMarker key={i.issue_id} issue={i} mode={mode} selected={i.issue_id === selectedId} onSelect={onSelect} />
