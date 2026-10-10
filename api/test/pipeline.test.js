@@ -14,6 +14,7 @@ const { classifyText, detectHazards, baseScore, tierFor } = await import('../src
 const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
+const { analyzePhotoWithVision } = await import('../src/agents/photo.js')
 const { processBatch, processReport, seedHistory } = await import('../src/pipeline.js')
 
 describe('rules', () => {
@@ -50,6 +51,21 @@ describe('rules', () => {
     assert.equal(tree(['inherent_safety_hazard']), 55)
     const pothole = baseScore({ subcategory: 'pothole', hazard_flags: ['vehicle_damage_risk'], report_count: 1 }, ctx)
     assert.equal(pothole.base_score, 55)
+  })
+})
+
+describe('photo', () => {
+  test('vision agent only reads images the server saved under /uploads', async () => {
+    for (const photo_url of ['/etc/passwd', '../.env', '/uploads/notes.txt', 'https://example.com/x.jpg']) {
+      const r = await analyzePhotoWithVision({ photo_url })
+      assert.equal(r.analyzed, false, photo_url)
+    }
+  })
+
+  test('a photo-only report still runs through the pipeline', async () => {
+    const r = await processReport({ raw_text: '(photo only, no description)', photo_url: '/uploads/missing.jpg', lat: 39.0912, lng: -94.5555 })
+    assert.equal(r.report.photo_analysis.analyzed, false)
+    assert.ok(r.issue.issue_id)
   })
 })
 

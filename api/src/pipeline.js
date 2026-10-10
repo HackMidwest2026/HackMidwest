@@ -90,6 +90,7 @@ async function intakeStep(report, ctx) {
     description: out.description,
     hazard_flags: out.hazard_flags,
     classifier_confidence: out.confidence,
+    photo_analysis: out.photo_analysis ?? null,
   })
 }
 

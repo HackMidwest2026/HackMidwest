@@ -1,6 +1,7 @@
 // Priority agent (Sonnet-class). Code computes the rubric base score; the LLM may adjust
 // it by up to ±15 and must explain why. Keeps scores consistent while allowing judgment.
 import { z } from 'zod'
+import { reportsForIssue } from '../lib/store.js'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runStructured } from './llm.js'
 import { baseScore, mockAdjustment, SLA_HOURS, tierFor } from './rules.js'
@@ -12,6 +13,7 @@ A deterministic rubric has already scored the issue (safety hazard +40, arterial
 Your job: adjust the base score by between -15 and +15 points ONLY for things the rubric cannot see, and explain why.
 Examples that justify raising: a hazard at night on an unlit arterial, children walking past daily, a hazard that is getting worse, water undermining a road.
 Examples that justify lowering: the report describes something cosmetic, or it is already partly mitigated (cone placed, lane closed by police).
+photo_findings come from a Vision agent that looked at residents' photos. A photo showing high or critical severity is independent evidence and can justify raising the score; a photo showing only cosmetic damage can justify lowering it.
 Most issues need an adjustment of 0. You may call get_issue_history or nearby_sensitive_sites for more context.
 Finish by calling the structured output tool; do not reply in plain text.`
 
@@ -34,6 +36,12 @@ export function priorityContext(issue, onTool) {
   onTool?.('nearby_sensitive_sites', point, sites)
   const days_open = (Date.now() - new Date(issue.first_reported_at).getTime()) / 86400000
   return { road, sites, days_open }
+}
+
+function photoFindings(issue) {
+  return reportsForIssue(issue.issue_id)
+    .filter((r) => r.photo_analysis?.analyzed)
+    .map(({ report_id, photo_analysis: p }) => ({ report_id, shows: p.shows, severity: p.severity, hazards: p.hazards }))
 }
 
 function finalize(base, adj) {
@@ -87,6 +95,7 @@ export function runPriority(issue, ctx) {
           },
           rubric: base,
           context: pctx,
+          photo_findings: photoFindings(issue),
         }),
       })
       return { output: finalize(base, output), modelId }

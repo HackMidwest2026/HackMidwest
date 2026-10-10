@@ -49,6 +49,7 @@ In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back t
 
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.
+- **Photos:** when a report has a photo, a Vision agent (Haiku, image input, `api/src/agents/photo.js`) describes it first: what it shows, category, severity (low to critical) and visible hazards. Intake uses that to classify vague or photo-only reports, and Priority sees the severity. Mock mode stores photos without analyzing them.
 - **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of 80, so they reach P1 on the first report. The agent may adjust it by ±15 and must explain why.
 - Every agent returns **Zod-validated structured output**. The server re-checks LLM answers, e.g. a merge target must be one of the candidates and the SLA must match the tier.
 
@@ -98,4 +99,4 @@ Trace event shape (see `api/src/lib/events.js`): `{ event_id, ts, run_id, report
 - **AWS:** credentials and Bedrock model access for Claude Haiku-class and Sonnet-class in one region. Then set `CITYOPS_MODE=bedrock` and the model IDs, and run one report end to end. The Bedrock path has not yet been run against a live account; it has been checked only up to the credential step.
 - **KC 311 data:** confirm the dataset ID on data.kcmo.org, then import an extract to seed real history and check the category mapping in `data/categories.json`.
 - **Geography:** `data/city.json` uses approximate straight-line street positions and hand-picked sites. Verify the sensitive sites, or swap in Amazon Location Service or Nominatim.
-- **Not built yet (stretch):** photo analysis (photos are stored, and `analyze_photo` is a stub), Titan embeddings for semantic dedup (currently bag-of-words similarity), map clustering, resident notifications, equity adjustment, AgentCore deploy.
+- **Not built yet (stretch):** Titan embeddings for semantic dedup (currently bag-of-words similarity), map clustering, resident notifications, equity adjustment, AgentCore deploy.

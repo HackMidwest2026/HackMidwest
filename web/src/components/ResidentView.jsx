@@ -69,7 +69,7 @@ export default function ResidentView({ meta }) {
     setError(null)
     setResult(null)
     setEvents([])
-    if (!text.trim()) return setError('Tell us what the problem is.')
+    if (!text.trim() && !photo) return setError('Tell us what the problem is, or attach a photo.')
     runId.current = newRunId()
     setBusy(true)
     try {
