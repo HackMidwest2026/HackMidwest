@@ -4,6 +4,7 @@
 // time math (lib/routing.js); the agent makes the grouping calls and explains them.
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { config } from '../config.js'
 import { cityLabel } from '../lib/data.js'
 import { distanceM } from '../lib/geo.js'
 import { emitTrace } from '../lib/events.js'
@@ -111,6 +112,7 @@ export async function planRoutes({ runId = randomUUID() } = {}) {
       const { output, modelId } = await runStructured({
         name: 'routes',
         tier: 'reasoning',
+        maxTokens: config.bedrock.maxTokensLong,
         systemPrompt: SYSTEM_PROMPT,
         tools: makeTools(toolSpecs, onTool),
         schema: RoutePlanOutput,

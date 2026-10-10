@@ -3,6 +3,11 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 
+function numList(name, fallback) {
+  const v = process.env[name]
+  return v ? v.split(',').map(Number).filter((n) => Number.isFinite(n) && n >= 0) : fallback
+}
+
 function num(name, fallback) {
   const v = process.env[name]
   return v === undefined || v === '' ? fallback : Number(v)
@@ -45,6 +50,13 @@ export const config = {
   bedrock: {
     requestsPerMinute: num('BEDROCK_RPM', 24),
     maxConcurrent: num('BEDROCK_MAX_CONCURRENCY', 4),
+    // Output-token cap per call. Bedrock reserves it against the tokens-per-minute quota up
+    // front, so keep it near what agents actually produce (structured answers are small).
+    maxTokens: num('BEDROCK_MAX_TOKENS', 1024),
+    // Free-text answers and the route plan.
+    maxTokensLong: num('BEDROCK_MAX_TOKENS_LONG', 2048),
+    // Seconds to wait before each retry when Bedrock throttles (jittered ±20%).
+    throttleBackoffS: numList('BEDROCK_THROTTLE_BACKOFF_S', [8, 15, 30, 45, 60]),
   },
   // Bedrock mode: reports in the agent pipeline at once; later ones wait their turn.
   reportConcurrency: num('REPORT_CONCURRENCY', 2),
