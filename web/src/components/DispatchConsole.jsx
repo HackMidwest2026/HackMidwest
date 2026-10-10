@@ -5,7 +5,8 @@ import CityMap, { LAYER_DEFS } from './CityMap.jsx'
 import { GisView, PipelineView, RoutingView, UnitsView } from './ConsoleViews.jsx'
 import IncidentDrawer from './IncidentDrawer.jsx'
 import RoutePlansView from './RoutePlansView.jsx'
-import { AssignModal, SupervisorModal } from './Modals.jsx'
+import ErrorBoundary from './ErrorBoundary.jsx'
+import { AssignModal, SupervisorCrashed, SupervisorModal } from './Modals.jsx'
 
 const NAV = [
   { id: 'command', label: 'Command Center', icon: Activity, iconClass: 'text-blue-300' },
@@ -311,7 +312,11 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         {view === 'routes' && <RoutePlansView meta={meta} issues={issues} onOpen={openOnMap} showToast={showToast} />}
       </div>
 
-      {supervisorOpen && <SupervisorModal questions={meta.city?.examples?.supervisor_questions} onClose={() => setSupervisorOpen(false)} />}
+      {supervisorOpen && (
+        <ErrorBoundary name="the Supervisor Channel" fallback={(error) => <SupervisorCrashed error={error} onClose={() => setSupervisorOpen(false)} />}>
+          <SupervisorModal questions={meta?.city?.examples?.supervisor_questions} onClose={() => setSupervisorOpen(false)} />
+        </ErrorBoundary>
+      )}
       {assignOpen && selectedIssue && (
         <AssignModal issue={selectedIssue} crews={crews} onClose={() => setAssignOpen(false)} onAssigned={data.replaceIssue} showToast={showToast} />
       )}
