@@ -118,8 +118,11 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
   }
 
   function choosePhoto(file) {
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhoto(file || null)
     setPhotoPreview(file ? URL.createObjectURL(file) : null)
+    // Clear the native input too, so picking the same file again still fires onChange.
+    if (!file && fileInput.current) fileInput.current.value = ''
   }
 
   async function submit(e) {
@@ -142,7 +145,8 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
       setResult(r)
       data.replaceIssue(r.issue)
       onSelectIssue(r.issue.issue_id)
-      if (!pin) placePin({ lat: r.report.lat, lng: r.report.lng }, r.report.address)
+      // Ready for the next report; the confirmation and agent trace stay visible.
+      clearFields()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -150,12 +154,21 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
     }
   }
 
-  function resetForm() {
+  /** Empty every input: description, location, pin, photo, category and the nearby-incident hint. */
+  function clearFields() {
     setText('')
-    setResult(null)
-    setEvents([])
+    setAddress('')
+    setPin(null)
+    setNearby([])
     choosePhoto(null)
     setCategoryHint('')
+  }
+
+  function resetForm() {
+    clearFields()
+    setResult(null)
+    setEvents([])
+    setError(null)
   }
 
   const openIssues = issues.filter((i) => OPEN_STATUSES.has(i.status))
@@ -332,7 +345,13 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
               <textarea
                 rows={3}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value)
+                  if (result) {
+                    setResult(null)
+                    setEvents([])
+                  }
+                }}
                 placeholder="Describe the issue in your own words: hazards, what happened, how bad it is…"
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none resize-none leading-relaxed"
               />
