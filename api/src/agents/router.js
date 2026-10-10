@@ -7,7 +7,7 @@ import { departmentName, pickCrew, SLA_HOURS } from './rules.js'
 import { RouterOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Router agent for CityOps, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Router agent for CityCare, Kansas City's 311 triage system.
 Recommend which department and crew should handle a prioritized issue. A human dispatcher approves your recommendation.
 Call list_departments, then get_crew_workload and get_crew_locations for the matching department.
 Pick the crew with the best balance of distance and spare capacity; never pick a crew at or over capacity if another has room.

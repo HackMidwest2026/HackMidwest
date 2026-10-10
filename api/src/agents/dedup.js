@@ -8,7 +8,7 @@ import { decideDuplicate, dedupRadius } from './rules.js'
 import { DedupOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Dedup agent for CityOps, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Dedup agent for CityCare, Kansas City's 311 triage system.
 You get one new structured report and a short list of candidate open issues that code already found nearby (same category, inside the time window).
 Decide whether the report describes the SAME physical problem as one candidate.
 

@@ -1,4 +1,4 @@
-// The CityOps pipeline: Intake -> Dedup -> (merge | create) -> Priority -> Router -> dispatcher.
+// The CityCare pipeline: Intake -> Dedup -> (merge | create) -> Priority -> Router -> dispatcher.
 //
 // The flow is deterministic, so agents don't hand off to each other on their own:
 //   single report:  a Strands Graph, intake -> dedup -> priority -> router (see buildReportGraph)
@@ -77,6 +77,7 @@ export function createReportRecord(input) {
     lng: Number(lng),
     address,
     reporter_contact: input.reporter_contact || null,
+    category_hint: input.category_hint || null,
     ...(input.created_at && { created_at: input.created_at }),
     ...(input.demo_id && { demo_id: input.demo_id, truth: input.truth }),
   })

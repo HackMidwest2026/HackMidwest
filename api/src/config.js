@@ -8,21 +8,33 @@ function num(name, fallback) {
   return v === undefined || v === '' ? fallback : Number(v)
 }
 
+// CITYCARE_MODE is the current name; CITYOPS_MODE is accepted from before the rename.
+// Values are trimmed and unquoted so `bedrock `, "bedrock" or a CRLF .env still work.
+function readMode() {
+  for (const name of ['CITYCARE_MODE', 'CITYOPS_MODE']) {
+    const raw = (process.env[name] || '').trim().replace(/^['"]|['"]$/g, '').toLowerCase()
+    if (raw) return { mode: raw, source: name }
+  }
+  return { mode: 'mock', source: 'default' }
+}
+const modeInfo = readMode()
+
 export const config = {
   port: num('PORT', 8080),
   // "mock": deterministic rule-based agents, no AWS needed (default, also the demo fallback).
   // "bedrock": Strands agents backed by Claude on Amazon Bedrock.
-  mode: (process.env.CITYOPS_MODE || 'mock').toLowerCase(),
+  mode: modeInfo.mode,
+  modeSource: modeInfo.source,
   // Seed JSON (categories, departments, city geography, demo reports).
   dataDir: resolve(process.env.DATA_DIR || join(here, '../../data')),
   // Where runtime state (issues, reports, uploaded photos) is written.
   stateDir: resolve(process.env.STATE_DIR || join(here, '../var')),
-  awsRegion: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  // Haiku-class for intake, Sonnet-class for the rest. Some accounts need a cross-region
-  // inference profile prefix such as "us." or "global." on these IDs.
+  awsRegion: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-2',
+  // Haiku-class for intake, Sonnet-class for the rest. Defaults are the cross-region
+  // inference profiles verified on the team's account in us-east-2.
   models: {
-    intake: process.env.INTAKE_MODEL_ID || 'anthropic.claude-haiku-5-5',
-    reasoning: process.env.REASONING_MODEL_ID || 'anthropic.claude-sonnet-5-5',
+    intake: process.env.INTAKE_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    reasoning: process.env.REASONING_MODEL_ID || 'us.anthropic.claude-sonnet-4-6',
   },
   // Artificial per-agent delay in mock mode so the live trace is watchable in a demo.
   mockDelayMs: num('MOCK_DELAY_MS', 350),

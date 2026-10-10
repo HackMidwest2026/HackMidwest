@@ -3,17 +3,18 @@ import { z } from 'zod'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runStructured } from './llm.js'
 import { analyzePhotoWithVision } from './photo.js'
-import { classifyText, cleanDescription, detectHazards, subcategoryName } from './rules.js'
+import { classifyWithHint, cleanDescription, detectHazards, subcategoryName } from './rules.js'
 import { IntakeOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Intake agent for CityOps, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Intake agent for CityCare, Kansas City's 311 triage system.
 Residents send short, messy reports (typos, slang, all caps). Your job is to turn one report into a structured record.
 
 Call list_categories first and choose exactly one category and subcategory from it. Use "other"/"unclear" only when the report gives no usable clue.
 If photo_analysis is present, a Vision agent has already looked at the resident's photo. Use it: when the text is vague or missing, follow the photo for the category; add hazards the photo shows; if the text and photo disagree, prefer the text unless it says nothing about the problem.
 If the report text names streets but no coordinates were given, call geocode_address.
 Hazard flags are for danger to people or vehicles only (vehicle damage, collisions, injuries, children nearby, blocked road, electrical, flooding). Do not flag mere inconvenience.
+If resident_selected_category is set, prefer it unless the text clearly describes a different kind of problem.
 Confidence reflects how sure you are of the category: 0.9+ when explicit, about 0.6 when inferred, below 0.4 when guessing.
 Finish by calling the structured output tool with your answer; do not reply in plain text.`
 
@@ -34,7 +35,7 @@ const toolSpecs = [
 ]
 
 function mockIntake(report, onTool) {
-  const cls = classifyText(report.raw_text)
+  const cls = classifyWithHint(report.raw_text, report.category_hint)
   onTool('list_categories', {}, { categories: 8 })
   const photo_analysis = report.photo_url ? tools.analyzePhoto({ photo_url: report.photo_url }) : null
   if (photo_analysis) onTool('analyze_photo', { photo_url: report.photo_url }, photo_analysis)
@@ -74,6 +75,7 @@ export function runIntake(report, ctx) {
           lng: report.lng,
           address: report.address,
           photo_analysis: photo_analysis?.analyzed ? photoBrief(photo_analysis) : null,
+          resident_selected_category: report.category_hint || null,
         }),
       })
       // Inherent hazards come from the category table, not the model's judgment.

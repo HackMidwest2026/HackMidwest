@@ -9,16 +9,16 @@ services:
       context: .
       dockerfile: api/Dockerfile
     environment:
-      CITYOPS_MODE: ${CITYOPS_MODE:-mock}
+      CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_REGION: ${AWS_REGION:-us-east-2}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
-      INTAKE_MODEL_ID: ${INTAKE_MODEL_ID:-anthropic.claude-haiku-5-5}
-      REASONING_MODEL_ID: ${REASONING_MODEL_ID:-anthropic.claude-sonnet-5-5}
+      INTAKE_MODEL_ID: ${INTAKE_MODEL_ID:-us.anthropic.claude-haiku-4-5-20251001-v1:0}
+      REASONING_MODEL_ID: ${REASONING_MODEL_ID:-us.anthropic.claude-sonnet-4-6}
     volumes:
-      - cityops-state:/app/var
+      - citycare-state:/app/var
     restart: unless-stopped
 
   web:
@@ -31,4 +31,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  cityops-state:
+  citycare-state:

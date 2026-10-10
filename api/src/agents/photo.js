@@ -10,7 +10,7 @@ import { PhotoOutput } from './schemas.js'
 
 const FORMATS = { '.png': 'png', '.jpg': 'jpeg', '.jpeg': 'jpeg', '.webp': 'webp', '.gif': 'gif' }
 
-const SYSTEM_PROMPT = `You are the Vision agent for CityOps, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Vision agent for CityCare, Kansas City's 311 triage system.
 You look at one photo a resident attached to a report and describe the public-infrastructure problem it shows.
 Judge only what is visible. Do not guess at things outside the frame.
 Severity: low = cosmetic, medium = needs repair, high = likely to damage a vehicle or injure someone, critical = immediate danger to life (open manhole, downed power line, dark signal at a busy intersection, water main gushing).

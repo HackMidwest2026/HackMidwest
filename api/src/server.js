@@ -11,7 +11,7 @@ import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
 import { geocodeAddress, reverseGeocode } from './lib/geo.js'
 import * as store from './lib/store.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, seedHistory } from './pipeline.js'
-import { getStats } from './tools/cityTools.js'
+import { findNearbyIssues, getStats } from './tools/cityTools.js'
 
 const app = express()
 app.use(express.json({ limit: '10mb' }))
@@ -66,6 +66,26 @@ app.get('/api/meta', (_req, res) =>
   }),
 )
 
+// Open issues near a point, for the "matching nearby reports" hint before a resident submits.
+app.get('/api/nearby', (req, res) => {
+  const lat = Number(req.query.lat)
+  const lng = Number(req.query.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.status(400).json({ error: 'lat and lng are required' })
+  const radius = Math.min(Number(req.query.radius) || 120, 500)
+  res.json(findNearbyIssues({ lat, lng, radius_m: radius, category: req.query.category || undefined, text: req.query.text || '' }))
+})
+
+app.get('/api/crews', (_req, res) => {
+  const open = store.listIssues().filter((i) => ['approved', 'assigned', 'in_progress'].includes(i.status))
+  res.json(
+    store.listCrews().map((c) => ({
+      ...c,
+      department_name: departmentName(c.department_id),
+      active_issue_ids: open.filter((i) => i.assigned_crew === c.crew_id).map((i) => i.issue_id),
+    })),
+  )
+})
+
 app.get('/api/geocode', (req, res) => res.json(geocodeAddress(String(req.query.q || ''))))
 app.get('/api/reverse-geocode', (req, res) => res.json(reverseGeocode({ lat: Number(req.query.lat), lng: Number(req.query.lng) })))
 
@@ -74,14 +94,17 @@ app.get('/api/reverse-geocode', (req, res) => res.json(reverseGeocode({ lat: Num
 app.post(
   '/api/reports',
   wrap(async (req, res) => {
-    const { text, lat, lng, address, photo, reporter_contact, client_run_id } = req.body || {}
+    const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
     const photo_url = photo ? savePhoto(photo) : null
     if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
     // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
     if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
     // client_run_id lets the resident page pick its own run out of the live trace stream.
     const runId = /^[\w-]{8,64}$/.test(client_run_id || '') ? client_run_id : randomUUID()
-    const result = await processReport({ raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact }, { runId })
+    const result = await processReport(
+      { raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact, category_hint },
+      { runId },
+    )
     res.status(201).json({ ...result, issue: issueView(result.issue, { withReports: true }) })
   }),
 )
@@ -257,7 +280,15 @@ export async function start() {
   }
   process.on('SIGINT', shutdown)
   process.on('SIGTERM', shutdown)
-  return app.listen(config.port, () => console.log(`CityOps API on :${config.port} (mode=${config.mode}, data=${config.dataDir}, state=${config.stateDir})`))
+  if (!['mock', 'bedrock'].includes(config.mode)) {
+    console.warn(`Unknown mode "${config.mode}" from ${config.modeSource}; expected "mock" or "bedrock". Running the rule-based engine.`)
+  }
+  console.log(
+    config.mode === 'bedrock'
+      ? `Engine: Bedrock (from ${config.modeSource}) region=${config.awsRegion} intake=${config.models.intake} reasoning=${config.models.reasoning}`
+      : `Engine: mock rule-based agents (${config.modeSource === 'default' ? 'CITYCARE_MODE not set' : `from ${config.modeSource}`}). Set CITYCARE_MODE=bedrock to use Claude on Bedrock.`,
+  )
+  return app.listen(config.port, () => console.log(`CityCare API on :${config.port} (mode=${config.mode}, data=${config.dataDir}, state=${config.stateDir})`))
 }
 
 export { app }
