@@ -10,7 +10,8 @@ import { categories, city, demoReports, departments, seedReports } from './lib/d
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
 import { geocodeAddress, reverseGeocode } from './lib/geo.js'
 import * as store from './lib/store.js'
-import { GRAPH_TOPOLOGY, processBatch, processReport, seedHistory } from './pipeline.js'
+import { bedrockLimiter } from './agents/llm.js'
+import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
 
 const app = express()
@@ -48,7 +49,14 @@ function savePhoto(dataUrl) {
 
 // ---------- meta ----------
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, mode: config.mode, models: config.mode === 'bedrock' ? config.models : null }))
+app.get('/api/health', (_req, res) =>
+  res.json({
+    ok: true,
+    mode: config.mode,
+    models: config.mode === 'bedrock' ? config.models : null,
+    ...(config.mode === 'bedrock' && { report_queue: reportQueue.stats(), bedrock_calls: bedrockLimiter.stats() }),
+  }),
+)
 
 app.get('/api/graph', (_req, res) => res.json(GRAPH_TOPOLOGY))
 

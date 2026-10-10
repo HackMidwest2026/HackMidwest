@@ -15,6 +15,7 @@ const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
 const { analyzePhotoWithVision } = await import('../src/agents/photo.js')
+const { createLimiter } = await import('../src/lib/limiter.js')
 const { processBatch, processReport, seedHistory } = await import('../src/pipeline.js')
 
 describe('rules', () => {
@@ -62,6 +63,50 @@ describe('rules', () => {
     assert.equal(tree(['inherent_safety_hazard']), 55)
     const pothole = baseScore({ subcategory: 'pothole', hazard_flags: ['vehicle_damage_risk'], report_count: 1 }, ctx)
     assert.equal(pothole.base_score, 55)
+  })
+})
+
+describe('limiter', () => {
+  const tick = () => new Promise((r) => setImmediate(r))
+
+  test('caps concurrency and hands out slots in arrival order', async () => {
+    const lim = createLimiter({ maxConcurrent: 2 })
+    const order = []
+    const releases = []
+    for (const n of [1, 2, 3, 4]) lim.acquire().then((rel) => order.push(n) && releases.push(rel))
+    await tick()
+    assert.deepEqual(order, [1, 2])
+    assert.equal(lim.stats().waiting, 2)
+    assert.ok(lim.isBusy())
+    releases[0]()
+    releases[0]() // a second release of the same slot is ignored
+    await tick()
+    assert.deepEqual(order, [1, 2, 3])
+    releases[1]()
+    await tick()
+    assert.deepEqual(order, [1, 2, 3, 4])
+  })
+
+  test('caps calls per minute even when slots are free', async () => {
+    const lim = createLimiter({ maxConcurrent: 10, perMinute: 2 })
+    let got = 0
+    for (let i = 0; i < 3; i++) lim.acquire().then((rel) => (got++, rel()))
+    await tick()
+    assert.equal(got, 2)
+    assert.equal(lim.stats().waiting, 1)
+    assert.equal(lim.stats().last_minute, 2)
+  })
+
+  test('pause holds new callers until it ends', async () => {
+    const lim = createLimiter({ maxConcurrent: 5 })
+    lim.pause(80)
+    let got = false
+    lim.acquire().then((rel) => ((got = true), rel()))
+    await tick()
+    assert.equal(got, false)
+    assert.ok(lim.isBusy())
+    await new Promise((r) => setTimeout(r, 120))
+    assert.equal(got, true)
   })
 })
 

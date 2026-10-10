@@ -40,6 +40,14 @@ export const config = {
   mockDelayMs: num('MOCK_DELAY_MS', 350),
   // Per-report pacing for the demo batch in mock mode (50 reports x 80 ms = about 4 s).
   mockBatchDelayMs: num('MOCK_BATCH_DELAY_MS', 80),
+  // Bedrock mode: keep model calls under the account quota. Extra calls wait in a queue
+  // instead of failing with ThrottlingException. One report makes roughly 8-12 calls.
+  bedrock: {
+    requestsPerMinute: num('BEDROCK_RPM', 24),
+    maxConcurrent: num('BEDROCK_MAX_CONCURRENCY', 4),
+  },
+  // Bedrock mode: reports in the agent pipeline at once; later ones wait their turn.
+  reportConcurrency: num('REPORT_CONCURRENCY', 2),
   dedup: {
     radiusM: num('DEDUP_RADIUS_M', 60),
     windowDays: num('DEDUP_WINDOW_DAYS', 14),
