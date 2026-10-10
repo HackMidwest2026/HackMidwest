@@ -17,6 +17,18 @@ export const IntakeOutput = z.object({
   confidence: z.number().min(0).max(1),
 })
 
+export const PhotoOutput = z.object({
+  shows: z.string().describe('One plain sentence describing what the photo shows'),
+  is_city_issue: z.boolean().describe('False if the photo shows no public-infrastructure problem (selfie, blank, indoor, unrelated)'),
+  category: z.enum(categoryIds).describe('Best-matching category id for what is visible'),
+  subcategory: z.enum(subcategoryIds).describe('Best-matching subcategory id for what is visible'),
+  severity: z
+    .enum(['low', 'medium', 'high', 'critical'])
+    .describe('low = cosmetic, medium = needs repair, high = likely damage or injury, critical = immediate danger to life'),
+  hazards: z.array(z.string()).describe('snake_case safety flags visible in the photo, e.g. vehicle_damage_risk, road_blocked, electrical_hazard'),
+  confidence: z.number().min(0).max(1),
+})
+
 export const DedupOutput = z.object({
   duplicate_of: z.number().int().nullable().describe('issue_id this report should merge into, or null for a new issue'),
   possible_duplicate_of: z

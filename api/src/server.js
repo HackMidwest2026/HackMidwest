@@ -75,11 +75,13 @@ app.post(
   '/api/reports',
   wrap(async (req, res) => {
     const { text, lat, lng, address, photo, reporter_contact, client_run_id } = req.body || {}
-    if (!text || !String(text).trim()) return res.status(400).json({ error: 'Describe the problem in a few words.' })
     const photo_url = photo ? savePhoto(photo) : null
+    if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
+    // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
+    if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
     // client_run_id lets the resident page pick its own run out of the live trace stream.
     const runId = /^[\w-]{8,64}$/.test(client_run_id || '') ? client_run_id : randomUUID()
-    const result = await processReport({ raw_text: String(text).trim(), lat, lng, address, photo_url, reporter_contact }, { runId })
+    const result = await processReport({ raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact }, { runId })
     res.status(201).json({ ...result, issue: issueView(result.issue, { withReports: true }) })
   }),
 )
