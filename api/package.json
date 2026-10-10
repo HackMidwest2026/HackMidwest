@@ -1,0 +1,21 @@
+{
+  "name": "cityops-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CityOps API: Express server plus the Strands agent pipeline (intake, dedup, priority, router, supervisor).",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@strands-agents/sdk": "1.20.0",
+    "express": "5.3.0",
+    "zod": "4.6.5"
+  }
+}

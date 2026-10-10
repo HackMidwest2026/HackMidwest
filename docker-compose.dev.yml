@@ -1,0 +1,41 @@
+# Hot-reload dev stack: source is bind-mounted, API restarts on change, Vite serves the UI.
+#   docker compose -f docker-compose.dev.yml up
+#   open http://localhost:5173
+services:
+  api:
+    image: node:22-alpine
+    working_dir: /app/api
+    command: sh -c "npm ci && npm run dev"
+    environment:
+      CITYOPS_MODE: ${CITYOPS_MODE:-mock}
+      MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
+      STATE_DIR: /app/api/var
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      INTAKE_MODEL_ID: ${INTAKE_MODEL_ID:-anthropic.claude-haiku-5-5}
+      REASONING_MODEL_ID: ${REASONING_MODEL_ID:-anthropic.claude-sonnet-5-5}
+    volumes:
+      - .:/app
+      - api-node-modules:/app/api/node_modules
+    ports:
+      - "8080:8080"
+
+  web:
+    image: node:22-alpine
+    working_dir: /app/web
+    command: sh -c "npm ci && npm run dev"
+    environment:
+      API_URL: http://api:8080
+    volumes:
+      - ./web:/app/web
+      - web-node-modules:/app/web/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  api-node-modules:
+  web-node-modules:
