@@ -37,16 +37,27 @@ Same as upstream (see `kz/BUILDING.md`): install glankk's [n64 toolchain](https:
 
 The `homeboy` submodule isn't included here; it's only needed for Wii VC builds.
 
+Notes from building it for real:
+- **Version string:** outside a git checkout, set `PACKAGE_VERSION` first (e.g. `export PACKAGE_VERSION=lite-savestates`). Otherwise the version string contains spaces and every compile fails.
+- **libstdc++:** kz links with `mips64-g++`. If your toolchain was built without libstdc++, create an empty one with `mips64-ar rcs <prefix>/mips64/lib/libstdc++.a`; kz is pure C.
+
 ## What has been verified
 
-- The three lite builds (`kz-lite-NZSE`, `kz-lite-NZSJ`, `kz-lite-NZSJ10`) and the VC builds compile with no errors or warnings. I couldn't fetch glankk's toolchain in my environment, so I used Ubuntu's `mips-linux-gnu-gcc` with `-march=vr4300 -mabi=32` plus glankk's n64 headers. The lite binary grows by ~13.7KB, which comes out of the ~270KB region and leaves the rest for heap.
-- `tests/run_tests.sh` runs host-side tests:
-  - **Compressor:** round-trips thousands of mixed chunks (zero runs, random data, struct-like data, empty and 1–3 byte chunks). It also checks that a too-small output buffer fails without writing past its end.
-  - **Allocator:** runs a 200k-operation random workload on kz-lite's allocator under AddressSanitizer. This covers the largest-block-then-shrink pattern, checks every block's contents, and checks that all memory is recovered at the end. The unmodified upstream allocator segfaults on the same workload.
+**In an emulator** (mupen64plus 2.5.9, Japanese 1.0 ROM, built with a real GCC 13.2 + newlib toolchain), using the attract-mode demo, which runs as normal gameplay:
+- **Save:** saving works. Message: `saved state 0 (untitled, 115kb)`. A Clock Town state compresses to about 113–115KB.
+- **Load across scenes:** loading after the demo had moved to a different scene restores the saved frame almost pixel for pixel.
+- **Game continues:** the game keeps running afterwards, through the fade and into the Stock Pot Inn scenes, the same sequence as the unpatched ROM.
+- **Repeated use:** loading the same state twice, then saving over the slot and loading again, all work.
+- **Menu:** the states menu shows `size 115kb free 148kb`.
 
-## Not verified yet
+`tests/emulator/` has the scripts used. They drive mupen64plus under Xvfb with xdotool and take screenshots.
 
-- **Not run on a console or emulator.** I didn't have a ROM or an N64 emulator. The first thing to try is save and load in a few scenes (Clock Town, a dungeon, the pause screen) on real hardware or an accurate emulator such as ares.
-- **Real compression ratio.** I had no Majora's Mask RAM dump to measure against. Game memory is mostly zeros and repeated structures, so it should compress well; I'd guess 25–50%. Whether that means one state or several fit depends on the scene. The states menu shows the actual numbers.
-- **Save/load speed.** A rough estimate is ~0.1–0.3s to save and well under 0.1s to load on the VR4300. A save or load causes a visible hitch, as it does in the full version.
-- **Reserve size.** `STATE_MEM_RESERVE` in `kz/include/state.h` is a guess at how much kz's menus need for textures. If menus misbehave after saving states, raise it. If states don't fit, try lowering it.
+**Host-side tests** (`tests/run_tests.sh`):
+- **Compressor:** round-trips thousands of mixed chunks (zero runs, random data, struct-like data, empty and 1–3 byte chunks). It also checks that a too-small output buffer fails without writing past its end.
+- **Allocator:** runs a 200k-operation random workload on kz-lite's allocator under AddressSanitizer. This covers the largest-block-then-shrink pattern, checks every block's contents, and checks that all memory is recovered at the end. The unmodified upstream allocator segfaults on the same workload.
+
+## Known limitations / not verified yet
+
+- **One state at a time.** With the 96KB `STATE_MEM_RESERVE`, there's room for one ~115KB state. Re-saving the same slot always works; saving to a second slot reports "not enough memory". Lowering the reserve (in `kz/include/state.h`) would allow two states, at some risk of menus running out of texture memory.
+- **Not run on a console, and only lightly in real gameplay.** Testing used the attract demo, not a save file. Things to try: dungeons, the pause screen, Deku/Goron/Zora forms, and saving during cutscenes or scene transitions.
+- **Save/load speed on hardware** is unmeasured. Expect a visible hitch, as in the full version.
