@@ -146,7 +146,7 @@ export function baseScore(issue, ctx) {
   if (safety.length) add('safety_hazard', 40, `Safety hazard: ${safety.join(', ').replaceAll('_', ' ')}`)
 
   const roadPts = { arterial: 15, collector: 8, residential: 0 }[ctx.road.road_type] ?? 0
-  add('road_type', roadPts, `${ctx.road.road_type} road${ctx.road.street ? ` (${ctx.road.street})` : ''}`)
+  add('road_type', roadPts, ctx.road.road_type === 'unknown' ? 'Road class unknown (no local street data)' : `${ctx.road.road_type} road${ctx.road.street ? ` (${ctx.road.street})` : ''}`)
 
   const extra = Math.max(0, issue.report_count - 1)
   if (extra) add('report_count', Math.min(15, extra * 3), `${issue.report_count} reports`)

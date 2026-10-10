@@ -9,9 +9,10 @@ process.env.STATE_DIR = mkdtempSync(join(tmpdir(), 'citycare-test-'))
 process.env.CITYCARE_MODE = 'mock'
 process.env.MOCK_DELAY_MS = '0'
 process.env.MOCK_BATCH_DELAY_MS = '0'
+process.env.PHOTON_URL = 'off' // no network in tests
 
 const { classifyText, classifyWithHint, detectHazards, baseScore, tierFor } = await import('../src/agents/rules.js')
-const { geocodeAddress, roadType } = await import('../src/lib/geo.js')
+const { geocodeAddress, roadType, suggestAddresses } = await import('../src/lib/geo.js')
 const { demoReports, seedReports } = await import('../src/lib/data.js')
 const store = await import('../src/lib/store.js')
 const { analyzePhotoWithVision } = await import('../src/agents/photo.js')
@@ -134,6 +135,20 @@ describe('geo', () => {
     assert.match(g.address, /Troost Ave & 39th St/)
   })
 
+  test('address suggestions from partial input', () => {
+    for (const q of ['troost & 39', '39th and tro', 'troost 39']) {
+      assert.equal(suggestAddresses(q)[0]?.label, 'Troost Ave & 39th St', q)
+    }
+    const westport = suggestAddresses('westport').map((s) => s.label)
+    assert.ok(westport.includes('Westport'), 'neighborhood offered')
+    assert.equal(suggestAddresses("children's")[0].kind, 'place')
+    assert.deepEqual(suggestAddresses('x'), [])
+    // House numbers on the KC grid: 3900 Troost sits at 39th St.
+    const est = suggestAddresses('3900 troost')[0]
+    assert.equal(est.label, '3900 Troost Ave')
+    assert.ok(Math.abs(est.lat - 39.0574) < 0.0005)
+  })
+
   test('geocodes 18th & Vine and named landmarks', () => {
     assert.match(geocodeAddress('Graffiti all over the wall at 18th and Vine').address, /^Vine St & 18th St/)
     assert.match(geocodeAddress('graffiti at 18th & vine').address, /^Vine St & 18th St/)
@@ -191,6 +206,17 @@ describe('pipeline', () => {
     assert.ok(m.ground_truth.dedup_precision >= 0.95)
     assert.ok(m.ground_truth.dedup_recall >= 0.95)
     assert.ok(m.ground_truth.category_accuracy >= 0.95)
+  })
+
+  test('reports outside the sample city still flow through the pipeline', async () => {
+    // Chicago: no local street data, OpenStreetMap disabled in tests.
+    const r = await processReport({ raw_text: 'Streetlight out on my block, totally dark', lat: 41.8781, lng: -87.6298 })
+    assert.equal(r.merged, false)
+    assert.equal(r.issue.subcategory, 'streetlight_out')
+    assert.doesNotMatch(r.issue.address, /Kansas City/)
+    assert.equal(r.issue.neighborhood, 'Unmapped area')
+    assert.ok(r.issue.priority_factors.some((f) => /Road class unknown/.test(f.detail)))
+    assert.equal(r.issue.recommended_department, 'pw_traffic')
   })
 
   test('route plan covers every open crew job exactly once', async () => {

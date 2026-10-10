@@ -1,6 +1,7 @@
 // Priority agent (Sonnet-class). Code computes the rubric base score; the LLM may adjust
 // it by up to ±15 and must explain why. Keeps scores consistent while allowing judgment.
 import { z } from 'zod'
+import { cityLabel } from '../lib/data.js'
 import { reportsForIssue } from '../lib/store.js'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runStructured } from './llm.js'
@@ -8,7 +9,7 @@ import { baseScore, mockAdjustment, SLA_HOURS, tierFor } from './rules.js'
 import { PriorityOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Priority agent for CityCare, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Priority agent for CityCare, a city 311 triage system serving ${cityLabel}.
 A deterministic rubric has already scored the issue (safety hazard +40, arterial +15 / collector +8, +3 per extra report up to +15, sensitive site within 200 m +10, +2 per day open up to +10). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of at least 80 (P1); lower such an issue only if the report shows the danger is already mitigated.
 Your job: adjust the base score by between -15 and +15 points ONLY for things the rubric cannot see, and explain why.
 Examples that justify raising: a hazard at night on an unlit arterial, children walking past daily, a hazard that is getting worse, water undermining a road.

@@ -49,7 +49,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
   return (
     <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-[#FAF8FF]">
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-[#00164E] text-slate-300 hidden md:flex flex-col border-r border-[#1E3A8A] select-none">
+      <aside className="w-56 shrink-0 bg-[#00164E] text-slate-300 hidden lg:flex flex-col border-r border-[#1E3A8A] select-none">
         <div className="p-4 border-b border-blue-900/60">
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${stream === 'live' ? 'bg-[#0D9488] animate-pulse' : 'bg-amber-500'}`} />
@@ -95,22 +95,25 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         {/* Header */}
         <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-md bg-[#00236F] flex items-center justify-center text-white shrink-0">
+            <div className="w-7 h-7 rounded-md bg-[#00236F] items-center justify-center text-white shrink-0 hidden sm:flex">
               <HeartPulse className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-slate-900 text-sm leading-tight block">CityCare Dispatch</span>
-              <span className="text-[11px] text-slate-500">Kansas City Operations</span>
+              <span className="font-bold text-slate-900 text-sm leading-tight block whitespace-nowrap">
+                <span className="hidden sm:inline">CityCare </span>Dispatch
+              </span>
+              <span className="text-[11px] text-slate-500 hidden sm:block">{meta.city?.name ? `${meta.city.name} Operations` : 'City Operations'}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="bg-[#FFE4E6] text-[#BE123C] px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border border-rose-200 whitespace-nowrap">
               <span className="w-2 h-2 rounded-full bg-[#E11D48] animate-pulse" />
               <span>
-                {open.length} In Queue ({critical.length} P1)
+                {open.length}
+                <span className="hidden sm:inline"> In Queue</span> ({critical.length} P1)
               </span>
             </div>
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+            <div className="hidden xl:flex items-center gap-1.5 text-xs text-slate-700 font-medium whitespace-nowrap">
               <span className={`w-2 h-2 rounded-full ${stream === 'live' ? 'bg-[#059669]' : 'bg-amber-500'}`} />
               <span>{stream === 'live' ? 'Live trace synced' : 'Reconnecting…'}</span>
             </div>
@@ -119,12 +122,12 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors border border-slate-200"
             >
               <MessageSquare className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">Supervisor Channel</span>
+              <span className="hidden lg:inline whitespace-nowrap">Supervisor Channel</span>
               <span className="bg-[#1E3A8A] text-white rounded text-[10px] px-1 font-bold">AI</span>
             </button>
             <button
               onClick={onSwitchToCitizen}
-              title="Switch to the Citizen 311 view"
+              title="Switch to the Citizen Portal"
               className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition-all"
             >
               <User className="w-4 h-4" />
@@ -159,8 +162,8 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
           </div>
         </div>
 
-        {/* Mobile view switcher */}
-        <div className="md:hidden flex gap-1 overflow-x-auto p-2 bg-[#00164E]">
+        {/* View switcher when the sidebar is hidden */}
+        <div className="lg:hidden flex gap-1 overflow-x-auto p-2 bg-[#00164E]">
           {NAV.map(({ id, label }) => (
             <button key={id} onClick={() => setView(id)} className={`px-2.5 py-1 rounded text-[11px] whitespace-nowrap ${view === id ? 'bg-[#1E3A8A] text-white' : 'text-slate-300'}`}>
               {label}
@@ -169,9 +172,9 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         </div>
 
         {view === 'command' && (
-          <div className="flex-1 flex overflow-hidden">
-            {/* Live triage stream */}
-            <div className="w-[380px] max-w-[45%] shrink-0 border-r border-slate-200 bg-white flex flex-col">
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* Live triage stream: top half on phones, left column from md */}
+            <div className="h-[45%] md:h-auto w-full md:w-[300px] xl:w-[380px] shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-white flex flex-col min-h-0">
               <div className="p-3 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-slate-700" />
@@ -253,11 +256,11 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
             </div>
 
             {/* Tactical map */}
-            <div className="flex-1 relative min-w-0">
-              <div className="absolute top-3 left-4 z-[1000] flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 max-w-[calc(100%-6rem)] overflow-x-auto">
-                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+            <div className="flex-1 relative min-w-0 min-h-0">
+              <div className="absolute top-3 left-3 z-[1000] flex items-center gap-2 bg-white/90 backdrop-blur-md px-2 sm:px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 max-w-[calc(100%-4.5rem)] overflow-x-auto">
+                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1 shrink-0">
                   <Layers className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Layers:</span>
+                  <span className="hidden sm:inline">Layers:</span>
                 </span>
                 {LAYER_DEFS.map(({ key, label, icon: Icon }) => (
                   <button
@@ -282,7 +285,8 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
                 layers={layers}
                 onToggleLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
                 flyTo={selectedIssue}
-                zoom={12}
+                zoom={meta.city?.default_zoom || 12}
+                fitToIssues
               />
               {selectedIssue && (
                 <IncidentDrawer
@@ -307,7 +311,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         {view === 'routes' && <RoutePlansView meta={meta} issues={issues} onOpen={openOnMap} showToast={showToast} />}
       </div>
 
-      {supervisorOpen && <SupervisorModal onClose={() => setSupervisorOpen(false)} />}
+      {supervisorOpen && <SupervisorModal questions={meta.city?.examples?.supervisor_questions} onClose={() => setSupervisorOpen(false)} />}
       {assignOpen && selectedIssue && (
         <AssignModal issue={selectedIssue} crews={crews} onClose={() => setAssignOpen(false)} onAssigned={data.replaceIssue} showToast={showToast} />
       )}

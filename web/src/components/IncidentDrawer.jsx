@@ -1,8 +1,10 @@
 import { Check, ChevronDown, ChevronUp, Cpu, GitFork, MapPin, Sparkles, Truck, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../api.js'
 import { issueCode, shortAddress, slaRemaining, statusMeta, timeAgo, tierMeta } from '../lib/display.js'
 import AgentTrace from './AgentTrace.jsx'
+import PhotoViewer from './PhotoViewer.jsx'
 
 const NEXT = { approved: 'in_progress', assigned: 'in_progress', in_progress: 'resolved' }
 
@@ -11,6 +13,7 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
   const [detail, setDetail] = useState(null)
   const [showTrace, setShowTrace] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [viewing, setViewing] = useState(null) // index into photos, or null
 
   useEffect(() => {
     let cancelled = false
@@ -39,9 +42,11 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
   const crew = crews.find((c) => c.crew_id === (issue.assigned_crew || issue.recommended_crew))
   const sla = slaRemaining(issue)
   const firstReport = detail?.reports?.[0]
+  const photos = (detail?.reports || []).filter((r) => r.photo_url)
+  const openPhoto = (reportId) => setViewing(Math.max(0, photos.findIndex((p) => p.report_id === reportId)))
 
   return (
-    <div className="absolute bottom-4 right-14 top-16 z-[1000] w-96 max-w-[calc(100%-4.5rem)] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl text-xs animate-in flex flex-col overflow-hidden">
+    <div className="fixed inset-x-2 bottom-2 top-[4.5rem] z-[1050] md:absolute md:inset-auto md:top-16 md:right-14 md:bottom-4 md:w-96 md:max-w-[calc(100%-4.5rem)] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl text-xs animate-in flex flex-col overflow-hidden">
       <div className="p-4 pb-2 flex items-start justify-between border-b border-slate-100">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -71,6 +76,27 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
         )}
 
         {firstReport && <div className="p-2 bg-slate-50 rounded border border-slate-200/80 text-[11px] leading-relaxed italic">“{firstReport.raw_text}”</div>}
+
+        {photos.length > 0 && (
+          <div>
+            <div className="text-[10px] font-mono font-bold text-slate-500 mb-1">PHOTOS ({photos.length})</div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {photos.map((r, i) => (
+                <button
+                  key={r.report_id}
+                  onClick={() => setViewing(i)}
+                  title={r.photo_analysis?.shows || 'Open photo'}
+                  className="relative shrink-0 w-16 h-16 rounded-md overflow-hidden border border-slate-200 hover:ring-2 hover:ring-[#2563EB] focus:ring-2 focus:ring-[#2563EB] outline-none"
+                >
+                  <img src={r.photo_url} alt={r.photo_analysis?.shows || 'Report photo'} className="w-full h-full object-cover" loading="lazy" />
+                  {r.photo_analysis?.severity && ['high', 'critical'].includes(r.photo_analysis.severity) && (
+                    <span className="absolute bottom-0.5 left-0.5 px-1 rounded bg-red-600 text-white text-[8px] font-mono font-bold">{r.photo_analysis.severity.toUpperCase()}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Priority agent */}
         <div className="p-2 bg-teal-50/70 rounded border border-teal-200/80 text-[11px]">
@@ -126,9 +152,9 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
                 <li key={r.report_id} className="text-[11px] leading-snug">
                   <span className="font-mono text-slate-400">{timeAgo(r.created_at)}</span> “{r.raw_text}”
                   {r.photo_url && (
-                    <a href={r.photo_url} target="_blank" rel="noreferrer" className="text-[#2563EB] ml-1 hover:underline">
+                    <button onClick={() => openPhoto(r.report_id)} className="text-[#2563EB] ml-1 hover:underline">
                       photo
-                    </a>
+                    </button>
                   )}
                 </li>
               ))}
@@ -191,6 +217,7 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
           </div>
         )}
       </div>
+      {viewing != null && photos.length > 0 && createPortal(<PhotoViewer photos={photos} startIndex={viewing} onClose={() => setViewing(null)} />, document.body)}
     </div>
   )
 }

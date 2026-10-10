@@ -4,6 +4,8 @@
 // time math (lib/routing.js); the agent makes the grouping calls and explains them.
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { config } from '../config.js'
+import { cityLabel } from '../lib/data.js'
 import { distanceM } from '../lib/geo.js'
 import { emitTrace } from '../lib/events.js'
 import { crewsWithJobs, driveMinutes, estimateRoute, SHIFT_MINUTES, tripHeadline } from '../lib/routing.js'
@@ -11,7 +13,7 @@ import { makeTools, runStructured } from './llm.js'
 import { RoutePlanOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Route Planner agent for CityCare, Kansas City's 311 operations system.
+const SYSTEM_PROMPT = `You are the Route Planner agent for CityCare, a city 311 operations system serving ${cityLabel}.
 You get every field crew that has open jobs, with each job's priority, location, on-site minutes, drive time from the crew's yard and nearby jobs.
 Plan today's shift for each crew (${SHIFT_MINUTES} minutes including driving and the drive back to the yard):
 - P1 and P2 jobs go on today's trip.
@@ -110,6 +112,7 @@ export async function planRoutes({ runId = randomUUID() } = {}) {
       const { output, modelId } = await runStructured({
         name: 'routes',
         tier: 'reasoning',
+        maxTokens: config.bedrock.maxTokensLong,
         systemPrompt: SYSTEM_PROMPT,
         tools: makeTools(toolSpecs, onTool),
         schema: RoutePlanOutput,

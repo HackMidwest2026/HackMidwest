@@ -19,10 +19,10 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { api, newRunId, subscribe } from '../api.js'
 import { CATEGORY_META, formatBytes, issueCode, OPEN_STATUSES, shortAddress, statusMeta, tierMeta } from '../lib/display.js'
+import AddressAutocomplete from './AddressAutocomplete.jsx'
 import AgentTrace from './AgentTrace.jsx'
 import CityMap from './CityMap.jsx'
 
-const EXAMPLE = 'Huge pothole on Troost near 39th, almost wrecked my car'
 
 const PICKER = [
   { id: '', label: 'Auto', icon: Sparkles },
@@ -46,6 +46,10 @@ function readAsDataUrl(file) {
 
 export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue, onSwitchToDispatch }) {
   const { issues, crews } = data
+  // Optional examples from the configured city profile (the sample data is Kansas City).
+  const exampleReport = meta.city?.examples?.report_text
+  const exampleAddress = meta.city?.examples?.address
+  const [view, setView] = useState(null) // current map center, used to bias address search
   const [formOpen, setFormOpen] = useState(true)
   const [categoryHint, setCategoryHint] = useState('')
   const [address, setAddress] = useState('')
@@ -101,7 +105,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
   async function findAddress(q = address || text) {
     setError(null)
     if (!q.trim()) return
-    const g = await api.geocode(q)
+    const g = await api.geocode(q, pin || view || meta.center)
     if (g.found) placePin({ lat: g.lat, lng: g.lng }, g.address)
     else setError(g.reason)
   }
@@ -114,8 +118,11 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
   }
 
   function choosePhoto(file) {
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhoto(file || null)
     setPhotoPreview(file ? URL.createObjectURL(file) : null)
+    // Clear the native input too, so picking the same file again still fires onChange.
+    if (!file && fileInput.current) fileInput.current.value = ''
   }
 
   async function submit(e) {
@@ -138,7 +145,8 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
       setResult(r)
       data.replaceIssue(r.issue)
       onSelectIssue(r.issue.issue_id)
-      if (!pin) placePin({ lat: r.report.lat, lng: r.report.lng }, r.report.address)
+      // Ready for the next report; the confirmation and agent trace stay visible.
+      clearFields()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -146,12 +154,21 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
     }
   }
 
-  function resetForm() {
+  /** Empty every input: description, location, pin, photo, category and the nearby-incident hint. */
+  function clearFields() {
     setText('')
-    setResult(null)
-    setEvents([])
+    setAddress('')
+    setPin(null)
+    setNearby([])
     choosePhoto(null)
     setCategoryHint('')
+  }
+
+  function resetForm() {
+    clearFields()
+    setResult(null)
+    setEvents([])
+    setError(null)
   }
 
   const openIssues = issues.filter((i) => OPEN_STATUSES.has(i.status))
@@ -162,8 +179,24 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
 
   return (
     <div className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-[#FAF8FF]">
-      {/* Category filter pills */}
-      <div className="absolute top-3 left-1/2 md:left-[calc(50%+12rem)] -translate-x-1/2 z-[1000] flex items-center gap-1.5 bg-white/90 backdrop-blur-md p-1 rounded-full shadow-sm border border-slate-200/90 max-w-[calc(100vw-2rem)] md:max-w-[calc(100vw-30rem)] overflow-x-auto">
+      {/* Top overlay row: report button (when the card is closed) + category filters.
+          Kept clear of the map controls on the right and, on wider screens, of the report card. */}
+      <div
+        className={`absolute top-3 right-14 z-[1000] flex items-center gap-2 pointer-events-none ${
+          formOpen ? 'left-3 md:left-[26rem]' : 'left-3 md:left-4'
+        }`}
+      >
+        {!formOpen && (
+          <button
+            onClick={() => setFormOpen(true)}
+            className="pointer-events-auto shrink-0 bg-[#00236F] hover:bg-[#1E3A8A] text-white px-3 py-2 rounded-lg text-xs font-semibold shadow-lg flex items-center gap-2"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">Report an Issue</span>
+            <span className="sm:hidden">Report</span>
+          </button>
+        )}
+      <div className="pointer-events-auto min-w-0 lg:mx-auto flex items-center gap-1.5 bg-white/90 backdrop-blur-md p-1 rounded-full shadow-sm border border-slate-200/90 overflow-x-auto">
         <button
           onClick={() => setFilter('all')}
           className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-[#00236F] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
@@ -185,6 +218,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
           </button>
         ))}
       </div>
+      </div>
 
       <div className="w-full h-full">
         <CityMap
@@ -200,20 +234,22 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
           onToggleLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
           filterCategory={filter}
           flyTo={pin}
-          zoom={12}
+          zoom={meta.city?.default_zoom || 12}
+          onViewChange={setView}
         />
       </div>
 
       {/* Report an Issue card */}
       {formOpen ? (
-        <div className="absolute top-3 left-4 bottom-4 z-[1000] w-96 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left-4">
+        <div className="absolute z-[1000] inset-x-0 bottom-0 top-[42%] rounded-t-2xl md:inset-auto md:top-3 md:left-4 md:bottom-4 md:w-96 md:rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-2xl flex flex-col overflow-hidden animate-in md:slide-in-from-left-4">
           <div className="p-4 border-b border-slate-100 flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-[#00236F] flex items-center justify-center text-white shrink-0 shadow-sm">
               <AlertTriangle className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold text-slate-900 tracking-tight leading-tight">Report an Issue</h2>
-              <p className="text-xs text-slate-500 mt-0.5">AI agents triage it and route it to a Kansas City crew</p>
+              <p className="text-xs text-slate-500 mt-0.5">AI agents triage it and route it to the right city crew</p>
+              <p className="text-[11px] text-[#2563EB] mt-0.5 md:hidden">Tap the map above to drop your pin</p>
             </div>
             <button onClick={() => setFormOpen(false)} title="Close form to explore the map" className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100">
               <X className="w-4 h-4" />
@@ -257,22 +293,15 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 </button>
               </div>
               <div className="relative flex gap-1.5">
-                <div className="relative flex-1">
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        findAddress()
-                      }
-                    }}
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50/80 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
-                    placeholder="Cross streets, e.g. Troost & 39th"
-                  />
-                </div>
+                <AddressAutocomplete
+                  value={address}
+                  onChange={setAddress}
+                  onSelect={(sug) => placePin({ lat: sug.lat, lng: sug.lng }, sug.address)}
+                  onSubmitText={() => findAddress()}
+                  near={pin || view || meta.center}
+                  inputClassName="w-full pl-8 pr-3 py-2 bg-slate-50/80 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
+                  placeholder={exampleAddress ? `Address or cross streets, e.g. ${exampleAddress}` : 'Street address or cross streets'}
+                />
                 <button type="button" onClick={() => findAddress()} title="Find on map" className="px-2.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
                   <Search className="w-3.5 h-3.5" />
                 </button>
@@ -316,16 +345,22 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
               <textarea
                 rows={3}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value)
+                  if (result) {
+                    setResult(null)
+                    setEvents([])
+                  }
+                }}
                 placeholder="Describe the issue in your own words: hazards, what happened, how bad it is…"
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none resize-none leading-relaxed"
               />
-              {!text && (
+              {!text && exampleReport && (
                 <button
                   type="button"
                   onClick={() => {
-                    setText(EXAMPLE)
-                    if (!pin) findAddress(EXAMPLE)
+                    setText(exampleReport)
+                    if (!pin) findAddress(exampleReport)
                   }}
                   className="text-[11px] text-[#2563EB] hover:underline"
                 >
@@ -394,25 +429,23 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Submit Incident to CityCare 311</span>
+                  <span>Submit Incident to CityCare</span>
                 </>
               )}
             </button>
+            {/* The sheet covers Leaflet's attribution on phones, so repeat it here. */}
+            <p className="md:hidden text-center text-[10px] text-slate-400">Map data © OpenStreetMap contributors</p>
           </form>
         </div>
-      ) : (
-        <button
-          onClick={() => setFormOpen(true)}
-          className="absolute top-4 left-4 z-[1000] bg-[#00236F] hover:bg-[#1E3A8A] text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-lg flex items-center gap-2"
-        >
-          <AlertTriangle className="w-4 h-4" />
-          <span>Report an Issue</span>
-        </button>
-      )}
+      ) : null}
 
       {/* Selected incident card */}
       {sel && (
-        <div className="absolute bottom-4 right-4 z-[1000] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-xl p-3.5 w-80 max-w-[calc(100vw-2rem)] text-xs animate-in hidden sm:block">
+        <div
+          className={`absolute z-[1000] bottom-6 inset-x-3 sm:inset-x-auto sm:right-4 sm:bottom-6 sm:w-80 bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-xl p-3.5 text-xs animate-in ${
+            formOpen ? 'hidden md:block' : ''
+          }`}
+        >
           <div className="flex items-center justify-between mb-1.5">
             <div className="font-mono font-bold text-slate-800 text-xs">{issueCode(sel.issue_id)} Selected</div>
             <div className="flex items-center gap-1.5">

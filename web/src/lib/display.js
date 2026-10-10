@@ -39,7 +39,11 @@ export const OPEN_STATUSES = new Set(['new', 'triaged', 'approved', 'assigned', 
 export const ACTIVE_WORK = new Set(['approved', 'assigned', 'in_progress'])
 
 export const issueCode = (id) => `#${id}`
-export const shortAddress = (a) => (a || '').replace(', Kansas City, MO', '')
+/** First part of an address ("12 Main St, Springfield, IL" -> "12 Main St"). */
+export const shortAddress = (a) => (a || '').split(',')[0]
+
+/** "City, Region" from the configured city profile, or '' when none is set. */
+export const cityLabel = (meta) => [meta?.city?.name, meta?.city?.region].filter(Boolean).join(', ')
 
 export function timeAgo(iso) {
   if (!iso) return ''

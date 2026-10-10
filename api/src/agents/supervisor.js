@@ -1,7 +1,7 @@
 // City Supervisor agent (agents-as-tools): answers dispatcher questions in plain English
 // using the data tools plus the Priority and Router agents wrapped as tools.
 import { z } from 'zod'
-import { city } from '../lib/data.js'
+import { city, cityLabel } from '../lib/data.js'
 import { getIssue as storeGetIssue, setLastRoutePlan } from '../lib/store.js'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runText } from './llm.js'
@@ -10,9 +10,9 @@ import { runRouter } from './router.js'
 import { planRoutes } from './routes.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the City Supervisor agent for CityCare, assisting a Kansas City 311 dispatcher.
+const SYSTEM_PROMPT = `You are the City Supervisor agent for CityCare, assisting a 311 dispatcher in ${cityLabel}.
 Answer questions about open issues using your tools; never invent issues or numbers.
-Neighborhoods: ${city.neighborhoods.map((n) => n.name).join(', ')}.
+${city.neighborhoods.length ? `Known neighborhoods: ${city.neighborhoods.map((n) => n.name).join(', ')}.` : 'Areas are named by the neighborhood or district of each issue.'}
 Use query_issues to filter (neighborhood, category, tier, hazard_only) and get_stats for totals.
 Use ask_priority_agent or ask_router_agent when the dispatcher asks why an issue is ranked or routed the way it is.
 Use ask_route_planner when the dispatcher asks about crew routes, trips, today's schedule or which crew is busiest.
@@ -107,7 +107,7 @@ function mockAnswer(question, onTool) {
   const scope = [neighborhood && `in ${neighborhood}`, category && `(${category.replace('_', ' ')})`].filter(Boolean).join(' ')
   if (!rows.length) return `No open issues ${scope || 'match that question'} right now.`
   const lines = rows.map(
-    (r) => `#${r.issue_id} ${r.priority_tier ?? '--'} ${r.priority_score ?? '?'}/100: ${r.summary} at ${r.address.replace(', Kansas City, MO', '')} (${r.report_count} report${r.report_count === 1 ? '' : 's'}${r.recommended_department ? `, ${r.recommended_department}` : ''})`,
+    (r) => `#${r.issue_id} ${r.priority_tier ?? '--'} ${r.priority_score ?? '?'}/100: ${r.summary} at ${r.address.split(',')[0]} (${r.report_count} report${r.report_count === 1 ? '' : 's'}${r.recommended_department ? `, ${r.recommended_department}` : ''})`,
   )
   return `Top ${hazard_only ? 'safety ' : ''}issues ${scope}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
 }

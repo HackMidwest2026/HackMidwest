@@ -5,12 +5,13 @@ import { readFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { ImageBlock, TextBlock } from '@strands-agents/sdk'
 import { config } from '../config.js'
+import { cityLabel } from '../lib/data.js'
 import { runStructured } from './llm.js'
 import { PhotoOutput } from './schemas.js'
 
 const FORMATS = { '.png': 'png', '.jpg': 'jpeg', '.jpeg': 'jpeg', '.webp': 'webp', '.gif': 'gif' }
 
-const SYSTEM_PROMPT = `You are the Vision agent for CityCare, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Vision agent for CityCare, a city 311 triage system serving ${cityLabel}.
 You look at one photo a resident attached to a report and describe the public-infrastructure problem it shows.
 Judge only what is visible. Do not guess at things outside the frame.
 Severity: low = cosmetic, medium = needs repair, high = likely to damage a vehicle or injure someone, critical = immediate danger to life (open manhole, downed power line, dark signal at a busy intersection, water main gushing).

@@ -34,7 +34,7 @@ export function GisView({ meta, issues, crews, selectedId, onSelect }) {
   }
   const hoods = [...byHood.values()].sort((a, b) => b.p1 - a.p1 || b.total - a.total)
   return (
-    <ViewShell title="GIS Spatial Density Grid" subtitle="Open incidents by Kansas City neighborhood, with P1/P2 heat and crew telemetry">
+    <ViewShell title="GIS Spatial Density Grid" subtitle="Open incidents by neighborhood or district, with P1/P2 heat and crew telemetry">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {hoods.slice(0, 8).map((h) => {
           const [cat, n] = [...h.top.entries()].sort((a, b) => b[1] - a[1])[0]
@@ -54,7 +54,7 @@ export function GisView({ meta, issues, crews, selectedId, onSelect }) {
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
         <h3 className="font-bold text-slate-900 text-sm mb-3">Live Neighborhood Density Map</h3>
         <div className="h-[420px] rounded-lg overflow-hidden border border-slate-200 relative">
-          <CityMap mode="dispatch" meta={meta} issues={issues} crews={crews} selectedId={selectedId} onSelect={onSelect} layers={{ p1Heatmap: true, fieldTelemetry: true, wardGrid: true }} zoom={12} />
+          <CityMap mode="dispatch" meta={meta} issues={issues} crews={crews} selectedId={selectedId} onSelect={onSelect} layers={{ p1Heatmap: true, fieldTelemetry: true, wardGrid: true }} zoom={meta.city?.default_zoom || 12} fitToIssues />
         </div>
       </div>
     </ViewShell>

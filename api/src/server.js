@@ -7,9 +7,9 @@ import { planRoutes } from './agents/routes.js'
 import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
-import { categories, city, demoReports, departments, seedReports } from './lib/data.js'
+import { categories, city, cityProfile, demoReports, departments, seedReports } from './lib/data.js'
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
-import { geocodeAddress, reverseGeocode } from './lib/geo.js'
+import { describePoint, locateText, suggest } from './lib/locate.js'
 import * as store from './lib/store.js'
 import { bedrockLimiter } from './agents/llm.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
@@ -64,6 +64,7 @@ app.get('/api/graph', (_req, res) => res.json(GRAPH_TOPOLOGY))
 app.get('/api/meta', (_req, res) =>
   res.json({
     mode: config.mode,
+    city: { name: cityProfile.name, region: cityProfile.region, default_zoom: cityProfile.default_zoom, examples: cityProfile.examples },
     center: city.center,
     neighborhoods: city.neighborhoods,
     sensitive_sites: city.sensitive_sites,
@@ -95,8 +96,30 @@ app.get('/api/crews', (_req, res) => {
   )
 })
 
-app.get('/api/geocode', (req, res) => res.json(geocodeAddress(String(req.query.q || ''))))
-app.get('/api/reverse-geocode', (req, res) => res.json(reverseGeocode({ lat: Number(req.query.lat), lng: Number(req.query.lng) })))
+// Location lookups work for any place: local city data first, then OpenStreetMap (Photon).
+// lat/lng (the user's current map view) bias results toward where they are looking.
+const biasFrom = (q) => (Number.isFinite(Number(q.lat)) && Number.isFinite(Number(q.lng)) ? { lat: Number(q.lat), lng: Number(q.lng) } : undefined)
+
+app.get(
+  '/api/address-suggest',
+  wrap(async (req, res) => {
+    const q = String(req.query.q || '').trim().slice(0, 120)
+    res.json(q.length < 2 ? [] : await suggest(q, biasFrom(req.query)))
+  }),
+)
+
+app.get(
+  '/api/geocode',
+  wrap(async (req, res) => {
+    const found = await locateText(String(req.query.q || ''), biasFrom(req.query))
+    res.json(found ? { found: true, ...found } : { found: false, reason: 'Could not find that place. Try a full street address or drop a pin.' })
+  }),
+)
+
+app.get(
+  '/api/reverse-geocode',
+  wrap(async (req, res) => res.json(await describePoint({ lat: Number(req.query.lat), lng: Number(req.query.lng) }))),
+)
 
 // ---------- reports ----------
 

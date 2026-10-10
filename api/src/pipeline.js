@@ -13,8 +13,9 @@ import { runPriority } from './agents/priority.js'
 import { runRouter } from './agents/router.js'
 import { subcategoryName } from './agents/rules.js'
 import { emitIssueUpdate, emitTrace } from './lib/events.js'
-import { geocodeAddress, neighborhoodFor, reverseGeocode } from './lib/geo.js'
+import { neighborhoodFor } from './lib/geo.js'
 import { createLimiter } from './lib/limiter.js'
+import { describePoint, locateText } from './lib/locate.js'
 import * as store from './lib/store.js'
 
 const TRACE_LIMIT = 200
@@ -63,20 +64,32 @@ function attachTrace(issue, events) {
 
 // ---------- steps ----------
 
-export function createReportRecord(input) {
+export async function createReportRecord(input) {
   let { lat, lng, address } = input
+  let area = input.area || null
   if ((lat == null || lng == null) && input.raw_text) {
-    const g = geocodeAddress(input.raw_text)
-    if (g.found) ({ lat, lng, address } = { lat: g.lat, lng: g.lng, address: address || g.address })
+    // No pin: try to find the place named in the text (local streets, then OpenStreetMap).
+    const found = await locateText(input.raw_text)
+    if (found) {
+      lat = found.lat
+      lng = found.lng
+      address ||= found.address
+      area ||= found.area
+    }
   }
-  if (lat == null || lng == null) throw Object.assign(new Error('A location is required: drop a pin or name a cross street.'), { status: 400 })
-  if (!address) address = reverseGeocode({ lat, lng }).address
+  if (lat == null || lng == null) throw Object.assign(new Error('A location is required: drop a pin or type an address.'), { status: 400 })
+  if (!address || !area) {
+    const d = await describePoint({ lat: Number(lat), lng: Number(lng) })
+    address ||= d.address
+    area ||= d.area
+  }
   return store.createReport({
     raw_text: String(input.raw_text || '').slice(0, 2000),
     photo_url: input.photo_url || null,
     lat: Number(lat),
     lng: Number(lng),
     address,
+    area,
     reporter_contact: input.reporter_contact || null,
     category_hint: input.category_hint || null,
     ...(input.created_at && { created_at: input.created_at }),
@@ -116,7 +129,7 @@ function newIssueFrom(report, dedup) {
     lat: report.lat,
     lng: report.lng,
     address: report.address,
-    neighborhood: neighborhoodFor(report),
+    neighborhood: neighborhoodFor(report) || report.area || 'Unmapped area',
     summary: issueSummary(report),
     report_count: 1,
     first_reported_at: report.created_at,
@@ -269,7 +282,7 @@ export const reportQueue = createLimiter({ maxConcurrent: config.reportConcurren
 
 export async function processReport(input, { runId = randomUUID(), ...opts } = {}) {
   const events = []
-  const report = createReportRecord(input)
+  const report = await createReportRecord(input)
   const ctx = makeCtx({ runId, reportId: report.report_id, sink: events, ...opts })
   ctx.trace({ agent: 'pipeline', status: 'started', message: `Report ${report.report_id} received at ${report.address}.`, data: { lat: report.lat, lng: report.lng } })
   let release = () => {}
@@ -307,7 +320,8 @@ export async function processBatch(inputs, { forceMock = false, label = 'batch' 
   const batchCtx = makeCtx({ runId, sink: events, delay: false, forceMock })
   batchCtx.trace({ agent: 'pipeline', status: 'started', message: `${label}: ${inputs.length} reports received.` })
 
-  const reports = inputs.map(createReportRecord)
+  const reports = []
+  for (const input of inputs) reports.push(await createReportRecord(input))
   const sinks = new Map(reports.map((r) => [r.report_id, []]))
   const ctxFor = new Map(
     reports.map((r) => [r.report_id, makeCtx({ runId, reportId: r.report_id, sink: sinks.get(r.report_id), delay: false, forceMock })]),

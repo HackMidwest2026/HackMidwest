@@ -1,8 +1,8 @@
-// Real Kansas City map (Leaflet) rendered in the CityCare visual language: HTML markers,
+// City map (Leaflet + OpenStreetMap, works anywhere) rendered in the CityCare visual language: HTML markers,
 // P1 heat layer, crew telemetry with dispatch vectors, neighborhood grid, and a draggable report pin.
 import L from 'leaflet'
 import { AlertTriangle, CheckCircle2, Crosshair, Droplets, Flame, Grid, Layers, Lightbulb, MapPin, Minus, Navigation, Plus, Truck } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { ACTIVE_WORK, categoryMeta, issueCode, OPEN_STATUSES, tierMeta } from '../lib/display.js'
@@ -168,6 +168,29 @@ function ClickToPin({ onPin }) {
   return null
 }
 
+function ViewReporter({ onViewChange }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const c = map.getCenter()
+      onViewChange?.({ lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5) })
+    },
+  })
+  return null
+}
+
+/** Frame all open incidents once, so the console opens on wherever the work is. */
+function FitToIssues({ issues }) {
+  const map = useMap()
+  const done = useRef(false)
+  useEffect(() => {
+    const pts = issues.filter((i) => i.lat != null && OPEN_STATUSES.has(i.status)).map((i) => [i.lat, i.lng])
+    if (done.current || pts.length === 0) return
+    done.current = true
+    map.fitBounds(pts, { padding: [60, 60], maxZoom: 15 })
+  }, [issues, map])
+  return null
+}
+
 function FlyTo({ target, zoom = 15 }) {
   const map = useMap()
   useEffect(() => {
@@ -178,12 +201,20 @@ function FlyTo({ target, zoom = 15 }) {
 
 function HudControls({ center, onRecenter, showLayerMenu, setShowLayerMenu }) {
   const map = useMap()
+  const panel = useRef(null)
+  // These buttons sit inside the map, so Leaflet sees their clicks as map clicks (which drop
+  // the report pin) unless told otherwise. React's stopPropagation is too late: Leaflet listens
+  // on the map element itself, before React's root handler runs.
+  useEffect(() => {
+    if (!panel.current) return
+    L.DomEvent.disableClickPropagation(panel.current)
+    L.DomEvent.disableScrollPropagation(panel.current)
+  }, [])
   const btn = 'w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-b border-slate-200 transition-colors'
   return (
     <div
+      ref={panel}
       className="absolute top-4 right-4 z-[1000] flex flex-col shadow-md rounded-lg overflow-hidden border border-slate-200/80 bg-white/90 backdrop-blur-md"
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
     >
       <button onClick={() => map.zoomIn()} title="Zoom in" className={btn}>
         <Plus className="w-4 h-4" />
@@ -234,6 +265,8 @@ export default function CityMap({
   flyTo,
   zoom = 13,
   showLegend = mode === 'citizen',
+  onViewChange,
+  fitToIssues = false,
   routes = [],
 }) {
   const [showLayerMenu, setShowLayerMenu] = useState(false)
@@ -255,6 +288,8 @@ export default function CityMap({
         />
         {onReportPin && <ClickToPin onPin={onReportPin} />}
         <FlyTo target={flyTo} />
+        {onViewChange && <ViewReporter onViewChange={onViewChange} />}
+        {fitToIssues && <FitToIssues issues={issues} />}
 
         {layers.wardGrid &&
           meta.neighborhoods.map((n) => (
@@ -333,7 +368,7 @@ export default function CityMap({
       )}
 
       {showLegend && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[900] bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-slate-200/80 hidden sm:flex items-center gap-4 text-xs font-medium text-slate-700 whitespace-nowrap">
+        <div className="absolute top-[9.75rem] right-4 z-[900] bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm border border-slate-200/80 hidden sm:flex flex-col gap-1.5 text-[11px] font-medium text-slate-700 whitespace-nowrap">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#DC2626]" />
             <span>Priority Action</span>

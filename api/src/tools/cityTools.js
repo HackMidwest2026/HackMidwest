@@ -4,14 +4,13 @@ import { config } from '../config.js'
 import { categories, departments, findDepartment } from '../lib/data.js'
 import {
   distanceM,
-  geocodeAddress as gazetteerGeocode,
   nearbySensitiveSites as sitesNear,
   neighborhoodFor,
-  reverseGeocode as gazetteerReverse,
   roadType,
 } from '../lib/geo.js'
 import { getIssue as storeGetIssue, listCrews, listIssues, reportsForIssue } from '../lib/store.js'
 import { similarity } from '../lib/text.js'
+import { describePoint, locateText } from '../lib/locate.js'
 
 const OPEN_STATUSES = new Set(['new', 'triaged', 'approved', 'assigned', 'in_progress'])
 const DAY_MS = 86400000
@@ -24,8 +23,9 @@ export function listCategories() {
   }))
 }
 
-export const geocodeAddress = ({ text }) => gazetteerGeocode(text)
-export const reverseGeocode = ({ lat, lng }) => gazetteerReverse({ lat, lng })
+// Any location: local city data first, then OpenStreetMap.
+export const geocodeAddress = async ({ text }) => (await locateText(text)) || { found: false, reason: 'Place not found.' }
+export const reverseGeocode = ({ lat, lng }) => describePoint({ lat, lng })
 
 export function analyzePhoto({ photo_url }) {
   // Rule-based stand-in. In Bedrock mode the Vision agent (agents/photo.js) analyzes the photo instead.

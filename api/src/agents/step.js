@@ -2,6 +2,7 @@
 // Bedrock mode tries the Strands agent and falls back to the rule-based engine on any error,
 // so a quota problem or bad model ID never breaks the live demo.
 import { config, isBedrock } from '../config.js'
+import { withStep } from '../lib/callContext.js'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -25,12 +26,20 @@ export async function runStep({ agent, ctx, startMessage, mock, llm, summarize }
   let model
   if (isBedrock() && llm && !ctx.forceMock) {
     try {
-      const r = await llm(onTool)
+      // withStep lets the model layer post "waiting for Bedrock" notes into this step's trace.
+      const r = await withStep({ agent, trace: (e) => ctx.trace(e) }, () => llm(onTool))
       output = r.output
       model = r.modelId
       engine = 'bedrock'
     } catch (err) {
-      ctx.trace({ agent, status: 'error', message: `LLM call failed (${err.name}: ${err.message}). Falling back to rules.` })
+      const throttled = err.name === 'ModelThrottledError' || err.cause?.name === 'ModelThrottledError'
+      ctx.trace({
+        agent,
+        status: 'error',
+        message: throttled
+          ? `Bedrock stayed over its rate limit for this step, so the rules answered it. ${err.message}`
+          : `LLM call failed (${err.name}: ${err.message}). Falling back to rules.`,
+      })
       engine = 'fallback'
     }
   }
