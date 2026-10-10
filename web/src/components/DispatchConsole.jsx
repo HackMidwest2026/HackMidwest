@@ -1,9 +1,10 @@
-import { Activity, Cpu, FileText, GitFork, Grid, HeartPulse, Layers, MessageSquare, Search, ShieldCheck, Truck, User } from 'lucide-react'
+import { Activity, Cpu, FileText, GitFork, Grid, HeartPulse, Layers, MessageSquare, Route, Search, ShieldCheck, Truck, User } from 'lucide-react'
 import { useState } from 'react'
 import { issueCode, OPEN_STATUSES, shortAddress, statusMeta, timeAgo, tierMeta } from '../lib/display.js'
 import CityMap, { LAYER_DEFS } from './CityMap.jsx'
 import { GisView, PipelineView, RoutingView, UnitsView } from './ConsoleViews.jsx'
 import IncidentDrawer from './IncidentDrawer.jsx'
+import RoutePlansView from './RoutePlansView.jsx'
 import { AssignModal, SupervisorModal } from './Modals.jsx'
 
 const NAV = [
@@ -12,6 +13,7 @@ const NAV = [
   { id: 'ai-pipeline', label: 'AI Triage Pipeline', icon: Cpu, iconClass: 'text-teal-400' },
   { id: 'routing', label: 'Routing Matrix', icon: GitFork, iconClass: 'text-slate-400' },
   { id: 'units', label: 'Field Crews', icon: Truck, iconClass: 'text-slate-400' },
+  { id: 'routes', label: 'Route Plans', icon: Route, iconClass: 'text-teal-400' },
 ]
 
 export default function DispatchConsole({ meta, data, selectedIssue, onSelectIssue, showToast, onSwitchToCitizen }) {
@@ -302,6 +304,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         )}
         {view === 'routing' && <RoutingView issues={issues} onOpen={openOnMap} />}
         {view === 'units' && <UnitsView crews={crews} issues={issues} onOpen={openOnMap} />}
+        {view === 'routes' && <RoutePlansView meta={meta} issues={issues} onOpen={openOnMap} showToast={showToast} />}
       </div>
 
       {supervisorOpen && <SupervisorModal onClose={() => setSupervisorOpen(false)} />}
