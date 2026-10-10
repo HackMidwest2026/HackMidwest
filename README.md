@@ -4,6 +4,19 @@
 
 `patches/kz-lite-savestates.patch` holds the same change as a patch against upstream kz. Apply it with `git apply`.
 
+## Patch your ROM (no tools needed)
+
+1. Download [`release/dist/kz-lite-savestates-v1.zip`](release/dist/kz-lite-savestates-v1.zip) and unzip it.
+2. **Windows:** drag your ROM onto `build-rom-lite.bat`, or copy the ROM into the unzipped folder and double-click `build-rom-lite.bat`.
+   **Linux:** run `./build-rom-lite.sh /path/to/rom.z64`. **macOS:** the same, after installing [`gru`](https://github.com/glankk/n64).
+3. The patched ROM appears in the same folder as `kz-lite-<version>-savestates.z64`.
+
+Supported ROMs: unmodified NTSC-U 1.0, NTSC-J 1.0 or NTSC-J 1.1, in `.z64`, `.n64` or `.v64` byte order. The package contains no game data; everything is applied to your own ROM.
+
+Controls: D-left saves a state, D-right loads it, R + L opens the kz menu.
+
+The package holds prebuilt kz-lite binaries for all three ROMs, a standalone `gru` (`gru.exe` for Windows, a static Linux build), and `lua/patch.lua`. That script is kz's `make.lua` changed to use the prebuilt files and to generate the small loader stub itself. To rebuild the package, see `release/build-gru.sh` and `release/make-release.sh`.
+
 ## Why kz-lite didn't have save states
 
 Majora's Mask needs the Expansion Pak and uses nearly all 8MB of RDRAM. kz-lite has two places to live:
@@ -49,6 +62,13 @@ Notes from building it for real:
 - **Game continues:** the game keeps running afterwards, through the fade and into the Stock Pot Inn scenes, the same sequence as the unpatched ROM.
 - **Repeated use:** loading the same state twice, then saving over the slot and loading again, all work.
 - **Menu:** the states menu shows `size 115kb free 148kb`.
+
+**Release package:**
+- **Same ROM as kz's own build:** the JP 1.0 ROM it produces is byte-for-byte identical to kz's own `build/makerom-lite` output from the same binaries. That holds for the Linux `gru` and for `gru.exe` running `build-rom-lite.bat` under Wine, both by dragging the ROM onto it and by double-clicking with the ROM in the folder.
+- **Byte-swapped dumps:** a `.n64` dump gives the identical result.
+- **Wrong ROM:** a modified ROM is rejected with a clear message.
+- **In the emulator:** the package's ROM saves and loads correctly.
+- **NTSC-U 1.0 and NTSC-J 1.1:** these use the same code path but haven't been patched or run, because I didn't have those ROMs.
 
 `tests/emulator/` has the scripts used. They drive mupen64plus under Xvfb with xdotool and take screenshots.
 
