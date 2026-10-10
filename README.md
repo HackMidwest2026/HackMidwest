@@ -46,7 +46,7 @@ docker compose -f docker-compose.dev.yml up     # UI on http://localhost:5173, A
 Requires Node 22+.
 
 ```bash
-cd api && npm install && npm run dev      # API on :8080 (mock mode)
+cd api && npm install && npm run dev      # API on :8080; reads ../.env if present
 cd web && npm install && npm run dev      # UI on :5173, proxies /api to :8080
 cd api && npm test                        # rules, geo and end-to-end pipeline tests
 ```
@@ -58,7 +58,7 @@ cd api && npm test                        # rules, geo and end-to-end pipeline t
 | `mock` (default) | Rule-based agents: keyword classifier, distance and text dedup, rubric priority, workload router. Deterministic and instant. | Nothing |
 | `bedrock` | Strands agents on Claude via Amazon Bedrock. Haiku-class for intake; Sonnet-class for dedup, priority, router and supervisor. | AWS credentials with Bedrock access, model access enabled |
 
-In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back to the rule engine for that step. The trace marks the step as `fallback`, so a live demo never dead-ends. Model IDs are set with `INTAKE_MODEL_ID` and `REASONING_MODEL_ID` (see `.env.example`). Some accounts need a cross-region inference profile prefix such as `us.`.
+In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back to the rule engine for that step. The trace marks the step as `fallback`, so a live demo never dead-ends. Model IDs are set with `INTAKE_MODEL_ID` and `REASONING_MODEL_ID` (see `.env.example`). The defaults are the profiles verified on the team's account: `us.anthropic.claude-haiku-4-5-20251001-v1:0` for intake and `us.anthropic.claude-sonnet-4-6` for the rest, in `us-east-2`.
 
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.

@@ -17,12 +17,12 @@ export const config = {
   dataDir: resolve(process.env.DATA_DIR || join(here, '../../data')),
   // Where runtime state (issues, reports, uploaded photos) is written.
   stateDir: resolve(process.env.STATE_DIR || join(here, '../var')),
-  awsRegion: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1',
-  // Haiku-class for intake, Sonnet-class for the rest. Some accounts need a cross-region
-  // inference profile prefix such as "us." or "global." on these IDs.
+  awsRegion: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-2',
+  // Haiku-class for intake, Sonnet-class for the rest. Defaults are the cross-region
+  // inference profiles verified on the team's account in us-east-2.
   models: {
-    intake: process.env.INTAKE_MODEL_ID || 'anthropic.claude-haiku-5-5',
-    reasoning: process.env.REASONING_MODEL_ID || 'anthropic.claude-sonnet-5-5',
+    intake: process.env.INTAKE_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    reasoning: process.env.REASONING_MODEL_ID || 'us.anthropic.claude-sonnet-4-6',
   },
   // Artificial per-agent delay in mock mode so the live trace is watchable in a demo.
   mockDelayMs: num('MOCK_DELAY_MS', 350),
