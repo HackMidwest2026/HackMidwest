@@ -9,7 +9,7 @@ services:
       context: .
       dockerfile: api/Dockerfile
     environment:
-      CITYCARE_MODE: ${CITYCARE_MODE:-mock}
+      CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
       AWS_REGION: ${AWS_REGION:-us-east-2}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}

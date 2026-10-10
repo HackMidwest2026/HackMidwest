@@ -7,7 +7,7 @@ services:
     working_dir: /app/api
     command: sh -c "npm ci && npm run dev"
     environment:
-      CITYCARE_MODE: ${CITYCARE_MODE:-mock}
+      CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
       STATE_DIR: /app/api/var
       AWS_REGION: ${AWS_REGION:-us-east-2}

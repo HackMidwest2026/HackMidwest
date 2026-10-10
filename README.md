@@ -60,6 +60,8 @@ cd api && npm test                        # rules, geo and end-to-end pipeline t
 
 In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back to the rule engine for that step. The trace marks the step as `fallback`, so a live demo never dead-ends. Model IDs are set with `INTAKE_MODEL_ID` and `REASONING_MODEL_ID` (see `.env.example`). The defaults are the profiles verified on the team's account: `us.anthropic.claude-haiku-4-5-20251001-v1:0` for intake and `us.anthropic.claude-sonnet-4-6` for the rest, in `us-east-2`.
 
+**Check which engine is running:** the API logs a line at startup, e.g. `Engine: Bedrock (from CITYCARE_MODE) region=us-east-2 …`, and the navbar badge shows **BEDROCK** or **MOCK**. The old variable name `CITYOPS_MODE` is still accepted. After editing `.env`, restart with `docker compose up -d` so the container picks up the change; no rebuild is needed.
+
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.
 - **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). The agent may adjust it by ±15 and must explain why.

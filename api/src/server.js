@@ -273,6 +273,14 @@ export async function start() {
   }
   process.on('SIGINT', shutdown)
   process.on('SIGTERM', shutdown)
+  if (!['mock', 'bedrock'].includes(config.mode)) {
+    console.warn(`Unknown mode "${config.mode}" from ${config.modeSource}; expected "mock" or "bedrock". Running the rule-based engine.`)
+  }
+  console.log(
+    config.mode === 'bedrock'
+      ? `Engine: Bedrock (from ${config.modeSource}) region=${config.awsRegion} intake=${config.models.intake} reasoning=${config.models.reasoning}`
+      : `Engine: mock rule-based agents (${config.modeSource === 'default' ? 'CITYCARE_MODE not set' : `from ${config.modeSource}`}). Set CITYCARE_MODE=bedrock to use Claude on Bedrock.`,
+  )
   return app.listen(config.port, () => console.log(`CityCare API on :${config.port} (mode=${config.mode}, data=${config.dataDir}, state=${config.stateDir})`))
 }
 

@@ -8,11 +8,23 @@ function num(name, fallback) {
   return v === undefined || v === '' ? fallback : Number(v)
 }
 
+// CITYCARE_MODE is the current name; CITYOPS_MODE is accepted from before the rename.
+// Values are trimmed and unquoted so `bedrock `, "bedrock" or a CRLF .env still work.
+function readMode() {
+  for (const name of ['CITYCARE_MODE', 'CITYOPS_MODE']) {
+    const raw = (process.env[name] || '').trim().replace(/^['"]|['"]$/g, '').toLowerCase()
+    if (raw) return { mode: raw, source: name }
+  }
+  return { mode: 'mock', source: 'default' }
+}
+const modeInfo = readMode()
+
 export const config = {
   port: num('PORT', 8080),
   // "mock": deterministic rule-based agents, no AWS needed (default, also the demo fallback).
   // "bedrock": Strands agents backed by Claude on Amazon Bedrock.
-  mode: (process.env.CITYCARE_MODE || process.env.CITYOPS_MODE || 'mock').toLowerCase(),
+  mode: modeInfo.mode,
+  modeSource: modeInfo.source,
   // Seed JSON (categories, departments, city geography, demo reports).
   dataDir: resolve(process.env.DATA_DIR || join(here, '../../data')),
   // Where runtime state (issues, reports, uploaded photos) is written.
