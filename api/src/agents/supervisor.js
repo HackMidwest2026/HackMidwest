@@ -109,7 +109,7 @@ function mockAnswer(question, onTool) {
   const lines = rows.map(
     (r) => `#${r.issue_id} ${r.priority_tier ?? '--'} ${r.priority_score ?? '?'}/100: ${r.summary} at ${r.address.split(',')[0]} (${r.report_count} report${r.report_count === 1 ? '' : 's'}${r.recommended_department ? `, ${r.recommended_department}` : ''})`,
   )
-  return `Top ${hazard_only ? 'safety ' : ''}issues ${scope}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
+  return `Top ${hazard_only ? 'safety ' : ''}issues${scope ? ` ${scope}` : ''}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
 }
 
 export async function askSupervisor(question, ctx) {
