@@ -2,7 +2,7 @@
 
 Residents report potholes, broken streetlights, trash and similar problems. A pipeline of AI agents built with **AWS Strands Agents (JavaScript SDK)** sorts each report into a category, merges duplicates, ranks issues by urgency, and recommends which department and crew should handle it. A city dispatcher approves every recommendation.
 
-Built for HackMidwest (Kansas City). The geography, categories and demo data use real KC streets.
+CityCare is not tied to one city: reports can come from anywhere, and addresses, area names and map search use OpenStreetMap. The repo ships **sample data for Kansas City, MO** (streets, neighborhoods, simulated crews and demo reports) for testing and the HackMidwest demo. See [Running it for another city](#running-it-for-another-city).
 
 ```
 Resident report ─► Intake ─► Dedup ─┬─ duplicate ─► merge into issue ─┬─► Priority ─► Router ─► Dispatcher approves
@@ -24,7 +24,7 @@ On first start the API seeds 13 historical reports, which become 8 open issues. 
 
 ## The UI
 
-- **Citizen Portal:** a full-screen map of Kansas City with a floating "Report an Issue" card. Residents pick a category (or leave it on Auto for the Intake agent), drop or drag a pin, or type a location and pick from the suggestions dropdown, attach a photo, and describe the problem. Before they submit, the card shows open incidents within 120 m. After they submit, it streams the agents' work live and shows the result (for example, "merged into #1042, P1").
+- **Citizen Portal:** a full-screen map with a floating "Report an Issue" card. Residents pick a category (or leave it on Auto for the Intake agent), drop or drag a pin, or type a location and pick from the suggestions dropdown, attach a photo, and describe the problem. Before they submit, the card shows open incidents within 120 m. After they submit, it streams the agents' work live and shows the result (for example, "merged into #1042, P1").
 - **Dispatch Command:** a console with five views.
   - **Command Center:** a ranked live triage stream, a tactical map with P1/P2 heatmap, crew telemetry and neighborhood layers, and an incident drawer showing the priority factors, the routing recommendation, merged reports, the agent audit trail, and Approve / Change crew / Reject.
   - **GIS Spatial Grid:** a density breakdown by neighborhood.
@@ -33,7 +33,7 @@ On first start the API seeds 13 historical reports, which become 8 open issues. 
   - **Field Crews:** crew workload and assignments.
 - **Supervisor Channel:** plain-English questions answered by the Supervisor agent.
 
-Address suggestions come from the built-in KC street list first (intersections, landmarks, neighborhoods, and estimated house numbers on the grid, all offline). Street addresses fall back to [Photon](https://photon.komoot.io), a free OpenStreetMap geocoder with no API key; set `PHOTON_URL=off` to disable it.
+Address suggestions, address lookup for a dropped pin, and area names work for any location through [Photon](https://photon.komoot.io), a free OpenStreetMap geocoder with no API key, biased toward the current map view. If the city data includes streets and landmarks (the Kansas City sample does), those are suggested first and work offline. Set `PHOTON_URL=off` to disable Photon.
 
 Built with React, Tailwind CSS 4, lucide icons and Leaflet with free OpenStreetMap tiles (no API key). The OSM tile servers are fine for a hackathon demo; for heavier use, follow the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) or self-host tiles.
 
@@ -75,6 +75,19 @@ The design rule from the plan holds in both modes: code does what code is good a
 
 These numbers come from synthetic reports whose keywords the rule engine was tuned on, so they overstate real-world accuracy. Re-run the batch in Bedrock mode to get honest LLM numbers for the slides.
 
+## Running it for another city
+
+Nothing in the code names a city. Everything city-specific lives in the data folder (`DATA_DIR`, default `data/`):
+
+| File | What it holds | Required |
+|---|---|---|
+| `city.json` → `profile` | Display name and region, address suffix, default zoom, example report, address and supervisor questions shown in the UI | `center` only; the rest is optional |
+| `city.json` → `streets`, `neighborhoods`, `sensitive_sites` | Local street classes for the priority rubric, area names, schools and hospitals | Optional. Without them, area names come from OpenStreetMap, road class counts as unknown, and no sensitive-site points are added. |
+| `categories.json`, `departments.json` | Issue categories and the departments and crews that handle them | Yes |
+| `seed_reports.json`, `demo_reports.json` | Demo history and the 50-report batch | For the demo only |
+
+A minimal `city.json` is just `{ "center": { "lat": 41.8781, "lng": -87.6298 } }`. With that, the UI says "City Services" and "City Operations", offers generic example questions, and reports anywhere are located through OpenStreetMap. The agents' instructions name the configured city when one is set.
+
 ## Project layout
 
 ```
@@ -86,7 +99,7 @@ api/                     Node service (Express 5) + agents          → owners A
   src/server.js          REST + SSE
   test/                  node:test suite
 web/                     React (Vite) + Tailwind + Leaflet: Citizen Portal and Dispatch console → owner D
-data/                    categories, departments/crews (simulated), KC geography, seed + demo reports
+data/                    sample city data (Kansas City): profile, geography, categories, departments/crews (simulated), seed + demo reports
 scripts/generate-demo-data.js   regenerates data/seed_reports.json and data/demo_reports.json
 ```
 

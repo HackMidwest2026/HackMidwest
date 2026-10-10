@@ -9,6 +9,7 @@ process.env.STATE_DIR = mkdtempSync(join(tmpdir(), 'citycare-test-'))
 process.env.CITYCARE_MODE = 'mock'
 process.env.MOCK_DELAY_MS = '0'
 process.env.MOCK_BATCH_DELAY_MS = '0'
+process.env.PHOTON_URL = 'off' // no network in tests
 
 const { classifyText, classifyWithHint, detectHazards, baseScore, tierFor } = await import('../src/agents/rules.js')
 const { geocodeAddress, roadType, suggestAddresses } = await import('../src/lib/geo.js')
@@ -102,6 +103,17 @@ describe('pipeline', () => {
     assert.ok(m.ground_truth.dedup_precision >= 0.95)
     assert.ok(m.ground_truth.dedup_recall >= 0.95)
     assert.ok(m.ground_truth.category_accuracy >= 0.95)
+  })
+
+  test('reports outside the sample city still flow through the pipeline', async () => {
+    // Chicago: no local street data, OpenStreetMap disabled in tests.
+    const r = await processReport({ raw_text: 'Streetlight out on my block, totally dark', lat: 41.8781, lng: -87.6298 })
+    assert.equal(r.merged, false)
+    assert.equal(r.issue.subcategory, 'streetlight_out')
+    assert.doesNotMatch(r.issue.address, /Kansas City/)
+    assert.equal(r.issue.neighborhood, 'Unmapped area')
+    assert.ok(r.issue.priority_factors.some((f) => /Road class unknown/.test(f.detail)))
+    assert.equal(r.issue.recommended_department, 'pw_traffic')
   })
 
   test('two potholes 85 m apart stay separate issues', () => {

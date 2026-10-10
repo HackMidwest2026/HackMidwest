@@ -1,12 +1,13 @@
 // Intake / Classifier agent (Haiku-class): raw text + location -> structured report.
 import { z } from 'zod'
+import { cityLabel } from '../lib/data.js'
 import * as tools from '../tools/cityTools.js'
 import { makeTools, runStructured } from './llm.js'
 import { classifyWithHint, cleanDescription, detectHazards, subcategoryName } from './rules.js'
 import { IntakeOutput } from './schemas.js'
 import { runStep } from './step.js'
 
-const SYSTEM_PROMPT = `You are the Intake agent for CityCare, Kansas City's 311 triage system.
+const SYSTEM_PROMPT = `You are the Intake agent for CityCare, a city 311 triage system serving ${cityLabel}.
 Residents send short, messy reports (typos, slang, all caps). Your job is to turn one report into a structured record.
 
 Call list_categories first and choose exactly one category and subcategory from it. Use "other"/"unclear" only when the report gives no usable clue.
@@ -20,7 +21,7 @@ const toolSpecs = [
   { name: 'list_categories', description: 'List valid 311 categories and subcategories.', input: z.object({}), fn: tools.listCategories },
   {
     name: 'geocode_address',
-    description: 'Geocode a Kansas City street or intersection mentioned in text to lat/lng.',
+    description: 'Geocode a street, intersection or address mentioned in text to lat/lng (local city data, then OpenStreetMap).',
     input: z.object({ text: z.string() }),
     fn: tools.geocodeAddress,
   },

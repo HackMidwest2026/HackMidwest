@@ -27,10 +27,10 @@ function ModalShell({ title, icon: Icon, iconClass, onClose, width = 'max-w-md',
   )
 }
 
-const SUGGESTIONS = ['What are the most dangerous open issues in Midtown?', "What's most urgent in Westport?", 'How many issues are open?']
+const DEFAULT_QUESTIONS = ['What are the most dangerous open issues?', "What's most urgent right now?", 'How many issues are open?']
 
 /** Supervisor channel: plain-English questions answered by the Supervisor agent. */
-export function SupervisorModal({ onClose }) {
+export function SupervisorModal({ onClose, questions }) {
   const [log, setLog] = useState([])
   const [question, setQuestion] = useState('')
   const [busy, setBusy] = useState(false)
@@ -61,7 +61,7 @@ export function SupervisorModal({ onClose }) {
         {log.length === 0 && (
           <div className="space-y-2">
             <p className="text-slate-500">Ask about open issues. The supervisor agent queries live data and can consult the Priority and Router agents.</p>
-            {SUGGESTIONS.map((s) => (
+            {(questions?.length ? questions : DEFAULT_QUESTIONS).map((s) => (
               <button key={s} onClick={() => ask(s)} className="block w-full text-left p-2 rounded-lg border border-dashed border-slate-300 text-[#1E3A8A] hover:bg-blue-50/60">
                 {s}
               </button>

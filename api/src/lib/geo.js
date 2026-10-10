@@ -1,6 +1,9 @@
-// Small offline gazetteer for Kansas City. Good enough for a demo, swappable for
-// Amazon Location Service or Nominatim later.
-import { city } from './data.js'
+// Optional offline gazetteer for the configured city (data/city.json): grid streets,
+// neighborhoods and sensitive sites. Everything here degrades gracefully when the city file
+// has no such data, and lib/locate.js falls back to OpenStreetMap (Photon) for any location.
+import { city, cityProfile } from './data.js'
+
+const withSuffix = (s) => `${s}${cityProfile.address_suffix}`
 
 const M_PER_DEG_LAT = 111320
 
@@ -46,13 +49,17 @@ export function geocodeAddress(text) {
   const ns = streets.find((s) => s.axis === 'ns')
   const ew = streets.find((s) => s.axis === 'ew')
   if (ns && ew) {
-    return { found: true, lat: ew.lat, lng: ns.lng, address: `${ns.name} & ${ew.name}, Kansas City, MO`, precision: 'intersection' }
+    return { found: true, lat: ew.lat, lng: ns.lng, address: withSuffix(`${ns.name} & ${ew.name}`), precision: 'intersection' }
   }
   const only = ns || ew
   if (only) {
     return { found: false, reason: `Only one street recognised (${only.name}); need a cross street.`, street: only.name }
   }
-  return { found: false, reason: 'No known Kansas City street names found.' }
+  return { found: false, reason: 'No known street names found in the local street data.' }
+}
+
+function cityLabelShort() {
+  return [cityProfile.name, cityProfile.region].filter(Boolean).join(', ')
 }
 
 export function nearestStreets({ lat, lng }, maxM = 400) {
@@ -68,19 +75,22 @@ export function neighborhoodFor({ lat, lng }) {
     const d = distanceM({ lat, lng }, n)
     if (!best || d < best.d) best = { name: n.name, d }
   }
-  return best && best.d < 4000 ? best.name : 'Kansas City'
+  return best && best.d < 4000 ? best.name : null
 }
 
-/** Reverse geocode to the nearest gazetteer intersection. */
+/**
+ * Reverse geocode to the nearest local intersection. `covered` is false when the point is
+ * outside the local street data; callers then ask OpenStreetMap (see lib/locate.js).
+ */
 export function reverseGeocode({ lat, lng }) {
   const near = nearestStreets({ lat, lng }, 1500)
   const ns = near.find((s) => s.axis === 'ns')
   const ew = near.find((s) => s.axis === 'ew')
   const neighborhood = neighborhoodFor({ lat, lng })
   if (ns && ew) {
-    return { address: `${ns.name} & ${ew.name}, Kansas City, MO`, neighborhood, offset_m: Math.round(Math.hypot(ns.distance_m, ew.distance_m)) }
+    return { address: withSuffix(`${ns.name} & ${ew.name}`), neighborhood, offset_m: Math.round(Math.hypot(ns.distance_m, ew.distance_m)), covered: true }
   }
-  return { address: `${lat.toFixed(5)}, ${lng.toFixed(5)}, Kansas City, MO`, neighborhood, offset_m: null }
+  return { address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, neighborhood, offset_m: null, covered: false }
 }
 
 const ROAD_RANK = { arterial: 3, collector: 2, residential: 1 }
@@ -88,7 +98,7 @@ const ROAD_RANK = { arterial: 3, collector: 2, residential: 1 }
 /** Highest road class among streets within ~45 m of the point (default residential). */
 export function roadType({ lat, lng }) {
   const near = nearestStreets({ lat, lng }, 45)
-  if (!near.length) return { road_type: 'residential', street: null, note: 'No mapped street within 45 m; assumed residential.' }
+  if (!near.length) return { road_type: 'unknown', street: null, note: 'No street class data for this spot; no road-class points.' }
   const best = near.reduce((a, b) => (ROAD_RANK[b.road_type] > ROAD_RANK[a.road_type] ? b : a))
   return { road_type: best.road_type, street: best.name, distance_m: best.distance_m }
 }
@@ -139,8 +149,8 @@ function intersection(a, b) {
   const point = { lat: ew.lat, lng: ns.lng }
   return {
     label: `${ns.name} & ${ew.name}`,
-    sublabel: `${neighborhoodFor(point)} · Kansas City, MO`,
-    address: `${ns.name} & ${ew.name}, Kansas City, MO`,
+    sublabel: [neighborhoodFor(point), cityLabelShort()].filter(Boolean).join(' · '),
+    address: withSuffix(`${ns.name} & ${ew.name}`),
     ...point,
     kind: 'intersection',
     source: 'gazetteer',
@@ -154,7 +164,8 @@ const NUMBERED = city.streets
   .sort((a, b) => a.n - b.n)
 
 function latForBlock(house) {
-  const n = house / 100
+  const n = house / (cityProfile.address_grid?.house_number_per_block || 100)
+  if (!NUMBERED.length) return null
   if (n < NUMBERED[0].n || n > NUMBERED.at(-1).n) return null
   const hi = NUMBERED.findIndex((x) => x.n >= n)
   const b = NUMBERED[hi]
@@ -182,18 +193,19 @@ export function suggestAddresses(query, limit = 8) {
   const pushPlaces = () => {
     for (const site of city.sensitive_sites) {
       if (norm(site.name).includes(q)) {
-        push({ label: site.name, sublabel: `${site.type.replace('_', ' ')} · ${neighborhoodFor(site)}`, address: `${site.name}, Kansas City, MO`, lat: site.lat, lng: site.lng, kind: 'place', source: 'gazetteer' })
+        push({ label: site.name, sublabel: [site.type.replace('_', ' '), neighborhoodFor(site)].filter(Boolean).join(' · '), address: withSuffix(site.name), lat: site.lat, lng: site.lng, kind: 'place', source: 'gazetteer' })
       }
     }
     for (const n of city.neighborhoods) {
       if (norm(n.name).includes(q)) {
-        push({ label: n.name, sublabel: 'Neighborhood · Kansas City, MO', address: `${n.name}, Kansas City, MO`, lat: n.lat, lng: n.lng, kind: 'neighborhood', source: 'gazetteer' })
+        push({ label: n.name, sublabel: ['Neighborhood', cityLabelShort()].filter(Boolean).join(' · '), address: withSuffix(n.name), lat: n.lat, lng: n.lng, kind: 'neighborhood', source: 'gazetteer' })
       }
     }
   }
 
-  // "4500 Main": on KC's grid, house number / 100 ≈ the numbered cross street (4500 ≈ 45th St).
-  const numbered = /^(\d{3,5})\s+(.+)$/.exec(q)
+  // "4500 Main" in grid cities (profile.address_grid): house number / per_block ≈ the numbered
+  // cross street (4500 ≈ 45th St). Skipped for cities without such a grid.
+  const numbered = cityProfile.address_grid && /^(\d{3,5})\s+(.+)$/.exec(q)
   if (numbered) {
     const house = Number(numbered[1])
     for (const st of matchStreets(numbered[2], 'ns').slice(0, 2)) {
@@ -202,8 +214,8 @@ export function suggestAddresses(query, limit = 8) {
         const point = { lat, lng: st.lng }
         push({
           label: `${house} ${st.name}`,
-          sublabel: `Approximate · ${reverseGeocode(point).address.replace(', Kansas City, MO', '')} · ${neighborhoodFor(point)}`,
-          address: `${house} ${st.name}, Kansas City, MO`,
+          sublabel: ['Approximate', reverseGeocode(point).address.split(',')[0], neighborhoodFor(point)].filter(Boolean).join(' · '),
+          address: withSuffix(`${house} ${st.name}`),
           ...point,
           kind: 'address',
           source: 'gazetteer',

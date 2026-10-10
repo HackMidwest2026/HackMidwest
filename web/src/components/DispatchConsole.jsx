@@ -100,7 +100,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
               <span className="font-bold text-slate-900 text-sm leading-tight block whitespace-nowrap">
                 <span className="hidden sm:inline">CityCare </span>Dispatch
               </span>
-              <span className="text-[11px] text-slate-500 hidden sm:block">Kansas City Operations</span>
+              <span className="text-[11px] text-slate-500 hidden sm:block">{meta.city?.name ? `${meta.city.name} Operations` : 'City Operations'}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
             </button>
             <button
               onClick={onSwitchToCitizen}
-              title="Switch to the Citizen 311 view"
+              title="Switch to the Citizen Portal"
               className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition-all"
             >
               <User className="w-4 h-4" />
@@ -283,7 +283,8 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
                 layers={layers}
                 onToggleLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
                 flyTo={selectedIssue}
-                zoom={12}
+                zoom={meta.city?.default_zoom || 12}
+                fitToIssues
               />
               {selectedIssue && (
                 <IncidentDrawer
@@ -307,7 +308,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
         {view === 'units' && <UnitsView crews={crews} issues={issues} onOpen={openOnMap} />}
       </div>
 
-      {supervisorOpen && <SupervisorModal onClose={() => setSupervisorOpen(false)} />}
+      {supervisorOpen && <SupervisorModal questions={meta.city?.examples?.supervisor_questions} onClose={() => setSupervisorOpen(false)} />}
       {assignOpen && selectedIssue && (
         <AssignModal issue={selectedIssue} crews={crews} onClose={() => setAssignOpen(false)} onAssigned={data.replaceIssue} showToast={showToast} />
       )}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Generates data/seed_reports.json (prior history) and data/demo_reports.json (the 50-report
-// "wow moment" batch) from hand-written clusters pinned to KC intersections.
+// "wow moment" batch) from hand-written clusters pinned to intersections in the sample city
+// (data/city.json; Kansas City in this repo).
 // Output is deterministic (seeded RNG), so ground truth stays stable between runs.
 //
 //   node scripts/generate-demo-data.js
@@ -42,7 +43,7 @@ function at(ns, ew, { eastM = 0, northM = 0, jitterM = 12 } = {}) {
   return {
     lat: +(lat0 + (northM + jy) / mPerDegLat).toFixed(6),
     lng: +(lng0 + (eastM + jx) / mPerDegLng).toFixed(6),
-    address: `${a.name} & ${b.name}, Kansas City, MO`,
+    address: `${a.name} & ${b.name}${city.profile?.address_suffix ?? ''}`,
   }
 }
 

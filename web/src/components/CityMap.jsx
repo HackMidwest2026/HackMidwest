@@ -1,8 +1,8 @@
-// Real Kansas City map (Leaflet) rendered in the CityCare visual language: HTML markers,
+// City map (Leaflet + OpenStreetMap, works anywhere) rendered in the CityCare visual language: HTML markers,
 // P1 heat layer, crew telemetry with dispatch vectors, neighborhood grid, and a draggable report pin.
 import L from 'leaflet'
 import { AlertTriangle, CheckCircle2, Crosshair, Droplets, Flame, Grid, Layers, Lightbulb, MapPin, Minus, Navigation, Plus, Truck } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { ACTIVE_WORK, categoryMeta, issueCode, OPEN_STATUSES, tierMeta } from '../lib/display.js'
@@ -168,6 +168,29 @@ function ClickToPin({ onPin }) {
   return null
 }
 
+function ViewReporter({ onViewChange }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const c = map.getCenter()
+      onViewChange?.({ lat: +c.lat.toFixed(5), lng: +c.lng.toFixed(5) })
+    },
+  })
+  return null
+}
+
+/** Frame all open incidents once, so the console opens on wherever the work is. */
+function FitToIssues({ issues }) {
+  const map = useMap()
+  const done = useRef(false)
+  useEffect(() => {
+    const pts = issues.filter((i) => i.lat != null && OPEN_STATUSES.has(i.status)).map((i) => [i.lat, i.lng])
+    if (done.current || pts.length === 0) return
+    done.current = true
+    map.fitBounds(pts, { padding: [60, 60], maxZoom: 15 })
+  }, [issues, map])
+  return null
+}
+
 function FlyTo({ target, zoom = 15 }) {
   const map = useMap()
   useEffect(() => {
@@ -234,6 +257,8 @@ export default function CityMap({
   flyTo,
   zoom = 13,
   showLegend = mode === 'citizen',
+  onViewChange,
+  fitToIssues = false,
 }) {
   const [showLayerMenu, setShowLayerMenu] = useState(false)
   const visible = issues.filter(
@@ -254,6 +279,8 @@ export default function CityMap({
         />
         {onReportPin && <ClickToPin onPin={onReportPin} />}
         <FlyTo target={flyTo} />
+        {onViewChange && <ViewReporter onViewChange={onViewChange} />}
+        {fitToIssues && <FitToIssues issues={issues} />}
 
         {layers.wardGrid &&
           meta.neighborhoods.map((n) => (

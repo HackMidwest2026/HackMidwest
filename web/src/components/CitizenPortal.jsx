@@ -23,7 +23,6 @@ import AddressAutocomplete from './AddressAutocomplete.jsx'
 import AgentTrace from './AgentTrace.jsx'
 import CityMap from './CityMap.jsx'
 
-const EXAMPLE = 'Huge pothole on Troost near 39th, almost wrecked my car'
 
 const PICKER = [
   { id: '', label: 'Auto', icon: Sparkles },
@@ -47,6 +46,10 @@ function readAsDataUrl(file) {
 
 export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue, onSwitchToDispatch }) {
   const { issues, crews } = data
+  // Optional examples from the configured city profile (the sample data is Kansas City).
+  const exampleReport = meta.city?.examples?.report_text
+  const exampleAddress = meta.city?.examples?.address
+  const [view, setView] = useState(null) // current map center, used to bias address search
   const [formOpen, setFormOpen] = useState(true)
   const [categoryHint, setCategoryHint] = useState('')
   const [address, setAddress] = useState('')
@@ -102,7 +105,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
   async function findAddress(q = address || text) {
     setError(null)
     if (!q.trim()) return
-    const g = await api.geocode(q)
+    const g = await api.geocode(q, pin || view || meta.center)
     if (g.found) placePin({ lat: g.lat, lng: g.lng }, g.address)
     else setError(g.reason)
   }
@@ -218,7 +221,8 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
           onToggleLayer={(k) => setLayers((l) => ({ ...l, [k]: !l[k] }))}
           filterCategory={filter}
           flyTo={pin}
-          zoom={12}
+          zoom={meta.city?.default_zoom || 12}
+          onViewChange={setView}
         />
       </div>
 
@@ -231,7 +235,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold text-slate-900 tracking-tight leading-tight">Report an Issue</h2>
-              <p className="text-xs text-slate-500 mt-0.5">AI agents triage it and route it to a Kansas City crew</p>
+              <p className="text-xs text-slate-500 mt-0.5">AI agents triage it and route it to the right city crew</p>
               <p className="text-[11px] text-[#2563EB] mt-0.5 md:hidden">Tap the map above to drop your pin</p>
             </div>
             <button onClick={() => setFormOpen(false)} title="Close form to explore the map" className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -281,8 +285,9 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                   onChange={setAddress}
                   onSelect={(sug) => placePin({ lat: sug.lat, lng: sug.lng }, sug.address)}
                   onSubmitText={() => findAddress()}
+                  near={pin || view || meta.center}
                   inputClassName="w-full pl-8 pr-3 py-2 bg-slate-50/80 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
-                  placeholder="Cross streets or address, e.g. Troost & 39th"
+                  placeholder={exampleAddress ? `Address or cross streets, e.g. ${exampleAddress}` : 'Street address or cross streets'}
                 />
                 <button type="button" onClick={() => findAddress()} title="Find on map" className="px-2.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
                   <Search className="w-3.5 h-3.5" />
@@ -331,12 +336,12 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 placeholder="Describe the issue in your own words: hazards, what happened, how bad it is…"
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none resize-none leading-relaxed"
               />
-              {!text && (
+              {!text && exampleReport && (
                 <button
                   type="button"
                   onClick={() => {
-                    setText(EXAMPLE)
-                    if (!pin) findAddress(EXAMPLE)
+                    setText(exampleReport)
+                    if (!pin) findAddress(exampleReport)
                   }}
                   className="text-[11px] text-[#2563EB] hover:underline"
                 >
@@ -405,7 +410,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Submit Incident to CityCare 311</span>
+                  <span>Submit Incident to CityCare</span>
                 </>
               )}
             </button>

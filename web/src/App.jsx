@@ -4,6 +4,7 @@ import { api } from './api.js'
 import CitizenPortal from './components/CitizenPortal.jsx'
 import DispatchConsole from './components/DispatchConsole.jsx'
 import Navbar from './components/Navbar.jsx'
+import { cityLabel } from './lib/display.js'
 import { useCityData } from './lib/useCityData.js'
 
 function useHashMode() {
@@ -52,7 +53,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#FAF8FF]">
-      <Navbar mode={mode} onSetMode={setMode} stream={data.stream} engine={meta?.mode} p1Count={p1Count} />
+      <Navbar mode={mode} onSetMode={setMode} stream={data.stream} engine={meta?.mode} p1Count={p1Count} cityName={cityLabel(meta)} />
 
       <main className="flex-1 relative overflow-hidden">
         {(metaError || data.error) && (

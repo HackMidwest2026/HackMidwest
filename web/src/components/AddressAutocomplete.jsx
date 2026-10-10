@@ -6,10 +6,10 @@ const KIND_ICON = { intersection: Navigation, place: Landmark, neighborhood: Bui
 
 /**
  * Address input with a suggestions dropdown. Typing queries /api/address-suggest
- * (KC intersections and landmarks, plus OpenStreetMap street addresses); picking one calls
+ * (local city intersections and landmarks, plus OpenStreetMap addresses near `near`); picking one calls
  * onSelect({ label, address, lat, lng }). Keyboard: ↑/↓ to move, Enter to pick, Esc to close.
  */
-export default function AddressAutocomplete({ value, onChange, onSelect, onSubmitText, placeholder, inputClassName = '' }) {
+export default function AddressAutocomplete({ value, onChange, onSelect, onSubmitText, near, placeholder, inputClassName = '' }) {
   const [items, setItems] = useState([])
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
@@ -29,7 +29,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, onSubmi
     setLoading(true)
     const t = setTimeout(() => {
       api
-        .addressSuggest(q)
+        .addressSuggest(q, near)
         .then((list) => {
           if (cancelled) return
           setItems(list)
@@ -97,7 +97,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, onSubmi
           role="listbox"
           className="absolute left-0 right-0 top-full mt-1 z-[1200] max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl py-1"
         >
-          {items.length === 0 && <li className="px-3 py-2 text-[11px] text-slate-400">{loading ? 'Searching…' : 'No matches. Try cross streets, e.g. "Troost & 39th".'}</li>}
+          {items.length === 0 && <li className="px-3 py-2 text-[11px] text-slate-400">{loading ? 'Searching…' : 'No matches. Try a street address or two cross streets.'}</li>}
           {items.map((s, i) => {
             const Icon = KIND_ICON[s.kind] || MapPin
             return (
