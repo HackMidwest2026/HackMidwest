@@ -14,6 +14,7 @@ import { runRouter } from './agents/router.js'
 import { subcategoryName } from './agents/rules.js'
 import { emitIssueUpdate, emitTrace } from './lib/events.js'
 import { geocodeAddress, neighborhoodFor, reverseGeocode } from './lib/geo.js'
+import { createLimiter } from './lib/limiter.js'
 import * as store from './lib/store.js'
 
 const TRACE_LIMIT = 200
@@ -262,11 +263,23 @@ async function runReportGraph(report, ctx) {
 
 // ---------- public API ----------
 
+// In Bedrock mode only a few reports run the agent pipeline at once; the rest wait here, in
+// arrival order, so a burst of reports queues up instead of exhausting the model quota.
+export const reportQueue = createLimiter({ maxConcurrent: config.reportConcurrency })
+
 export async function processReport(input, { runId = randomUUID(), ...opts } = {}) {
   const events = []
   const report = createReportRecord(input)
   const ctx = makeCtx({ runId, reportId: report.report_id, sink: events, ...opts })
   ctx.trace({ agent: 'pipeline', status: 'started', message: `Report ${report.report_id} received at ${report.address}.`, data: { lat: report.lat, lng: report.lng } })
+  let release = () => {}
+  if (isBedrock() && !opts.forceMock) {
+    if (reportQueue.isBusy()) {
+      const ahead = reportQueue.stats().waiting + reportQueue.stats().active
+      ctx.trace({ agent: 'pipeline', status: 'started', message: `Queued: ${ahead} report${ahead === 1 ? '' : 's'} ahead of this one.`, data: { queued: true, ahead } })
+    }
+    release = await reportQueue.acquire()
+  }
   try {
     const { issue_id, merged } = await runReportGraph(report, ctx)
     const final = store.getIssue(issue_id)
@@ -281,6 +294,8 @@ export async function processReport(input, { runId = randomUUID(), ...opts } = {
   } catch (err) {
     ctx.trace({ agent: 'pipeline', status: 'error', message: `Pipeline failed: ${err.message}` })
     throw err
+  } finally {
+    release()
   }
 }
 
