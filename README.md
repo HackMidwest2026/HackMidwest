@@ -49,7 +49,7 @@ In Bedrock mode, any failed LLM call (quota, bad model ID, network) falls back t
 
 The design rule from the plan holds in both modes: code does what code is good at, and the LLM makes the judgment calls.
 - **Dedup:** code finds candidates by distance (radius per subcategory, e.g. 40 m for potholes, 150 m for main breaks), time window and category. The agent decides whether a candidate is the same physical problem. Low confidence becomes "possible duplicate", not a merge.
-- **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). The agent may adjust it by ±15 and must explain why.
+- **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of 80, so they reach P1 on the first report. The agent may adjust it by ±15 and must explain why.
 - Every agent returns **Zod-validated structured output**. The server re-checks LLM answers, e.g. a merge target must be one of the candidates and the SLA must match the tier.
 
 ## Demo numbers (mock engine, synthetic data)
@@ -65,7 +65,7 @@ api/                     Node service (Express 5) + agents          → owners A
   src/agents/            intake, dedup, priority, router, supervisor (Strands) + rules.js (mock engine)
   src/tools/cityTools.js tool functions shared by both engines
   src/lib/               store (JSON-persisted), geo (KC gazetteer), events (trace bus), data loader
-  src/pipeline.js        orchestration: single-report and batch paths
+  src/pipeline.js        Strands Graph for single reports; batch path
   src/server.js          REST + SSE
   test/                  node:test suite
 web/                     React (Vite) + Leaflet                     → owner D
@@ -73,7 +73,7 @@ data/                    categories, departments/crews (simulated), KC geography
 scripts/generate-demo-data.js   regenerates data/seed_reports.json and data/demo_reports.json
 ```
 
-The pipeline is orchestrated in code instead of a Strands `Graph`. The flow is fixed (Intake → Dedup → Priority → Router), and the merge-or-create branch and the database writes between steps are plain code. Code orchestration also lets the batch path run intake and triage in parallel while keeping dedup serialized. Each step is still its own Strands `Agent` with its own tools, model tier and schema. The supervisor uses the agents-as-tools pattern.
+The single-report pipeline is a **Strands `Graph`** (`buildReportGraph` in `api/src/pipeline.js`): `intake → dedup → priority → router`, one node per agent. Nodes share the report and issue ids through the graph's app state. The `priority → router` edge is conditional: a report merged into an issue a dispatcher already approved re-scores it but does not re-route it. `GET /api/graph` returns the topology for the UI. The batch path reuses the same steps but schedules them in code, so it can run intake in parallel, keep dedup serialized and triage each touched issue once. The supervisor uses the agents-as-tools pattern.
 
 ## API contract
 
@@ -87,6 +87,7 @@ The pipeline is orchestrated in code instead of a Strands `Graph`. The flow is f
 | `PATCH` | `/api/issues/:id` | `{ status }`: `in_progress`, `resolved`, … |
 | `GET` | `/api/stream` | SSE: `trace` events (every agent step and tool call) and `issue` updates |
 | `POST` | `/api/chat` | `{ question }` → supervisor answer |
+| `GET` | `/api/graph` | Strands Graph topology: nodes, edges, edge conditions |
 | `GET` | `/api/stats`, `/api/meta` | Dashboard numbers; categories, departments, crews, neighborhoods |
 | `POST` | `/api/demo/batch`, `/api/demo/reset` | Demo controls |
 
