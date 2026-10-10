@@ -1,0 +1,15 @@
+obj/
+notes/
+bin/
+vc/bin/
+vc/obj/
+*.o
+*.elf
+.vs/
+*.z64
+*.wad
+.vscode/
+*.sra
+*.bak
+patch/gsc/kz-*/hooks.gsc
+patch/dol

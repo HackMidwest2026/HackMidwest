@@ -1,0 +1,62 @@
+{
+  "checkbox.png": {
+    "type": "texture",
+    "name": "checkbox",
+    "format": "rgba16",
+    "tile_height": 10
+  },
+  "icons.png": {
+    "type": "texture",
+    "name": "icons",
+    "format": "rgba16",
+    "tile_height":  10
+  },
+  "font.png": {
+      "type": "texture",
+      "name": "font",
+      "format": "i8",
+      "tile_height": 128
+  },
+  "buttons.png": {
+    "type": "texture",
+    "name": "buttons",
+    "format": "ia8",
+    "tile_height": 16
+  },
+  "amounts.png": {
+    "type": "texture",
+    "name": "amounts",
+    "format": "i8",
+    "tile_height": 8
+  },
+  "flags.png": {
+      "type": "texture",
+      "name": "flags",
+      "format": "rgba16",
+      "tile_height": 8
+  },
+  "arrows.png": {
+      "type": "texture",
+      "name": "arrows",
+      "format": "i8",
+      "tile_height": 8
+  },
+  "files.png": {
+      "type" : "texture",
+      "name" : "files",
+      "format" : "rgba16",
+      "tile_height" : 10
+  },
+  "kzflex.png": {
+    "type" : "texture",
+    "name" : "kzflex",
+    "format" : "rgba16",
+    "tile_height" : 32
+  },
+  "sd.png": {
+    "type" : "texture",
+    "name" : "sd",
+    "format" : "rgba16",
+    "tile_height": 10
+  }
+}

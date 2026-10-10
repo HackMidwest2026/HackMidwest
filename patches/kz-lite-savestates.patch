@@ -1,0 +1,825 @@
+diff --git a/USAGE.md b/USAGE.md
+index dab7bc8..e8d3fb6 100644
+--- a/USAGE.md
++++ b/USAGE.md
+@@ -140,7 +140,8 @@ The states menu will allow you to change the active savestate slot, create a nam
+ **cur state** This will allow you to switch the change the active state. kz allows the saving of up to 5 states numbered from 0 to 4 use the **<** and **>** buttons to switch between them.  
+ **state name** underneath the **cur state** section there will be a name for the current state.  **no state** will be displayed if currently no state is saved in the selected state.  **untitled** will be displayed as the default name when a state is created in the selected slot for the first time.  Selecting the state name will bring up a keyboard to rename the state.  
+ **export** will allow you to export the currently saved state to the sd card  
+-**import** will allow you to select an exported state to import to the current selected slot.
++**import** will allow you to select an exported state to import to the current selected slot.  
++**size/free** (lite versions only) displays the compressed size of the current state, and the amount of free memory kz has available for states.
+ 
+ ### 2.5 Watches
+ The Watches menu provides a list of custom memory watches
+@@ -360,7 +361,14 @@ The lite version of kz, allows most of the kz features to be used on systems tha
+ 
+ Because kz-lite must be placed in a much smaller memory area, features had to be elimiated in order to make this viable.  The [debug menu](#29-debug) is removed completely.
+ 
+-SD Features are not implemented in lite versions.
++SD Features are not implemented in lite versions, so states cannot be exported or imported.
++
++### Save States in Lite
++Lite versions do not have enough free memory to hold an uncompressed save state, so states are compressed as they are created and decompressed directly back into game memory when they are loaded.  How many states fit depends on how much is going on in the current scene; a state saved in a busy scene uses more memory.  The [states menu](#24-states) shows the compressed size of the selected state, and how much memory kz has free.
++
++* Saving a state into a slot that already holds a state replaces it.  If there is not enough memory to keep both while saving, the old state is freed first.
++* If there is still not enough memory, `not enough memory for state` is displayed.  Clearing states in other slots will free memory.
++* A small amount of memory is always kept free so that menus can still load their textures.
+ 
+ Item icons that are normally displayed in the [inventory menu](#26-inventory) are replaced with check boxes to enable/disable those items.  A tooltip is provided so which item is being switched is known.
+ 
+diff --git a/include/commands.h b/include/commands.h
+index 7f3c6ae..7d2df31 100644
+--- a/include/commands.h
++++ b/include/commands.h
+@@ -24,12 +24,10 @@ enum {
+     KZ_CMD_TIMER,
+     KZ_CMD_TIMER_RESET,
+     KZ_CMD_TITLE_SCREEN,
+-#ifndef LITE
+     KZ_CMD_SAVE_STATE,
+     KZ_CMD_LOAD_STATE,
+     KZ_CMD_PREV_STATE,
+     KZ_CMD_NEXT_STATE,
+-#endif
+     KZ_CMD_SAVE_MEMFILE,
+     KZ_CMD_LOAD_MEMFILE,
+     KZ_CMD_PREV_MEMFILE,
+@@ -73,12 +71,10 @@ void    command_load_position   (void);
+ void    command_next_position   (void);
+ void    command_prev_position   (void);
+ void    command_title_screen    (void);
+-#ifndef LITE
+ void    command_load_state      (void);
+ void    command_save_state      (void);
+ void    command_prev_state      (void);
+ void    command_next_state      (void);
+-#endif
+ 
+ extern struct command kz_commands[KZ_CMD_MAX];
+ 
+diff --git a/include/kz.h b/include/kz.h
+index 45aa10c..0ea8f58 100644
+--- a/include/kz.h
++++ b/include/kz.h
+@@ -112,10 +112,8 @@ typedef struct {
+     sph_coord_t             cam_sph;
+     uint16_t                input_mask;
+     uint8_t                 stick_x_mask, stick_y_mask;
+-#ifndef LITE
+     kz_state_hdr_t         *states[STATE_MAX];
+     int                     state_slot;
+-#endif
+     menu_t                  pause_menu;
+     menu_item_t            *pause_item_list;
+ } kz_ctxt_t;
+@@ -128,8 +126,8 @@ menu_t *create_cheats_menu      (void);
+ menu_t *create_file_menu        (void);
+ menu_t *create_equips_menu      (void);
+ menu_t *create_settings_menu    (void);
+-#ifndef LITE
+ menu_t *create_states_menu      (void);
++#ifndef LITE
+ menu_t *create_debug_menu       (void);
+ #endif
+ void    kz_log                  (const char *format, ...);
+diff --git a/include/mem.h b/include/mem.h
+index 0f5af6c..c95aa36 100644
+--- a/include/mem.h
++++ b/include/mem.h
+@@ -14,5 +14,6 @@ void *memset(void *dst, int val, size_t size);
+ void *calloc(size_t item_cnt, size_t item_size);
+ void *memalign(size_t align, size_t size);
+ void get_free_mem(size_t *sizes);
++size_t mem_largest_free(size_t *total);
+ 
+ #endif
+\ No newline at end of file
+diff --git a/include/settings.h b/include/settings.h
+index de3bd99..5d8ef91 100644
+--- a/include/settings.h
++++ b/include/settings.h
+@@ -16,7 +16,11 @@
+ #define IO_BLOCK_SIZE       0x80
+ #define SIZE_TO_BLOCK(x)    ((x + IO_BLOCK_SIZE - 1) / IO_BLOCK_SIZE)
+ 
++#ifdef LITE
++#define SETTINGS_VER        13
++#else
+ #define SETTINGS_VER        12
++#endif
+ #define SETTINGS_ADDR       0x1C000
+ #define SETTINGS_SIZE       (sizeof(struct settings_header) + sizeof(struct settings_data))
+ #define SETTINGS_PAD        ((IO_BLOCK_SIZE - (SETTINGS_SIZE & (IO_BLOCK_SIZE - 1))) & (IO_BLOCK_SIZE - 1))
+diff --git a/include/state.h b/include/state.h
+index 220a9f8..06e64cf 100644
+--- a/include/state.h
++++ b/include/state.h
+@@ -4,7 +4,6 @@
+ * defintions for save state functionality
+ */
+ 
+-#ifndef LITE
+ #ifndef _STATE_H
+ #define _STATE_H
+ 
+@@ -13,6 +12,13 @@
+ 
+ #define STATE_VERSION 8
+ 
++#ifdef LITE
++/* memory left free when allocating a state, so kz can still load menu textures */
++#define STATE_MEM_RESERVE   0x18000
++/* smallest output buffer worth attempting to compress a state into */
++#define STATE_MIN_ALLOC     0x8000
++#endif
++
+ typedef struct {
+     uint16_t    z2_version;
+     uint16_t    state_version;
+@@ -24,5 +30,12 @@ size_t  save_state      (void *state);
+ void    load_state      (void *state);
+ int     state_is_valid  (kz_state_hdr_t *state);
+ 
++#ifdef LITE
++/**
++ * Saves a compressed state into newly allocated memory.
++ * Returns NULL if there is not enough free memory to hold the state.
++ */
++kz_state_hdr_t *save_state_alloc(void);
+ #endif
++
+ #endif
+diff --git a/include/state_lz.h b/include/state_lz.h
+new file mode 100644
+index 0000000..09538b1
+--- /dev/null
++++ b/include/state_lz.h
+@@ -0,0 +1,37 @@
++/*
++* state_lz.h
++*
++* tiny streaming lz77 compressor used by kz-lite save states.
++*
++* kz-lite does not have enough free ram to hold an uncompressed save state,
++* so every chunk the state code writes is compressed as it is written, and
++* decompressed directly into game memory when it is read back.  Matches only
++* reference data within the same chunk, so no history buffer is required on
++* either side.
++*/
++
++#ifndef _STATE_LZ_H
++#define _STATE_LZ_H
++
++#include <stdint.h>
++#include <stddef.h>
++
++#define LZ_HASH_BITS    12
++#define LZ_HASH_SIZE    (1 << LZ_HASH_BITS)
++
++/* hash table used while compressing, LZ_HASH_SIZE entries */
++typedef const uint8_t *lz_hash_t;
++
++/**
++ * Compress len bytes from src into out, never writing past out_end.
++ * Returns the new output position, or NULL if the output buffer overflowed.
++ */
++uint8_t        *lz_compress     (uint8_t *out, uint8_t *out_end, const void *src, size_t len, lz_hash_t *hash);
++
++/**
++ * Decompress exactly len bytes from src into dst.
++ * Returns the position in src following the compressed data.
++ */
++const uint8_t  *lz_decompress   (const uint8_t *src, void *dst, size_t len);
++
++#endif
+diff --git a/src/commands.c b/src/commands.c
+index f2511da..a40338a 100644
+--- a/src/commands.c
++++ b/src/commands.c
+@@ -22,12 +22,10 @@ struct command kz_commands[KZ_CMD_MAX] = {
+     {"start/stop timer",    COMMAND_PRESS,  command_timer},
+     {"reset timer",         COMMAND_PRESS,  command_timer_reset},
+     {"title screen",        COMMAND_PRESS,  command_title_screen},
+-#ifndef LITE
+     {"save state",          COMMAND_PRESS,  command_save_state},
+     {"load state",          COMMAND_PRESS,  command_load_state},
+     {"prev state",          COMMAND_PRESS,  command_prev_state},
+     {"next state",          COMMAND_PRESS,  command_next_state},
+-#endif
+     {"save memfile",        COMMAND_PRESS,  command_save_memfile},
+     {"load memfile",        COMMAND_PRESS,  command_load_memfile},
+     {"prev memfile",        COMMAND_PRESS,  command_prev_memfile},
+@@ -38,7 +36,6 @@ struct command kz_commands[KZ_CMD_MAX] = {
+     {"next position",       COMMAND_PRESS,  command_next_position},
+ };
+ 
+-#ifndef LITE
+ void command_prev_state(void) {
+     kz.state_slot += STATE_MAX - 1;
+     kz.state_slot %= STATE_MAX;
+@@ -101,6 +98,38 @@ void command_save_state(){
+     }
+ 
+     kz_state_hdr_t *state = kz.states[kz.state_slot];
++#ifdef LITE
++    char name[sizeof(state->name)];
++    if(state != NULL) {
++        memcpy(name, state->name, sizeof(name));
++    } else {
++        strcpy(name, "untitled");
++    }
++
++    /* try to keep the old state until the new one has been saved */
++    kz_state_hdr_t *new_state = save_state_alloc();
++    if(new_state == NULL && state != NULL) {
++        free(state);
++        state = NULL;
++        kz.states[kz.state_slot] = NULL;
++        new_state = save_state_alloc();
++    }
++
++    if(new_state == NULL) {
++        kz_log("not enough memory for state %d", kz.state_slot);
++        return;
++    }
++
++    if(state != NULL) {
++        free(state);
++    }
++
++    new_state->z2_version = Z2_VERSION;
++    new_state->state_version = STATE_VERSION;
++    memcpy(new_state->name, name, sizeof(name));
++    kz.states[kz.state_slot] = new_state;
++    kz_log("saved state %d (%s, %dkb)", kz.state_slot, new_state->name, (new_state->size + 1023) / 1024);
++#else
+     char *tmp_name = NULL;
+     if(state != NULL) {
+         tmp_name = malloc(sizeof(state->name));
+@@ -152,8 +181,8 @@ void command_save_state(){
+     kz_log("saved state %d (%s)", kz.state_slot, state->name);
+ #endif
+     kz.states[kz.state_slot] = state;
+-}
+ #endif
++}
+ 
+ void command_timer(void){
+     kz.timer_running = !kz.timer_running;
+diff --git a/src/kz.c b/src/kz.c
+index c5813f5..8c25f77 100644
+--- a/src/kz.c
++++ b/src/kz.c
+@@ -640,12 +640,8 @@ static void init(void) {
+     menu_submenu_add(&kz.main_menu, 0, 2, "cheats", create_cheats_menu());
+     menu_submenu_add(&kz.main_menu, 0, 3, "scene", create_scene_menu());
+ 
+-#ifndef LITE
+ #define Y 5
+     menu_submenu_add(&kz.main_menu, 0, 4, "states", create_states_menu());
+-#else
+-#define Y 4
+-#endif
+     menu_submenu_add(&kz.main_menu, 0, Y, "watches", create_watches_menu());
+     menu_submenu_add(&kz.main_menu, 0, Y + 1, "inventory", create_inventory_menu());
+     menu_submenu_add(&kz.main_menu, 0, Y + 2, "equips", create_equips_menu());
+@@ -682,13 +678,11 @@ static void init(void) {
+ 
+     memset(&kz.log, 0, sizeof(kz.log));
+ 
+-#ifndef LITE
+     for(int i = 0; i < STATE_MAX; i++) {
+         kz.states[i] = NULL;
+     }
+ 
+     kz.state_slot = 0;
+-#endif
+ 
+     kz.input_mask = BUTTON_DPAD;
+     kz.stick_x_mask = 0x00;
+diff --git a/src/kz_states_menu.c b/src/kz_states_menu.c
+index d19bf87..e5f7b82 100644
+--- a/src/kz_states_menu.c
++++ b/src/kz_states_menu.c
+@@ -1,11 +1,15 @@
+-#ifndef LITE
+-#include <sys/stat.h>
+ #include "kz.h"
+ #include "menu.h"
++#include "kzresource.h"
++#ifdef LITE
++#include "mem.h"
++#include "printf.h"
++#else
++#include <sys/stat.h>
+ #include "menu_file.h"
+ #include "sys.h"
+ #include "hb_heap.h"
+-#include "kzresource.h"
++#endif
+ 
+ static const char *no_state = "no state";
+ static char *state_name = NULL;
+@@ -73,6 +77,18 @@ static int name_onupdate(event_handler_t *handler, menu_event_t event, void **ev
+     return 1;
+ }
+ 
++#ifdef LITE
++static char state_mem_text[32];
++
++static int state_mem_onupdate(event_handler_t *handler, menu_event_t event, void **event_data) {
++    size_t total;
++    mem_largest_free(&total);
++    kz_state_hdr_t *state = kz.states[kz.state_slot];
++    int state_kb = state != NULL ? (state->size + 1023) / 1024 : 0;
++    snprintf(state_mem_text, sizeof(state_mem_text), "size %dkb free %dkb", state_kb, (int)(total / 1024));
++    return 1;
++}
++#else
+ static void do_export_state(char *path, void *data){
+     int file = creat(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+     if(file != -1){
+@@ -142,6 +158,8 @@ static int import_state_onactivate(event_handler_t *handler, menu_event_t event,
+     return 1;
+ }
+ 
++#endif
++
+ static int delete_state_onactivate(event_handler_t *handler, menu_event_t event, void **event_data) {
+     if(kz.states[kz.state_slot]) {
+ #ifdef WIIVC
+@@ -179,8 +197,16 @@ menu_t *create_states_menu(void) {
+     name_item->color = COLOR_FADED;
+     menu_item_register_event(name_item, MENU_EVENT_UPDATE | MENU_EVENT_ACTIVATE | MENU_EVENT_KEYBOARD, name_onupdate, NULL);
+ 
++#ifdef LITE
++    menu_item_t *mem_item = menu_label_add(&states_menu, 0, 3, state_mem_text);
++    mem_item->color = COLOR_FADED;
++    menu_item_register_event(mem_item, MENU_EVENT_UPDATE, state_mem_onupdate, NULL);
++#define X 0
++#else
+     menu_gfx_button_add(&states_menu, 0, 4, pexport_sprite, export_state_onactivate, NULL)->tooltip = "export state";
+     menu_gfx_button_add(&states_menu, 4, 4, pimport_sprite, import_state_onactivate, NULL)->tooltip = "import state";
++#define X 8
++#endif
+ 
+     static menu_sprite_t clear_state_sprite = {
+         NULL,   2,  2,  DEFAULT_COLOR,  DEFAULT_COLOR,
+@@ -189,7 +215,7 @@ menu_t *create_states_menu(void) {
+     };
+ 
+     clear_state_sprite.texture = resource_get(R_KZ_SD);
+-    menu_gfx_button_add(&states_menu, 8, 4, &clear_state_sprite, delete_state_onactivate, NULL)->tooltip = "clear state";
++    menu_gfx_button_add(&states_menu, X, 4, &clear_state_sprite, delete_state_onactivate, NULL)->tooltip = "clear state";
++#undef X
+     return &states_menu;
+ }
+-#endif
+diff --git a/src/mem.c b/src/mem.c
+index 5a3dd21..c1ec42e 100644
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -105,9 +105,9 @@ NOINLINE void *malloc(size_t size) {
+                         blk->next->prev = next_free;
+                     }
+                     blk->next = next_free;
++                    blk->size = size;
+                 }
+ 
+-                blk->size = size;
+                 blk->free = 0;
+ 
+                 if(blk == heap_first_free[i]) {
+@@ -152,7 +152,7 @@ NOINLINE void free(void *ptr) {
+ 
+     blk->free = 1;
+ 
+-    if(blk < heap_first_free[blk->heap]) {
++    if(heap_first_free[blk->heap] == NULL || blk < heap_first_free[blk->heap]) {
+         heap_first_free[blk->heap] = blk;
+     }
+ }
+@@ -172,25 +172,35 @@ NOINLINE void *realloc(void *ptr, size_t size) {
+     heap_hdr_t *blk, *next_free;
+ 
+     blk = (heap_hdr_t*)((char*)ptr - HDR_SIZE);
+-    if(blk->size > size && blk->size - size >= HDR_SIZE + HEAP_ALIGN(1)) {
+-        next_free = (heap_hdr_t*)((char*)blk + size);
+-        next_free->free = 1;
+-        next_free->size = blk->size - size - HDR_SIZE;
+-        next_free->prev = blk;
+-        next_free->next = blk->next;
+-        next_free->heap = blk->heap;
+-        if(blk->next != NULL) {
+-            blk->next->prev = next_free;
+-        }
+-        blk->next = next_free;
+-        blk->size = size;
+-        if(heap_first_free[blk->heap] == blk) {
+-            for(next_free = blk->next; next_free != NULL; next_free = next_free->next) {
+-                if(next_free->free) {
+-                    break;
++    if(blk->size >= size) {
++        if(blk->size - size >= HDR_SIZE + HEAP_ALIGN(1)) {
++            // split off the unused tail as a new free block, after the block's data
++            next_free = (heap_hdr_t*)((char*)blk + HDR_SIZE + size);
++            next_free->free = 1;
++            next_free->size = blk->size - size - HDR_SIZE;
++            next_free->prev = blk;
++            next_free->next = blk->next;
++            next_free->heap = blk->heap;
++            if(blk->next != NULL) {
++                blk->next->prev = next_free;
++            }
++            blk->next = next_free;
++            blk->size = size;
++
++            // merge with the following block if it is also free
++            heap_hdr_t *after = next_free->next;
++            if(after != NULL && after->free) {
++                next_free->size += after->size + HDR_SIZE;
++                next_free->next = after->next;
++                if(after->next != NULL) {
++                    after->next->prev = next_free;
+                 }
+             }
+-            heap_first_free[blk->heap] = next_free;
++
++            heap_hdr_t **first_free = &heap_first_free[blk->heap];
++            if(*first_free == NULL || next_free < *first_free || *first_free == after) {
++                *first_free = next_free;
++            }
+         }
+ 
+         return ptr;
+@@ -260,9 +270,9 @@ void *memalign(size_t align, size_t size) {
+                         blk->next->prev = next_free;
+                     }
+                     blk->next = next_free;
++                    blk->size = size;
+                 }
+ 
+-                blk->size = size;
+                 blk->free = 0;
+ 
+                 if(blk == heap_first_free[i]) {
+@@ -281,6 +291,31 @@ void *memalign(size_t align, size_t size) {
+     return malloc(size);
+ }
+ 
++size_t mem_largest_free(size_t *total) {
++    if(!heap_initialized) {
++        heap_init();
++    }
++
++    size_t largest = 0;
++    size_t sum = 0;
++    for(int i = 0; i < HEAP_CNT; i++) {
++        for(heap_hdr_t *hdr = heap_first_free[i]; hdr != NULL; hdr = hdr->next) {
++            if(hdr->free) {
++                sum += hdr->size;
++                if(hdr->size > largest) {
++                    largest = hdr->size;
++                }
++            }
++        }
++    }
++
++    if(total != NULL) {
++        *total = sum;
++    }
++
++    return largest;
++}
++
+ void get_free_mem(size_t *sizes) {
+     for(int i = 0; i < HEAP_CNT; i++) {
+         sizes[i] = 0;
+diff --git a/src/settings.c b/src/settings.c
+index ba68c3d..9d866f1 100644
+--- a/src/settings.c
++++ b/src/settings.c
+@@ -26,12 +26,10 @@ void load_default_settings(void){
+     settings->binds[KZ_CMD_RESET_LAG] = BIND_END;
+     settings->binds[KZ_CMD_TIMER] = BIND_END;
+     settings->binds[KZ_CMD_TIMER_RESET] = BIND_END;
+-#ifndef LITE
+     settings->binds[KZ_CMD_SAVE_STATE] = make_bind(1, BUTTON_D_LEFT);
+     settings->binds[KZ_CMD_LOAD_STATE] = make_bind(1, BUTTON_D_RIGHT);
+     settings->binds[KZ_CMD_PREV_STATE] = BIND_END;
+     settings->binds[KZ_CMD_NEXT_STATE] = BIND_END;
+-#endif
+     settings->binds[KZ_CMD_SAVE_MEMFILE] = make_bind(2, BUTTON_C_LEFT, BUTTON_D_LEFT);
+     settings->binds[KZ_CMD_LOAD_MEMFILE] = make_bind(2, BUTTON_C_LEFT, BUTTON_D_RIGHT);
+     settings->binds[KZ_CMD_PREV_MEMFILE] = BIND_END;
+diff --git a/src/state.c b/src/state.c
+index 226d3ae..b81fbb6 100644
+--- a/src/state.c
++++ b/src/state.c
+@@ -1,4 +1,3 @@
+-#ifndef LITE
+ #include <stdint.h>
+ #include <set/set.h>
+ #include <mips.h>
+@@ -7,9 +6,14 @@
+ #include "zu.h"
+ #include "kzresource.h"
+ #include "kz.h"
+-#include "hb_heap.h"
+ #include "audio.h"
+ #include "vc.h"
++#ifdef LITE
++#include "mem.h"
++#include "state_lz.h"
++#else
++#include "hb_heap.h"
++#endif
+ 
+ #ifdef WIIVC
+ #define MAYBENOINLINE __attribute__ ((noinline))
+@@ -19,6 +23,38 @@
+ 
+ static _Bool save_wr = 0;
+ 
++/* reads uncompressed data, used for the state header */
++static MAYBENOINLINE void st_read_raw(void **src, void *dst, size_t len){
++    char *p = *src;
++#ifdef WIIVC
++    hmemcpy(dst, p, len);
++#else
++    memcpy(dst, p, len);
++#endif
++    p += len;
++    *src = p;
++}
++
++#ifdef LITE
++/*
++* kz-lite cannot spare the memory for an uncompressed state, so every chunk
++* is lz compressed as it is written, and decompressed straight back into game
++* memory as it is read.
++*/
++static uint8_t     *st_end;
++static lz_hash_t   *st_hash;
++
++static void st_write(void **dst, void *src, size_t len){
++    if(save_wr) {
++        /* once the output buffer has overflowed, *dst stays NULL */
++        *dst = lz_compress(*dst, st_end, src, len, st_hash);
++    }
++}
++
++static void st_read(void **src, void *dst, size_t len){
++    *src = (void*)lz_decompress(*src, dst, len);
++}
++#else
+ static MAYBENOINLINE void st_write(void **dst, void *src, size_t len){
+     char *p = *dst;
+ 
+@@ -34,15 +70,9 @@ static MAYBENOINLINE void st_write(void **dst, void *src, size_t len){
+ }
+ 
+ static MAYBENOINLINE void st_read(void **src, void *dst, size_t len){
+-    char *p = *src;
+-#ifdef WIIVC
+-    hmemcpy(dst, p, len);
+-#else
+-    memcpy(dst, p, len);
+-#endif
+-    p += len;
+-    *src = p;
++    st_read_raw(src, dst, len);
+ }
++#endif
+ 
+ static void st_skip(void **dest, size_t len){
+     char *p = *dest;
+@@ -107,7 +137,7 @@ void load_state(void *state){
+     uint64_t offset;
+ 
+     kz_state_hdr_t hdr;
+-    st_read(&p, &hdr, sizeof(hdr));
++    st_read_raw(&p, &hdr, sizeof(hdr));
+ 
+     load_time = osGetTime();
+ 
+@@ -1049,9 +1079,58 @@ size_t save_state(void *state){
+     st_write(&p, z2_staff_notes, 0x1E);
+     st_write(&p, &z2_song_ptr, sizeof(z2_song_ptr));
+     st_write(&p, &z2_unk_song_pos, sizeof(z2_unk_song_pos));
++
++#ifdef LITE
++    if(p == NULL) {
++        /* compressed state did not fit in the output buffer */
++        return 0;
++    }
++#endif
+     return (char*)p - (char*)state;
+ }
+ 
++#ifdef LITE
++kz_state_hdr_t *save_state_alloc(void){
++    lz_hash_t *hash = malloc(sizeof(*hash) * LZ_HASH_SIZE);
++    if(hash == NULL) {
++        return NULL;
++    }
++    memset(hash, 0, sizeof(*hash) * LZ_HASH_SIZE);
++
++    /* compress into the largest block that still leaves the reserve free */
++    size_t total;
++    size_t cap = mem_largest_free(&total);
++    if(total < STATE_MEM_RESERVE) {
++        cap = 0;
++    } else if(cap > total - STATE_MEM_RESERVE) {
++        cap = total - STATE_MEM_RESERVE;
++    }
++    cap &= ~(size_t)0xF;
++
++    kz_state_hdr_t *state = NULL;
++    if(cap >= STATE_MIN_ALLOC) {
++        state = malloc(cap);
++    }
++
++    if(state != NULL) {
++        st_end = (uint8_t*)state + cap;
++        st_hash = hash;
++        size_t size = save_state(state);
++        if(size == 0) {
++            free(state);
++            state = NULL;
++        } else {
++            /* give back the unused part of the buffer */
++            state = realloc(state, size);
++            state->size = size;
++        }
++    }
++
++    free(hash);
++    return state;
++}
++#endif
++
+ struct state_compat {
+     uint16_t    state_version;
+     int16_t     compat_versions[10];
+@@ -1095,5 +1174,3 @@ int state_is_valid(kz_state_hdr_t *state) {
+ 
+     return 0;
+ }
+-
+-#endif
+diff --git a/src/state_lz.c b/src/state_lz.c
+new file mode 100644
+index 0000000..c38e061
+--- /dev/null
++++ b/src/state_lz.c
+@@ -0,0 +1,148 @@
++#ifdef LITE
++#include <stdint.h>
++#include <stddef.h>
++#include "state_lz.h"
++
++/*
++* stream format, a sequence of tokens:
++*   0x00-0x7F   literal run, token + 1 literal bytes follow
++*   0x80-0xFF   match, followed by a 16 bit big endian distance (1-65535).
++*               length = (token & 0x7F) + LZ_MIN_MATCH.  when (token & 0x7F)
++*               is 0x7F, extension bytes follow, each is added to the length,
++*               and another extension byte follows when one is 0xFF.
++*/
++
++#define LZ_MIN_MATCH    3
++#define LZ_MAX_LIT      0x80
++#define LZ_MAX_DIST     0xFFFF
++#define LZ_LEN_EXT      0x7F
++
++static inline uint32_t lz_hash(const uint8_t *p) {
++    uint32_t v = ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
++    return (v * 2654435761u) >> (32 - LZ_HASH_BITS);
++}
++
++static uint8_t *lz_emit_literals(uint8_t *out, uint8_t *out_end, const uint8_t *lit, size_t cnt) {
++    while(cnt > 0) {
++        size_t run = cnt > LZ_MAX_LIT ? LZ_MAX_LIT : cnt;
++        if(out_end - out < run + 1) {
++            return NULL;
++        }
++        *out++ = run - 1;
++        for(size_t i = 0; i < run; i++) {
++            *out++ = lit[i];
++        }
++        lit += run;
++        cnt -= run;
++    }
++    return out;
++}
++
++static uint8_t *lz_emit_match(uint8_t *out, uint8_t *out_end, size_t dist, size_t len) {
++    len -= LZ_MIN_MATCH;
++    size_t ext_cnt = len >= LZ_LEN_EXT ? (len - LZ_LEN_EXT) / 0xFF + 1 : 0;
++    if(out_end - out < ext_cnt + 3) {
++        return NULL;
++    }
++    *out++ = 0x80 | (len >= LZ_LEN_EXT ? LZ_LEN_EXT : len);
++    *out++ = dist >> 8;
++    *out++ = dist;
++    if(len >= LZ_LEN_EXT) {
++        len -= LZ_LEN_EXT;
++        while(len >= 0xFF) {
++            *out++ = 0xFF;
++            len -= 0xFF;
++        }
++        *out++ = len;
++    }
++    return out;
++}
++
++uint8_t *lz_compress(uint8_t *out, uint8_t *out_end, const void *src, size_t len, lz_hash_t *hash) {
++    const uint8_t *start = src;
++    const uint8_t *ip = start;
++    const uint8_t *end = start + len;
++    const uint8_t *lit = start;
++
++    if(out == NULL) {
++        return NULL;
++    }
++
++    if(len >= LZ_MIN_MATCH) {
++        const uint8_t *match_end = end - (LZ_MIN_MATCH - 1);
++        while(ip < match_end) {
++            uint32_t h = lz_hash(ip);
++            const uint8_t *ref = hash[h];
++            hash[h] = ip;
++
++            /* entries left over from other chunks are rejected by the range check */
++            if(ref < start || ref >= ip || ip - ref > LZ_MAX_DIST ||
++               ref[0] != ip[0] || ref[1] != ip[1] || ref[2] != ip[2]) {
++                ip++;
++                continue;
++            }
++
++            size_t max = end - ip;
++            size_t mlen = LZ_MIN_MATCH;
++            while(mlen < max && ref[mlen] == ip[mlen]) {
++                mlen++;
++            }
++
++            out = lz_emit_literals(out, out_end, lit, ip - lit);
++            if(out == NULL) {
++                return NULL;
++            }
++            out = lz_emit_match(out, out_end, ip - ref, mlen);
++            if(out == NULL) {
++                return NULL;
++            }
++
++            ip += mlen;
++            lit = ip;
++
++            /* keep the table fresh for data following a long match */
++            if(ip < match_end) {
++                hash[lz_hash(ip - 1)] = ip - 1;
++            }
++        }
++    }
++
++    return lz_emit_literals(out, out_end, lit, end - lit);
++}
++
++const uint8_t *lz_decompress(const uint8_t *src, void *dst, size_t len) {
++    uint8_t *op = dst;
++    uint8_t *end = op + len;
++
++    while(op < end) {
++        uint8_t token = *src++;
++        if(token < 0x80) {
++            size_t run = token + 1;
++            for(size_t i = 0; i < run; i++) {
++                *op++ = *src++;
++            }
++        } else {
++            size_t mlen = token & LZ_LEN_EXT;
++            size_t dist = (src[0] << 8) | src[1];
++            src += 2;
++            if(mlen == LZ_LEN_EXT) {
++                uint8_t ext;
++                do {
++                    ext = *src++;
++                    mlen += ext;
++                } while(ext == 0xFF);
++            }
++            mlen += LZ_MIN_MATCH;
++
++            /* byte by byte so overlapping matches act as run length encoding */
++            const uint8_t *ref = op - dist;
++            for(size_t i = 0; i < mlen; i++) {
++                *op++ = *ref++;
++            }
++        }
++    }
++
++    return src;
++}
++
++#endif

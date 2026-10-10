@@ -1,0 +1,75 @@
+#!/bin/bash
+
+elf="$1"
+bin="$2"
+if [ -z "$elf" ]; then
+    echo usage: \`genhooks \<elf\> \<bin\>\`
+fi
+
+if [ -z "$bin" ]; then
+    echo usage: \`genhooks \<elf\> \<bin\>\`
+fi
+
+symtbl="$(mktemp)"
+powerpc-eabi-nm "$elf" | awk '(/^[0-9A-Za-z_ ]*$/) {printf "sym_%s=0x%s\n",$3,substr($1,length($1)-7)}' >"$symtbl"
+. "$symtbl"
+rm -f "$symtbl"
+
+vcaddr()
+{
+    printf "#include \"src/vc.h\"\n$1" | powerpc-eabi-cpp - $CPPFLAGS | tail -n 1 | sed -e s/^M//g
+}
+
+vcsym()
+{
+    echo "0x`powerpc-eabi-nm "$elf" | sed -e s/^M//g | grep -w "$1" | sed -E -e "s/([0-9A-Fa-f]{8})?([0-9A-Fa-f]{8}).*/\2/"`"
+}
+
+vcbranch()
+{
+    dest="$(printf "%d" "$1")"
+    origin="$2"
+    origin="$(printf "%d" "$origin")"
+    val=$(expr "$dest" - "$origin")
+    printf "0x%08x" "$val"    
+}
+
+gzi32()
+{
+    addr2="$(printf "%d" "$1")"
+    addr2="$(expr "$addr2" - 2147512512 + 9696)" # addr - 800070c0 + 25e0 should probably actually read the dol here, but lazy
+    printf "0304 %08x %s\n" "$addr2" "$2"
+}
+
+genhook()
+{
+    addr="$(printf "%d" "$1")"
+    tmp="$(mktemp)"
+    echo "$2" | powerpc-eabi-as -mregnames - -o "$tmp"
+    powerpc-eabi-readelf -x .text "$tmp" | grep "0x[0-9A-Fa-f]\{8\}" | grep -o " [0-9A-Fa-f]\{8\}" |
+    while read -r line; do
+        gzi32 "$addr" "$line"
+        addr=$(expr "$addr" + 4)
+    done
+    rm -f "$tmp"
+}
+
+echo "0000 00000000 00000001"
+genhook "$sym_treeInitNode" "b $(vcbranch $sym_kz_treeInitNode $sym_treeInitNode);"
+genhook "$sym_cpuHeapTake" "b $(vcbranch $sym_kz_cpuHeapTake $sym_cpuHeapTake);"
+genhook "$sym_treeInsert" "b $(vcbranch $sym_kz_treeInsert $sym_treeInsert);"
+genhook "$sym_treeSearchNode" "b $(vcbranch $sym_kz_treeSearchNode $sym_treeSearchNode);"
+binsiz="$(stat --printf="%s" "$bin")"
+initaddr="$sym__start"
+initaddr=$(printf "%d" "$initaddr")
+heapaddr=$(expr "$initaddr" + "$binsiz")
+heapaddr=$(printf "0x%08x" "$heapaddr")
+genhook "$sym_heap_size_hook" "lis r3, "$heapaddr"@h;ori r3, r3, "$heapaddr"@l;"
+genhook "$sym_ramSetSizeCall" "bl $(vcbranch $sym__start $sym_ramSetSizeCall);"
+genhook "$sym_mem2_heap_size" "lis r4, 0x9010;nop;nop;ori r0, r4, 0x0800;nop;nop;"
+genhook "$sym_ramGetBuffer" "b $(vcbranch $sym_kz_ramGetBuffer $sym_ramGetBuffer);"
+genhook "$sym_rdp_fb_copy_call" "bl $(vcbranch $sym_kz_rdp_frame_buffer_copy $sym_rdp_fb_copy_call);"
+genhook "$sym_unk_status_set_call" "mr 4, 28; bl $(vcbranch $sym_wiimote_pad_merge $sym_unk_status_set_call) - 4;"
+
+echo "0000 00000000 00000064"
+echo "0301 0000018B 0000003D"
