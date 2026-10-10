@@ -2,6 +2,7 @@ import express from 'express'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
@@ -277,4 +278,4 @@ export async function start() {
 
 export { app }
 
-if (import.meta.url === `file://${process.argv[1]}`) start()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) start()
