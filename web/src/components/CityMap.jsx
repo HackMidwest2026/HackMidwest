@@ -201,12 +201,20 @@ function FlyTo({ target, zoom = 15 }) {
 
 function HudControls({ center, onRecenter, showLayerMenu, setShowLayerMenu }) {
   const map = useMap()
+  const panel = useRef(null)
+  // These buttons sit inside the map, so Leaflet sees their clicks as map clicks (which drop
+  // the report pin) unless told otherwise. React's stopPropagation is too late: Leaflet listens
+  // on the map element itself, before React's root handler runs.
+  useEffect(() => {
+    if (!panel.current) return
+    L.DomEvent.disableClickPropagation(panel.current)
+    L.DomEvent.disableScrollPropagation(panel.current)
+  }, [])
   const btn = 'w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-slate-100 hover:text-slate-900 border-b border-slate-200 transition-colors'
   return (
     <div
+      ref={panel}
       className="absolute top-4 right-4 z-[1000] flex flex-col shadow-md rounded-lg overflow-hidden border border-slate-200/80 bg-white/90 backdrop-blur-md"
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
     >
       <button onClick={() => map.zoomIn()} title="Zoom in" className={btn}>
         <Plus className="w-4 h-4" />
