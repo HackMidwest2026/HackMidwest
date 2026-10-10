@@ -41,7 +41,7 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
   const firstReport = detail?.reports?.[0]
 
   return (
-    <div className="absolute bottom-4 right-14 top-16 z-[1000] w-96 max-w-[calc(100%-4.5rem)] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl text-xs animate-in flex flex-col overflow-hidden">
+    <div className="fixed inset-x-2 bottom-2 top-[4.5rem] z-[1050] md:absolute md:inset-auto md:top-16 md:right-14 md:bottom-4 md:w-96 md:max-w-[calc(100%-4.5rem)] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 shadow-2xl text-xs animate-in flex flex-col overflow-hidden">
       <div className="p-4 pb-2 flex items-start justify-between border-b border-slate-100">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">

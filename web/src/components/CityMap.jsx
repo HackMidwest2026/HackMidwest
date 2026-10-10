@@ -324,7 +324,7 @@ export default function CityMap({
       )}
 
       {showLegend && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[900] bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full shadow-sm border border-slate-200/80 hidden sm:flex items-center gap-4 text-xs font-medium text-slate-700 whitespace-nowrap">
+        <div className="absolute top-[9.75rem] right-4 z-[900] bg-white/90 backdrop-blur-md p-2 rounded-lg shadow-sm border border-slate-200/80 hidden sm:flex flex-col gap-1.5 text-[11px] font-medium text-slate-700 whitespace-nowrap">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#DC2626]" />
             <span>Priority Action</span>
