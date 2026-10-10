@@ -1,11 +1,10 @@
 // Vision agent (Haiku-class, image input). When a report has a photo, the Intake step runs
 // this agent first and hands its findings to the Intake agent, so a photo with a vague
 // caption ("look at this!!") still gets the right category, hazards and severity.
-import { readFile } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { basename, extname } from 'node:path'
 import { ImageBlock, TextBlock } from '@strands-agents/sdk'
-import { config } from '../config.js'
 import { cityLabel } from '../lib/data.js'
+import { readPhoto } from '../lib/store.js'
 import { runStructured } from './llm.js'
 import { PhotoOutput } from './schemas.js'
 
@@ -26,7 +25,10 @@ export async function analyzePhotoWithVision({ photo_url }) {
     return { analyzed: false, photo_url, note: 'Not an uploaded report photo.' }
   }
   try {
-    const bytes = await readFile(join(config.stateDir, 'uploads', name))
+    // Photos live in the store (MongoDB or local files), not necessarily on this machine's disk.
+    const photo = await readPhoto(name)
+    if (!photo) throw Object.assign(new Error(`photo ${name} not found`), { name: 'NotFound' })
+    const bytes = photo.bytes
     const { output, modelId } = await runStructured({
       name: 'vision',
       tier: 'intake',

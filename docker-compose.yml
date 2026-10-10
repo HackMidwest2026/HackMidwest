@@ -10,6 +10,7 @@ services:
       dockerfile: api/Dockerfile
     environment:
       CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
+      DATABASE_URL: ${DATABASE_URL:-}
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
       BEDROCK_RPM: ${BEDROCK_RPM:-24}
       BEDROCK_MAX_CONCURRENCY: ${BEDROCK_MAX_CONCURRENCY:-4}
