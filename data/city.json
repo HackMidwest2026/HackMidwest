@@ -1,5 +1,5 @@
 {
-  "_note": "Approximate Kansas City, MO geography for the demo. Street positions are simplified to straight grid lines (N-S streets by longitude, E-W streets by latitude), so intersections land within roughly 100 m of the real corner. Road classes and sites are hand-picked approximations, not official data.",
+  "_note": "Approximate Kansas City, MO geography for the demo. Street positions are simplified to straight grid lines (N-S streets by longitude, E-W streets by latitude), so intersections land within roughly 100 m of the real corner. Road classes, sites and landmarks are hand-picked approximations, not official data.",
   "center": { "lat": 39.06, "lng": -94.575 },
   "streets": [
     { "name": "State Line Rd", "aliases": ["state line"], "axis": "ns", "lng": -94.6075, "road_type": "arterial" },
@@ -14,6 +14,7 @@
     { "name": "Troost Ave", "aliases": ["troost"], "axis": "ns", "lng": -94.5715, "road_type": "arterial" },
     { "name": "Forest Ave", "aliases": ["forest"], "axis": "ns", "lng": -94.5690, "road_type": "residential" },
     { "name": "Paseo Blvd", "aliases": ["paseo", "the paseo"], "axis": "ns", "lng": -94.5650, "road_type": "arterial" },
+    { "name": "Vine St", "aliases": ["vine"], "axis": "ns", "lng": -94.5620, "road_type": "residential" },
     { "name": "Woodland Ave", "aliases": ["woodland"], "axis": "ns", "lng": -94.5605, "road_type": "residential" },
     { "name": "Prospect Ave", "aliases": ["prospect"], "axis": "ns", "lng": -94.5545, "road_type": "arterial" },
     { "name": "Indiana Ave", "aliases": ["indiana"], "axis": "ns", "lng": -94.5440, "road_type": "collector" },
@@ -52,6 +53,19 @@
     { "name": "Brookside", "lat": 39.0136, "lng": -94.5900 },
     { "name": "Waldo", "lat": 38.9910, "lng": -94.5920 },
     { "name": "Swope Park area", "lat": 39.0050, "lng": -94.5450 }
+  ],
+  "landmarks": [
+    { "name": "18th & Vine Jazz District", "aliases": ["18th and vine", "18th & vine", "jazz district", "jazz museum", "negro leagues museum"], "lat": 39.0913, "lng": -94.5620 },
+    { "name": "Union Station", "aliases": ["union station"], "lat": 39.0848, "lng": -94.5859 },
+    { "name": "Crown Center", "aliases": ["crown center"], "lat": 39.0822, "lng": -94.5815 },
+    { "name": "National WWI Museum and Memorial", "aliases": ["liberty memorial", "wwi museum", "world war i museum", "ww1 museum"], "lat": 39.0806, "lng": -94.5862 },
+    { "name": "Power & Light District", "aliases": ["power and light", "power & light", "p&l district"], "lat": 39.0975, "lng": -94.5833 },
+    { "name": "T-Mobile Center", "aliases": ["t-mobile center", "t mobile center", "sprint center"], "lat": 39.0973, "lng": -94.5800 },
+    { "name": "Kauffman Center", "aliases": ["kauffman center"], "lat": 39.0940, "lng": -94.5873 },
+    { "name": "City Market", "aliases": ["city market", "river market"], "lat": 39.1094, "lng": -94.5826 },
+    { "name": "Country Club Plaza", "aliases": ["country club plaza", "the plaza"], "lat": 39.0420, "lng": -94.5917 },
+    { "name": "Nelson-Atkins Museum", "aliases": ["nelson-atkins", "nelson atkins", "the nelson"], "lat": 39.0450, "lng": -94.5810 },
+    { "name": "Loose Park", "aliases": ["loose park"], "lat": 39.0325, "lng": -94.5960 }
   ],
   "sensitive_sites": [
     { "name": "University Health Truman Medical Center", "type": "hospital", "lat": 39.0850, "lng": -94.5760 },
