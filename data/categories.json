@@ -1,0 +1,112 @@
+{
+  "_note": "Loosely based on Kansas City 311 request types. Verify against the KCMO 311 dataset before finalizing.",
+  "categories": [
+    {
+      "id": "streets",
+      "name": "Streets",
+      "department_id": "pw_streets",
+      "subcategories": [
+        { "id": "pothole", "name": "Pothole", "keywords": ["pothole", "pot hole", "hole in the road", "hole in road", "big hole", "huge hole", "crater", "popped my tire", "tire popped", "blew a tire", "bent my rim", "rim"], "hazard": false },
+        { "id": "street_damage", "name": "Street damage", "keywords": ["street damage", "road damage", "pavement", "asphalt", "buckled", "sinkhole", "cracked road", "road is crumbling"], "hazard": false },
+        { "id": "sidewalk", "name": "Sidewalk", "keywords": ["sidewalk", "tripped", "trip hazard", "uneven walk"], "hazard": false },
+        { "id": "curb", "name": "Curb", "keywords": ["curb"], "hazard": false }
+      ]
+    },
+    {
+      "id": "traffic_lighting",
+      "name": "Traffic & Lighting",
+      "department_id": "pw_traffic",
+      "subcategories": [
+        { "id": "streetlight_out", "name": "Streetlight out", "keywords": ["streetlight", "street light", "light out", "light is out", "lights out", "light broken", "pitch black", "dark corner", "so dark", "lamp post", "light pole", "flickering"], "hazard": false },
+        { "id": "traffic_signal", "name": "Traffic signal", "keywords": ["traffic signal", "traffic light", "stoplight", "stop light", "signal out", "signal is out", "signal stuck", "lights not working at the intersection", "stuck on red", "blinking red"], "hazard": true },
+        { "id": "sign_damaged", "name": "Sign damaged / missing", "keywords": ["stop sign", "sign down", "sign missing", "sign knocked", "street sign", "yield sign"], "hazard": false }
+      ]
+    },
+    {
+      "id": "trash",
+      "name": "Trash & Sanitation",
+      "department_id": "solid_waste",
+      "subcategories": [
+        { "id": "missed_pickup", "name": "Missed pickup", "keywords": ["missed pickup", "trash wasn't picked", "trash not picked", "not picked up", "wasn't picked up", "was not picked up", "didn't pick up", "didnt pick up", "missed trash", "recycling not picked", "garbage not collected"], "hazard": false },
+        { "id": "illegal_dumping", "name": "Illegal dumping", "keywords": ["dumping", "dumped", "mattress", "tires dumped", "pile of trash", "someone left", "construction debris", "couch in the alley"], "hazard": false },
+        { "id": "overflowing_bin", "name": "Overflowing bin", "keywords": ["overflowing", "overflow", "trash can full", "bin full", "garbage everywhere"], "hazard": false },
+        { "id": "bulky_item", "name": "Bulky item", "keywords": ["bulky", "furniture pickup", "appliance pickup"], "hazard": false }
+      ]
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "department_id": "water",
+      "subcategories": [
+        { "id": "main_break", "name": "Main break", "keywords": ["main break", "water main", "gushing", "geyser", "water shooting", "busted pipe"], "hazard": true },
+        { "id": "leak", "name": "Leak", "keywords": ["leak", "leaking", "water running down", "water bubbling"], "hazard": false },
+        { "id": "flooding", "name": "Flooding", "keywords": ["flood", "flooding", "flooded", "standing water", "underwater"], "hazard": true },
+        { "id": "sewer_backup", "name": "Sewer backup", "keywords": ["sewer", "sewage", "smells like sewage", "storm drain clogged", "clogged drain"], "hazard": false },
+        { "id": "open_manhole", "name": "Open manhole", "keywords": ["manhole", "man hole", "missing cover", "open hole with no cover"], "hazard": true }
+      ]
+    },
+    {
+      "id": "property",
+      "name": "Property & Nuisance",
+      "department_id": "neighborhood_services",
+      "subcategories": [
+        { "id": "graffiti", "name": "Graffiti", "keywords": ["graffiti", "tagged", "tagging", "spray paint", "spray painted"], "hazard": false },
+        { "id": "overgrown_lot", "name": "Overgrown lot", "keywords": ["overgrown", "tall grass", "weeds", "grass is like", "jungle"], "hazard": false },
+        { "id": "abandoned_vehicle", "name": "Abandoned vehicle", "keywords": ["abandoned car", "abandoned vehicle", "car has been parked", "no plates", "flat tires and no plates", "junk car"], "hazard": false },
+        { "id": "dangerous_building", "name": "Dangerous building", "keywords": ["dangerous building", "collapsing", "falling apart", "roof caved", "vacant house open", "boarded"], "hazard": true }
+      ]
+    },
+    {
+      "id": "parks_trees",
+      "name": "Parks & Trees",
+      "department_id": "parks",
+      "subcategories": [
+        { "id": "fallen_tree", "name": "Fallen tree / limb", "keywords": ["tree down", "fallen tree", "tree fell", "limb", "branch", "branches"], "hazard": true },
+        { "id": "park_damage", "name": "Park damage", "keywords": ["park", "playground", "swing", "bench broken", "slide broken"], "hazard": false }
+      ]
+    },
+    {
+      "id": "animals",
+      "name": "Animals",
+      "department_id": "animal_services",
+      "subcategories": [
+        { "id": "dead_animal", "name": "Dead animal", "keywords": ["dead animal", "dead deer", "dead dog", "dead cat", "dead raccoon", "roadkill", "carcass", "dead possum"], "hazard": false },
+        { "id": "stray", "name": "Stray", "keywords": ["stray", "loose dog", "dog running loose", "aggressive dog", "pack of dogs"], "hazard": false }
+      ]
+    },
+    {
+      "id": "other",
+      "name": "Other / Unclear",
+      "department_id": "human_review",
+      "subcategories": [
+        { "id": "unclear", "name": "Unclear", "keywords": [], "hazard": false }
+      ]
+    }
+  ],
+  "hazard_phrases": [
+    { "phrase": "almost wrecked", "flag": "vehicle_damage_risk" },
+    { "phrase": "wrecked", "flag": "vehicle_damage_risk" },
+    { "phrase": "popped my tire", "flag": "vehicle_damage_risk" },
+    { "phrase": "tire popped", "flag": "vehicle_damage_risk" },
+    { "phrase": "blew a tire", "flag": "vehicle_damage_risk" },
+    { "phrase": "bent my rim", "flag": "vehicle_damage_risk" },
+    { "phrase": "swerving", "flag": "vehicle_damage_risk" },
+    { "phrase": "swerve", "flag": "vehicle_damage_risk" },
+    { "phrase": "crash", "flag": "collision_risk" },
+    { "phrase": "accident", "flag": "collision_risk" },
+    { "phrase": "near miss", "flag": "collision_risk" },
+    { "phrase": "almost hit", "flag": "collision_risk" },
+    { "phrase": "kids", "flag": "children_present" },
+    { "phrase": "school", "flag": "children_present" },
+    { "phrase": "fell", "flag": "injury_risk" },
+    { "phrase": "tripped", "flag": "injury_risk" },
+    { "phrase": "hurt", "flag": "injury_risk" },
+    { "phrase": "wire", "flag": "electrical_hazard" },
+    { "phrase": "sparking", "flag": "electrical_hazard" },
+    { "phrase": "blocking", "flag": "road_blocked" },
+    { "phrase": "blocked", "flag": "road_blocked" },
+    { "phrase": "across the road", "flag": "road_blocked" },
+    { "phrase": "dangerous", "flag": "reported_dangerous" },
+    { "phrase": "unsafe", "flag": "reported_dangerous" }
+  ]
+}

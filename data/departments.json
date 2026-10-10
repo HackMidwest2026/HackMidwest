@@ -1,0 +1,28 @@
+{
+  "_note": "SIMULATED seed data. Crew names, locations and workloads are made up for the demo.",
+  "departments": [
+    { "department_id": "pw_streets", "name": "Public Works: Street Maintenance", "categories_handled": ["streets"] },
+    { "department_id": "pw_traffic", "name": "Public Works: Traffic / Street Lighting", "categories_handled": ["traffic_lighting"] },
+    { "department_id": "solid_waste", "name": "Solid Waste", "categories_handled": ["trash"] },
+    { "department_id": "water", "name": "Water Services", "categories_handled": ["water"] },
+    { "department_id": "neighborhood_services", "name": "Neighborhood Services", "categories_handled": ["property"] },
+    { "department_id": "parks", "name": "Parks & Recreation", "categories_handled": ["parks_trees"] },
+    { "department_id": "animal_services", "name": "Animal Services", "categories_handled": ["animals"] },
+    { "department_id": "human_review", "name": "Human review queue", "categories_handled": ["other"] }
+  ],
+  "crews": [
+    { "crew_id": "streets_a", "name": "Street Maintenance Crew A", "department_id": "pw_streets", "home_lat": 39.1065, "home_lng": -94.5420, "open_jobs": 17, "capacity": 20 },
+    { "crew_id": "streets_b", "name": "Street Maintenance Crew B", "department_id": "pw_streets", "home_lat": 39.0560, "home_lng": -94.5700, "open_jobs": 12, "capacity": 20 },
+    { "crew_id": "streets_c", "name": "Street Maintenance Crew C", "department_id": "pw_streets", "home_lat": 38.9950, "home_lng": -94.5900, "open_jobs": 9, "capacity": 18 },
+    { "crew_id": "traffic_1", "name": "Signals & Lighting Crew 1", "department_id": "pw_traffic", "home_lat": 39.0900, "home_lng": -94.5800, "open_jobs": 8, "capacity": 15 },
+    { "crew_id": "traffic_2", "name": "Signals & Lighting Crew 2", "department_id": "pw_traffic", "home_lat": 39.0200, "home_lng": -94.5650, "open_jobs": 11, "capacity": 15 },
+    { "crew_id": "waste_north", "name": "Solid Waste North Route Team", "department_id": "solid_waste", "home_lat": 39.1100, "home_lng": -94.5500, "open_jobs": 22, "capacity": 30 },
+    { "crew_id": "waste_south", "name": "Solid Waste South Route Team", "department_id": "solid_waste", "home_lat": 39.0100, "home_lng": -94.5800, "open_jobs": 14, "capacity": 30 },
+    { "crew_id": "water_emergency", "name": "Water Emergency Response Crew", "department_id": "water", "home_lat": 39.0750, "home_lng": -94.5600, "open_jobs": 4, "capacity": 8 },
+    { "crew_id": "water_maint", "name": "Water Line Maintenance Crew", "department_id": "water", "home_lat": 39.0400, "home_lng": -94.5900, "open_jobs": 10, "capacity": 15 },
+    { "crew_id": "nhs_inspect", "name": "Neighborhood Services Inspectors", "department_id": "neighborhood_services", "home_lat": 39.0990, "home_lng": -94.5780, "open_jobs": 31, "capacity": 40 },
+    { "crew_id": "parks_forestry", "name": "Parks Forestry Crew", "department_id": "parks", "home_lat": 39.0350, "home_lng": -94.5750, "open_jobs": 6, "capacity": 12 },
+    { "crew_id": "animal_control", "name": "Animal Control Officers", "department_id": "animal_services", "home_lat": 39.0950, "home_lng": -94.5300, "open_jobs": 9, "capacity": 15 },
+    { "crew_id": "review_desk", "name": "311 Review Desk", "department_id": "human_review", "home_lat": 39.1000, "home_lng": -94.5800, "open_jobs": 3, "capacity": 50 }
+  ]
+}

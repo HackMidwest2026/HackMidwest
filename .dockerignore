@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+api/var
+.git
+.env
+*.log
