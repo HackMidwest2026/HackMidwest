@@ -1,6 +1,6 @@
 import express from 'express'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { planRoutes } from './agents/routes.js'
@@ -18,11 +18,19 @@ import { findNearbyIssues, getStats } from './tools/cityTools.js'
 const app = express()
 app.use(express.json({ limit: '10mb' }))
 
-const uploadsDir = join(config.stateDir, 'uploads')
-mkdirSync(uploadsDir, { recursive: true })
-app.use('/uploads', express.static(uploadsDir, { maxAge: '1h' }))
-
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
+
+// Report photos live in the store (MongoDB in production, files offline), so any API
+// instance can serve them. Names are random UUIDs, so they can be cached for a long time.
+app.get(
+  '/uploads/:name',
+  wrap(async (req, res) => {
+    if (!/^[\w-]+\.(png|jpg|jpeg|webp|gif)$/.test(req.params.name)) return res.status(404).end()
+    const photo = await store.readPhoto(req.params.name)
+    if (!photo) return res.status(404).end()
+    res.set({ 'Content-Type': photo.mime, 'Cache-Control': 'public, max-age=86400, immutable' }).send(photo.bytes)
+  }),
+)
 
 const STATUS_FLOW = ['new', 'triaged', 'approved', 'assigned', 'in_progress', 'resolved', 'rejected']
 
@@ -39,14 +47,6 @@ function issueView(issue, { withReports = false } = {}) {
   }
 }
 
-function savePhoto(dataUrl) {
-  const m = /^data:image\/(png|jpe?g|webp|gif);base64,(.+)$/.exec(dataUrl || '')
-  if (!m) return null
-  const ext = m[1] === 'jpeg' ? 'jpg' : m[1]
-  const name = `${randomUUID()}.${ext}`
-  writeFileSync(join(uploadsDir, name), Buffer.from(m[2], 'base64'))
-  return `/uploads/${name}`
-}
 
 // ---------- meta ----------
 
@@ -55,6 +55,7 @@ app.get('/api/health', (_req, res) =>
     ok: true,
     mode: config.mode,
     models: config.mode === 'bedrock' ? config.models : null,
+    database: store.storeInfo(),
     ...(config.mode === 'bedrock' && { report_queue: reportQueue.stats(), bedrock_calls: bedrockLimiter.stats() }),
   }),
 )
@@ -127,7 +128,7 @@ app.post(
   '/api/reports',
   wrap(async (req, res) => {
     const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
-    const photo_url = photo ? savePhoto(photo) : null
+    const photo_url = photo ? await store.savePhoto(photo) : null
     if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
     // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
     if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
@@ -183,9 +184,8 @@ app.post('/api/issues/:id/approve', (req, res) => {
   const crew = crewId ? store.getCrew(crewId) : null
   if (crewId && !crew) return res.status(400).json({ error: `Unknown crew ${crewId}` })
   if (crew && issue.assigned_crew !== crew.crew_id) {
-    crew.open_jobs += 1
-    const prev = issue.assigned_crew && store.getCrew(issue.assigned_crew)
-    if (prev) prev.open_jobs = Math.max(0, prev.open_jobs - 1)
+    store.updateCrew(crew.crew_id, (c) => ({ open_jobs: c.open_jobs + 1 }))
+    if (issue.assigned_crew) store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
   }
   const edited = (crew_id && crew_id !== issue.recommended_crew) || (department_id && department_id !== issue.recommended_department)
   const updated = dispatcherAction(
@@ -214,8 +214,7 @@ app.patch('/api/issues/:id', (req, res) => {
   const { status } = req.body || {}
   if (!STATUS_FLOW.includes(status)) return res.status(400).json({ error: `status must be one of ${STATUS_FLOW.join(', ')}` })
   if (['resolved', 'rejected'].includes(status) && issue.assigned_crew) {
-    const crew = store.getCrew(issue.assigned_crew)
-    if (crew) crew.open_jobs = Math.max(0, crew.open_jobs - 1)
+    store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
   }
   res.json(issueView(dispatcherAction(issue, status, {}, `Dispatcher moved #${issue.issue_id} to ${status.replace('_', ' ')}.`)))
 })
@@ -315,12 +314,23 @@ app.use((err, _req, res, _next) => {
 // ---------- startup ----------
 
 export async function start() {
-  if (!store.loadState()) {
-    const m = await seedHistory(seedReports)
-    console.log(`Seeded ${m.reports} historical reports into ${m.issues} issues.`)
+  try {
+    if (!(await store.initStore())) {
+      const m = await seedHistory(seedReports)
+      await store.flush()
+      console.log(`Seeded ${m.reports} historical reports into ${m.issues} issues.`)
+    }
+  } catch (err) {
+    console.error(`Could not open the ${process.env.DATABASE_URL ? 'MongoDB database (check DATABASE_URL and the Atlas IP access list)' : 'data store'}: ${err.message}`)
+    process.exit(1)
   }
-  const shutdown = () => {
-    store.saveNow()
+  console.log(`Database: ${store.storeInfo().backend === 'mongodb' ? 'MongoDB (DATABASE_URL)' : `local file in ${config.stateDir}`}`)
+  let stopping = false
+  const shutdown = async () => {
+    if (stopping) return
+    stopping = true
+    // Write anything still pending before exiting (bounded so a dead database can't hang shutdown).
+    await Promise.race([store.closeStore(), new Promise((r) => setTimeout(r, 5000))])
     process.exit(0)
   }
   process.on('SIGINT', shutdown)
@@ -333,7 +343,7 @@ export async function start() {
       ? `Engine: Bedrock (from ${config.modeSource}) region=${config.awsRegion} intake=${config.models.intake} reasoning=${config.models.reasoning}`
       : `Engine: mock rule-based agents (${config.modeSource === 'default' ? 'CITYCARE_MODE not set' : `from ${config.modeSource}`}). Set CITYCARE_MODE=bedrock to use Claude on Bedrock.`,
   )
-  return app.listen(config.port, () => console.log(`CityCare API on :${config.port} (mode=${config.mode}, data=${config.dataDir}, state=${config.stateDir})`))
+  return app.listen(config.port, () => console.log(`CityCare API on :${config.port} (mode=${config.mode}, data=${config.dataDir}, state=${store.storeInfo().backend === 'file' ? config.stateDir : 'mongodb'})`))
 }
 
 export { app }

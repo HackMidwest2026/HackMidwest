@@ -5,9 +5,10 @@ services:
   api:
     image: node:22-alpine
     working_dir: /app/api
-    command: sh -c "npm ci && npm run dev"
+    command: sh -c "apk add --no-cache openssl >/dev/null && npm ci && node --watch src/server.js"
     environment:
       CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
+      DATABASE_URL: ${DATABASE_URL:-}
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-350}
       BEDROCK_RPM: ${BEDROCK_RPM:-24}
       BEDROCK_MAX_CONCURRENCY: ${BEDROCK_MAX_CONCURRENCY:-4}

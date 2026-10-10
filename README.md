@@ -22,6 +22,23 @@ docker compose up --build
 
 On first start the API seeds 13 historical reports, which become 8 open issues. In the console, open **AI Triage Pipeline** and click **Run demo batch** to run 50 messy reports through the agents. **Reset demo** restores the seeded history.
 
+## Database
+
+CityCare stores issues, reports, crews and report photos in **MongoDB** through **Prisma** (`api/prisma/schema.prisma`). Point every copy of the app at one database, such as a free MongoDB Atlas M0 cluster, and the whole team shares the same data.
+
+1. In Atlas, open **Connect → Drivers** and copy the connection string. Add a database name after the host: `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/citycare?retryWrites=true&w=majority`. URL-encode special characters in the password.
+2. Under **Network Access**, allow the IP of every machine that runs the API (or `0.0.0.0/0` for a hackathon demo).
+3. Put it in `.env` as `DATABASE_URL=...` and start the app. The API creates the collections and indexes on first start and seeds the sample history if the database is empty. `/api/health` shows `"database": { "backend": "mongodb" }`.
+
+Without `DATABASE_URL`, data lives in a local JSON file (`STATE_DIR`), which is handy for offline demos and tests.
+
+Notes:
+- The API keeps a working copy in memory and writes each change to MongoDB within a fraction of a second, retrying if the database is briefly unreachable. Run **one API instance per database**: a second instance would not see the first one's changes until it restarts.
+- **Reset demo** deletes all issues and reports in the database (photos are kept).
+- Photos are stored in the `photos` collection. M0 has a 512 MB limit, so keep demo photos small.
+- `cd api && npm run db:studio` opens Prisma Studio to browse the data. `npm run db:push` applies schema changes; after editing the schema, run `npx prisma generate`.
+- Prisma 7 dropped MongoDB support, so the project pins Prisma 6.
+
 ## The UI
 
 - **Citizen Portal:** a full-screen map with a floating "Report an Issue" card. Residents pick a category (or leave it on Auto for the Intake agent), drop or drag a pin, or type a location and pick from the suggestions dropdown, attach a photo, and describe the problem. Before they submit, the card shows open incidents within 120 m. After they submit, it streams the agents' work live and shows the result (for example, "merged into #1042, P1").
@@ -51,6 +68,8 @@ Requires Node 22+.
 cd api && npm install && npm run dev      # API on :8080; reads ../.env if present
 cd web && npm install && npm run dev      # UI on :5173, proxies /api to :8080
 cd api && npm test                        # rules, geo and end-to-end pipeline tests
+# Also test MongoDB persistence against a disposable replica set (its CityCare data is wiped):
+TEST_DATABASE_URL="mongodb://localhost:27017/citycare_test?replicaSet=rs0&directConnection=true" npm test
 ```
 
 ## Engines: mock vs Bedrock
@@ -98,9 +117,10 @@ A minimal `city.json` is just `{ "center": { "lat": 41.8781, "lng": -87.6298 } }
 
 ```
 api/                     Node service (Express 5) + agents          → owners A (agents), B (tools), C (API)
+  prisma/schema.prisma   MongoDB schema: issues, reports, crews, photos, app_state
   src/agents/            intake, dedup, priority, router, supervisor (Strands) + rules.js (mock engine)
   src/tools/cityTools.js tool functions shared by both engines
-  src/lib/               store (JSON-persisted), geo (KC gazetteer), events (trace bus), data loader
+  src/lib/               store (in-memory, saved to MongoDB or a JSON file), mongo (Prisma), geo (gazetteer), events (trace bus), data loader
   src/pipeline.js        Strands Graph for single reports; batch path
   src/server.js          REST + SSE
   test/                  node:test suite
