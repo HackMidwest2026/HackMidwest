@@ -40,7 +40,11 @@ export function SupervisorModal({ onClose, questions }) {
   const [busy, setBusy] = useState(false)
   const bottom = useRef(null)
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'nearest' }), [log.length, busy])
+  // Block body: newer browsers return a Promise from scrollIntoView, and React would treat a
+  // returned value as the effect's cleanup function ("destroy is not a function").
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'nearest' })
+  }, [log.length, busy])
 
   async function ask(q) {
     const text = (q ?? question).trim()
