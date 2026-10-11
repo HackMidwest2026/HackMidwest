@@ -112,6 +112,13 @@ function mockAnswer(question, onTool) {
   return `Top ${hazard_only ? 'safety ' : ''}issues${scope ? ` ${scope}` : ''}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
 }
 
+// The live trace shows one line of the answer, so drop Markdown symbols (#, **, `, list bullets).
+const plainFirstLine = (md) =>
+  (md.split('\n').find((l) => l.trim()) || '')
+    .replace(/^\s*(#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s*)/, '')
+    .replace(/(\*\*|__|\*|`)/g, '')
+    .trim()
+
 export async function askSupervisor(question, ctx) {
   const out = await runStep({
     agent: 'supervisor',
@@ -122,7 +129,7 @@ export async function askSupervisor(question, ctx) {
       runText({ name: 'supervisor', tier: 'reasoning', systemPrompt: SYSTEM_PROMPT, tools: makeTools(toolSpecs(ctx), onTool), prompt: question }).then(
         ({ text, modelId }) => ({ output: { answer: text.trim() }, modelId }),
       ),
-    summarize: (o) => o.answer.split('\n')[0],
+    summarize: (o) => plainFirstLine(o.answer),
   })
   return out.answer
 }

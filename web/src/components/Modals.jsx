@@ -2,6 +2,7 @@ import { Radio, Send, Truck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { issueCode } from '../lib/display.js'
+import Markdown from './Markdown.jsx'
 
 function ModalShell({ title, icon: Icon, iconClass, onClose, width = 'max-w-md', children }) {
   useEffect(() => {
@@ -91,7 +92,7 @@ export function SupervisorModal({ onClose, questions }) {
                 <span className="font-bold text-slate-800">City Supervisor Agent</span>
                 <span>{time(m.at)}</span>
               </div>
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{m.text}</p>
+              {m.who === 'agent' ? <Markdown className="text-slate-700">{m.text}</Markdown> : <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{m.text}</p>}
             </div>
           ),
         )}
