@@ -10,6 +10,10 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // In Docker Desktop (Mac/Windows), file events from bind mounts often don't reach the
+    // container, so Vite would miss edits and new files in public/ (which it only learns about
+    // from those events). docker-compose.dev.yml sets VITE_USE_POLLING to check files on a timer.
+    watch: process.env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 500 } : undefined,
     proxy: {
       '/api': { target, changeOrigin: true },
       '/uploads': { target, changeOrigin: true },

@@ -44,6 +44,9 @@ services:
     command: sh -c "npm ci && npm run dev"
     environment:
       API_URL: http://api:8080
+      # Pick up edits and new files (e.g. in public/) on Docker Desktop, where file events
+      # from the host often don't reach the container.
+      VITE_USE_POLLING: "true"
     volumes:
       - ./web:/app/web
       - web-node-modules:/app/web/node_modules
