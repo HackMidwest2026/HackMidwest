@@ -61,6 +61,25 @@ function fileBackend() {
       renameSync(`${path()}.tmp`, path())
     },
     async clear() {},
+    async findUser({ email, user_id }) {
+      return (state.users || []).find((u) => (email ? u.email === email : u.user_id === user_id)) || null
+    },
+    async createUser(user) {
+      state.users ||= []
+      if (state.users.some((u) => u.email === user.email)) return false
+      state.users.push(user)
+      saveSoon()
+      dirty.state.add('users')
+      return true
+    },
+    async authSecret(candidate) {
+      if (!state.auth_secret) {
+        state.auth_secret = candidate
+        dirty.state.add('auth_secret')
+        saveSoon()
+      }
+      return state.auth_secret
+    },
     // One process owns the file, so a local counter is enough.
     async allocate(kind, n = 1) {
       const key = kind === 'issue' ? 'next_issue_id' : 'next_report_id'
@@ -323,7 +342,8 @@ export function storeInfo() {
  * is wiped and numbering restarted, so await it before creating new records.
  */
 export function resetState() {
-  state = emptyState()
+  // Dispatcher accounts and the session secret (file backend) survive a demo reset.
+  state = { ...emptyState(), ...(state.users && { users: state.users }), ...(state.auth_secret && { auth_secret: state.auth_secret }) }
   for (const s of Object.values(dirty)) s.clear()
   clearPending = true
   epoch = randomUUID() // tells other instances sharing the database to reload
@@ -472,6 +492,15 @@ export async function savePhoto(dataUrl) {
   await backend.savePhoto(name, MIME[ext], Buffer.from(m[2], 'base64'))
   return `/uploads/${name}`
 }
+
+// ---------- dispatcher accounts (read straight from the backend, so every instance agrees) ----------
+
+/** { user_id, email, name, password_hash, role, created_at } or null. */
+export const findUser = (query) => backend.findUser(query)
+/** Store a new account. Resolves false if the email is taken. */
+export const createUser = (user) => backend.createUser(user)
+/** The session-signing secret: `candidate` unless one was already stored. */
+export const authSecret = (candidate) => backend.authSecret(candidate)
 
 /** { mime, bytes } for a stored photo name, or null. */
 export const readPhoto = (name) => backend.readPhoto(name)

@@ -123,6 +123,19 @@ model Photo {
   @@map("photos")
 }
 
+/// Dispatcher accounts. Passwords are stored only as scrypt hashes.
+model User {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  user_id       String   @unique
+  email         String   @unique
+  name          String
+  password_hash String
+  role          String   @default("dispatcher")
+  created_at    DateTime @default(now())
+
+  @@map("users")
+}
+
 /// ID counters ("issue", "report"). value is the last number handed out. Incremented
 /// atomically, so API instances sharing the database never hand out the same number.
 model Counter {

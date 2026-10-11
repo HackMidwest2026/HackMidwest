@@ -64,6 +64,7 @@ const INDEXES = {
   photos: [['name', true]],
   app_state: [['key', true]],
   counters: [['name', true]],
+  users: [['user_id', true], ['email', true]],
 }
 
 // Numbering starts after these (first issue #1040, first report R-00001).
@@ -194,9 +195,34 @@ export function createMongoBackend(url) {
      * other instances notice the reset and reload. Photos are kept; reports may link to them.
      */
     async clear(epoch) {
-      await Promise.all([prisma.issue.deleteMany(), prisma.report.deleteMany(), prisma.crew.deleteMany(), prisma.appState.deleteMany()])
+      // Accounts and the session-signing secret survive a demo reset.
+      await Promise.all([prisma.issue.deleteMany(), prisma.report.deleteMany(), prisma.crew.deleteMany(), prisma.appState.deleteMany({ where: { key: { not: 'auth_secret' } } })])
       for (const [name, value] of Object.entries(ID_BASE)) await prisma.counter.updateMany({ where: { name }, data: { value } })
       await prisma.appState.upsert({ where: { key: 'epoch' }, create: { key: 'epoch', value: epoch }, update: { value: epoch } })
+    },
+    // ---------- dispatcher accounts ----------
+    async findUser({ email, user_id }) {
+      const u = await prisma.user.findUnique({ where: email ? { email } : { user_id } })
+      return u && { user_id: u.user_id, email: u.email, name: u.name, password_hash: u.password_hash, role: u.role, created_at: u.created_at.toISOString() }
+    },
+    /** Returns false if the email is already taken. */
+    async createUser(user) {
+      try {
+        await prisma.user.create({ data: { ...user, created_at: new Date(user.created_at) } })
+        return true
+      } catch (err) {
+        if (isUniqueViolation(err)) return false
+        throw err
+      }
+    },
+    /** The secret that signs login sessions: created once, shared by every instance. */
+    async authSecret(candidate) {
+      try {
+        await prisma.appState.create({ data: { key: 'auth_secret', value: candidate } })
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err
+      }
+      return (await prisma.appState.findUnique({ where: { key: 'auth_secret' } })).value
     },
     async savePhoto(name, mime, bytes) {
       await prisma.photo.upsert({ where: { name }, create: { name, mime, data: bytes }, update: { mime, data: bytes } })

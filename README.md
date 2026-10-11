@@ -22,6 +22,17 @@ docker compose up --build
 
 On first start the API loads **real 311 service requests** from Kansas City's open-data portal (see [Real 311 data](#real-311-data)) and runs them through the agents, so the map shows the city's actual open issues. In the console, open **AI Triage Pipeline** and click **Run demo batch** to run 50 messy synthetic reports through the agents. **Reset demo** wipes the data and downloads the latest 311 requests again.
 
+## Dispatcher accounts
+
+The **Dispatch Command** console needs a dispatcher login; the **Citizen Portal** stays open so residents can report without an account. Open Dispatch Command and choose **Sign up** to create an account (name, email, password of 8+ characters), or **Log in**. The avatar menu in the console shows who is signed in and has **Log out**.
+
+- Accounts live in the database (`users` collection in MongoDB, or the local state file). Passwords are stored only as salted scrypt hashes.
+- A login sets an HTTP-only, SameSite=Lax session cookie valid for 7 days, signed with `AUTH_SECRET` (or a secret generated once and stored in the database, so every copy of the app sharing it accepts the same logins).
+- Set `DISPATCHER_SIGNUP_CODE` to require a code for new accounts. Without it, anyone who can reach the site can sign up as a dispatcher, which is fine for a demo but not for a real deployment.
+- Dispatcher-only API calls (approve, reject, status changes, Supervisor chat, route plans, demo batch/reset, the report list) return `401` without a login. Residents' contact details are left out of public issue details. Status changes record the dispatcher's name.
+- Login and sign-up allow 10 attempts per minute per address.
+- Accounts survive **Reset demo**.
+
 ## Real 311 data
 
 The starting issues come from the city's public 311 service requests on [data.kcmo.org](https://data.kcmo.org) (Socrata). On first start, and on **Reset demo**, the API:
@@ -155,6 +166,8 @@ The single-report pipeline is a **Strands `Graph`** (`buildReportGraph` in `api/
 | `POST` | `/api/issues/:id/approve` | `{ crew_id?, note? }`: approve as-is, or edit the crew first |
 | `POST` | `/api/issues/:id/reject` | `{ reason }` |
 | `PATCH` | `/api/issues/:id` | `{ status }`: `in_progress`, `resolved`, … |
+| `POST` | `/api/auth/signup`, `/api/auth/login`, `/api/auth/logout` | Dispatcher accounts: `{ name, email, password, code? }` / `{ email, password }`; sets or clears the session cookie |
+| `GET` | `/api/auth/me`, `/api/auth/config` | The signed-in dispatcher (or `null`); whether sign-up needs a code |
 | `GET` | `/api/stream` | SSE: `trace` events (every agent step and tool call) and `issue` updates |
 | `POST` | `/api/chat` | `{ question }` → supervisor answer |
 | `GET` | `/api/address-suggest?q=` | Autocomplete: `[{ label, sublabel, address, lat, lng, kind, source }]` |

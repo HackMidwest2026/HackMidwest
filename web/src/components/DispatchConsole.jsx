@@ -1,5 +1,5 @@
-import { Activity, Cpu, FileText, GitFork, Grid, HeartPulse, Layers, MessageSquare, Route, Search, ShieldCheck, Truck, User } from 'lucide-react'
-import { useState } from 'react'
+import { Activity, ArrowRightLeft, Cpu, FileText, GitFork, Grid, HeartPulse, Layers, LogOut, MessageSquare, Route, Search, ShieldCheck, Truck } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { issueCode, OPEN_STATUSES, shortAddress, statusMeta, timeAgo, tierMeta } from '../lib/display.js'
 import CityMap, { LAYER_DEFS } from './CityMap.jsx'
 import { GisView, PipelineView, RoutingView, UnitsView } from './ConsoleViews.jsx'
@@ -17,7 +17,7 @@ const NAV = [
   { id: 'routes', label: 'Route Plans', icon: Route, iconClass: 'text-teal-400' },
 ]
 
-export default function DispatchConsole({ meta, data, selectedIssue, onSelectIssue, showToast, onSwitchToCitizen }) {
+export default function DispatchConsole({ meta, data, user, onLogout, selectedIssue, onSelectIssue, showToast, onSwitchToCitizen }) {
   const { issues, stats, crews, events, stream, flashIds } = data
   const [view, setView] = useState('command')
   const [search, setSearch] = useState('')
@@ -126,13 +126,7 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
               <span className="hidden lg:inline whitespace-nowrap">Supervisor Channel</span>
               <span className="bg-[#1E3A8A] text-white rounded text-[10px] px-1 font-bold">AI</span>
             </button>
-            <button
-              onClick={onSwitchToCitizen}
-              title="Switch to the Citizen Portal"
-              className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition-all"
-            >
-              <User className="w-4 h-4" />
-            </button>
+            <AccountMenu user={user} onLogout={onLogout} onSwitchToCitizen={onSwitchToCitizen} />
           </div>
         </header>
 
@@ -319,6 +313,62 @@ export default function DispatchConsole({ meta, data, selectedIssue, onSelectIss
       )}
       {assignOpen && selectedIssue && (
         <AssignModal issue={selectedIssue} crews={crews} onClose={() => setAssignOpen(false)} onAssigned={data.replaceIssue} showToast={showToast} />
+      )}
+    </div>
+  )
+}
+
+const initials = (name = '') =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?'
+
+/** Signed-in dispatcher: initials button with a menu to switch portals or log out. */
+function AccountMenu({ user, onLogout, onSwitchToCitizen }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => {
+      if (e.type === 'keydown' ? e.key === 'Escape' : !ref.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title={user?.name}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="w-8 h-8 rounded-full bg-[#1E3A8A] text-white text-[11px] font-bold flex items-center justify-center hover:ring-2 hover:ring-blue-400 transition-all"
+      >
+        {initials(user?.name)}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-10 z-[1200] w-60 bg-white rounded-xl border border-slate-200 shadow-2xl text-xs overflow-hidden animate-in">
+          <div className="p-3 border-b border-slate-100">
+            <div className="font-semibold text-slate-900 truncate">{user?.name}</div>
+            <div className="text-slate-500 truncate">{user?.email}</div>
+            <div className="mt-1 inline-flex items-center gap-1 px-1.5 rounded bg-teal-50 text-teal-700 font-mono text-[10px] font-bold">
+              <ShieldCheck className="w-3 h-3" /> DISPATCHER
+            </div>
+          </div>
+          <button role="menuitem" onClick={onSwitchToCitizen} className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-50">
+            <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" /> Citizen Portal
+          </button>
+          <button role="menuitem" onClick={onLogout} className="w-full flex items-center gap-2 px-3 py-2 text-rose-700 hover:bg-rose-50">
+            <LogOut className="w-3.5 h-3.5" /> Log out
+          </button>
+        </div>
       )}
     </div>
   )

@@ -10,6 +10,7 @@ import { config } from './config.js'
 import { categories, city, cityProfile, demoReports, departments, seedReports } from './lib/data.js'
 import { emitIssueUpdate, emitReload, emitTrace, onIssue, onReload, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
+import { authRoutes, currentUser, requireDispatcher } from './lib/auth.js'
 import { loadSeedReports } from './lib/realReports.js'
 import * as store from './lib/store.js'
 import { bedrockLimiter } from './agents/llm.js'
@@ -17,9 +18,14 @@ import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory }
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
 
 const app = express()
+// Behind nginx or the Vite dev proxy on a private network: use X-Forwarded-For for the client address.
+app.set('trust proxy', 'loopback, linklocal, uniquelocal')
 app.use(express.json({ limit: '10mb' }))
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
+
+// Dispatcher accounts (sign up, log in, log out). Dispatcher-only routes below use requireDispatcher.
+authRoutes(app, wrap)
 
 // Report photos live in the store (MongoDB in production, files offline), so any API
 // instance can serve them. Names are random UUIDs, so they can be cached for a long time.
@@ -143,7 +149,7 @@ app.post(
   }),
 )
 
-app.get('/api/reports', (_req, res) => res.json(store.listReports().slice(-200).reverse()))
+app.get('/api/reports', requireDispatcher, (_req, res) => res.json(store.listReports().slice(-200).reverse()))
 
 // ---------- issues ----------
 
@@ -158,26 +164,33 @@ app.get('/api/issues', (req, res) => {
   res.json(issues.map((i) => issueView(i)))
 })
 
-app.get('/api/issues/:id', (req, res) => {
-  const issue = store.getIssue(req.params.id)
-  if (!issue) return res.status(404).json({ error: 'Issue not found' })
-  res.json(issueView(issue, { withReports: true }))
-})
+app.get(
+  '/api/issues/:id',
+  wrap(async (req, res) => {
+    const issue = store.getIssue(req.params.id)
+    if (!issue) return res.status(404).json({ error: 'Issue not found' })
+    const view = issueView(issue, { withReports: true })
+    // Residents' contact details are for dispatchers only.
+    if (!(await currentUser(req))) view.reports = view.reports.map(({ reporter_contact: _c, ...r }) => r)
+    res.json(view)
+  }),
+)
 
-function dispatcherAction(issue, status, extra, message) {
+function dispatcherAction(req, issue, status, extra, message) {
   const now = new Date().toISOString()
   const updated = store.updateIssue(issue.issue_id, {
     status,
     ...extra,
-    status_history: [...issue.status_history, { status, at: now, by: 'dispatcher', ...(extra.dispatcher_note && { note: extra.dispatcher_note }) }],
+    status_history: [...issue.status_history, { status, at: now, by: req.dispatcher?.name || 'dispatcher', ...(extra.dispatcher_note && { note: extra.dispatcher_note }) }],
   })
-  const evt = emitTrace({ run_id: randomUUID(), issue_id: issue.issue_id, agent: 'dispatcher', status: 'completed', message })
+  const by = req.dispatcher?.name ? ` (${req.dispatcher.name})` : ''
+  const evt = emitTrace({ run_id: randomUUID(), issue_id: issue.issue_id, agent: 'dispatcher', status: 'completed', message: `${message}${by}` })
   store.updateIssue(issue.issue_id, { agent_trace: [...updated.agent_trace, evt] })
   emitIssueUpdate(updated)
   return updated
 }
 
-app.post('/api/issues/:id/approve', (req, res) => {
+app.post('/api/issues/:id/approve', requireDispatcher, (req, res) => {
   const issue = store.getIssue(req.params.id)
   if (!issue) return res.status(404).json({ error: 'Issue not found' })
   const { crew_id, department_id, note } = req.body || {}
@@ -190,6 +203,7 @@ app.post('/api/issues/:id/approve', (req, res) => {
   }
   const edited = (crew_id && crew_id !== issue.recommended_crew) || (department_id && department_id !== issue.recommended_department)
   const updated = dispatcherAction(
+    req,
     issue,
     crew ? 'assigned' : 'approved',
     {
@@ -202,14 +216,14 @@ app.post('/api/issues/:id/approve', (req, res) => {
   res.json(issueView(updated))
 })
 
-app.post('/api/issues/:id/reject', (req, res) => {
+app.post('/api/issues/:id/reject', requireDispatcher, (req, res) => {
   const issue = store.getIssue(req.params.id)
   if (!issue) return res.status(404).json({ error: 'Issue not found' })
   const note = req.body?.reason || 'Rejected by dispatcher'
-  res.json(issueView(dispatcherAction(issue, 'rejected', { dispatcher_note: note }, `Dispatcher rejected #${issue.issue_id}: ${note}`)))
+  res.json(issueView(dispatcherAction(req, issue, 'rejected', { dispatcher_note: note }, `Dispatcher rejected #${issue.issue_id}: ${note}`)))
 })
 
-app.patch('/api/issues/:id', (req, res) => {
+app.patch('/api/issues/:id', requireDispatcher, (req, res) => {
   const issue = store.getIssue(req.params.id)
   if (!issue) return res.status(404).json({ error: 'Issue not found' })
   const { status } = req.body || {}
@@ -217,7 +231,7 @@ app.patch('/api/issues/:id', (req, res) => {
   if (['resolved', 'rejected'].includes(status) && issue.assigned_crew) {
     store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
   }
-  res.json(issueView(dispatcherAction(issue, status, {}, `Dispatcher moved #${issue.issue_id} to ${status.replace('_', ' ')}.`)))
+  res.json(issueView(dispatcherAction(req, issue, status, {}, `Dispatcher moved #${issue.issue_id} to ${status.replace('_', ' ')}.`)))
 })
 
 app.get('/api/stats', (_req, res) => res.json({ ...getStats(), last_batch: store.getLastBatch() }))
@@ -226,6 +240,7 @@ app.get('/api/stats', (_req, res) => res.json({ ...getStats(), last_batch: store
 
 app.post(
   '/api/chat',
+  requireDispatcher,
   wrap(async (req, res) => {
     const question = String(req.body?.question || '').trim()
     if (!question) return res.status(400).json({ error: 'Ask a question.' })
@@ -236,10 +251,11 @@ app.post(
 )
 
 // Route Planner agent: group each crew's open jobs into trips for today's shift.
-app.get('/api/routes', (_req, res) => res.json(store.getLastRoutePlan()))
+app.get('/api/routes', requireDispatcher, (_req, res) => res.json(store.getLastRoutePlan()))
 
 app.post(
   '/api/routes/plan',
+  requireDispatcher,
   wrap(async (req, res) => {
     const runId = /^[\w-]{8,64}$/.test(req.body?.client_run_id || '') ? req.body.client_run_id : randomUUID()
     const plan = await planRoutes({ runId })
@@ -253,6 +269,7 @@ app.post(
 let batchRunning = false
 app.post(
   '/api/demo/batch',
+  requireDispatcher,
   wrap(async (req, res) => {
     if (batchRunning) return res.status(409).json({ error: 'A batch is already running.' })
     batchRunning = true
@@ -269,6 +286,7 @@ app.post(
 
 app.post(
   '/api/demo/reset',
+  requireDispatcher,
   wrap(async (_req, res) => {
     const seed = await loadSeedReports(seedReports, { refresh: true })
     await store.resetState()

@@ -7,13 +7,22 @@ async function request(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`)
+  // A dispatcher-only call without a valid session: tell the app to show the login screen.
+  if (res.status === 401 && data.auth_required) window.dispatchEvent(new Event(AUTH_REQUIRED))
+  if (!res.ok) throw Object.assign(new Error(data.error || `${res.status} ${res.statusText}`), { status: res.status })
   return data
 }
+
+export const AUTH_REQUIRED = 'citycare:auth-required'
 
 const qs = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v != null && v !== '')).toString()
 
 export const api = {
+  authConfig: () => request('GET', '/api/auth/config'),
+  me: () => request('GET', '/api/auth/me'),
+  signup: (body) => request('POST', '/api/auth/signup', body),
+  login: (email, password) => request('POST', '/api/auth/login', { email, password }),
+  logout: () => request('POST', '/api/auth/logout', {}),
   meta: () => request('GET', '/api/meta'),
   issues: (status = 'all') => request('GET', `/api/issues?status=${status}`),
   issue: (id) => request('GET', `/api/issues/${id}`),

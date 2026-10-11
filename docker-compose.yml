@@ -11,6 +11,8 @@ services:
     environment:
       CITYCARE_MODE: ${CITYCARE_MODE:-${CITYOPS_MODE:-mock}}
       DATABASE_URL: ${DATABASE_URL:-}
+      DISPATCHER_SIGNUP_CODE: ${DISPATCHER_SIGNUP_CODE:-}
+      AUTH_SECRET: ${AUTH_SECRET:-}
       SEED_SOURCE: ${SEED_SOURCE:-socrata}
       SEED_DOMAIN: ${SEED_DOMAIN:-data.kcmo.org}
       SEED_DATASET: ${SEED_DATASET:-}

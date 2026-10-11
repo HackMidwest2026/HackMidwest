@@ -1,6 +1,7 @@
 import { Radio, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from './api.js'
+import { AUTH_REQUIRED, api } from './api.js'
+import AuthScreen from './components/AuthScreen.jsx'
 import CitizenPortal from './components/CitizenPortal.jsx'
 import DispatchConsole from './components/DispatchConsole.jsx'
 import Navbar from './components/Navbar.jsx'
@@ -48,6 +49,20 @@ export default function App() {
     api.meta().then(setMeta).catch((e) => setMetaError(e.message))
   }, [])
 
+  // Signed-in dispatcher: undefined while checking, null when signed out.
+  const [user, setUser] = useState(undefined)
+  useEffect(() => {
+    api.me().then((r) => setUser(r.user)).catch(() => setUser(null))
+    const expired = () => setUser(null)
+    window.addEventListener(AUTH_REQUIRED, expired)
+    return () => window.removeEventListener(AUTH_REQUIRED, expired)
+  }, [])
+  const logout = useCallback(async () => {
+    await api.logout().catch(() => {})
+    setUser(null)
+    setSelectedId(null)
+  }, [])
+
   const selectedIssue = data.issues.find((i) => i.issue_id === selectedId) || null
   const p1Count = data.issues.filter((i) => i.priority_tier === 'P1' && !['resolved', 'rejected'].includes(i.status)).length
 
@@ -65,7 +80,18 @@ export default function App() {
           (mode === 'citizen' ? (
             <CitizenPortal meta={meta} data={data} selectedIssue={selectedIssue} onSelectIssue={setSelectedId} onSwitchToDispatch={() => setMode('dispatch')} />
           ) : (
-            <DispatchConsole meta={meta} data={data} selectedIssue={selectedIssue} onSelectIssue={setSelectedId} showToast={showToast} onSwitchToCitizen={() => setMode('citizen')} />
+            user === undefined ? null : user ? (
+              <DispatchConsole meta={meta} data={data} user={user} onLogout={logout} selectedIssue={selectedIssue} onSelectIssue={setSelectedId} showToast={showToast} onSwitchToCitizen={() => setMode('citizen')} />
+            ) : (
+              <AuthScreen
+                cityName={meta.city?.name}
+                onSwitchToCitizen={() => setMode('citizen')}
+                onSignedIn={(u) => {
+                  setUser(u)
+                  showToast(`Welcome, ${u.name.split(' ')[0]}`, 'Signed in to Dispatch Command.')
+                }}
+              />
+            )
           ))}
       </main>
 
