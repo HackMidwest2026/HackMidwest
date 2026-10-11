@@ -20,7 +20,7 @@ docker compose up --build
 - Citizen Portal: http://localhost:8080
 - Dispatch Command console: http://localhost:8080/#/dispatch
 
-On first start the API loads **real 311 service requests** from Kansas City's open-data portal (see [Real 311 data](#real-311-data)) and runs them through the agents, so the map shows the city's actual open issues. In the console, open **AI Triage Pipeline** and click **Run demo batch** to run 50 messy synthetic reports through the agents. **Reset demo** wipes the data and downloads the latest 311 requests again.
+On first start the API loads **real 311 service requests** from Kansas City's open-data portal (see [Real 311 data](#real-311-data)) and runs them through the agents, so the map shows the city's actual open issues. In the console, open **AI Triage Pipeline** and click **Import new 311 requests** to pull the newest requests the city has received and watch the agents triage them. **Reset data** wipes the incidents and reports and downloads the latest 311 requests again.
 
 ## Dispatcher accounts
 
@@ -29,22 +29,24 @@ The **Dispatch Command** console needs a dispatcher login; the **Citizen Portal*
 - Accounts live in the database (`users` collection in MongoDB, or the local state file). Passwords are stored only as salted scrypt hashes.
 - A login sets an HTTP-only, SameSite=Lax session cookie valid for 7 days, signed with `AUTH_SECRET` (or a secret generated once and stored in the database, so every copy of the app sharing it accepts the same logins).
 - Set `DISPATCHER_SIGNUP_CODE` to require a code for new accounts. Without it, anyone who can reach the site can sign up as a dispatcher, which is fine for a demo but not for a real deployment.
-- Dispatcher-only API calls (approve, reject, status changes, Supervisor chat, route plans, demo batch/reset, the report list) return `401` without a login. Residents' contact details are left out of public issue details. Status changes record the dispatcher's name.
+- Dispatcher-only API calls (approve, reject, status changes, Supervisor chat, route plans, 311 import, reset, the report list) return `401` without a login. Residents' contact details are left out of public issue details. Status changes record the dispatcher's name.
 - Login and sign-up allow 10 attempts per minute per address.
-- Accounts survive **Reset demo**.
+- Accounts survive **Reset data**.
 
 ## Real 311 data
 
-The starting issues come from the city's public 311 service requests on [data.kcmo.org](https://data.kcmo.org) (Socrata). On first start, and on **Reset demo**, the API:
+The starting issues come from the city's public 311 service requests on [data.kcmo.org](https://data.kcmo.org) (Socrata). On first start, and on **Reset data**, the API:
 
 1. finds the newest 311 service-request dataset in the portal's catalog (or uses `SEED_DATASET`),
 2. reads its column list and picks the case id, open date, status, request type, address and location columns by name and type,
 3. downloads requests opened in the last `SEED_DAYS` days (default 60), keeps the newest `SEED_LIMIT` (default 150) that are still open, have a location in the city and map to a CityCare category (potholes, streetlights, water main breaks, missed trash, dead animals and so on; tax or billing questions are skipped),
 4. runs them through the agents with their real dates, so nearby duplicates merge and each issue is scored and routed.
 
-Each report keeps its 311 case number. The last download is saved in `STATE_DIR`, so a restart without internet still shows real data; with no download and no saved copy, the bundled sample reports are used. Set `SEED_SOURCE=sample` to always use the sample. An existing database keeps its data across restarts: click **Reset demo** to replace it with the latest 311 requests. The startup log names the dataset it used.
+Each report keeps its 311 case number. The last download is saved in `STATE_DIR`, so a restart without internet still shows real data; with no download and no saved copy, the bundled sample reports are used. Set `SEED_SOURCE=sample` to always use the sample. An existing database keeps its data across restarts: click **Reset data** to replace it with the latest 311 requests. The startup log names the dataset it used.
 
-Crews, workloads and the 50-report demo batch are still simulated. To use another Socrata city, set `SEED_DOMAIN` (and the city profile in `data/city.json`).
+**Import new 311 requests** (AI Triage Pipeline screen) fetches the newest requests again, skips case numbers already in the app, and runs up to `IMPORT_LIMIT` (default 25) new ones through the agents, oldest first; click it again for the rest. If the portal can't be reached it says so rather than falling back to sample data. In Bedrock mode each request makes roughly 8-12 model calls, so keep `IMPORT_LIMIT` small.
+
+Crews and their workloads are still simulated. To use another Socrata city, set `SEED_DOMAIN` (and the city profile in `data/city.json`).
 
 ## Database
 
@@ -58,8 +60,8 @@ Without `DATABASE_URL`, data lives in a local JSON file (`STATE_DIR`), which is 
 
 Notes:
 - The API keeps a working copy in memory and writes each change to MongoDB within a fraction of a second, retrying if the database is briefly unreachable.
-- **Several copies can share one database** (for example, each teammate running the app against the same Atlas cluster). Issue and report numbers come from atomic counters in the `counters` collection, so two copies never hand out the same number. Each copy checks the database for the others' changes every 3 seconds (`SYNC_INTERVAL_MS`) and pushes them to its browsers live, and a **Reset demo** on one copy reloads all of them. If two copies change the same issue at the same moment, the later write wins.
-- **Reset demo** deletes all issues and reports in the database and restarts numbering at #1040 (photos are kept).
+- **Several copies can share one database** (for example, each teammate running the app against the same Atlas cluster). Issue and report numbers come from atomic counters in the `counters` collection, so two copies never hand out the same number. Each copy checks the database for the others' changes every 3 seconds (`SYNC_INTERVAL_MS`) and pushes them to its browsers live, and a **Reset data** on one copy reloads all of them. If two copies change the same issue at the same moment, the later write wins.
+- **Reset data** deletes all issues and reports in the database and restarts numbering at #1040 (photos are kept).
 - Photos are stored in the `photos` collection. M0 has a 512 MB limit, so keep demo photos small.
 - `cd api && npm run db:studio` opens Prisma Studio to browse the data. `npm run db:push` applies schema changes; after editing the schema, run `npx prisma generate`.
 - Prisma 7 dropped MongoDB support, so the project pins Prisma 6.
@@ -121,11 +123,9 @@ The design rule from the plan holds in both modes: code does what code is good a
 - **Priority:** code computes the rubric base score (safety +40, arterial +15, reports, sensitive sites, age). Critical hazards (signal out, open manhole, main break, tree blocking the road) are raised to a base of 80, so they reach P1 on the first report. The agent may adjust it by ±15 and must explain why.
 - Every agent returns **Zod-validated structured output**. The server re-checks LLM answers, e.g. a merge target must be one of the candidates and the SLA must match the tier.
 
-## Demo numbers (mock engine, synthetic data)
+## Accuracy test set (mock engine, synthetic data)
 
-`POST /api/demo/batch`: **50 reports → 12 issues (76% duplicate reduction)**, category accuracy 100%, dedup precision/recall 100/100. This includes two potholes 85 m apart that correctly stay separate.
-
-These numbers come from synthetic reports whose keywords the rule engine was tuned on, so they overstate real-world accuracy. Re-run the batch in Bedrock mode to get honest LLM numbers for the slides.
+The test suite runs 50 synthetic reports with known answers (`data/demo_reports.json`): **50 reports → 12 issues (76% duplicate reduction)**, category accuracy 100%, dedup precision/recall 100/100, including two potholes 85 m apart that correctly stay separate. The rule engine was tuned on these keywords, so the numbers overstate real-world accuracy; they're a regression check, not a benchmark. The app itself no longer uses these reports.
 
 ## Running it for another city
 
@@ -136,7 +136,7 @@ Nothing in the code names a city. Everything city-specific lives in the data fol
 | `city.json` → `profile` | Display name and region, address suffix, default zoom, example report, address and supervisor questions shown in the UI | `center` only; the rest is optional |
 | `city.json` → `streets`, `neighborhoods`, `sensitive_sites` | Local street classes for the priority rubric, area names, schools and hospitals | Optional. Without them, area names come from OpenStreetMap, road class counts as unknown, and no sensitive-site points are added. |
 | `categories.json`, `departments.json` | Issue categories and the departments and crews that handle them | Yes |
-| `seed_reports.json`, `demo_reports.json` | Fallback history (used when 311 data is unavailable) and the 50-report demo batch | Synthetic |
+| `seed_reports.json`, `demo_reports.json` | Fallback history (used when 311 data is unavailable) and the accuracy test set used by the tests | Synthetic |
 
 A minimal `city.json` is just `{ "center": { "lat": 41.8781, "lng": -87.6298 } }`. With that, the UI says "City Services" and "City Operations", offers generic example questions, and reports anywhere are located through OpenStreetMap. The agents' instructions name the configured city when one is set.
 
@@ -179,7 +179,8 @@ The single-report pipeline is a **Strands `Graph`** (`buildReportGraph` in `api/
 | `GET` | `/api/nearby?lat&lng` | Open issues near a point (pre-submit duplicate hint) |
 | `GET` | `/api/crews` | Crews with workload and active assignments |
 | `GET` | `/api/stats`, `/api/meta` | Dashboard numbers; categories, departments, crews, neighborhoods |
-| `POST` | `/api/demo/batch`, `/api/demo/reset` | Demo controls |
+| `POST` | `/api/import/311` | Fetch the newest 311 requests and triage the ones not imported yet (up to `IMPORT_LIMIT`) |
+| `POST` | `/api/reset` | Delete incidents and reports and load the 311 history again |
 
 Trace event shape (see `api/src/lib/events.js`): `{ event_id, ts, run_id, report_id?, issue_id?, agent, status: started|tool|completed|error, message, data?, engine?, model?, duration_ms? }`.
 

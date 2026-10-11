@@ -120,6 +120,8 @@ describe('real 311 data', () => {
     assert.equal(merged.first_reported_at.slice(0, 10), reports[0].created_at.slice(0, 10))
     assert.deepEqual(issues.map((i) => i.category).sort(), ['animals', 'streets', 'trash', 'water'])
     assert.equal(issues.find((i) => i.category === 'water').subcategory, 'main_break')
+    // Stored reports keep their 311 case number and status.
+    assert.deepEqual(store.listReports().map((r) => [r.external_id, r.external_status, r.source]).sort(), reports.map((r) => [r.external_id, r.external_status, 'open_data_311']).sort())
   })
 
   test('tops up with recently closed requests when few are still open', async () => {

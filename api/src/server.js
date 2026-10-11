@@ -7,11 +7,11 @@ import { planRoutes } from './agents/routes.js'
 import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
-import { categories, city, cityProfile, demoReports, departments, seedReports } from './lib/data.js'
+import { categories, city, cityProfile, departments, seedReports } from './lib/data.js'
 import { emitIssueUpdate, emitReload, emitTrace, onIssue, onReload, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
 import { authRoutes, currentUser, requireDispatcher } from './lib/auth.js'
-import { loadSeedReports } from './lib/realReports.js'
+import { fetchRealReports, loadSeedReports, seedSettings } from './lib/realReports.js'
 import * as store from './lib/store.js'
 import { bedrockLimiter } from './agents/llm.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
@@ -80,7 +80,8 @@ app.get('/api/meta', (_req, res) =>
     departments,
     crews: store.listCrews(),
     statuses: STATUS_FLOW,
-    demo_report_count: demoReports.length,
+    import_limit: config.importLimit,
+    open_data: seedSettings().source === 'sample' ? null : seedSettings().domain,
   }),
 )
 
@@ -265,18 +266,34 @@ app.post(
   }),
 )
 
-// ---------- demo controls ----------
+// ---------- 311 data ----------
 
+// Pull the newest requests from the city's 311 open data and run the ones not already here
+// through the agents (a batch, so the trace and dedup log show the agents at work).
 let batchRunning = false
 app.post(
-  '/api/demo/batch',
+  '/api/import/311',
   requireDispatcher,
-  wrap(async (req, res) => {
-    if (batchRunning) return res.status(409).json({ error: 'A batch is already running.' })
+  wrap(async (_req, res) => {
+    if (seedSettings().source === 'sample') return res.status(400).json({ error: '311 import is turned off (SEED_SOURCE=sample).' })
+    if (batchRunning) return res.status(409).json({ error: 'An import is already running.' })
     batchRunning = true
     try {
-      const count = Math.min(Number(req.body?.count) || demoReports.length, demoReports.length)
-      const metrics = await processBatch(demoReports.slice(0, count), { label: 'Demo batch' })
+      let fetched
+      try {
+        // Look further back than the startup history (SEED_LIMIT), so there's something to
+        // import even before the city logs new requests: the newest ones not here yet win.
+        const settings = seedSettings()
+        fetched = await fetchRealReports({ ...settings, limit: Math.max(settings.limit * 4, 500) })
+      } catch (err) {
+        return res.status(502).json({ error: `Could not get 311 data: ${err.message}` })
+      }
+      const known = new Set(store.listReports().map((r) => r.external_id).filter(Boolean))
+      const fresh = fetched.reports.filter((r) => r.external_id && !known.has(r.external_id))
+      const batch = fresh.slice(-config.importLimit) // the newest ones, oldest first
+      const source = { dataset: fetched.meta.dataset_name, domain: fetched.meta.domain, fetched: fetched.reports.length, already_imported: fetched.reports.length - fresh.length, waiting: fresh.length - batch.length }
+      if (!batch.length) return res.json({ reports: 0, issues: 0, ...source, message: 'No new 311 requests since the last import.' })
+      const metrics = { ...(await processBatch(batch, { label: '311 import' })), ...source }
       store.setLastBatch(metrics)
       res.json(metrics)
     } finally {
@@ -285,15 +302,16 @@ app.post(
   }),
 )
 
+// Wipe all incidents and reports and load the 311 history again (accounts are kept).
 app.post(
-  '/api/demo/reset',
+  '/api/reset',
   requireDispatcher,
   wrap(async (_req, res) => {
     const seed = await loadSeedReports(seedReports, { refresh: true })
     await store.resetState()
     const metrics = await seedHistory(seed.reports)
     store.setLastBatch(null)
-    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: `Demo reset: loaded ${seed.description}.` })
+    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: `Reset: loaded ${seed.description}.` })
     emitReload('reset')
     res.json({ ok: true, seeded: metrics, source: seed.source, description: seed.description })
   }),

@@ -66,7 +66,7 @@ describe('dispatcher accounts', () => {
     const denied = await call('POST', `/api/issues/${issueId}/reject`, { reason: 'x' })
     assert.equal(denied.status, 401)
     assert.equal(denied.body.auth_required, true)
-    for (const [m, p] of [['GET', '/api/reports'], ['POST', '/api/chat'], ['POST', '/api/demo/reset'], ['POST', '/api/demo/batch'], ['GET', '/api/routes'], ['PATCH', `/api/issues/${issueId}`]]) {
+    for (const [m, p] of [['GET', '/api/reports'], ['POST', '/api/chat'], ['POST', '/api/reset'], ['POST', '/api/import/311'], ['GET', '/api/routes'], ['PATCH', `/api/issues/${issueId}`]]) {
       assert.equal((await call(m, p, m === 'GET' ? undefined : {})).status, 401, `${m} ${p} should need a login`)
     }
     assert.equal((await call('GET', '/api/issues')).status, 200)
@@ -157,7 +157,7 @@ describe('dispatcher accounts', () => {
     }
   })
 
-  test('accounts survive a demo reset', async () => {
+  test('accounts survive a data reset', async () => {
     await store.resetState()
     assert.ok(await store.findUser({ email: 'jordan@city.gov' }))
   })

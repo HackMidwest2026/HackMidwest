@@ -53,7 +53,7 @@ export function useCityData({ onPipelineEvent } = {}) {
           reload()
         }
       },
-      // The data set was replaced (a demo reset here or on another instance).
+      // The data set was replaced (a reset here or on another instance).
       onReload: reload,
       onTrace: (e) => {
         setEvents((prev) => [...prev, e].slice(-MAX_EVENTS))
