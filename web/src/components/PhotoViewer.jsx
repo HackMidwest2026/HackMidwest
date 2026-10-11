@@ -42,7 +42,7 @@ export default function PhotoViewer({ photos, startIndex = 0, onClose }) {
       <div className="flex items-center justify-between px-4 py-3 text-white text-xs shrink-0" onClick={(e) => e.stopPropagation()}>
         <div className="font-mono">
           {photo.report_id}
-          {many && <span className="text-slate-400"> · {index + 1} / {photos.length}</span>}
+          {many && <span className="text-white/60"> · {index + 1} / {photos.length}</span>}
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10" aria-label="Close photo">
           <X className="w-5 h-5" />
@@ -52,7 +52,7 @@ export default function PhotoViewer({ photos, startIndex = 0, onClose }) {
       {/* Image */}
       <div className="flex-1 min-h-0 relative flex items-center justify-center px-4 sm:px-16">
         {failed ? (
-          <div className="text-slate-300 text-sm flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="text-white/75 text-sm flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <ImageOff className="w-8 h-8" />
             This photo is no longer available.
           </div>

@@ -181,9 +181,9 @@ html.dark {
   --color-pink-900: --theme(--color-pink-100 inline);
 }
 
-/* Panels that are navy in both themes (sidebar, toasts, modal headers, photo
-   viewer) keep the original light-on-dark grays. */
-html.dark :is(.bg-\[\#00164E\], .bg-slate-950\/85) {
+/* Panels that are navy in both themes (sidebar, toasts, modal headers) keep the original
+   light-on-dark grays. */
+html.dark :is(.bg-\[\#00164E\]) {
   --color-slate-50: --theme(--color-slate-50 inline);
   --color-slate-100: --theme(--color-slate-100 inline);
   --color-slate-200: --theme(--color-slate-200 inline);
@@ -204,6 +204,16 @@ html.dark :is(.bg-\[\#00164E\], .bg-slate-950\/85) {
 .dark .bg-white\/95 { background-color: color-mix(in oklab, var(--cc-surface) 95%, transparent); }
 .dark .bg-white\/90 { background-color: color-mix(in oklab, var(--cc-surface) 90%, transparent); }
 .dark .hover\:bg-white:hover { background-color: var(--cc-surface-2); }
+.dark .focus\:bg-white:focus,
+.dark .focus-within\:bg-white:focus-within { background-color: var(--cc-surface); }
+/* Browser-autofilled fields (Chrome paints them pale blue) */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--cc-surface) inset;
+  -webkit-text-fill-color: var(--color-slate-900);
+  caret-color: var(--color-slate-900);
+}
 .dark .text-\[\#131B2E\] { color: var(--color-slate-800); }
 .dark .text-black, .dark .hover\:text-black:hover { color: #fff; }
 
