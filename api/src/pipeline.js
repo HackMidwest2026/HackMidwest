@@ -36,6 +36,8 @@ function makeCtx({ runId, reportId, delay = true, forceMock = false, sink }) {
   }
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
 let dedupChain = Promise.resolve()
 /** Dedup + merge must be serialized, or two copies of the same pothole could both create issues. */
 function serialized(fn) {
@@ -149,8 +151,10 @@ function issueSummary(report) {
 
 /** Returns { issue, merged }. Runs inside the dedup lock. */
 async function dedupStep(report, ctx) {
-  return serialized(async () => {
-    const dedup = await runDedup(report, ctx)
+  const result = await serialized(async () => {
+    // No pacing delay inside the lock: in mock mode it would make a burst of reports wait for
+    // each other's delays one by one. It's applied below, after the lock is released.
+    const dedup = await runDedup(report, { ...ctx, delay: false })
     const target = dedup.duplicate_of != null ? store.getIssue(dedup.duplicate_of) : null
     const issue = target ? mergeInto(target, report) : await newIssueFrom(report, dedup)
     store.updateReport(report.report_id, { issue_id: issue.issue_id, dedup })
@@ -158,6 +162,8 @@ async function dedupStep(report, ctx) {
     emitIssueUpdate(issue)
     return { issue, merged: Boolean(target), dedup }
   })
+  if (ctx.delay !== false && (!isBedrock() || ctx.forceMock) && config.mockDelayMs > 0) await sleep(config.mockDelayMs)
+  return result
 }
 
 async function priorityStep(issueId, ctx) {

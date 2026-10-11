@@ -28,8 +28,8 @@ The **Dispatch Command** console needs a dispatcher login; the **Citizen Portal*
 
 - Accounts live in the database (`users` collection in MongoDB, or the local state file). Passwords are stored only as salted scrypt hashes.
 - A login sets an HTTP-only, SameSite=Lax session cookie valid for 7 days, signed with `AUTH_SECRET` (or a secret generated once and stored in the database, so every copy of the app sharing it accepts the same logins).
-- Set `DISPATCHER_SIGNUP_CODE` to require a code for new accounts. Without it, anyone who can reach the site can sign up as a dispatcher, which is fine for a demo but not for a real deployment.
-- Dispatcher-only API calls (approve, reject, status changes, Supervisor chat, route plans, reset, the report list) return `401` without a login. Residents' contact details are left out of public issue details. Status changes record the dispatcher's name.
+- **Who can sign up:** on a new site the first person can create an account, which sets the site up. After that, sign-up is closed unless `DISPATCHER_SIGNUP_CODE` is set; then new accounts must enter that code. `DISPATCHER_OPEN_SIGNUP=true` lets anyone sign up again (demos only: anyone who can reach the site could approve and reset incidents).
+- Dispatcher-only API calls (approve, reject, status changes, Supervisor chat, route plans, reset, the report list) return `401` without a login. Residents' contact details are left out of every public response, including a duplicate report's view of the incident it joined. Status changes record the dispatcher's name.
 - Login and sign-up allow 10 attempts per minute per address.
 - Accounts survive **Reset data**.
 

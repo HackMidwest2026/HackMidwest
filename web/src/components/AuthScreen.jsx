@@ -21,12 +21,14 @@ export default function AuthScreen({ onSignedIn, onSwitchToCitizen, cityName }) 
   const [tab, setTab] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '', code: '' })
   const [showPassword, setShowPassword] = useState(false)
-  const [codeRequired, setCodeRequired] = useState(false)
+  // 'code' | 'open' | 'first' (no accounts yet) | 'closed' (accounts exist, no code set)
+  const [signupMode, setSignupMode] = useState(null)
+  const codeRequired = signupMode === 'code'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    api.authConfig().then((c) => setCodeRequired(c.signup_code_required)).catch(() => {})
+    api.authConfig().then((c) => setSignupMode(c.signup || (c.signup_code_required ? 'code' : 'open'))).catch(() => {})
   }, [])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -53,6 +55,7 @@ export default function AuthScreen({ onSignedIn, onSwitchToCitizen, cityName }) 
   }
 
   const signup = tab === 'signup'
+  const closed = signup && signupMode === 'closed'
   return (
     <div className="absolute inset-0 overflow-y-auto bg-gradient-to-br from-[#00164E] via-[#00236F] to-[#0B3A6E]">
       {/* faint grid, a nod to the map */}
@@ -93,52 +96,66 @@ export default function AuthScreen({ onSignedIn, onSwitchToCitizen, cityName }) 
 
             <form onSubmit={submit} className="p-4 space-y-3">
               <p className="text-xs text-slate-500">
-                {signup ? 'Create a dispatcher account to triage and approve incidents.' : 'Sign in to review the agents’ recommendations and dispatch crews.'}
+                {!signup
+                  ? 'Sign in to review the agents’ recommendations and dispatch crews.'
+                  : signupMode === 'first'
+                    ? 'No dispatcher accounts yet. The account you create now sets up this site.'
+                    : 'Create a dispatcher account to triage and approve incidents.'}
               </p>
-              {signup && (
+              {closed && (
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs" role="status">
+                  <KeyRound className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>Sign-up is closed. Ask whoever runs this CityCare site to set a dispatcher sign-up code, then come back to create your account.</span>
+                </div>
+              )}
+              {signup && !closed && (
                 <Field icon={User} label="Full name">
                   <input className={inputClass} value={form.name} onChange={set('name')} placeholder="Jordan Rivera" autoComplete="name" required maxLength={80} />
                 </Field>
               )}
-              <Field icon={Mail} label="Work email">
-                <input className={inputClass} type="email" value={form.email} onChange={set('email')} placeholder="you@city.gov" autoComplete="email" required autoFocus />
-              </Field>
-              <Field icon={Lock} label="Password">
-                <input
-                  className={inputClass}
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={set('password')}
-                  placeholder={signup ? 'At least 8 characters' : 'Your password'}
-                  autoComplete={signup ? 'new-password' : 'current-password'}
-                  minLength={signup ? 8 : undefined}
-                  required
-                />
-                <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-slate-400 hover:text-slate-600" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </Field>
-              {signup && codeRequired && (
-                <Field icon={KeyRound} label="Dispatcher sign-up code">
-                  <input className={inputClass} value={form.code} onChange={set('code')} placeholder="From your operations lead" autoComplete="off" required />
-                </Field>
-              )}
+              {!closed && (
+                <>
+                  <Field icon={Mail} label="Work email">
+                    <input className={inputClass} type="email" value={form.email} onChange={set('email')} placeholder="you@city.gov" autoComplete="email" required autoFocus />
+                  </Field>
+                  <Field icon={Lock} label="Password">
+                    <input
+                      className={inputClass}
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={set('password')}
+                      placeholder={signup ? 'At least 8 characters' : 'Your password'}
+                      autoComplete={signup ? 'new-password' : 'current-password'}
+                      minLength={signup ? 8 : undefined}
+                      required
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="text-slate-400 hover:text-slate-600" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </Field>
+                  {signup && codeRequired && (
+                    <Field icon={KeyRound} label="Dispatcher sign-up code">
+                      <input className={inputClass} value={form.code} onChange={set('code')} placeholder="From your operations lead" autoComplete="off" required />
+                    </Field>
+                  )}
 
-              {error && (
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs" role="alert">
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+                  {error && (
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs" role="alert">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
 
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full py-2 bg-[#00236F] hover:bg-[#1E3A8A] disabled:opacity-60 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
-              >
-                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                {signup ? 'Create account' : 'Log in'}
-              </button>
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="w-full py-2 bg-[#00236F] hover:bg-[#1E3A8A] disabled:opacity-60 text-white rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                    {signup ? 'Create account' : 'Log in'}
+                  </button>
+                </>
+              )}
 
               <p className="text-center text-xs text-slate-500">
                 {signup ? 'Already have an account? ' : 'New dispatcher? '}

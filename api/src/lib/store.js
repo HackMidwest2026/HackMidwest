@@ -65,6 +65,9 @@ function fileBackend() {
     async findUser({ email, user_id }) {
       return (state.users || []).find((u) => (email ? u.email === email : u.user_id === user_id)) || null
     },
+    async hasUsers() {
+      return Boolean(state.users?.length)
+    },
     async createUser(user) {
       state.users ||= []
       if (state.users.some((u) => u.email === user.email)) return false
@@ -501,6 +504,8 @@ export async function savePhoto(dataUrl) {
 
 /** { user_id, email, name, password_hash, role, created_at } or null. */
 export const findUser = (query) => backend.findUser(query)
+/** Whether any dispatcher account exists (decides who may sign up; see lib/auth.js). */
+export const hasUsers = () => backend.hasUsers()
 /** Store a new account. Resolves false if the email is taken. */
 export const createUser = (user) => backend.createUser(user)
 /** The session-signing secret: `candidate` unless one was already stored. */
