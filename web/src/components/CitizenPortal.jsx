@@ -393,7 +393,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 placeholder="Describe the issue in your own words: hazards, what happened, how bad it is…"
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none resize-none leading-relaxed"
               />
-              {!text && exampleReport && (
+              {/* {!text && exampleReport && (
                 <button
                   type="button"
                   onClick={() => {
@@ -404,7 +404,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 >
                   Use the demo example
                 </button>
-              )}
+              )} */}
 
               {nearest && !result && (
                 <div className="mt-2.5 p-2.5 bg-[#FFF7ED] border border-[#FED7AA] rounded-lg text-slate-800 text-[11px] flex items-start gap-2">
