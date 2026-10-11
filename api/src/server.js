@@ -10,6 +10,7 @@ import { config } from './config.js'
 import { categories, city, cityProfile, demoReports, departments, seedReports } from './lib/data.js'
 import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
+import { loadSeedReports } from './lib/realReports.js'
 import * as store from './lib/store.js'
 import { bedrockLimiter } from './agents/llm.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
@@ -269,11 +270,12 @@ app.post(
 app.post(
   '/api/demo/reset',
   wrap(async (_req, res) => {
+    const seed = await loadSeedReports(seedReports, { refresh: true })
     store.resetState()
-    const metrics = await seedHistory(seedReports)
+    const metrics = await seedHistory(seed.reports)
     store.setLastBatch(null)
-    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: 'Demo reset: history re-seeded.' })
-    res.json({ ok: true, seeded: metrics })
+    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: `Demo reset: loaded ${seed.description}.` })
+    res.json({ ok: true, seeded: metrics, source: seed.source, description: seed.description })
   }),
 )
 
@@ -316,9 +318,10 @@ app.use((err, _req, res, _next) => {
 export async function start() {
   try {
     if (!(await store.initStore())) {
-      const m = await seedHistory(seedReports)
+      const seed = await loadSeedReports(seedReports)
+      const m = await seedHistory(seed.reports)
       await store.flush()
-      console.log(`Seeded ${m.reports} historical reports into ${m.issues} issues.`)
+      console.log(`Seeded ${m.reports} reports into ${m.issues} issues from ${seed.description}.`)
     }
   } catch (err) {
     console.error(`Could not open the ${process.env.DATABASE_URL ? 'MongoDB database (check DATABASE_URL and the Atlas IP access list)' : 'data store'}: ${err.message}`)

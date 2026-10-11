@@ -43,6 +43,7 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
   const sla = slaRemaining(issue)
   const firstReport = detail?.reports?.[0]
   const photos = (detail?.reports || []).filter((r) => r.photo_url)
+  const cases = (detail?.reports || []).filter((r) => r.source === 'open_data_311' && r.external_id)
   const openPhoto = (reportId) => setViewing(Math.max(0, photos.findIndex((p) => p.report_id === reportId)))
 
   return (
@@ -76,6 +77,24 @@ export default function IncidentDrawer({ issue, crews, onClose, onChangeCrew, on
         )}
 
         {firstReport && <div className="p-2 bg-slate-50 rounded border border-slate-200/80 text-[11px] leading-relaxed italic">“{firstReport.raw_text}”</div>}
+        {cases.length > 0 && (
+          <div className="text-[10px] text-slate-500 font-mono">
+            311 open data · case{cases.length > 1 ? 's' : ''}{' '}
+            {cases.map((r, i) => (
+              <span key={r.report_id}>
+                {i > 0 && ', '}
+                {r.external_url ? (
+                  <a href={r.external_url} target="_blank" rel="noreferrer noopener" className="text-[#2563EB] hover:underline">
+                    {r.external_id}
+                  </a>
+                ) : (
+                  r.external_id
+                )}
+                {r.external_status && ` (${r.external_status.toLowerCase()})`}
+              </span>
+            ))}
+          </div>
+        )}
 
         {photos.length > 0 && (
           <div>

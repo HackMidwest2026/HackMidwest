@@ -76,16 +76,16 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
   const merges = events.filter((e) => e.agent === 'dedup' && e.status === 'completed' && e.data?.duplicate_of).slice(-8).reverse()
 
   async function run(kind) {
-    if (kind === 'reset' && !window.confirm('Reset all incidents to the seeded history?')) return
+    if (kind === 'reset' && !window.confirm('Delete all incidents and load the latest 311 requests?')) return
     setBusy(kind)
     try {
       if (kind === 'batch') {
         const m = await api.runDemoBatch()
         showToast(`${m.reports} reports → ${m.issues} incidents`, `${m.duplicate_reduction_pct}% duplicate reduction in ${(m.duration_ms / 1000).toFixed(1)} s`)
       } else {
-        await api.resetDemo()
+        const r = await api.resetDemo()
         clearEvents()
-        showToast('Demo reset', 'Seeded history restored.')
+        showToast('Demo reset', r.source === 'sample' ? 'Sample history restored (311 data unavailable).' : `Loaded ${r.seeded?.reports ?? ''} real 311 requests.`)
       }
       await reload()
     } catch (e) {

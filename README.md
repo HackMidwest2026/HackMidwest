@@ -20,7 +20,20 @@ docker compose up --build
 - Citizen Portal: http://localhost:8080
 - Dispatch Command console: http://localhost:8080/#/dispatch
 
-On first start the API seeds 13 historical reports, which become 8 open issues. In the console, open **AI Triage Pipeline** and click **Run demo batch** to run 50 messy reports through the agents. **Reset demo** restores the seeded history.
+On first start the API loads **real 311 service requests** from Kansas City's open-data portal (see [Real 311 data](#real-311-data)) and runs them through the agents, so the map shows the city's actual open issues. In the console, open **AI Triage Pipeline** and click **Run demo batch** to run 50 messy synthetic reports through the agents. **Reset demo** wipes the data and downloads the latest 311 requests again.
+
+## Real 311 data
+
+The starting issues come from the city's public 311 service requests on [data.kcmo.org](https://data.kcmo.org) (Socrata). On first start, and on **Reset demo**, the API:
+
+1. finds the newest 311 service-request dataset in the portal's catalog (or uses `SEED_DATASET`),
+2. reads its column list and picks the case id, open date, status, request type, address and location columns by name and type,
+3. downloads requests opened in the last `SEED_DAYS` days (default 60), keeps the newest `SEED_LIMIT` (default 150) that are still open, have a location in the city and map to a CityCare category (potholes, streetlights, water main breaks, missed trash, dead animals and so on; tax or billing questions are skipped),
+4. runs them through the agents with their real dates, so nearby duplicates merge and each issue is scored and routed.
+
+Each report keeps its 311 case number. The last download is saved in `STATE_DIR`, so a restart without internet still shows real data; with no download and no saved copy, the bundled sample reports are used. Set `SEED_SOURCE=sample` to always use the sample. An existing database keeps its data across restarts: click **Reset demo** to replace it with the latest 311 requests. The startup log names the dataset it used.
+
+Crews, workloads and the 50-report demo batch are still simulated. To use another Socrata city, set `SEED_DOMAIN` (and the city profile in `data/city.json`).
 
 ## Database
 
@@ -28,7 +41,7 @@ CityCare stores issues, reports, crews and report photos in **MongoDB** through 
 
 1. In Atlas, open **Connect → Drivers** and copy the connection string. Add a database name after the host: `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/citycare?retryWrites=true&w=majority`. URL-encode special characters in the password.
 2. Under **Network Access**, allow the IP of every machine that runs the API (or `0.0.0.0/0` for a hackathon demo).
-3. Put it in `.env` as `DATABASE_URL=...` and start the app. The API creates the collections and indexes on first start and seeds the sample history if the database is empty. `/api/health` shows `"database": { "backend": "mongodb" }`.
+3. Put it in `.env` as `DATABASE_URL=...` and start the app. The API creates the collections and indexes on first start and loads the 311 history if the database is empty. `/api/health` shows `"database": { "backend": "mongodb" }`.
 
 Without `DATABASE_URL`, data lives in a local JSON file (`STATE_DIR`), which is handy for offline demos and tests.
 
@@ -109,7 +122,7 @@ Nothing in the code names a city. Everything city-specific lives in the data fol
 | `city.json` → `profile` | Display name and region, address suffix, default zoom, example report, address and supervisor questions shown in the UI | `center` only; the rest is optional |
 | `city.json` → `streets`, `neighborhoods`, `sensitive_sites` | Local street classes for the priority rubric, area names, schools and hospitals | Optional. Without them, area names come from OpenStreetMap, road class counts as unknown, and no sensitive-site points are added. |
 | `categories.json`, `departments.json` | Issue categories and the departments and crews that handle them | Yes |
-| `seed_reports.json`, `demo_reports.json` | Demo history and the 50-report batch | For the demo only |
+| `seed_reports.json`, `demo_reports.json` | Fallback history (used when 311 data is unavailable) and the 50-report demo batch | Synthetic |
 
 A minimal `city.json` is just `{ "center": { "lat": 41.8781, "lng": -87.6298 } }`. With that, the UI says "City Services" and "City Operations", offers generic example questions, and reports anywhere are located through OpenStreetMap. The agents' instructions name the configured city when one is set.
 
@@ -120,7 +133,7 @@ api/                     Node service (Express 5) + agents          → owners A
   prisma/schema.prisma   MongoDB schema: issues, reports, crews, photos, app_state
   src/agents/            intake, dedup, priority, router, supervisor (Strands) + rules.js (mock engine)
   src/tools/cityTools.js tool functions shared by both engines
-  src/lib/               store (in-memory, saved to MongoDB or a JSON file), mongo (Prisma), geo (gazetteer), events (trace bus), data loader
+  src/lib/               store (in-memory, saved to MongoDB or a JSON file), mongo (Prisma), realReports (311 import), geo (gazetteer), events (trace bus), data loader
   src/pipeline.js        Strands Graph for single reports; batch path
   src/server.js          REST + SSE
   test/                  node:test suite
@@ -157,6 +170,6 @@ Trace event shape (see `api/src/lib/events.js`): `{ event_id, ts, run_id, report
 ## Before the demo / what still needs access
 
 - **AWS:** credentials and Bedrock model access for Claude Haiku-class and Sonnet-class in one region. Then set `CITYCARE_MODE=bedrock` and the model IDs, and run one report end to end. The Bedrock path has not yet been run against a live account; it has been checked only up to the credential step.
-- **KC 311 data:** confirm the dataset ID on data.kcmo.org, then import an extract to seed real history and check the category mapping in `data/categories.json`.
+- **KC 311 data:** the importer finds the dataset automatically. Check the startup log for the dataset it picked; if it's the wrong one, set `SEED_DATASET`. Review the request-type mapping in `api/src/lib/realReports.js` against the real request types.
 - **Geography:** `data/city.json` uses approximate straight-line street positions and hand-picked sites. Verify the sensitive sites, or swap in Amazon Location Service or Nominatim.
 - **Not built yet (stretch):** Titan embeddings for semantic dedup (currently bag-of-words similarity), map clustering, resident notifications, equity adjustment, AgentCore deploy.

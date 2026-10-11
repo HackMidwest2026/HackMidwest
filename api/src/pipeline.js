@@ -404,7 +404,8 @@ export function seedHistory(seedReports) {
   const now = Date.now()
   const inputs = seedReports.map((r) => ({
     ...r,
-    created_at: new Date(now - r.days_ago * 86400000 - Math.round(Math.random() * 3600000)).toISOString(),
+    // Real requests keep their own date; sample ones are placed `days_ago` days back.
+    created_at: r.created_at || new Date(now - (r.days_ago ?? 1) * 86400000 - Math.round(Math.random() * 3600000)).toISOString(),
   }))
   return processBatch(inputs, { forceMock: true, label: 'Seed history' })
 }
