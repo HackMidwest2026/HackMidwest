@@ -49,8 +49,7 @@ function readAsDataUrl(file) {
 
 export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue, onSwitchToDispatch }) {
   const { issues, crews } = data
-  // Optional examples from the configured city profile (the sample data is Kansas City).
-  const exampleReport = meta.city?.examples?.report_text
+  // Optional example address from the configured city profile (the sample data is Kansas City).
   const exampleAddress = meta.city?.examples?.address
   const [view, setView] = useState(null) // current map center, used to bias address search
   const [formOpen, setFormOpen] = useState(true)
@@ -393,18 +392,6 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 placeholder="Describe the issue in your own words: hazards, what happened, how bad it is…"
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none resize-none leading-relaxed"
               />
-              {/* {!text && exampleReport && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setText(exampleReport)
-                    if (!pin) findAddress(exampleReport)
-                  }}
-                  className="text-[11px] text-[#2563EB] hover:underline"
-                >
-                  Use the demo example
-                </button>
-              )} */}
 
               {nearest && !result && (
                 <div className="mt-2.5 p-2.5 bg-[#FFF7ED] border border-[#FED7AA] rounded-lg text-slate-800 text-[11px] flex items-start gap-2">

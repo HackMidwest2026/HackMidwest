@@ -12,7 +12,6 @@
       "house_number_per_block": 100
     },
     "examples": {
-      "report_text": "Huge pothole on Troost near 39th, almost wrecked my car",
       "address": "Troost & 39th",
       "supervisor_questions": ["What are the most dangerous open issues in Midtown?", "What's most urgent in Westport?", "How many issues are open?"]
     }
