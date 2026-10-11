@@ -42,8 +42,19 @@ export function useCityData({ onPipelineEvent } = {}) {
 
   useEffect(() => {
     reload()
+    let dropped = false
     return subscribe({
-      onStatus: setStream,
+      onStatus: (status) => {
+        setStream(status)
+        // Updates sent while the stream was down are lost, so refetch once it's back.
+        if (status === 'reconnecting') dropped = true
+        else if (status === 'live' && dropped) {
+          dropped = false
+          reload()
+        }
+      },
+      // The data set was replaced (a reset here or on another instance).
+      onReload: reload,
       onTrace: (e) => {
         setEvents((prev) => [...prev, e].slice(-MAX_EVENTS))
         if (e.agent === 'pipeline' && e.status === 'completed') onPipeline.current?.(e)

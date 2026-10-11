@@ -2,6 +2,7 @@ import { Radio, Send, Truck, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import { issueCode } from '../lib/display.js'
+import Markdown from './Markdown.jsx'
 
 function ModalShell({ title, icon: Icon, iconClass, onClose, width = 'max-w-md', children }) {
   useEffect(() => {
@@ -27,6 +28,10 @@ function ModalShell({ title, icon: Icon, iconClass, onClose, width = 'max-w-md',
   )
 }
 
+// Chat bubbles render text only; anything else (an object from a misbehaving model or proxy)
+// is shown as JSON instead of crashing React.
+const asText = (v) => (v == null ? '' : typeof v === 'string' ? v : typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v))
+
 const DEFAULT_QUESTIONS = ['What are the most dangerous open issues?', "What's most urgent right now?", 'How many issues are open?']
 
 /** Supervisor channel: plain-English questions answered by the Supervisor agent. */
@@ -36,7 +41,11 @@ export function SupervisorModal({ onClose, questions }) {
   const [busy, setBusy] = useState(false)
   const bottom = useRef(null)
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'nearest' }), [log.length, busy])
+  // Block body: newer browsers return a Promise from scrollIntoView, and React would treat a
+  // returned value as the effect's cleanup function ("destroy is not a function").
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'nearest' })
+  }, [log.length, busy])
 
   async function ask(q) {
     const text = (q ?? question).trim()
@@ -46,9 +55,9 @@ export function SupervisorModal({ onClose, questions }) {
     setLog((l) => [...l, { who: 'you', text, at: new Date() }])
     try {
       const { answer } = await api.chat(text)
-      setLog((l) => [...l, { who: 'agent', text: answer, at: new Date() }])
+      setLog((l) => [...l, { who: 'agent', text: asText(answer) || 'The supervisor agent returned no answer.', at: new Date() }])
     } catch (e) {
-      setLog((l) => [...l, { who: 'error', text: e.message, at: new Date() }])
+      setLog((l) => [...l, { who: 'error', text: asText(e?.message ?? e) || 'The request failed.', at: new Date() }])
     } finally {
       setBusy(false)
     }
@@ -61,7 +70,7 @@ export function SupervisorModal({ onClose, questions }) {
         {log.length === 0 && (
           <div className="space-y-2">
             <p className="text-slate-500">Ask about open issues. The supervisor agent queries live data and can consult the Priority and Router agents.</p>
-            {(questions?.length ? questions : DEFAULT_QUESTIONS).map((s) => (
+            {(Array.isArray(questions) && questions.length ? questions : DEFAULT_QUESTIONS).map(asText).map((s) => (
               <button key={s} onClick={() => ask(s)} className="block w-full text-left p-2 rounded-lg border border-dashed border-slate-300 text-[#1E3A8A] hover:bg-blue-50/60">
                 {s}
               </button>
@@ -83,7 +92,7 @@ export function SupervisorModal({ onClose, questions }) {
                 <span className="font-bold text-slate-800">City Supervisor Agent</span>
                 <span>{time(m.at)}</span>
               </div>
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{m.text}</p>
+              {m.who === 'agent' ? <Markdown className="text-slate-700">{m.text}</Markdown> : <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{m.text}</p>}
             </div>
           ),
         )}
@@ -108,6 +117,18 @@ export function SupervisorModal({ onClose, questions }) {
           <Send className="w-3.5 h-3.5" /> Ask
         </button>
       </form>
+    </ModalShell>
+  )
+}
+
+/** Shown in place of the Supervisor Channel if it crashes, so the console keeps working. */
+export function SupervisorCrashed({ error, onClose }) {
+  return (
+    <ModalShell title="Supervisor Channel" icon={Radio} iconClass="text-emerald-400" onClose={onClose} width="max-w-lg">
+      <div className="p-4 space-y-2">
+        <p className="text-slate-700">The Supervisor Channel hit an error. The rest of the console still works. Close this and reopen it to try again.</p>
+        <pre className="whitespace-pre-wrap break-words text-rose-900 bg-rose-50 rounded p-2 font-mono text-[11px] max-h-40 overflow-auto">{String(error?.message || error)}</pre>
+      </div>
     </ModalShell>
   )
 }

@@ -109,8 +109,15 @@ function mockAnswer(question, onTool) {
   const lines = rows.map(
     (r) => `#${r.issue_id} ${r.priority_tier ?? '--'} ${r.priority_score ?? '?'}/100: ${r.summary} at ${r.address.split(',')[0]} (${r.report_count} report${r.report_count === 1 ? '' : 's'}${r.recommended_department ? `, ${r.recommended_department}` : ''})`,
   )
-  return `Top ${hazard_only ? 'safety ' : ''}issues ${scope}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
+  return `Top ${hazard_only ? 'safety ' : ''}issues${scope ? ` ${scope}` : ''}:\n${lines.join('\n')}`.replace(/ {2,}/g, ' ')
 }
+
+// The live trace shows one line of the answer, so drop Markdown symbols (#, **, `, list bullets).
+const plainFirstLine = (md) =>
+  (md.split('\n').find((l) => l.trim()) || '')
+    .replace(/^\s*(#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s*)/, '')
+    .replace(/(\*\*|__|\*|`)/g, '')
+    .trim()
 
 export async function askSupervisor(question, ctx) {
   const out = await runStep({
@@ -122,7 +129,7 @@ export async function askSupervisor(question, ctx) {
       runText({ name: 'supervisor', tier: 'reasoning', systemPrompt: SYSTEM_PROMPT, tools: makeTools(toolSpecs(ctx), onTool), prompt: question }).then(
         ({ text, modelId }) => ({ output: { answer: text.trim() }, modelId }),
       ),
-    summarize: (o) => o.answer.split('\n')[0],
+    summarize: (o) => plainFirstLine(o.answer),
   })
   return out.answer
 }

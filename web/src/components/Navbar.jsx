@@ -1,4 +1,23 @@
-import { AlertTriangle, ArrowRightLeft, HeartPulse, Radio } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, HeartPulse, Monitor, Moon, Radio, Sun } from 'lucide-react'
+import { useTheme } from '../lib/useTheme.js'
+
+const THEME_LABEL = { system: 'Theme: match system', light: 'Theme: light', dark: 'Theme: dark' }
+
+function ThemeToggle() {
+  const { preference, cycle } = useTheme()
+  const Icon = preference === 'dark' ? Moon : preference === 'light' ? Sun : Monitor
+  const next = { system: 'light', light: 'dark', dark: 'system' }[preference]
+  return (
+    <button
+      onClick={cycle}
+      title={`${THEME_LABEL[preference]} (click for ${next})`}
+      aria-label={`${THEME_LABEL[preference]}. Switch to ${next}.`}
+      className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
+    >
+      <Icon className="w-4 h-4" />
+    </button>
+  )
+}
 
 export default function Navbar({ mode, onSetMode, stream, engine, p1Count, cityName }) {
   const live = stream === 'live'
@@ -39,7 +58,8 @@ export default function Navbar({ mode, onSetMode, stream, engine, p1Count, cityN
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <ThemeToggle />
         <div
           className="flex items-center gap-2 text-xs font-medium text-slate-700 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200"
           title={engine === 'bedrock' ? 'Agents running on Claude via Amazon Bedrock' : 'Agents running on the rule-based mock engine'}

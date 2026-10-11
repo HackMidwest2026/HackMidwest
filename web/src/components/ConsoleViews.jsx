@@ -1,4 +1,4 @@
-import { Cpu, GitFork, Play, RotateCcw, Truck } from 'lucide-react'
+import { Cpu, GitFork, RotateCcw, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../api.js'
 import { categoryMeta, issueCode, OPEN_STATUSES, shortAddress, slaRemaining, statusMeta, tierMeta } from '../lib/display.js'
@@ -72,24 +72,18 @@ const STEPS = [
 
 export function PipelineView({ meta, stats, events, issues, onSelect, showToast, reload, clearEvents }) {
   const [busy, setBusy] = useState(null)
-  const b = stats?.last_batch
   const merges = events.filter((e) => e.agent === 'dedup' && e.status === 'completed' && e.data?.duplicate_of).slice(-8).reverse()
 
-  async function run(kind) {
-    if (kind === 'reset' && !window.confirm('Reset all incidents to the seeded history?')) return
-    setBusy(kind)
+  async function reset() {
+    if (!window.confirm('Delete every report and incident submitted on the website? This cannot be undone.')) return
+    setBusy('reset')
     try {
-      if (kind === 'batch') {
-        const m = await api.runDemoBatch()
-        showToast(`${m.reports} reports → ${m.issues} incidents`, `${m.duplicate_reduction_pct}% duplicate reduction in ${(m.duration_ms / 1000).toFixed(1)} s`)
-      } else {
-        await api.resetDemo()
-        clearEvents()
-        showToast('Demo reset', 'Seeded history restored.')
-      }
+      const r = await api.resetData()
+      clearEvents()
+      showToast('Data reset', r.source === 'sample' ? `Loaded ${r.seeded?.reports ?? ''} sample reports.` : 'All reports and incidents were deleted.')
       await reload()
     } catch (e) {
-      showToast('Pipeline run failed', e.message)
+      showToast('Reset failed', e.message)
     } finally {
       setBusy(null)
     }
@@ -101,16 +95,8 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
       subtitle={`Intake → Dedup → Priority → Router, running on the ${meta.mode === 'bedrock' ? 'Amazon Bedrock (Claude)' : 'rule-based mock'} engine`}
       right={
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => run('batch')}
-            disabled={!!busy}
-            className="px-3 py-1.5 bg-[#00236F] hover:bg-[#1E3A8A] disabled:opacity-60 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm"
-          >
-            <Play className="w-3.5 h-3.5" />
-            {busy === 'batch' ? 'Agents triaging…' : `Run demo batch (${meta.demo_report_count} reports)`}
-          </button>
-          <button onClick={() => run('reset')} disabled={!!busy} className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-medium flex items-center gap-1.5">
-            <RotateCcw className="w-3.5 h-3.5" /> Reset demo
+          <button onClick={reset} disabled={!!busy} className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-medium flex items-center gap-1.5">
+            <RotateCcw className="w-3.5 h-3.5" /> {busy ? 'Resetting…' : 'Reset data'}
           </button>
         </div>
       }
@@ -126,19 +112,21 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
         ))}
       </div>
 
-      {b && (
+      {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            ['LAST BATCH', `${b.reports} → ${b.issues}`, 'reports → incidents'],
-            ['DUPLICATE REDUCTION', `${b.duplicate_reduction_pct}%`, `${b.reports - b.issues} calls saved`],
-            ['CATEGORY ACCURACY', b.ground_truth ? `${Math.round(b.ground_truth.category_accuracy * 100)}%` : '–', 'vs synthetic ground truth'],
-            ['DEDUP PRECISION / RECALL', b.ground_truth ? `${Math.round(b.ground_truth.dedup_precision * 100)} / ${Math.round(b.ground_truth.dedup_recall * 100)}` : '–', 'pairwise, %'],
-            ['RUN TIME', `${(b.duration_ms / 1000).toFixed(1)} s`, `${b.engine} engine`],
+            ['REPORTS RECEIVED', stats.total_reports, 'submitted on the website'],
+            ['LAST 24 HOURS', stats.reports_last_24h ?? 0, 'new reports'],
+            ['INCIDENTS', stats.total_issues, `${stats.open_issues} open`],
+            ['DUPLICATES MERGED', `${stats.duplicate_reduction_pct}%`, `${Math.max(0, stats.total_reports - stats.total_issues)} reports merged into existing incidents`],
+            ['AWAITING APPROVAL', stats.awaiting_approval ?? 0, 'agent recommendations to review'],
           ].map(([k, v, sub]) => (
-            <div key={k} className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div key={k} className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm min-w-0">
               <div className="text-[10px] font-mono text-slate-500">{k}</div>
-              <div className="text-2xl font-bold text-slate-900 mt-1">{v}</div>
-              <div className="text-[11px] text-slate-500">{sub}</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 truncate">{v}</div>
+              <div className="text-[11px] text-slate-500 truncate" title={String(sub)}>
+                {sub}
+              </div>
             </div>
           ))}
         </div>
@@ -156,7 +144,7 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
             <GitFork className="w-4 h-4 text-[#0D9488]" /> Live Deduplication Event Log
           </h3>
           <div className="divide-y divide-slate-100 text-xs">
-            {merges.length === 0 && <div className="py-3 text-slate-400">Merges appear here as reports come in. Run the demo batch to see a burst.</div>}
+            {merges.length === 0 && <div className="py-3 text-slate-400">Merges appear here when a new report describes an incident someone already reported.</div>}
             {merges.map((e) => {
               const issue = issues.find((i) => i.issue_id === e.data.duplicate_of)
               return (

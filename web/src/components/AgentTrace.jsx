@@ -6,7 +6,7 @@ export const AGENT_STYLE = {
   dedup: { label: 'Dedup', chip: 'bg-[#0D9488] text-white', bar: 'border-l-teal-500' },
   priority: { label: 'Priority', chip: 'bg-amber-500 text-white', bar: 'border-l-amber-500' },
   router: { label: 'Router', chip: 'bg-emerald-600 text-white', bar: 'border-l-emerald-500' },
-  supervisor: { label: 'Supervisor', chip: 'bg-slate-700 text-white', bar: 'border-l-slate-500' },
+  supervisor: { label: 'Supervisor', chip: 'bg-[#334155] text-white', bar: 'border-l-slate-500' },
   dispatcher: { label: 'Dispatcher', chip: 'bg-[#2563EB] text-white', bar: 'border-l-blue-500' },
 }
 

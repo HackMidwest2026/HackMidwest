@@ -1,0 +1,170 @@
+// CityCare's central database: MongoDB (e.g. an Atlas M0 cluster) through Prisma 6.
+// Prisma 7 dropped MongoDB support, so stay on the 6.x line until Prisma's MongoDB
+// support is generally available again.
+//
+// Field names match the API's JSON (snake_case) so records round-trip without renaming.
+// `extra` holds any field the app adds later that this schema doesn't name yet, so new
+// data is never silently dropped.
+//
+//   npx prisma db push      create collections and indexes in the database
+//   npx prisma generate     regenerate the client after editing this file
+//   npx prisma studio       browse the data
+
+generator client {
+  provider      = "prisma-client-js"
+  // native for local dev; musl for the node:alpine Docker image
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+/// One real-world problem, grouping one or more resident reports.
+model Issue {
+  id                     String    @id @default(auto()) @map("_id") @db.ObjectId
+  issue_id               Int       @unique
+  status                 String
+  category               String?
+  subcategory            String?
+  summary                String    @default("")
+  address                String?
+  neighborhood           String?
+  lat                    Float?
+  lng                    Float?
+  report_count           Int       @default(0)
+  first_reported_at      DateTime?
+  last_reported_at       DateTime?
+  priority_score         Float?
+  priority_tier          String?
+  /// [{ factor, points, detail }]
+  priority_factors       Json?
+  recommended_department String?
+  recommended_crew       String?
+  routing_reason         String?
+  suggested_sla_hours    Int?
+  possible_duplicate_of  Int?
+  hazard_flags           String[]
+  assigned_crew          String?
+  dispatcher_note        String?
+  /// Every agent step and tool call for this issue (the audit trail).
+  agent_trace            Json?
+  /// [{ status, at, by, note? }]
+  status_history         Json?
+  extra                  Json?
+  updated_at             DateTime  @updatedAt
+
+  @@index([status])
+  @@index([priority_score])
+  @@index([updated_at])
+  @@map("issues")
+}
+
+/// One resident submission. issue_id links it to the Issue it was merged into.
+model Report {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  report_id             String   @unique
+  created_at            DateTime
+  raw_text              String   @default("")
+  description           String?
+  photo_url             String?
+  lat                   Float
+  lng                   Float
+  address               String?
+  area                  String?
+  reporter_contact      String?
+  category_hint         String?
+  category              String?
+  subcategory           String?
+  hazard_flags          String[]
+  classifier_confidence Float?
+  issue_id              Int?
+  /// Dedup agent decision: { duplicate_of, possible_duplicate_of, confidence, reason }
+  dedup                 Json?
+  /// Vision agent findings for the photo, if any.
+  photo_analysis        Json?
+  /// Demo data only: id and ground truth for accuracy metrics.
+  demo_id               String?
+  truth                 Json?
+  extra                 Json?
+  updated_at            DateTime @updatedAt
+
+  @@index([issue_id])
+  @@index([updated_at])
+  @@map("reports")
+}
+
+/// A field crew and its workload (sample data is simulated).
+model Crew {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  crew_id       String   @unique
+  name          String
+  department_id String
+  home_lat      Float
+  home_lng      Float
+  open_jobs     Int
+  capacity      Int
+  extra         Json?
+  updated_at    DateTime @updatedAt
+
+  @@index([updated_at])
+  @@map("crews")
+}
+
+/// Report photos, stored in the database so every API instance can serve them.
+model Photo {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String   @unique
+  mime       String
+  data       Bytes
+  created_at DateTime @default(now())
+
+  @@map("photos")
+}
+
+/// Dispatcher accounts. Passwords are stored only as scrypt hashes.
+model User {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  user_id       String   @unique
+  email         String   @unique
+  name          String
+  password_hash String
+  role          String   @default("dispatcher")
+  created_at    DateTime @default(now())
+
+  @@map("users")
+}
+
+/// Live agent-trace events, shared so every API instance on this database can show the
+/// others' agent activity live. A TTL index (created by the API, see lib/mongo.js) deletes
+/// them after a day.
+model TraceEvent {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  event_id String   @unique
+  instance String
+  ts       DateTime
+  data     Json
+
+  @@index([instance])
+  @@map("trace_events")
+}
+
+/// ID counters ("issue", "report"). value is the last number handed out. Incremented
+/// atomically, so API instances sharing the database never hand out the same number.
+model Counter {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  name  String @unique
+  value Int
+
+  @@map("counters")
+}
+
+/// Small singleton values: last batch metrics, last route plan, reset epoch.
+model AppState {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  key   String @unique
+  value Json?
+
+  @@map("app_state")
+}

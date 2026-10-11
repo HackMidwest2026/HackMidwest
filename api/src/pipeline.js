@@ -152,7 +152,7 @@ async function dedupStep(report, ctx) {
   return serialized(async () => {
     const dedup = await runDedup(report, ctx)
     const target = dedup.duplicate_of != null ? store.getIssue(dedup.duplicate_of) : null
-    const issue = target ? mergeInto(target, report) : newIssueFrom(report, dedup)
+    const issue = target ? mergeInto(target, report) : await newIssueFrom(report, dedup)
     store.updateReport(report.report_id, { issue_id: issue.issue_id, dedup })
     ctx.issueId = issue.issue_id
     emitIssueUpdate(issue)
@@ -321,6 +321,7 @@ export async function processBatch(inputs, { forceMock = false, label = 'batch' 
   batchCtx.trace({ agent: 'pipeline', status: 'started', message: `${label}: ${inputs.length} reports received.` })
 
   const reports = []
+  await store.reserveIds('report', inputs.length) // one database round trip for the whole batch
   for (const input of inputs) reports.push(await createReportRecord(input))
   const sinks = new Map(reports.map((r) => [r.report_id, []]))
   const ctxFor = new Map(
@@ -404,7 +405,8 @@ export function seedHistory(seedReports) {
   const now = Date.now()
   const inputs = seedReports.map((r) => ({
     ...r,
-    created_at: new Date(now - r.days_ago * 86400000 - Math.round(Math.random() * 3600000)).toISOString(),
+    // Reports with a date keep it; sample ones are placed `days_ago` days back.
+    created_at: r.created_at || new Date(now - (r.days_ago ?? 1) * 86400000 - Math.round(Math.random() * 3600000)).toISOString(),
   }))
   return processBatch(inputs, { forceMock: true, label: 'Seed history' })
 }
