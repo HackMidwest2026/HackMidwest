@@ -172,7 +172,7 @@ describe('geo', () => {
 
 describe('pipeline', () => {
   before(async () => {
-    store.resetState()
+    await store.resetState()
     await seedHistory(seedReports)
   })
 

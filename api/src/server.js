@@ -8,7 +8,7 @@ import { askSupervisor } from './agents/supervisor.js'
 import { departmentName } from './agents/rules.js'
 import { config } from './config.js'
 import { categories, city, cityProfile, demoReports, departments, seedReports } from './lib/data.js'
-import { emitIssueUpdate, emitTrace, onIssue, onTrace } from './lib/events.js'
+import { emitIssueUpdate, emitReload, emitTrace, onIssue, onReload, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
 import { loadSeedReports } from './lib/realReports.js'
 import * as store from './lib/store.js'
@@ -271,10 +271,11 @@ app.post(
   '/api/demo/reset',
   wrap(async (_req, res) => {
     const seed = await loadSeedReports(seedReports, { refresh: true })
-    store.resetState()
+    await store.resetState()
     const metrics = await seedHistory(seed.reports)
     store.setLastBatch(null)
     emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: `Demo reset: loaded ${seed.description}.` })
+    emitReload('reset')
     res.json({ ok: true, seeded: metrics, source: seed.source, description: seed.description })
   }),
 )
@@ -292,11 +293,13 @@ app.get('/api/stream', (req, res) => {
   const send = (type) => (data) => res.write(`event: ${type}\ndata: ${JSON.stringify(type === 'issue' ? issueView(data) : data)}\n\n`)
   const offTrace = onTrace(send('trace'))
   const offIssue = onIssue(send('issue'))
+  const offReload = onReload(send('reload'))
   const ping = setInterval(() => res.write(': ping\n\n'), 20000)
   req.on('close', () => {
     clearInterval(ping)
     offTrace()
     offIssue()
+    offReload()
   })
 })
 
@@ -328,6 +331,9 @@ export async function start() {
     process.exit(1)
   }
   console.log(`Database: ${store.storeInfo().backend === 'mongodb' ? 'MongoDB (DATABASE_URL)' : `local file in ${config.stateDir}`}`)
+  // Other API instances sharing the database: show their changes here too.
+  store.onRemoteChange((e) => (e.type === 'reload' ? emitReload('remote') : emitIssueUpdate(e.issue)))
+  if (store.startSync(config.syncIntervalMs)) console.log(`Syncing with other instances every ${config.syncIntervalMs / 1000}s.`)
   let stopping = false
   const shutdown = async () => {
     if (stopping) return

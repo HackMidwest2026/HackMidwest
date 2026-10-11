@@ -58,12 +58,18 @@ export function fromDoc(kind, doc) {
 // empty database works without running the Prisma CLI first. Creating an index that
 // already exists is a no-op.
 const INDEXES = {
-  issues: [['issue_id', true], ['status'], ['priority_score']],
-  reports: [['report_id', true], ['issue_id']],
-  crews: [['crew_id', true]],
+  issues: [['issue_id', true], ['status'], ['priority_score'], ['updated_at']],
+  reports: [['report_id', true], ['issue_id'], ['updated_at']],
+  crews: [['crew_id', true], ['updated_at']],
   photos: [['name', true]],
   app_state: [['key', true]],
+  counters: [['name', true]],
 }
+
+// Numbering starts after these (first issue #1040, first report R-00001).
+export const ID_BASE = { issue: 1039, report: 0 }
+
+const isUniqueViolation = (err) => err?.code === 'P2002' || /duplicate key|E11000/i.test(err?.message || '')
 
 async function ensureIndexes(prisma) {
   for (const [collection, list] of Object.entries(INDEXES)) {
@@ -82,6 +88,30 @@ export function createMongoBackend(url) {
   const prisma = new PrismaClient({ datasources: { db: { url } } })
   const model = { issue: prisma.issue, report: prisma.report, crew: prisma.crew }
 
+  /**
+   * Make sure each counter exists and is past every id already stored (including ids from
+   * before counters existed, kept in app_state.counters), so numbering never reuses one.
+   */
+  async function ensureCounters() {
+    const [lastIssue, lastReport, legacy] = await Promise.all([
+      prisma.issue.findFirst({ orderBy: { issue_id: 'desc' }, select: { issue_id: true } }),
+      prisma.report.findFirst({ orderBy: { report_id: 'desc' }, select: { report_id: true } }),
+      prisma.appState.findUnique({ where: { key: 'counters' } }),
+    ])
+    const floor = {
+      issue: Math.max(ID_BASE.issue, lastIssue?.issue_id ?? 0, (legacy?.value?.next_issue_id ?? 0) - 1),
+      report: Math.max(ID_BASE.report, Number(lastReport?.report_id?.replace(/\D/g, '') || 0), (legacy?.value?.next_report_id ?? 0) - 1),
+    }
+    for (const [name, value] of Object.entries(floor)) {
+      try {
+        await prisma.counter.create({ data: { name, value } })
+      } catch (err) {
+        if (!isUniqueViolation(err)) throw err // another instance created it first: fine
+      }
+      await prisma.counter.updateMany({ where: { name, value: { lt: value } }, data: { value } })
+    }
+  }
+
   async function upsert(kind, obj) {
     const data = toDoc(kind, obj)
     const where = { [KEY[kind]]: obj[KEY[kind]] }
@@ -94,6 +124,39 @@ export function createMongoBackend(url) {
       await prisma.$connect()
       // Also the first round trip, so a bad URL or blocked IP fails at startup, not on the first report.
       await ensureIndexes(prisma)
+      await ensureCounters()
+    },
+    /**
+     * Hand out `n` new ids of a kind ("issue" or "report"). The counter is incremented
+     * atomically in the database, so every API instance gets different numbers.
+     */
+    async allocate(kind, n = 1) {
+      const c = await prisma.counter.update({ where: { name: kind }, data: { value: { increment: n } } })
+      return Array.from({ length: n }, (_, i) => c.value - n + 1 + i)
+    },
+    /**
+     * Records changed by any instance at or after `since` (a Date), plus the reset epoch and
+     * small shared values. Used to keep each instance's working copy in sync.
+     */
+    async changesSince(since) {
+      const where = { updated_at: { gte: since } }
+      const [issues, reports, crews, state] = await Promise.all([
+        prisma.issue.findMany({ where, orderBy: { updated_at: 'asc' } }),
+        prisma.report.findMany({ where, orderBy: { updated_at: 'asc' } }),
+        prisma.crew.findMany({ where }),
+        prisma.appState.findMany({ where: { key: { in: ['epoch', 'last_batch', 'last_route_plan'] } } }),
+      ])
+      const kv = Object.fromEntries(state.map((x) => [x.key, x.value]))
+      const stamps = [...issues, ...reports, ...crews].map((d) => d.updated_at.getTime())
+      return {
+        issues: issues.map((d) => fromDoc('issue', d)),
+        reports: reports.map((d) => fromDoc('report', d)),
+        crews: crews.map((d) => fromDoc('crew', d)),
+        latest: stamps.length ? Math.max(...stamps) : null,
+        epoch: kv.epoch ?? null,
+        last_batch: kv.last_batch ?? null,
+        last_route_plan: kv.last_route_plan ?? null,
+      }
     },
     async load() {
       const [issues, reports, crews, state] = await Promise.all([
@@ -103,9 +166,9 @@ export function createMongoBackend(url) {
         prisma.appState.findMany(),
       ])
       const kv = Object.fromEntries(state.map((s) => [s.key, s.value]))
-      if (!kv.counters && issues.length === 0 && reports.length === 0) return null // empty database
+      if (issues.length === 0 && reports.length === 0) return { epoch: kv.epoch ?? null, empty: true } // nothing to load yet
       return {
-        ...(kv.counters || {}),
+        epoch: kv.epoch ?? null,
         issues: issues.map((d) => fromDoc('issue', d)),
         reports: reports.map((d) => fromDoc('report', d)),
         crews: crews.map((d) => fromDoc('crew', d)),
@@ -126,9 +189,14 @@ export function createMongoBackend(url) {
       // A few at a time: fast enough for a batch of 50 reports, gentle on a free M0 cluster.
       for (let i = 0; i < jobs.length; i += 8) await Promise.all(jobs.slice(i, i + 8).map((j) => j()))
     },
-    /** Delete all CityCare data (demo reset). Photos are kept; reports may still link to them. */
-    async clear() {
+    /**
+     * Delete all CityCare data (demo reset) and restart numbering. Writes a new `epoch` so
+     * other instances notice the reset and reload. Photos are kept; reports may link to them.
+     */
+    async clear(epoch) {
       await Promise.all([prisma.issue.deleteMany(), prisma.report.deleteMany(), prisma.crew.deleteMany(), prisma.appState.deleteMany()])
+      for (const [name, value] of Object.entries(ID_BASE)) await prisma.counter.updateMany({ where: { name }, data: { value } })
+      await prisma.appState.upsert({ where: { key: 'epoch' }, create: { key: 'epoch', value: epoch }, update: { value: epoch } })
     },
     async savePhoto(name, mime, bytes) {
       await prisma.photo.upsert({ where: { name }, create: { name, mime, data: bytes }, update: { mime, data: bytes } })

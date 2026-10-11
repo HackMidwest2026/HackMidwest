@@ -36,3 +36,13 @@ export function onIssue(fn) {
   bus.on('issue', fn)
   return () => bus.off('issue', fn)
 }
+
+/** The whole data set changed (a demo reset, possibly by another instance): clients reload. */
+export function emitReload(reason) {
+  bus.emit('reload', { reason, ts: new Date().toISOString() })
+}
+
+export function onReload(fn) {
+  bus.on('reload', fn)
+  return () => bus.off('reload', fn)
+}

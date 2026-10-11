@@ -58,6 +58,8 @@ export const config = {
     // Seconds to wait before each retry when Bedrock throttles (jittered ±20%).
     throttleBackoffS: numList('BEDROCK_THROTTLE_BACKOFF_S', [8, 15, 30, 45, 60]),
   },
+  // MongoDB: how often to pull changes made by other API instances sharing the database (0 = off).
+  syncIntervalMs: num('SYNC_INTERVAL_MS', 3000),
   // Bedrock mode: reports in the agent pipeline at once; later ones wait their turn.
   reportConcurrency: num('REPORT_CONCURRENCY', 2),
   dedup: {

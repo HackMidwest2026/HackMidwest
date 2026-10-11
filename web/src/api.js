@@ -35,11 +35,12 @@ export const api = {
 }
 
 /** Subscribe to the live trace/issue stream. Returns an unsubscribe function. */
-export function subscribe({ onTrace, onIssue, onStatus }) {
+export function subscribe({ onTrace, onIssue, onStatus, onReload }) {
   const es = new EventSource('/api/stream')
   es.addEventListener('hello', () => onStatus?.('live'))
   es.addEventListener('trace', (e) => onTrace?.(JSON.parse(e.data)))
   es.addEventListener('issue', (e) => onIssue?.(JSON.parse(e.data)))
+  es.addEventListener('reload', () => onReload?.())
   es.onerror = () => onStatus?.('reconnecting')
   return () => es.close()
 }

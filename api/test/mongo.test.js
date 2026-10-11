@@ -25,7 +25,7 @@ describe('MongoDB persistence', { skip: !url && 'set TEST_DATABASE_URL to run' }
       const store = await import('./src/lib/store.js')
       const { seedReports } = await import('./src/lib/data.js')
       const { seedHistory, processReport } = await import('./src/pipeline.js')
-      await store.initStore(); store.resetState(); await store.flush()
+      await store.initStore(); await store.resetState()
       await seedHistory(seedReports)
       const photo_url = await store.savePhoto(${JSON.stringify(PNG)})
       const r = await processReport({ raw_text: 'Huge pothole on Troost near 39th, almost wrecked my car', lat: 39.0576, lng: -94.5716, photo_url, category_hint: 'streets' })
@@ -42,7 +42,7 @@ describe('MongoDB persistence', { skip: !url && 'set TEST_DATABASE_URL to run' }
       const loaded = await store.initStore()
       const photo = await store.readPhoto(${JSON.stringify(first.photo_url)}.split('/').pop())
       const issues = store.listIssues().length
-      const next = store.createIssue({ summary: 'counter check' })
+      const next = await store.createIssue({ summary: 'counter check' })
       console.log(JSON.stringify({ loaded, issues, reports: store.listReports().length,
         issue: store.getIssue(${first.issue.issue_id}), report: store.getReport(${JSON.stringify(first.report.report_id)}),
         crew: store.getCrew('streets_b'), lastBatch: store.getLastBatch(), photoBytes: photo?.bytes.length, photoMime: photo?.mime,
@@ -67,10 +67,39 @@ describe('MongoDB persistence', { skip: !url && 'set TEST_DATABASE_URL to run' }
     assert.ok(second.nextIssueId > first.issue.issue_id)
   })
 
+  test('instances sharing the database never reuse a number and see each other\'s issues', () => {
+    const r = run(`
+      const a = await import('./src/lib/store.js?a')
+      const b = await import('./src/lib/store.js?b')
+      await a.initStore(); await a.resetState(); await a.flush()
+      await b.initStore()
+      // Both instances create issues at the same time.
+      const made = await Promise.all(Array.from({ length: 20 }, (_, i) => (i % 2 ? a : b).createIssue({ summary: 'n' + i, lat: 39, lng: -94.5 })))
+      await a.flush(); await b.flush()
+      const seen = []
+      b.onRemoteChange((e) => e.type === 'issue' && seen.push(e.issue.issue_id))
+      await b.syncOnce()
+      const aOnly = made.filter((_, i) => i % 2).map((x) => x.issue_id)
+      const bSees = b.listIssues().map((x) => x.issue_id)
+      // A reset on one instance makes the other reload.
+      let reloaded = false
+      b.onRemoteChange((e) => e.type === 'reload' && (reloaded = true))
+      await a.resetState()
+      await b.syncOnce()
+      console.log(JSON.stringify({ ids: made.map((x) => x.issue_id), aOnly, bSees, seen, reloaded, afterReset: b.listIssues().length }))
+      await a.closeStore(); await b.closeStore()
+    `)
+    assert.equal(new Set(r.ids).size, 20)
+    assert.ok(r.aOnly.every((id) => r.bSees.includes(id)))
+    assert.deepEqual([...r.seen].sort(), [...r.aOnly].sort())
+    assert.equal(r.reloaded, true)
+    assert.equal(r.afterReset, 0)
+  })
+
   test('demo reset wipes the database', () => {
     const r = run(`
       const store = await import('./src/lib/store.js')
-      await store.initStore(); store.resetState(); await store.closeStore()
+      await store.initStore(); await store.resetState(); await store.closeStore()
       const again = await import('./src/lib/store.js?again')
       await again.initStore()
       console.log(JSON.stringify({ issues: again.listIssues().length, reports: again.listReports().length, crews: again.listCrews().length }))

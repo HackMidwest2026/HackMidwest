@@ -46,8 +46,9 @@ CityCare stores issues, reports, crews and report photos in **MongoDB** through 
 Without `DATABASE_URL`, data lives in a local JSON file (`STATE_DIR`), which is handy for offline demos and tests.
 
 Notes:
-- The API keeps a working copy in memory and writes each change to MongoDB within a fraction of a second, retrying if the database is briefly unreachable. Run **one API instance per database**: a second instance would not see the first one's changes until it restarts.
-- **Reset demo** deletes all issues and reports in the database (photos are kept).
+- The API keeps a working copy in memory and writes each change to MongoDB within a fraction of a second, retrying if the database is briefly unreachable.
+- **Several copies can share one database** (for example, each teammate running the app against the same Atlas cluster). Issue and report numbers come from atomic counters in the `counters` collection, so two copies never hand out the same number. Each copy checks the database for the others' changes every 3 seconds (`SYNC_INTERVAL_MS`) and pushes them to its browsers live, and a **Reset demo** on one copy reloads all of them. If two copies change the same issue at the same moment, the later write wins.
+- **Reset demo** deletes all issues and reports in the database and restarts numbering at #1040 (photos are kept).
 - Photos are stored in the `photos` collection. M0 has a 512 MB limit, so keep demo photos small.
 - `cd api && npm run db:studio` opens Prisma Studio to browse the data. `npm run db:push` applies schema changes; after editing the schema, run `npx prisma generate`.
 - Prisma 7 dropped MongoDB support, so the project pins Prisma 6.

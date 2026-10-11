@@ -110,7 +110,7 @@ describe('real 311 data', () => {
     assert.match(pothole.address, /^3900 TROOST AVE, Kansas City/)
     assert.ok(pothole.created_at < reports[4].created_at) // oldest first, with real dates
 
-    store.resetState()
+    await store.resetState()
     const m = await seedHistory(reports)
     assert.equal(m.reports, 5)
     const issues = store.listIssues()
