@@ -311,7 +311,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
 
             {/* 3. Evidence & AI triage */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">3. Evidence &amp; AI Triage</label>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">3. Evidence</label>
               <input ref={fileInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => choosePhoto(e.target.files?.[0])} />
               {photo ? (
                 <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/60 mb-2 relative">
