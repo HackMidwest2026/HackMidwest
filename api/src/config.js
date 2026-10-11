@@ -58,9 +58,9 @@ export const config = {
     // Seconds to wait before each retry when Bedrock throttles (jittered ±20%).
     throttleBackoffS: numList('BEDROCK_THROTTLE_BACKOFF_S', [8, 15, 30, 45, 60]),
   },
-  // 311 import (AI Triage Pipeline screen): at most this many new requests per run. Each one
-  // makes roughly 8-12 model calls in Bedrock mode, so keep it small there.
-  importLimit: num('IMPORT_LIMIT', 25),
+  // SEED_SOURCE=sample loads the bundled sample reports into an empty database (offline demos,
+  // tests). Otherwise the app holds only what residents submit on the website.
+  seedSample: (process.env.SEED_SOURCE || '').trim().toLowerCase() === 'sample',
   // MongoDB: how often to pull changes made by other API instances sharing the database (0 = off).
   syncIntervalMs: num('SYNC_INTERVAL_MS', 3000),
   // Bedrock mode: reports in the agent pipeline at once; later ones wait their turn.

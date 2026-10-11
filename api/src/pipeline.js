@@ -94,10 +94,6 @@ export async function createReportRecord(input) {
     category_hint: input.category_hint || null,
     ...(input.created_at && { created_at: input.created_at }),
     ...(input.demo_id && { demo_id: input.demo_id, truth: input.truth }),
-    // Requests imported from a city's 311 open data keep their case number and status.
-    ...(input.source && { source: input.source }),
-    ...(input.external_id && { external_id: input.external_id, external_status: input.external_status ?? null }),
-    ...(input.external_url && { external_url: input.external_url }),
   })
 }
 
@@ -409,7 +405,7 @@ export function seedHistory(seedReports) {
   const now = Date.now()
   const inputs = seedReports.map((r) => ({
     ...r,
-    // Real requests keep their own date; sample ones are placed `days_ago` days back.
+    // Reports with a date keep it; sample ones are placed `days_ago` days back.
     created_at: r.created_at || new Date(now - (r.days_ago ?? 1) * 86400000 - Math.round(Math.random() * 3600000)).toISOString(),
   }))
   return processBatch(inputs, { forceMock: true, label: 'Seed history' })

@@ -37,7 +37,6 @@ export const api = {
   geocode: (q, near) => request('GET', `/api/geocode?${qs({ q, lat: near?.lat, lng: near?.lng })}`),
   reverseGeocode: (lat, lng) => request('GET', `/api/reverse-geocode?lat=${lat}&lng=${lng}`),
   chat: (question) => request('POST', '/api/chat', { question }),
-  import311: () => request('POST', '/api/import/311', {}),
   resetData: () => request('POST', '/api/reset', {}),
   routes: () => request('GET', '/api/routes'),
   planRoutes: () => request('POST', '/api/routes/plan', {}),

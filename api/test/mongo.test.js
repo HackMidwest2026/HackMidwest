@@ -61,7 +61,7 @@ describe('MongoDB persistence', { skip: !url && 'set TEST_DATABASE_URL to run' }
     assert.equal(second.report.category_hint, 'streets')
     assert.deepEqual(second.crew, first.crew)
     assert.deepEqual(second.lastBatch, { reports: 50, issues: 12 })
-    assert.equal(second.photoMime, 'image/png')
+    assert.equal(second.photoMime, 'image/jpeg') // every photo is stored as JPEG (lib/images.js)
     assert.ok(second.photoBytes > 50)
     // ID counters persist, so new issues never reuse an old number.
     assert.ok(second.nextIssueId > first.issue.issue_id)

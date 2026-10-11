@@ -11,7 +11,6 @@ import { categories, city, cityProfile, departments, seedReports } from './lib/d
 import { emitIssueUpdate, emitReload, emitTrace, onIssue, onReload, onTrace } from './lib/events.js'
 import { describePoint, locateText, suggest } from './lib/locate.js'
 import { authRoutes, currentUser, requireDispatcher } from './lib/auth.js'
-import { fetchRealReports, loadSeedReports, seedSettings } from './lib/realReports.js'
 import * as store from './lib/store.js'
 import { bedrockLimiter } from './agents/llm.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
@@ -80,8 +79,6 @@ app.get('/api/meta', (_req, res) =>
     departments,
     crews: store.listCrews(),
     statuses: STATUS_FLOW,
-    import_limit: config.importLimit,
-    open_data: seedSettings().source === 'sample' ? null : seedSettings().domain,
   }),
 )
 
@@ -266,54 +263,21 @@ app.post(
   }),
 )
 
-// ---------- 311 data ----------
+// ---------- reset ----------
 
-// Pull the newest requests from the city's 311 open data and run the ones not already here
-// through the agents (a batch, so the trace and dedup log show the agents at work).
-let batchRunning = false
-app.post(
-  '/api/import/311',
-  requireDispatcher,
-  wrap(async (_req, res) => {
-    if (seedSettings().source === 'sample') return res.status(400).json({ error: '311 import is turned off (SEED_SOURCE=sample).' })
-    if (batchRunning) return res.status(409).json({ error: 'An import is already running.' })
-    batchRunning = true
-    try {
-      let fetched
-      try {
-        // Look further back than the startup history (SEED_LIMIT), so there's something to
-        // import even before the city logs new requests: the newest ones not here yet win.
-        const settings = seedSettings()
-        fetched = await fetchRealReports({ ...settings, limit: Math.max(settings.limit * 4, 500) })
-      } catch (err) {
-        return res.status(502).json({ error: `Could not get 311 data: ${err.message}` })
-      }
-      const known = new Set(store.listReports().map((r) => r.external_id).filter(Boolean))
-      const fresh = fetched.reports.filter((r) => r.external_id && !known.has(r.external_id))
-      const batch = fresh.slice(-config.importLimit) // the newest ones, oldest first
-      const source = { dataset: fetched.meta.dataset_name, domain: fetched.meta.domain, fetched: fetched.reports.length, already_imported: fetched.reports.length - fresh.length, waiting: fresh.length - batch.length }
-      if (!batch.length) return res.json({ reports: 0, issues: 0, ...source, message: 'No new 311 requests since the last import.' })
-      const metrics = { ...(await processBatch(batch, { label: '311 import' })), ...source }
-      store.setLastBatch(metrics)
-      res.json(metrics)
-    } finally {
-      batchRunning = false
-    }
-  }),
-)
-
-// Wipe all incidents and reports and load the 311 history again (accounts are kept).
+// Delete every incident and report (accounts are kept). With SEED_SOURCE=sample, the bundled
+// sample reports are loaded again; otherwise the app starts empty and fills up as residents
+// submit reports.
 app.post(
   '/api/reset',
   requireDispatcher,
   wrap(async (_req, res) => {
-    const seed = await loadSeedReports(seedReports, { refresh: true })
     await store.resetState()
-    const metrics = await seedHistory(seed.reports)
+    const seeded = config.seedSample ? await seedHistory(seedReports) : null
     store.setLastBatch(null)
-    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: `Reset: loaded ${seed.description}.` })
+    emitTrace({ run_id: randomUUID(), agent: 'pipeline', status: 'completed', message: seeded ? `Reset: loaded ${seeded.reports} sample reports.` : 'Reset: all reports and incidents deleted.' })
     emitReload('reset')
-    res.json({ ok: true, seeded: metrics, source: seed.source, description: seed.description })
+    res.json({ ok: true, seeded, source: seeded ? 'sample' : 'empty' })
   }),
 )
 
@@ -358,10 +322,13 @@ app.use((err, _req, res, _next) => {
 export async function start() {
   try {
     if (!(await store.initStore())) {
-      const seed = await loadSeedReports(seedReports)
-      const m = await seedHistory(seed.reports)
-      await store.flush()
-      console.log(`Seeded ${m.reports} reports into ${m.issues} issues from ${seed.description}.`)
+      if (config.seedSample) {
+        const m = await seedHistory(seedReports)
+        await store.flush()
+        console.log(`Seeded ${m.reports} sample reports into ${m.issues} issues (SEED_SOURCE=sample).`)
+      } else {
+        console.log('No reports yet: incidents appear as residents submit them on the website.')
+      }
     }
   } catch (err) {
     console.error(`Could not open the ${process.env.DATABASE_URL ? 'MongoDB database (check DATABASE_URL and the Atlas IP access list)' : 'data store'}: ${err.message}`)

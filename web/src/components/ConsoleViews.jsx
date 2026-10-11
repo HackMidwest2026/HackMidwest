@@ -1,4 +1,4 @@
-import { Cpu, Download, GitFork, RotateCcw, Truck } from 'lucide-react'
+import { Cpu, GitFork, RotateCcw, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../api.js'
 import { categoryMeta, issueCode, OPEN_STATUSES, shortAddress, slaRemaining, statusMeta, tierMeta } from '../lib/display.js'
@@ -72,29 +72,18 @@ const STEPS = [
 
 export function PipelineView({ meta, stats, events, issues, onSelect, showToast, reload, clearEvents }) {
   const [busy, setBusy] = useState(null)
-  const b = stats?.last_batch
   const merges = events.filter((e) => e.agent === 'dedup' && e.status === 'completed' && e.data?.duplicate_of).slice(-8).reverse()
 
-  async function run(kind) {
-    if (kind === 'reset' && !window.confirm('Delete all incidents and reports, then load the latest 311 requests again?')) return
-    setBusy(kind)
+  async function reset() {
+    if (!window.confirm('Delete every report and incident submitted on the website? This cannot be undone.')) return
+    setBusy('reset')
     try {
-      if (kind === 'import') {
-        const m = await api.import311()
-        if (!m.reports) showToast('No new 311 requests', m.message || 'Everything recent is already imported.')
-        else
-          showToast(
-            `${m.reports} new 311 request${m.reports === 1 ? '' : 's'} → ${m.issues} incident${m.issues === 1 ? '' : 's'}`,
-            `${m.duplicate_reduction_pct}% merged as duplicates in ${(m.duration_ms / 1000).toFixed(1)} s${m.waiting ? ` · ${m.waiting} more waiting, import again` : ''}`,
-          )
-      } else {
-        const r = await api.resetData()
-        clearEvents()
-        showToast('Data reset', r.source === 'sample' ? 'Sample history restored (311 data unavailable).' : `Loaded ${r.seeded?.reports ?? ''} real 311 requests.`)
-      }
+      const r = await api.resetData()
+      clearEvents()
+      showToast('Data reset', r.source === 'sample' ? `Loaded ${r.seeded?.reports ?? ''} sample reports.` : 'All reports and incidents were deleted.')
       await reload()
     } catch (e) {
-      showToast(kind === 'import' ? '311 import failed' : 'Reset failed', e.message)
+      showToast('Reset failed', e.message)
     } finally {
       setBusy(null)
     }
@@ -106,17 +95,8 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
       subtitle={`Intake → Dedup → Priority → Router, running on the ${meta.mode === 'bedrock' ? 'Amazon Bedrock (Claude)' : 'rule-based mock'} engine`}
       right={
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => run('import')}
-            disabled={!!busy || !meta.open_data}
-            title={meta.open_data ? `Fetch the newest requests from ${meta.open_data} and triage the ones not imported yet (up to ${meta.import_limit})` : '311 import is turned off (SEED_SOURCE=sample)'}
-            className="px-3 py-1.5 bg-[#00236F] hover:bg-[#1E3A8A] disabled:opacity-60 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            {busy === 'import' ? 'Agents triaging…' : 'Import new 311 requests'}
-          </button>
-          <button onClick={() => run('reset')} disabled={!!busy} className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-medium flex items-center gap-1.5">
-            <RotateCcw className="w-3.5 h-3.5" /> Reset data
+          <button onClick={reset} disabled={!!busy} className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg text-xs font-medium flex items-center gap-1.5">
+            <RotateCcw className="w-3.5 h-3.5" /> {busy ? 'Resetting…' : 'Reset data'}
           </button>
         </div>
       }
@@ -132,20 +112,18 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
         ))}
       </div>
 
-      {b && (
+      {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            ['LAST IMPORT', `${b.reports} → ${b.issues}`, 'requests → incidents'],
-            ['DUPLICATE REDUCTION', `${b.duplicate_reduction_pct}%`, `${b.reports - b.issues} merged into existing incidents`],
-            ['ALREADY IMPORTED', b.already_imported ?? '–', b.fetched != null ? `of the ${b.fetched} newest requests` : 'skipped'],
-            ['SOURCE', (b.domain || '311 data').replace(/^https?:\/\//, ''), b.dataset || 'city open data'],
-            ['RUN TIME', `${(b.duration_ms / 1000).toFixed(1)} s`, `${b.engine} engine`],
+            ['REPORTS RECEIVED', stats.total_reports, 'submitted on the website'],
+            ['LAST 24 HOURS', stats.reports_last_24h ?? 0, 'new reports'],
+            ['INCIDENTS', stats.total_issues, `${stats.open_issues} open`],
+            ['DUPLICATES MERGED', `${stats.duplicate_reduction_pct}%`, `${Math.max(0, stats.total_reports - stats.total_issues)} reports merged into existing incidents`],
+            ['AWAITING APPROVAL', stats.awaiting_approval ?? 0, 'agent recommendations to review'],
           ].map(([k, v, sub]) => (
-            <div key={k} className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div key={k} className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm min-w-0">
               <div className="text-[10px] font-mono text-slate-500">{k}</div>
-              <div className={`font-bold text-slate-900 mt-1 truncate ${k === 'SOURCE' ? 'text-base leading-8' : 'text-2xl'}`} title={String(v)}>
-                {v}
-              </div>
+              <div className="text-2xl font-bold text-slate-900 mt-1 truncate">{v}</div>
               <div className="text-[11px] text-slate-500 truncate" title={String(sub)}>
                 {sub}
               </div>
@@ -166,7 +144,7 @@ export function PipelineView({ meta, stats, events, issues, onSelect, showToast,
             <GitFork className="w-4 h-4 text-[#0D9488]" /> Live Deduplication Event Log
           </h3>
           <div className="divide-y divide-slate-100 text-xs">
-            {merges.length === 0 && <div className="py-3 text-slate-400">Merges appear here as reports come in. Import new 311 requests to see the agents at work.</div>}
+            {merges.length === 0 && <div className="py-3 text-slate-400">Merges appear here when a new report describes an incident someone already reported.</div>}
             {merges.map((e) => {
               const issue = issues.find((i) => i.issue_id === e.data.duplicate_of)
               return (

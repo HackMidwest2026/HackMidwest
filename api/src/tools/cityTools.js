@@ -8,7 +8,7 @@ import {
   neighborhoodFor,
   roadType,
 } from '../lib/geo.js'
-import { getIssue as storeGetIssue, listCrews, listIssues, reportsForIssue } from '../lib/store.js'
+import { getIssue as storeGetIssue, listCrews, listIssues, listReports, reportsForIssue } from '../lib/store.js'
 import { similarity } from '../lib/text.js'
 import { describePoint, locateText } from '../lib/locate.js'
 
@@ -171,6 +171,8 @@ export function getStats() {
     open_issues: open.length,
     total_reports: reports,
     duplicate_reduction_pct: reports ? Math.round((1 - issues.length / reports) * 100) : 0,
+    reports_last_24h: listReports().filter((r) => Date.now() - new Date(r.created_at).getTime() < 86400000).length,
+    awaiting_approval: open.filter((i) => ['new', 'triaged'].includes(i.status)).length,
     open_by_tier: count(open, 'priority_tier'),
     open_by_category: count(open, 'category'),
     open_by_neighborhood: count(open, 'neighborhood'),
