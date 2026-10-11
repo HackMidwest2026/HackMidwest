@@ -8,6 +8,16 @@
     <meta name="description" content="CityCare: 311-style city issue reporting with AI triage, duplicate merging and a dispatch command console." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <script>
+      // Apply the saved theme before first paint so dark mode never flashes white.
+      ;(function () {
+        try {
+          var t = localStorage.getItem('citycare-theme')
+          var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) {}
+      })()
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-[#FAF8FF] text-[#131B2E] antialiased">

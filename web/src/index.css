@@ -57,3 +57,181 @@
 ::-webkit-scrollbar-track { background: rgba(226, 232, 240, 0.5); }
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.6); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.8); }
+
+/* ---------- Dark mode ----------
+   <html class="dark"> switches the whole app. Instead of a dark: variant on every element,
+   the color scale is remapped here: neutrals (slate) are inverted, light tints of each hue
+   become dark tints and dark text shades become light ones. Solid brand and status colors
+   (500/600, navy buttons) stay as they are. Colors written as hex in class names are mapped
+   individually below. The theme is set before first paint by a script in index.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html.dark {
+  color-scheme: dark;
+  --cc-bg: #0a1020;
+  --cc-surface: #111a2d;
+  --cc-surface-2: #162238;
+
+  --color-slate-50: #131d31;
+  --color-slate-100: #1a2640;
+  --color-slate-200: #26344f;
+  --color-slate-300: #3a4a66;
+  --color-slate-400: #7d8ba3;
+  --color-slate-500: #97a4ba;
+  --color-slate-600: #b0bccd;
+  --color-slate-700: #c9d3e0;
+  --color-slate-800: #dde4ee;
+  --color-slate-900: #eef2f7;
+
+  --color-red-50: color-mix(in oklab, --theme(--color-red-500 inline) 12%, var(--cc-surface));
+  --color-red-100: color-mix(in oklab, --theme(--color-red-500 inline) 20%, var(--cc-surface));
+  --color-red-200: color-mix(in oklab, --theme(--color-red-500 inline) 34%, var(--cc-surface));
+  --color-red-700: --theme(--color-red-300 inline);
+  --color-red-800: --theme(--color-red-200 inline);
+  --color-red-900: --theme(--color-red-100 inline);
+  --color-rose-50: color-mix(in oklab, --theme(--color-rose-500 inline) 12%, var(--cc-surface));
+  --color-rose-100: color-mix(in oklab, --theme(--color-rose-500 inline) 20%, var(--cc-surface));
+  --color-rose-200: color-mix(in oklab, --theme(--color-rose-500 inline) 34%, var(--cc-surface));
+  --color-rose-700: --theme(--color-rose-300 inline);
+  --color-rose-800: --theme(--color-rose-200 inline);
+  --color-rose-900: --theme(--color-rose-100 inline);
+  --color-orange-50: color-mix(in oklab, --theme(--color-orange-500 inline) 12%, var(--cc-surface));
+  --color-orange-100: color-mix(in oklab, --theme(--color-orange-500 inline) 20%, var(--cc-surface));
+  --color-orange-200: color-mix(in oklab, --theme(--color-orange-500 inline) 34%, var(--cc-surface));
+  --color-orange-700: --theme(--color-orange-300 inline);
+  --color-orange-800: --theme(--color-orange-200 inline);
+  --color-orange-900: --theme(--color-orange-100 inline);
+  --color-amber-50: color-mix(in oklab, --theme(--color-amber-500 inline) 12%, var(--cc-surface));
+  --color-amber-100: color-mix(in oklab, --theme(--color-amber-500 inline) 20%, var(--cc-surface));
+  --color-amber-200: color-mix(in oklab, --theme(--color-amber-500 inline) 34%, var(--cc-surface));
+  --color-amber-700: --theme(--color-amber-300 inline);
+  --color-amber-800: --theme(--color-amber-200 inline);
+  --color-amber-900: --theme(--color-amber-100 inline);
+  --color-yellow-50: color-mix(in oklab, --theme(--color-yellow-500 inline) 12%, var(--cc-surface));
+  --color-yellow-100: color-mix(in oklab, --theme(--color-yellow-500 inline) 20%, var(--cc-surface));
+  --color-yellow-200: color-mix(in oklab, --theme(--color-yellow-500 inline) 34%, var(--cc-surface));
+  --color-yellow-700: --theme(--color-yellow-300 inline);
+  --color-yellow-800: --theme(--color-yellow-200 inline);
+  --color-yellow-900: --theme(--color-yellow-100 inline);
+  --color-lime-50: color-mix(in oklab, --theme(--color-lime-500 inline) 12%, var(--cc-surface));
+  --color-lime-100: color-mix(in oklab, --theme(--color-lime-500 inline) 20%, var(--cc-surface));
+  --color-lime-200: color-mix(in oklab, --theme(--color-lime-500 inline) 34%, var(--cc-surface));
+  --color-lime-700: --theme(--color-lime-300 inline);
+  --color-lime-800: --theme(--color-lime-200 inline);
+  --color-lime-900: --theme(--color-lime-100 inline);
+  --color-green-50: color-mix(in oklab, --theme(--color-green-500 inline) 12%, var(--cc-surface));
+  --color-green-100: color-mix(in oklab, --theme(--color-green-500 inline) 20%, var(--cc-surface));
+  --color-green-200: color-mix(in oklab, --theme(--color-green-500 inline) 34%, var(--cc-surface));
+  --color-green-700: --theme(--color-green-300 inline);
+  --color-green-800: --theme(--color-green-200 inline);
+  --color-green-900: --theme(--color-green-100 inline);
+  --color-emerald-50: color-mix(in oklab, --theme(--color-emerald-500 inline) 12%, var(--cc-surface));
+  --color-emerald-100: color-mix(in oklab, --theme(--color-emerald-500 inline) 20%, var(--cc-surface));
+  --color-emerald-200: color-mix(in oklab, --theme(--color-emerald-500 inline) 34%, var(--cc-surface));
+  --color-emerald-700: --theme(--color-emerald-300 inline);
+  --color-emerald-800: --theme(--color-emerald-200 inline);
+  --color-emerald-900: --theme(--color-emerald-100 inline);
+  --color-teal-50: color-mix(in oklab, --theme(--color-teal-500 inline) 12%, var(--cc-surface));
+  --color-teal-100: color-mix(in oklab, --theme(--color-teal-500 inline) 20%, var(--cc-surface));
+  --color-teal-200: color-mix(in oklab, --theme(--color-teal-500 inline) 34%, var(--cc-surface));
+  --color-teal-700: --theme(--color-teal-300 inline);
+  --color-teal-800: --theme(--color-teal-200 inline);
+  --color-teal-900: --theme(--color-teal-100 inline);
+  --color-cyan-50: color-mix(in oklab, --theme(--color-cyan-500 inline) 12%, var(--cc-surface));
+  --color-cyan-100: color-mix(in oklab, --theme(--color-cyan-500 inline) 20%, var(--cc-surface));
+  --color-cyan-200: color-mix(in oklab, --theme(--color-cyan-500 inline) 34%, var(--cc-surface));
+  --color-cyan-700: --theme(--color-cyan-300 inline);
+  --color-cyan-800: --theme(--color-cyan-200 inline);
+  --color-cyan-900: --theme(--color-cyan-100 inline);
+  --color-sky-50: color-mix(in oklab, --theme(--color-sky-500 inline) 12%, var(--cc-surface));
+  --color-sky-100: color-mix(in oklab, --theme(--color-sky-500 inline) 20%, var(--cc-surface));
+  --color-sky-200: color-mix(in oklab, --theme(--color-sky-500 inline) 34%, var(--cc-surface));
+  --color-sky-700: --theme(--color-sky-300 inline);
+  --color-sky-800: --theme(--color-sky-200 inline);
+  --color-sky-900: --theme(--color-sky-100 inline);
+  --color-blue-50: color-mix(in oklab, --theme(--color-blue-500 inline) 12%, var(--cc-surface));
+  --color-blue-100: color-mix(in oklab, --theme(--color-blue-500 inline) 20%, var(--cc-surface));
+  --color-blue-200: color-mix(in oklab, --theme(--color-blue-500 inline) 34%, var(--cc-surface));
+  --color-blue-700: --theme(--color-blue-300 inline);
+  --color-blue-800: --theme(--color-blue-200 inline);
+  --color-blue-900: --theme(--color-blue-100 inline);
+  --color-indigo-50: color-mix(in oklab, --theme(--color-indigo-500 inline) 12%, var(--cc-surface));
+  --color-indigo-100: color-mix(in oklab, --theme(--color-indigo-500 inline) 20%, var(--cc-surface));
+  --color-indigo-200: color-mix(in oklab, --theme(--color-indigo-500 inline) 34%, var(--cc-surface));
+  --color-indigo-700: --theme(--color-indigo-300 inline);
+  --color-indigo-800: --theme(--color-indigo-200 inline);
+  --color-indigo-900: --theme(--color-indigo-100 inline);
+  --color-violet-50: color-mix(in oklab, --theme(--color-violet-500 inline) 12%, var(--cc-surface));
+  --color-violet-100: color-mix(in oklab, --theme(--color-violet-500 inline) 20%, var(--cc-surface));
+  --color-violet-200: color-mix(in oklab, --theme(--color-violet-500 inline) 34%, var(--cc-surface));
+  --color-violet-700: --theme(--color-violet-300 inline);
+  --color-violet-800: --theme(--color-violet-200 inline);
+  --color-violet-900: --theme(--color-violet-100 inline);
+  --color-purple-50: color-mix(in oklab, --theme(--color-purple-500 inline) 12%, var(--cc-surface));
+  --color-purple-100: color-mix(in oklab, --theme(--color-purple-500 inline) 20%, var(--cc-surface));
+  --color-purple-200: color-mix(in oklab, --theme(--color-purple-500 inline) 34%, var(--cc-surface));
+  --color-purple-700: --theme(--color-purple-300 inline);
+  --color-purple-800: --theme(--color-purple-200 inline);
+  --color-purple-900: --theme(--color-purple-100 inline);
+  --color-pink-50: color-mix(in oklab, --theme(--color-pink-500 inline) 12%, var(--cc-surface));
+  --color-pink-100: color-mix(in oklab, --theme(--color-pink-500 inline) 20%, var(--cc-surface));
+  --color-pink-200: color-mix(in oklab, --theme(--color-pink-500 inline) 34%, var(--cc-surface));
+  --color-pink-700: --theme(--color-pink-300 inline);
+  --color-pink-800: --theme(--color-pink-200 inline);
+  --color-pink-900: --theme(--color-pink-100 inline);
+}
+
+/* Panels that are navy in both themes (sidebar, toasts, modal headers, login backdrop, photo
+   viewer) keep the original light-on-dark grays. */
+html.dark :is(.bg-\[\#00164E\], .from-\[\#00164E\], .bg-slate-950\/85) {
+  --color-slate-50: --theme(--color-slate-50 inline);
+  --color-slate-100: --theme(--color-slate-100 inline);
+  --color-slate-200: --theme(--color-slate-200 inline);
+  --color-slate-300: --theme(--color-slate-300 inline);
+  --color-slate-400: --theme(--color-slate-400 inline);
+  --color-slate-500: --theme(--color-slate-500 inline);
+  --color-slate-600: --theme(--color-slate-600 inline);
+  --color-slate-700: --theme(--color-slate-700 inline);
+  --color-slate-800: --theme(--color-slate-800 inline);
+  --color-slate-900: --theme(--color-slate-900 inline);
+}
+
+/* Surfaces */
+.dark body,
+.dark .bg-\[\#FAF8FF\] { background-color: var(--cc-bg); color: var(--color-slate-800); }
+.dark .bg-\[\#F8FAFC\] { background-color: var(--cc-surface-2); }
+.dark .bg-white { background-color: var(--cc-surface); }
+.dark .bg-white\/95 { background-color: color-mix(in oklab, var(--cc-surface) 95%, transparent); }
+.dark .bg-white\/90 { background-color: color-mix(in oklab, var(--cc-surface) 90%, transparent); }
+.dark .hover\:bg-white:hover { background-color: var(--cc-surface-2); }
+.dark .text-\[\#131B2E\] { color: var(--color-slate-800); }
+.dark .text-black, .dark .hover\:text-black:hover { color: #fff; }
+
+/* Brand text colors: navy and dark blues become light blues on dark backgrounds */
+.dark .text-\[\#1E3A8A\], .dark .text-\[\#00236F\], .dark .hover\:text-\[\#1E3A8A\]:hover { color: #9db8ff; }
+.dark .text-\[\#2563EB\], .dark .hover\:text-\[\#2563EB\]:hover { color: #6ea8ff; }
+.dark .text-\[\#0D9488\], .dark .text-\[\#0d9488\] { color: #2dd4bf; }
+.dark .text-\[\#EA580C\], .dark .text-\[\#C2410C\] { color: #fdba74; }
+.dark .text-\[\#BE123C\] { color: #fda4af; }
+.dark .text-\[\#B45309\], .dark .text-\[\#92400E\] { color: #fcd34d; }
+.dark .border-\[\#1E3A8A\], .dark .border-\[\#00236F\] { border-color: #4b6bc6; }
+.dark .focus\:border-\[\#1E3A8A\]:focus, .dark .focus-within\:border-\[\#1E3A8A\]:focus-within { border-color: #6ea8ff; }
+
+/* Status tints written as hex */
+.dark .bg-\[\#FFFBEB\], .dark .bg-\[\#FEF3C7\] { background-color: #3a2e12; }
+.dark .bg-\[\#FFF7ED\], .dark .bg-\[\#FFEDD5\] { background-color: #3b2414; }
+.dark .bg-\[\#FFE4E6\] { background-color: #3d1a22; }
+.dark .border-\[\#FED7AA\] { border-color: #7c3f17; }
+.dark .border-\[\#FDE68A\] { border-color: #7a5a13; }
+
+/* Map: darken the OpenStreetMap tiles (markers and overlays keep their colors) */
+.dark .leaflet-container { background: #0d1424; }
+.dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.6); }
+.dark .leaflet-control-attribution { background: color-mix(in oklab, var(--cc-surface) 85%, transparent) !important; color: var(--color-slate-500); }
+.dark .leaflet-control-attribution a { color: #6ea8ff; }
+.dark .leaflet-tooltip { background: var(--cc-surface-2); color: var(--color-slate-800); border-color: var(--color-slate-200); }
+.dark .leaflet-tooltip-top::before { border-top-color: var(--cc-surface-2); }
+.dark .leaflet-tooltip-bottom::before { border-bottom-color: var(--cc-surface-2); }
+
+/* Scrollbars */
+.dark ::-webkit-scrollbar-thumb { background-color: #2b3954; }
