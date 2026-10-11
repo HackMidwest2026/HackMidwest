@@ -181,9 +181,9 @@ html.dark {
   --color-pink-900: --theme(--color-pink-100 inline);
 }
 
-/* Panels that are navy in both themes (sidebar, toasts, modal headers, login backdrop, photo
+/* Panels that are navy in both themes (sidebar, toasts, modal headers, photo
    viewer) keep the original light-on-dark grays. */
-html.dark :is(.bg-\[\#00164E\], .from-\[\#00164E\], .bg-slate-950\/85) {
+html.dark :is(.bg-\[\#00164E\], .bg-slate-950\/85) {
   --color-slate-50: --theme(--color-slate-50 inline);
   --color-slate-100: --theme(--color-slate-100 inline);
   --color-slate-200: --theme(--color-slate-200 inline);

@@ -68,7 +68,7 @@ export default function AuthScreen({ onSignedIn, onSwitchToCitizen, cityName }) 
             </div>
             <div>
               <div className="font-bold text-lg leading-tight">Dispatch Command</div>
-              <div className="text-xs text-blue-200">{cityName ? `${cityName} Operations` : 'City Operations'} · dispatchers only</div>
+              <div className="text-xs text-[#BFDBFE]">{cityName ? `${cityName} Operations` : 'City Operations'} · dispatchers only</div>
             </div>
           </div>
 
@@ -149,7 +149,7 @@ export default function AuthScreen({ onSignedIn, onSwitchToCitizen, cityName }) 
             </form>
           </div>
 
-          <button onClick={onSwitchToCitizen} className="w-full mt-4 text-xs text-blue-100 hover:text-white">
+          <button onClick={onSwitchToCitizen} className="w-full mt-4 text-xs text-[#DBEAFE] hover:text-white">
             Reporting a problem? Go to the Citizen Portal →
           </button>
         </div>
