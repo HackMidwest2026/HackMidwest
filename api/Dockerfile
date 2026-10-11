@@ -1,8 +1,8 @@
 # CityCare API + agents. Build from the repo root so the shared /data folder is in context:
 #   docker build -f api/Dockerfile -t citycare-api .
 FROM node:22-alpine AS deps
-# Prisma's query engine needs OpenSSL.
-RUN apk add --no-cache openssl
+# Prisma's query engine uses the OpenSSL 3 libraries already in node:alpine (libssl3),
+# so no apk install is needed (that would fail when Alpine's mirror is unreachable).
 WORKDIR /app/api
 COPY api/package.json api/package-lock.json ./
 COPY api/prisma ./prisma
@@ -10,7 +10,6 @@ COPY api/prisma ./prisma
 RUN npm ci --omit=dev
 
 FROM node:22-alpine
-RUN apk add --no-cache openssl
 ENV NODE_ENV=production \
     PORT=8080 \
     DATA_DIR=/app/data \
