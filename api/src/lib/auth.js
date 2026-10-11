@@ -5,8 +5,12 @@
 // the database can check it without a lookup. The signing secret is AUTH_SECRET, or one
 // generated on first start and stored in the database.
 //
-// Sign-up: if DISPATCHER_SIGNUP_CODE is set, new accounts must enter it; otherwise anyone can
-// create a dispatcher account (fine for a demo, not for a real deployment).
+// Sign-up (signupMode):
+//   - "code":  DISPATCHER_SIGNUP_CODE is set, and new accounts must enter it.
+//   - "open":  DISPATCHER_OPEN_SIGNUP=true, and anyone can sign up (demos only).
+//   - "first": neither is set and there are no accounts yet: the first person may sign up,
+//              so a fresh deployment can be set up.
+//   - "closed": neither is set and an account exists: no more sign-ups until a code is set.
 import { createHmac, randomBytes, randomUUID, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 import * as store from './store.js'
@@ -18,6 +22,7 @@ const KEY_LEN = 64
 
 export const authSettings = (env = process.env) => ({
   signupCode: (env.DISPATCHER_SIGNUP_CODE || '').trim(),
+  openSignup: (env.DISPATCHER_OPEN_SIGNUP || '').trim().toLowerCase() === 'true',
   secret: (env.AUTH_SECRET || '').trim(),
 })
 
@@ -66,7 +71,12 @@ export async function readToken(token) {
 function cookieValue(req) {
   for (const part of (req.headers.cookie || '').split(';')) {
     const [k, ...v] = part.trim().split('=')
-    if (k === COOKIE) return decodeURIComponent(v.join('='))
+    if (k !== COOKIE) continue
+    try {
+      return decodeURIComponent(v.join('='))
+    } catch {
+      return null // malformed cookie: treat as signed out
+    }
   }
   return null
 }
@@ -111,10 +121,23 @@ function tooManyAttempts(req, limit = 10) {
 // ---------- routes ----------
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+async function signupMode() {
+  const { signupCode, openSignup } = authSettings()
+  if (signupCode) return 'code'
+  if (openSignup) return 'open'
+  return (await store.hasUsers()) ? 'closed' : 'first'
+}
 const publicUser = (u) => ({ user_id: u.user_id, name: u.name, email: u.email, role: u.role || 'dispatcher' })
 
 export function authRoutes(app, wrap) {
-  app.get('/api/auth/config', (_req, res) => res.json({ signup_code_required: Boolean(authSettings().signupCode) }))
+  app.get(
+    '/api/auth/config',
+    wrap(async (_req, res) => {
+      const mode = await signupMode()
+      res.json({ signup: mode, signup_code_required: mode === 'code' })
+    }),
+  )
 
   app.get(
     '/api/auth/me',
@@ -132,6 +155,8 @@ export function authRoutes(app, wrap) {
       const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 200)
       const password = String(req.body?.password || '')
       const { signupCode } = authSettings()
+      const mode = await signupMode()
+      if (mode === 'closed') return res.status(403).json({ error: 'Sign-up is closed. Ask whoever runs this CityCare site for a dispatcher sign-up code.', signup: 'closed' })
       if (!name) return res.status(400).json({ error: 'Enter your name.' })
       if (!EMAIL.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' })
       if (password.length < 8) return res.status(400).json({ error: 'Use a password of at least 8 characters.' })

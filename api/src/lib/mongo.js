@@ -220,6 +220,9 @@ export function createMongoBackend(url) {
       const u = await prisma.user.findUnique({ where: email ? { email } : { user_id } })
       return u && { user_id: u.user_id, email: u.email, name: u.name, password_hash: u.password_hash, role: u.role, created_at: u.created_at.toISOString() }
     },
+    async hasUsers() {
+      return Boolean(await prisma.user.findFirst({ select: { user_id: true } }))
+    },
     /** Returns false if the email is already taken. */
     async createUser(user) {
       try {

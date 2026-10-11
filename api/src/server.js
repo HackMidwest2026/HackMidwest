@@ -41,7 +41,11 @@ app.get(
 
 const STATUS_FLOW = ['new', 'triaged', 'approved', 'assigned', 'in_progress', 'resolved', 'rejected']
 
-function issueView(issue, { withReports = false } = {}) {
+// Residents' contact details are for dispatchers only: any view that includes reports leaves
+// them out unless the caller is a signed-in dispatcher (contacts: true).
+const withoutContact = ({ reporter_contact: _c, ...report }) => report
+
+function issueView(issue, { withReports = false, contacts = false } = {}) {
   if (!issue) return null
   const crew = issue.recommended_crew ? store.getCrew(issue.recommended_crew) : null
   const assigned = issue.assigned_crew ? store.getCrew(issue.assigned_crew) : null
@@ -50,10 +54,24 @@ function issueView(issue, { withReports = false } = {}) {
     recommended_department_name: issue.recommended_department ? departmentName(issue.recommended_department) : null,
     recommended_crew_name: crew?.name ?? null,
     assigned_crew_name: assigned?.name ?? null,
-    ...(withReports ? { reports: store.reportsForIssue(issue.issue_id) } : { agent_trace: undefined }),
+    ...(withReports ? { reports: store.reportsForIssue(issue.issue_id).map((r) => (contacts ? r : withoutContact(r))) } : { agent_trace: undefined }),
   }
 }
 
+
+/**
+ * Validate a coordinate pair from a request. Returns { lat, lng } as numbers, null when both
+ * are missing (the caller may locate the report from its text), or { error } when they are
+ * not numbers on Earth.
+ */
+function readPoint(lat, lng, { required = false } = {}) {
+  const blank = (v) => v === undefined || v === null || v === ''
+  if (blank(lat) && blank(lng)) return required ? { error: 'lat and lng are required' } : null
+  const point = { lat: Number(lat), lng: Number(lng) }
+  if (blank(lat) || blank(lng) || !Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return { error: 'lat and lng must both be numbers.' }
+  if (Math.abs(point.lat) > 90 || Math.abs(point.lng) > 180) return { error: 'lat must be between -90 and 90 and lng between -180 and 180.' }
+  return point
+}
 
 // ---------- meta ----------
 
@@ -85,9 +103,9 @@ app.get('/api/meta', (_req, res) =>
 
 // Open issues near a point, for the "matching nearby reports" hint before a resident submits.
 app.get('/api/nearby', (req, res) => {
-  const lat = Number(req.query.lat)
-  const lng = Number(req.query.lng)
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.status(400).json({ error: 'lat and lng are required' })
+  const point = readPoint(req.query.lat, req.query.lng, { required: true })
+  if (point.error) return res.status(400).json({ error: point.error })
+  const { lat, lng } = point
   const radius = Math.min(Number(req.query.radius) || 120, 500)
   res.json(findNearbyIssues({ lat, lng, radius_m: radius, category: req.query.category || undefined, text: req.query.text || '' }))
 })
@@ -125,7 +143,11 @@ app.get(
 
 app.get(
   '/api/reverse-geocode',
-  wrap(async (req, res) => res.json(await describePoint({ lat: Number(req.query.lat), lng: Number(req.query.lng) }))),
+  wrap(async (req, res) => {
+    const point = readPoint(req.query.lat, req.query.lng, { required: true })
+    if (point.error) return res.status(400).json({ error: point.error })
+    res.json(await describePoint(point))
+  }),
 )
 
 // ---------- reports ----------
@@ -133,7 +155,10 @@ app.get(
 app.post(
   '/api/reports',
   wrap(async (req, res) => {
-    const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
+    const { text, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
+    const point = readPoint(req.body?.lat, req.body?.lng)
+    if (point?.error) return res.status(400).json({ error: point.error })
+    const { lat, lng } = point || {}
     // Any common image format; stored as an upright, resized JPEG without location metadata.
     // An unusable file throws a 400 with a message for the resident.
     const photo_url = photo ? await store.savePhoto(photo) : null
@@ -145,6 +170,7 @@ app.post(
       { raw_text: String(text || '').trim() || '(photo only, no description)', lat, lng, address, photo_url, reporter_contact, category_hint },
       { runId },
     )
+    // The issue may hold other residents' reports: their contact details stay out (issueView).
     res.status(201).json({ ...result, issue: issueView(result.issue, { withReports: true }) })
   }),
 )
@@ -169,10 +195,7 @@ app.get(
   wrap(async (req, res) => {
     const issue = store.getIssue(req.params.id)
     if (!issue) return res.status(404).json({ error: 'Issue not found' })
-    const view = issueView(issue, { withReports: true })
-    // Residents' contact details are for dispatchers only.
-    if (!(await currentUser(req))) view.reports = view.reports.map(({ reporter_contact: _c, ...r }) => r)
-    res.json(view)
+    res.json(issueView(issue, { withReports: true, contacts: Boolean(await currentUser(req)) }))
   }),
 )
 
@@ -197,9 +220,11 @@ app.post('/api/issues/:id/approve', requireDispatcher, (req, res) => {
   const crewId = crew_id || issue.recommended_crew
   const crew = crewId ? store.getCrew(crewId) : null
   if (crewId && !crew) return res.status(400).json({ error: `Unknown crew ${crewId}` })
-  if (crew && issue.assigned_crew !== crew.crew_id) {
+  // Approving reopens a closed issue; a closed issue's crew was already credited when it closed.
+  const wasOpen = !CLOSED.has(issue.status)
+  if (crew && (issue.assigned_crew !== crew.crew_id || !wasOpen)) {
     store.updateCrew(crew.crew_id, (c) => ({ open_jobs: c.open_jobs + 1 }))
-    if (issue.assigned_crew) store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
+    if (issue.assigned_crew && wasOpen && issue.assigned_crew !== crew.crew_id) store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
   }
   const edited = (crew_id && crew_id !== issue.recommended_crew) || (department_id && department_id !== issue.recommended_department)
   const updated = dispatcherAction(
@@ -216,10 +241,21 @@ app.post('/api/issues/:id/approve', requireDispatcher, (req, res) => {
   res.json(issueView(updated))
 })
 
+// A crew's open_jobs counts its open assignments (on top of its simulated baseline). Adjust it
+// only when an issue actually moves between open and closed, so repeating a status change
+// (resolving twice) can't drift the count.
+const CLOSED = new Set(['resolved', 'rejected'])
+function adjustCrewJobs(issue, nextStatus) {
+  if (!issue.assigned_crew) return
+  const delta = !CLOSED.has(issue.status) && CLOSED.has(nextStatus) ? -1 : CLOSED.has(issue.status) && !CLOSED.has(nextStatus) ? 1 : 0
+  if (delta) store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs + delta) }))
+}
+
 app.post('/api/issues/:id/reject', requireDispatcher, (req, res) => {
   const issue = store.getIssue(req.params.id)
   if (!issue) return res.status(404).json({ error: 'Issue not found' })
   const note = req.body?.reason || 'Rejected by dispatcher'
+  adjustCrewJobs(issue, 'rejected')
   res.json(issueView(dispatcherAction(req, issue, 'rejected', { dispatcher_note: note }, `Dispatcher rejected #${issue.issue_id}: ${note}`)))
 })
 
@@ -228,9 +264,7 @@ app.patch('/api/issues/:id', requireDispatcher, (req, res) => {
   if (!issue) return res.status(404).json({ error: 'Issue not found' })
   const { status } = req.body || {}
   if (!STATUS_FLOW.includes(status)) return res.status(400).json({ error: `status must be one of ${STATUS_FLOW.join(', ')}` })
-  if (['resolved', 'rejected'].includes(status) && issue.assigned_crew) {
-    store.updateCrew(issue.assigned_crew, (c) => ({ open_jobs: Math.max(0, c.open_jobs - 1) }))
-  }
+  adjustCrewJobs(issue, status)
   res.json(issueView(dispatcherAction(req, issue, status, {}, `Dispatcher moved #${issue.issue_id} to ${status.replace('_', ' ')}.`)))
 })
 
@@ -284,6 +318,19 @@ app.post(
 
 // ---------- live trace stream (SSE) ----------
 
+// One listener per event type, fanned out to every connected browser (rather than three
+// listeners per connection, which hit Node's listener limit past ~100 open streams). Each
+// event is serialized once, however many browsers are watching.
+const streamClients = new Set()
+function broadcast(type, data) {
+  if (!streamClients.size) return
+  const chunk = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`
+  for (const res of streamClients) res.write(chunk)
+}
+onTrace((e) => broadcast('trace', e))
+onIssue((issue) => broadcast('issue', issueView(issue)))
+onReload((e) => broadcast('reload', e))
+
 app.get('/api/stream', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -292,16 +339,11 @@ app.get('/api/stream', (req, res) => {
     'X-Accel-Buffering': 'no',
   })
   res.write(`event: hello\ndata: ${JSON.stringify({ mode: config.mode })}\n\n`)
-  const send = (type) => (data) => res.write(`event: ${type}\ndata: ${JSON.stringify(type === 'issue' ? issueView(data) : data)}\n\n`)
-  const offTrace = onTrace(send('trace'))
-  const offIssue = onIssue(send('issue'))
-  const offReload = onReload(send('reload'))
+  streamClients.add(res)
   const ping = setInterval(() => res.write(': ping\n\n'), 20000)
   req.on('close', () => {
     clearInterval(ping)
-    offTrace()
-    offIssue()
-    offReload()
+    streamClients.delete(res)
   })
 })
 

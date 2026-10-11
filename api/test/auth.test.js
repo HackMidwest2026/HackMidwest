@@ -12,6 +12,7 @@ process.env.PHOTON_URL = 'off'
 process.env.SEED_SOURCE = 'sample'
 delete process.env.DATABASE_URL
 delete process.env.DISPATCHER_SIGNUP_CODE
+process.env.DISPATCHER_OPEN_SIGNUP = 'true' // these tests create several accounts; the default policy is tested below
 
 const { app } = await import('../src/server.js')
 const store = await import('../src/lib/store.js')
@@ -155,6 +156,32 @@ describe('dispatcher accounts', () => {
     } finally {
       delete process.env.DISPATCHER_SIGNUP_CODE
     }
+  })
+
+  test('by default only the first account can sign up without a code', async () => {
+    delete process.env.DISPATCHER_OPEN_SIGNUP
+    resetLoginAttempts()
+    try {
+      const call = client()
+      // Accounts already exist from the tests above, so sign-up is closed.
+      assert.equal((await call('GET', '/api/auth/config')).body.signup, 'closed')
+      const r = await call('POST', '/api/auth/signup', { name: 'Stranger', email: 'stranger@example.com', password: 'whatever-123' })
+      assert.equal(r.status, 403)
+      assert.equal(r.body.signup, 'closed')
+      // A sign-up code opens it again, for people who have the code.
+      process.env.DISPATCHER_SIGNUP_CODE = 'ops-2026'
+      assert.equal((await call('GET', '/api/auth/config')).body.signup, 'code')
+      assert.equal((await call('POST', '/api/auth/signup', { name: 'New Hire', email: 'hire@city.gov', password: 'dispatch-2026', code: 'ops-2026' })).status, 201)
+    } finally {
+      delete process.env.DISPATCHER_SIGNUP_CODE
+      process.env.DISPATCHER_OPEN_SIGNUP = 'true'
+    }
+  })
+
+  test('a malformed session cookie counts as signed out, not a server error', async () => {
+    const res = await fetch(base + '/api/auth/me', { headers: { Cookie: 'cc_session=%E0%A4%A' } })
+    assert.equal(res.status, 200)
+    assert.equal((await res.json()).user, null)
   })
 
   test('accounts survive a data reset', async () => {
