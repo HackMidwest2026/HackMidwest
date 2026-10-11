@@ -12,6 +12,7 @@ import { emitIssueUpdate, emitReload, emitTrace, onIssue, onReload, onTrace } fr
 import { describePoint, locateText, suggest } from './lib/locate.js'
 import { authRoutes, currentUser, requireDispatcher } from './lib/auth.js'
 import * as store from './lib/store.js'
+import { startTraceSync } from './lib/traceSync.js'
 import { bedrockLimiter } from './agents/llm.js'
 import { GRAPH_TOPOLOGY, processBatch, processReport, reportQueue, seedHistory } from './pipeline.js'
 import { findNearbyIssues, getStats } from './tools/cityTools.js'
@@ -338,12 +339,18 @@ export async function start() {
   // Other API instances sharing the database: show their changes here too.
   store.onRemoteChange((e) => (e.type === 'reload' ? emitReload('remote') : emitIssueUpdate(e.issue)))
   if (store.startSync(config.syncIntervalMs)) console.log(`Syncing with other instances every ${config.syncIntervalMs / 1000}s.`)
+  // ...and their agents' live trace, so the trace and dedup log show everyone's reports.
+  const stopTraceSync = startTraceSync({ pollMs: config.traceSyncMs })
   let stopping = false
   const shutdown = async () => {
     if (stopping) return
     stopping = true
     // Write anything still pending before exiting (bounded so a dead database can't hang shutdown).
-    await Promise.race([store.closeStore(), new Promise((r) => setTimeout(r, 5000))])
+    const close = async () => {
+      await stopTraceSync?.() // share the last trace events
+      await store.closeStore()
+    }
+    await Promise.race([close(), new Promise((r) => setTimeout(r, 5000))])
     process.exit(0)
   }
   process.on('SIGINT', shutdown)

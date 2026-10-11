@@ -136,6 +136,20 @@ model User {
   @@map("users")
 }
 
+/// Live agent-trace events, shared so every API instance on this database can show the
+/// others' agent activity live. A TTL index (created by the API, see lib/mongo.js) deletes
+/// them after a day.
+model TraceEvent {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  event_id String   @unique
+  instance String
+  ts       DateTime
+  data     Json
+
+  @@index([instance])
+  @@map("trace_events")
+}
+
 /// ID counters ("issue", "report"). value is the last number handed out. Incremented
 /// atomically, so API instances sharing the database never hand out the same number.
 model Counter {

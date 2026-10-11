@@ -23,6 +23,11 @@ export function emitTrace(event) {
   return full
 }
 
+/** Re-broadcast an event that already has its id and time (one from another API instance). */
+export function emitTraceAsIs(event) {
+  bus.emit('trace', event)
+}
+
 export function emitIssueUpdate(issue) {
   bus.emit('issue', issue)
 }

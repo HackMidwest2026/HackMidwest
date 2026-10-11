@@ -63,6 +63,8 @@ export const config = {
   seedSample: (process.env.SEED_SOURCE || '').trim().toLowerCase() === 'sample',
   // MongoDB: how often to pull changes made by other API instances sharing the database (0 = off).
   syncIntervalMs: num('SYNC_INTERVAL_MS', 3000),
+  // MongoDB: how often to pull other instances' live agent-trace events (0 = off).
+  traceSyncMs: num('TRACE_SYNC_MS', 1000),
   // Bedrock mode: reports in the agent pipeline at once; later ones wait their turn.
   reportConcurrency: num('REPORT_CONCURRENCY', 2),
   dedup: {

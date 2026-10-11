@@ -96,6 +96,32 @@ describe('MongoDB persistence', { skip: !url && 'set TEST_DATABASE_URL to run' }
     assert.equal(r.afterReset, 0)
   })
 
+  test('live trace events are shared with other instances', () => {
+    const r = run(`
+      const store = await import('./src/lib/store.js')
+      const { emitTrace } = await import('./src/lib/events.js')
+      const { startTraceSync, INSTANCE_ID } = await import('./src/lib/traceSync.js')
+      await store.initStore(); await store.resetState()
+      const stop = startTraceSync({ pollMs: 0 }) // share only; no polling in this test
+      const stopShare = startTraceSync({ pollMs: 60000 })
+      emitTrace({ run_id: 'r1', agent: 'intake', status: 'started', message: 'Reading report R-00001' })
+      emitTrace({ run_id: 'r1', agent: 'dedup', status: 'completed', message: 'New issue', data: { duplicate_of: null } })
+      emitTrace({ run_id: 'r1', agent: 'supervisor', status: 'tool', message: 'query_issues()', data: { rows: 'x'.repeat(10000) } })
+      await stopShare()
+      const others = await store.traceEventsSince(new Date(Date.now() - 60000), 'another-instance')
+      const mine = await store.traceEventsSince(new Date(Date.now() - 60000), INSTANCE_ID)
+      console.log(JSON.stringify({ stop: stop === null, others: others.map((e) => [e.agent, e.message, e.data === undefined, e.instance === INSTANCE_ID, Boolean(e.event_id && e.ts)]), mine: mine.length }))
+      await store.closeStore()
+    `)
+    assert.equal(r.stop, true) // pollMs 0 turns sharing off
+    assert.deepEqual(r.others, [
+      ['intake', 'Reading report R-00001', true, true, true],
+      ['dedup', 'New issue', false, true, true],
+      ['supervisor', 'query_issues()', true, true, true], // large tool output stays local
+    ])
+    assert.equal(r.mine, 0) // an instance doesn't replay its own events
+  })
+
   test('demo reset wipes the database', () => {
     const r = run(`
       const store = await import('./src/lib/store.js')

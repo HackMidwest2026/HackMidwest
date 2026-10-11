@@ -506,5 +506,11 @@ export const createUser = (user) => backend.createUser(user)
 /** The session-signing secret: `candidate` unless one was already stored. */
 export const authSecret = (candidate) => backend.authSecret(candidate)
 
+// ---------- shared live trace (MongoDB only; see lib/traceSync.js) ----------
+
+export const canShareTrace = () => Boolean(backend.saveTraceEvents)
+export const saveTraceEvents = (instance, events) => backend.saveTraceEvents(instance, events)
+export const traceEventsSince = (since, instance) => backend.traceEventsSince(since, instance)
+
 /** { mime, bytes } for a stored photo name, or null. */
 export const readPhoto = (name) => backend.readPhoto(name)

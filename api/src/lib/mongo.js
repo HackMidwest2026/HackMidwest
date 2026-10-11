@@ -65,7 +65,10 @@ const INDEXES = {
   app_state: [['key', true]],
   counters: [['name', true]],
   users: [['user_id', true], ['email', true]],
+  trace_events: [['event_id', true], ['instance']],
 }
+// Trace events are only useful live: MongoDB deletes them a day after they happen.
+const TRACE_TTL_S = 86400
 
 // Numbering starts after these (first issue #1040, first report R-00001).
 export const ID_BASE = { issue: 1039, report: 0 }
@@ -83,6 +86,7 @@ async function ensureIndexes(prisma) {
       })),
     })
   }
+  await prisma.$runCommandRaw({ createIndexes: 'trace_events', indexes: [{ key: { ts: 1 }, name: 'trace_events_ts_ttl', expireAfterSeconds: TRACE_TTL_S }] })
 }
 
 export function createMongoBackend(url) {
@@ -196,9 +200,20 @@ export function createMongoBackend(url) {
      */
     async clear(epoch) {
       // Accounts and the session-signing secret survive a demo reset.
-      await Promise.all([prisma.issue.deleteMany(), prisma.report.deleteMany(), prisma.crew.deleteMany(), prisma.appState.deleteMany({ where: { key: { not: 'auth_secret' } } })])
+      await Promise.all([prisma.issue.deleteMany(), prisma.report.deleteMany(), prisma.crew.deleteMany(), prisma.traceEvent.deleteMany(), prisma.appState.deleteMany({ where: { key: { not: 'auth_secret' } } })])
       for (const [name, value] of Object.entries(ID_BASE)) await prisma.counter.updateMany({ where: { name }, data: { value } })
       await prisma.appState.upsert({ where: { key: 'epoch' }, create: { key: 'epoch', value: epoch }, update: { value: epoch } })
+    },
+    // ---------- shared live trace ----------
+    /** Store trace events from this instance: [{ event_id, ts, ... }] */
+    async saveTraceEvents(instance, events) {
+      if (!events.length) return
+      await prisma.traceEvent.createMany({ data: events.map((e) => ({ event_id: e.event_id, instance, ts: new Date(e.ts), data: e })) })
+    },
+    /** Trace events from other instances at or after `since`, oldest first. */
+    async traceEventsSince(since, instance) {
+      const rows = await prisma.traceEvent.findMany({ where: { ts: { gte: since }, instance: { not: instance } }, orderBy: { ts: 'asc' }, take: 1000 })
+      return rows.map((r) => ({ ...r.data, instance: r.instance }))
     },
     // ---------- dispatcher accounts ----------
     async findUser({ email, user_id }) {
