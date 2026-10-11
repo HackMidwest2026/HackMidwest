@@ -2,7 +2,7 @@ server {
   listen 80;
   server_name _;
   root /usr/share/nginx/html;
-  client_max_body_size 12m;
+  client_max_body_size 30m; # report photos: the API accepts up to 25 MB of JSON
 
   # Live agent trace (Server-Sent Events): no buffering, long-lived connection.
   location = /api/stream {

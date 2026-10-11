@@ -19,6 +19,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { join } from 'node:path'
 import { config } from '../config.js'
 import { crewSeed } from './data.js'
+import { normalizePhoto, parseDataUrl } from './images.js'
 
 const FLUSH_DELAY_MS = 150
 const RETRY_DELAY_MS = 5000
@@ -483,13 +484,16 @@ export function setLastRoutePlan(p) {
 // ---------- photos ----------
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
 
-/** Store a photo from a data URL. Returns its URL (/uploads/<name>) or null if it isn't an image. */
+/**
+ * Store a photo from a data URL in any common image format (see lib/images.js: converted to
+ * an upright, resized JPEG without metadata). Returns its URL (/uploads/<name>). Throws a
+ * PhotoError with a message for the resident if the file isn't a usable image.
+ */
 export async function savePhoto(dataUrl) {
-  const m = /^data:image\/(png|jpe?g|webp|gif);base64,(.+)$/.exec(dataUrl || '')
-  if (!m) return null
-  const ext = m[1] === 'jpeg' ? 'jpg' : m[1]
-  const name = `${randomUUID()}.${ext}`
-  await backend.savePhoto(name, MIME[ext], Buffer.from(m[2], 'base64'))
+  const { declared, bytes } = parseDataUrl(dataUrl)
+  const photo = await normalizePhoto(bytes, declared)
+  const name = `${randomUUID()}.${photo.ext}`
+  await backend.savePhoto(name, photo.mime, photo.bytes)
   return `/uploads/${name}`
 }
 

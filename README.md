@@ -75,6 +75,8 @@ Notes:
   - **Field Crews:** crew workload and assignments.
 - **Supervisor Channel:** plain-English questions answered by the Supervisor agent.
 
+**Report photos** can be in any common format: JPEG, PNG, HEIC/HEIF (iPhone), WebP, AVIF, GIF, BMP or TIFF. The browser converts each photo to an upright JPEG of at most 2048 px before uploading (iPhone HEIC through a converter that loads only when needed), and the API converts again with [sharp](https://sharp.pixelplumbing.com), so every stored photo is a JPEG without metadata. That also removes the GPS coordinates phones embed, which often point at the resident's home. Uploads can be up to 25 MB; SVG and non-image files are refused with a clear message.
+
 Address suggestions, address lookup for a dropped pin, and area names work for any location through [Photon](https://photon.komoot.io), a free OpenStreetMap geocoder with no API key, biased toward the current map view. If the city data includes streets and landmarks (the Kansas City sample does), those are suggested first and work offline. Set `PHOTON_URL=off` to disable Photon.
 
 Built with React, Tailwind CSS 4, lucide icons and Leaflet with free OpenStreetMap tiles (no API key). The OSM tile servers are fine for a hackathon demo; for heavier use, follow the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) or self-host tiles.

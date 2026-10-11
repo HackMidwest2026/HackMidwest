@@ -20,7 +20,7 @@ import { findNearbyIssues, getStats } from './tools/cityTools.js'
 const app = express()
 // Behind nginx or the Vite dev proxy on a private network: use X-Forwarded-For for the client address.
 app.set('trust proxy', 'loopback, linklocal, uniquelocal')
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '25mb' })) // room for an unconverted phone photo
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
@@ -135,8 +135,9 @@ app.post(
   '/api/reports',
   wrap(async (req, res) => {
     const { text, lat, lng, address, photo, reporter_contact, client_run_id, category_hint } = req.body || {}
+    // Any common image format; stored as an upright, resized JPEG without location metadata.
+    // An unusable file throws a 400 with a message for the resident.
     const photo_url = photo ? await store.savePhoto(photo) : null
-    if (photo && !photo_url) return res.status(400).json({ error: 'Photo must be a PNG, JPEG, WebP or GIF image.' })
     // A photo can stand in for the description; the Vision agent reads it in Bedrock mode.
     if (!String(text || '').trim() && !photo_url) return res.status(400).json({ error: 'Describe the problem in a few words or attach a photo.' })
     // client_run_id lets the resident page pick its own run out of the live trace stream.

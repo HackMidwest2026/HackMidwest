@@ -6,7 +6,9 @@ import {
   Compass,
   Cpu,
   Droplets,
+  Image as ImageIcon,
   Lightbulb,
+  Loader2,
   MapPin,
   Search,
   Send,
@@ -19,6 +21,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { api, newRunId, subscribe } from '../api.js'
 import { CATEGORY_META, formatBytes, issueCode, OPEN_STATUSES, shortAddress, statusMeta, tierMeta } from '../lib/display.js'
+import { preparePhoto } from '../lib/preparePhoto.js'
 import AddressAutocomplete from './AddressAutocomplete.jsx'
 import AgentTrace from './AgentTrace.jsx'
 import CityMap from './CityMap.jsx'
@@ -57,6 +60,10 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
   const [text, setText] = useState('')
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoNote, setPhotoNote] = useState(null) // e.g. "HEIC, 3.1 MB → JPEG"
+  const [preparingPhoto, setPreparingPhoto] = useState(false)
+  const [previewFailed, setPreviewFailed] = useState(false)
+  const photoToken = useRef(0)
   const [nearby, setNearby] = useState([])
   const [filter, setFilter] = useState('all')
   const [layers, setLayers] = useState({ p1Heatmap: false, fieldTelemetry: false, wardGrid: false })
@@ -117,12 +124,30 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
     )
   }
 
-  function choosePhoto(file) {
+  async function choosePhoto(file) {
+    const token = ++photoToken.current // a newer pick (or Remove) wins over a slow conversion
     if (photoPreview) URL.revokeObjectURL(photoPreview)
-    setPhoto(file || null)
-    setPhotoPreview(file ? URL.createObjectURL(file) : null)
+    setPhoto(null)
+    setPhotoPreview(null)
+    setPhotoNote(null)
+    setPreviewFailed(false)
     // Clear the native input too, so picking the same file again still fires onChange.
-    if (!file && fileInput.current) fileInput.current.value = ''
+    if (fileInput.current) fileInput.current.value = ''
+    if (!file) return setPreparingPhoto(false)
+    setPreparingPhoto(true)
+    setError(null)
+    try {
+      // Any format the device produced (HEIC, AVIF, PNG, ...) becomes an upright, resized JPEG.
+      const ready = await preparePhoto(file)
+      if (token !== photoToken.current) return
+      setPhoto(ready.file)
+      setPhotoPreview(URL.createObjectURL(ready.file))
+      setPhotoNote(ready.converted && (ready.from !== 'JPEG' || file.size - ready.file.size > 50000) ? `${ready.from}, ${formatBytes(file.size)} → JPEG` : null)
+    } catch (e) {
+      if (token === photoToken.current) setError(e.message)
+    } finally {
+      if (token === photoToken.current) setPreparingPhoto(false)
+    }
   }
 
   async function submit(e) {
@@ -312,15 +337,23 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
             {/* 3. Evidence & AI triage */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">3. Evidence</label>
-              <input ref={fileInput} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => choosePhoto(e.target.files?.[0])} />
+              <input ref={fileInput} type="file" accept="image/*,.heic,.heif,.avif" className="hidden" onChange={(e) => choosePhoto(e.target.files?.[0])} />
               {photo ? (
                 <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/60 mb-2 relative">
                   <div className="flex items-start gap-2.5">
-                    <img src={photoPreview} alt="Attached evidence" className="w-12 h-12 rounded object-cover border border-slate-200" />
+                    {previewFailed ? (
+                      // A format this browser can't show (e.g. TIFF outside Safari); the server converts it.
+                      <div className="w-12 h-12 rounded border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0" title="No preview for this format">
+                        <ImageIcon className="w-5 h-5 text-slate-400" />
+                      </div>
+                    ) : (
+                      <img src={photoPreview} alt="Attached evidence" className="w-12 h-12 rounded object-cover border border-slate-200 bg-slate-100" onError={() => setPreviewFailed(true)} />
+                    )}
                     <div className="flex-1 min-w-0 pr-6">
                       <div className="text-xs font-medium text-slate-800 truncate font-mono">
                         {photo.name} ({formatBytes(photo.size)})
                       </div>
+                      {photoNote && <div className="text-[10px] text-slate-500 font-mono mt-0.5">Converted from {photoNote}</div>}
                       <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#0D9488] font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/60">
                         <Sparkles className="w-3 h-3" />
                         <span>Attached for the dispatcher</span>
@@ -331,6 +364,10 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                     </button>
                   </div>
                 </div>
+              ) : preparingPhoto ? (
+                <div className="w-full border-2 border-dashed border-slate-200 rounded-lg p-3 text-center mb-2 bg-slate-50/40 text-[11px] text-slate-600 flex items-center justify-center gap-2" role="status">
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> Preparing photo…
+                </div>
               ) : (
                 <button
                   type="button"
@@ -339,6 +376,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
                 >
                   <Upload className="w-4 h-4 mx-auto text-slate-400 mb-1" />
                   <span className="text-[11px] text-slate-600">Click to attach photo evidence (optional)</span>
+                  <span className="block text-[10px] text-slate-400 mt-0.5">JPEG, PNG, HEIC, WebP, AVIF, GIF and more</span>
                 </button>
               )}
 
@@ -421,7 +459,7 @@ export default function CitizenPortal({ meta, data, selectedIssue, onSelectIssue
 
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || preparingPhoto}
               className="w-full py-2.5 px-4 bg-[#00236F] hover:bg-[#1E3A8A] active:scale-[0.99] disabled:opacity-70 text-white rounded-lg font-semibold text-xs shadow-md transition-all flex items-center justify-center gap-2"
             >
               {busy ? (

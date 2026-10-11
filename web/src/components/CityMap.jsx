@@ -140,8 +140,16 @@ function IssueMarker({ issue, mode, selected, onSelect }) {
     () => divIcon(mode === 'dispatch' ? <DispatchMarker issue={issue} selected={selected} /> : <CitizenMarker issue={issue} selected={selected} />),
     [mode, selected, issue.priority_tier, issue.status, issue.report_count, issue.category, issue.issue_id],
   )
+  // Remount when selection changes: removing a tooltip from a live marker leaves Leaflet's focus
+  // handler pointing at it ("Cannot set properties of null (setting '_source')").
   return (
-    <Marker position={[issue.lat, issue.lng]} icon={icon} zIndexOffset={selected ? 1000 : tierMeta(issue.priority_tier).level === 1 ? 500 : 0} eventHandlers={{ click: () => onSelect?.(issue.issue_id) }}>
+    <Marker
+      key={selected ? 'selected' : 'idle'}
+      position={[issue.lat, issue.lng]}
+      icon={icon}
+      zIndexOffset={selected ? 1000 : tierMeta(issue.priority_tier).level === 1 ? 500 : 0}
+      eventHandlers={{ click: () => onSelect?.(issue.issue_id) }}
+    >
       {!selected && (
         <Tooltip direction="top" offset={[0, -12]}>
           <span className="font-mono font-bold">{issueCode(issue.issue_id)}</span> · {issue.summary}
