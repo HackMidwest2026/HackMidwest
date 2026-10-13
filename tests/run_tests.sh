@@ -9,6 +9,8 @@
 #   statetest - lite state memory on a fragmented kz-lite heap: states split
 #             into chunks, export/import round trips, out of memory and
 #             truncated files, and that all memory is given back.
+#   macrotest - macro storage: recording with overwrites, trims and rng seeds,
+#             file round trips, and rejection of bad files.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 kz="$here/../kz"
@@ -29,4 +31,8 @@ gcc -O1 -g -w -DLITE -include stddef.h -fsanitize=address -I"$out" -I"$kz/includ
     -Dmalloc=t_malloc -Dfree=t_free -Drealloc=t_realloc -Dcalloc=t_calloc -Dmemalign=t_memalign \
     -o "$out/statetest" "$here/statetest.c" "$kz/src/state_chunk.c" "$kz/src/state_lz.c"
 "$out/statetest"
+
+# macro storage and file format
+gcc -O1 -g -Wall -fsanitize=address -I"$kz/include" -o "$out/macrotest" "$here/macrotest.c" "$kz/src/macro_store.c"
+"$out/macrotest"
 echo "all tests passed"
