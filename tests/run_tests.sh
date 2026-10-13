@@ -6,6 +6,9 @@
 #             including the "grab the largest block, then shrink it" pattern used
 #             when saving a state.  Checks block contents and that all memory is
 #             recovered at the end.
+#   statetest - lite state memory on a fragmented kz-lite heap: states split
+#             into chunks, export/import round trips, out of memory and
+#             truncated files, and that all memory is given back.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 kz="$here/../kz"
@@ -18,4 +21,12 @@ gcc -O2 -Wall -Wno-unused-result -DLITE -I"$kz/include" -o "$out/lztest" "$here/
 python3 "$here/make_memt.py" "$kz/src/mem.c" "$out/memt.c"
 gcc -O1 -g -w -DLITE -include stddef.h -fsanitize=address -I"$out" -o "$out/memtest" "$here/memtest.c"
 "$out/memtest"
+
+# state memory: chunks, export/import, on the kz-lite allocator
+# (mem.h includes an n64 toolchain header that this test does not need)
+mkdir -p "$out/vector" && : > "$out/vector/vector.h"
+gcc -O1 -g -w -DLITE -include stddef.h -fsanitize=address -I"$out" -I"$kz/include" \
+    -Dmalloc=t_malloc -Dfree=t_free -Drealloc=t_realloc -Dcalloc=t_calloc -Dmemalign=t_memalign \
+    -o "$out/statetest" "$here/statetest.c" "$kz/src/state_chunk.c" "$kz/src/state_lz.c"
+"$out/statetest"
 echo "all tests passed"
