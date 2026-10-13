@@ -14,10 +14,13 @@ name="kz-lite-savestates-v$version"
 work=$(mktemp -d)
 pkg="$work/$name"
 
-# build kz-lite and its hooks for every supported rom
+# build kz-lite and its hooks for every supported rom.  always from clean: kz's
+# makefile does not track header dependencies, so stale objects can survive a
+# header change and produce a broken binary.
 cd "$here/../kz"
 export PACKAGE_VERSION="lite-savestates-$version"
 for v in NZSE NZSJ NZSJ10; do
+    rm -rf "obj/kz-lite-$v" "bin/kz-lite-$v"
     make "kz-lite-$v" "patch/gsc/kz-lite-$v/hooks.gsc"
 done
 
