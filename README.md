@@ -1,23 +1,23 @@
 # HackMidwest: kz-lite with save states
 
-`kz/` is a copy of [krimtonz/kz](https://github.com/krimtonz/kz) (the Majora's Mask practice ROM) at commit `30a965b`, changed so that **kz-lite supports save states**, including exporting and importing them on a flashcart's SD card. Upstream, only the full version (custom Project64) and the Wii VC version have save states.
+`kz/` is a copy of [krimtonz/kz](https://github.com/krimtonz/kz) (the Majora's Mask practice ROM) at commit `30a965b`, changed so that **kz-lite supports save states**, including exporting and importing them on a flashcart's SD card, and **input macros** like gz's. Upstream, only the full version (custom Project64) and the Wii VC version have save states.
 
 `patches/kz-lite-savestates.patch` holds the same change as a patch against upstream kz. Apply it with `git apply`.
 
 ## Patch your ROM (no tools needed)
 
-1. Download [`release/dist/kz-lite-savestates-v2.zip`](release/dist/kz-lite-savestates-v2.zip) and unzip it.
+1. Download [`release/dist/kz-lite-savestates-v3.zip`](release/dist/kz-lite-savestates-v3.zip) and unzip it.
 2. **Windows:** drag your ROM onto `build-rom-lite.bat`, or copy the ROM into the unzipped folder and double-click `build-rom-lite.bat`.
    **Linux:** run `./build-rom-lite.sh /path/to/rom.z64`. **macOS:** the same, after installing [`gru`](https://github.com/glankk/n64).
 3. The patched ROM appears in the same folder as `kz-lite-<version>-savestates.z64`.
 
 Supported ROMs: unmodified NTSC-U 1.0, NTSC-J 1.0 or NTSC-J 1.1, in `.z64`, `.n64` or `.v64` byte order. The package contains no game data; everything is applied to your own ROM.
 
-Controls: D-left saves a state, D-right loads it, R + L opens the kz menu. The menu's **states** page exports/imports states to the SD card. **settings** does the same for memfiles and positions.
+Controls: D-left saves a state, D-right loads it, R + L opens the kz menu. The menu's **states** page exports/imports states to the SD card. **settings** does the same for memfiles and positions. The **macro** page records and plays back input; the `record macro` and `play macro` commands have no default binding and can be bound under settings → commands.
 
 The package holds prebuilt kz-lite binaries for all three ROMs, a standalone `gru` (`gru.exe` for Windows, a static Linux build), and `lua/patch.lua`. That script is kz's `make.lua` changed to use the prebuilt files and to generate the small loader stub itself. To rebuild the package, see `release/build-gru.sh` and `release/make-release.sh`.
 
-`release/dist/kz-lite-savestates-v1.zip` is the first release (save states without SD support), kept so existing links keep working.
+Older releases are kept so existing links keep working: `v1` (save states only) and `v2` (adds SD card support).
 
 ## Why kz-lite didn't have save states
 
@@ -59,12 +59,25 @@ kz-full and kz-VC reach the SD card through homeboy (the Wii VC's helper). kz-li
 
 The SD code costs about 39KB of kz-lite's memory.
 
+### Macros
+
+Macros work like gz's (built from its documentation, not its code; gz has no license): record controller input frame by frame, then play it back from a save state.
+
+- **Recording** (`kz/src/macro.c`) happens in kz's input hook, after the game has read and calibrated the controller. Each frame stores the held, pressed and released buttons and the raw and adjusted stick (10 bytes per frame). **Playback** writes the same values back in the same place, so the game sees exactly what it saw while recording.
+- **Save states remember the macro frame.** A state saved while a macro is recording or playing stores the current macro frame. Loading it moves the macro back to that frame. This gives gz-style rerecording: load an earlier state while recording, and recording continues from there.
+- **RNG:** MM only reseeds its RNG in `Play_Init`, through `Rand_Seed`, using the console's clock. kz patches `Rand_Seed` (after checking its three instructions are what they should be) to record the seed while recording and give the game the recorded seed while playing.
+- **Storage** (`kz/src/macro_store.c`) is in pages of 512 frames (5KB), so a macro doesn't need contiguous memory and grows as it's recorded. At MM's usual 20 frames per second, a minute of gameplay takes 12KB.
+- **Export/import** to the SD card as `.kzmc` files: header (`kzmc`, format version, mm version, frame count, seed count), then the frames and seeds.
+- **Menu and commands:** a **macro** menu (record, play, rewind, trim, clear, frame counter, export, import), `record macro` and `play macro` commands, and a `rec`/`play` counter on screen. The macro code adds about 6KB to kz-lite.
+
+What gz has that this doesn't: the virtual controller, room-load and ocarina sync hacks, and macro frames in exported states.
+
 ### Other fixes found along the way
 
 - **`cache.S`:** `osWritebackDCache` and `osInvalDCache` looped forever on buffers under 8KB. kz had never used those paths; the SD code needs them.
 - **makefile:** it generated header dependency files but never included them, so changing a header didn't rebuild the files using it. A stale build of this kind produced a ROM that hung at boot. The makefile now includes them, and `release/make-release.sh` always builds from clean.
 
-`kz/USAGE.md` documents the user-facing side in "Lite Version", "States" and "SD Features".
+`kz/USAGE.md` documents the user-facing side in "Lite Version", "States", "SD Features", "Macro" and "Macros".
 
 ## Building
 
@@ -94,6 +107,8 @@ All with the Japanese 1.0 ROM, built with a real GCC 13.2 + newlib toolchain.
 - **Import across sessions and builds:** a fresh session with a newer build, and the card from the earlier session, imports that file (`imported to state 0`). Loading it (`loaded state 0`) jumps from the scene the demo was in back to the exact moment saved in the earlier session.
 - **Memory:** with that 95KB state loaded, kz still has 220KB free.
 
+**Macros, in mupen64plus 2.5.9:** In South Clock Town I started recording, saved a state, then walked, turned, rolled and turned again, and stopped recording. I then loaded the state and played the macro, twice. A debug build recorded Link's position and facing on the last recorded frame and on the last played frame. Both playbacks matched the recording exactly, bit for bit (`x=c4f24788 y=c3180000 z=43ca0000`, facing `8793`).
+
 `tests/emulator/` has the scripts. They drive the emulators under Xvfb with xdotool and take screenshots: scripted save/load runs for mupen64plus, and `interactive/` helpers (start, press keys, screenshot) used to step through the menus in gopher64.
 
 **Release package (v1 and v2):**
@@ -106,6 +121,7 @@ All with the Japanese 1.0 ROM, built with a real GCC 13.2 + newlib toolchain.
 - **Compressor:** round-trips thousands of mixed chunks through output split into blocks as small as 1 byte. It also checks that running out of space fails without writing past any block.
 - **Allocator:** runs a 200k-operation random workload on kz-lite's allocator under AddressSanitizer, checking every block's contents, and checks that all memory is recovered. The unmodified upstream allocator segfaults on the same workload.
 - **State memory:** saves, export/import round trips, truncated files and out-of-memory cases on a fragmented kz-lite heap. States end up split across chunks, and all memory is returned. The test is strict enough to catch an import bug found during development.
+- **Macro storage:** records random input across many pages with rerecording and trimming, and checks every frame and RNG seed against a reference. It also checks file round trips, and that bad, truncated and wrong-version files are rejected and leave no macro behind.
 
 ## Known limitations / not verified yet
 
@@ -116,4 +132,5 @@ All with the Japanese 1.0 ROM, built with a real GCC 13.2 + newlib toolchain.
 - **Lite and full/VC `.kzs` files aren't interchangeable.** Lite states are compressed.
 - **How many states fit depends on the scene.** With one 95KB state loaded, kz had 220KB free, which leaves room for a second similar state above the 64KB reserve. I didn't hold two states at once in-game; the host test does. A save that doesn't fit says "not enough memory", and clearing another slot frees memory. When memory is very low, some menu icons may not be drawn.
 - **NTSC-U 1.0 and NTSC-J 1.1** are built and patched the same way, but haven't been run, because I didn't have those ROMs.
+- **Macros were tested only in the one short run above.** Longer macros across scene loads (where the recorded RNG seed matters), and playback on hardware, haven't been tried.
 - **Save/load speed on hardware** is unmeasured. Expect a visible hitch, as in the full version.

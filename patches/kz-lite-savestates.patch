@@ -19,10 +19,26 @@ index 0000000..7b9e16f
 +IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 +CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/USAGE.md b/USAGE.md
-index dab7bc8..ef41444 100644
+index dab7bc8..61a7eef 100644
 --- a/USAGE.md
 +++ b/USAGE.md
-@@ -135,12 +135,13 @@ When using the c buttons to move the camera, holding the **Z** button will move
+@@ -25,6 +25,7 @@
+         * [2.9.4 Flags](#294-flags)
+         * [2.9.5 VC Debug](#295-vc-debug)
+     * [2.10 Settings](#210-settings)
++    * [2.11 Macro](#211-macro)
+ * [3 Save States](#3-save-states)
+ * [4 Lite Version](#4-lite-version)
+ * [5 Commands](#5-commands)
+@@ -33,6 +34,7 @@
+ * [8 Memfiles](#8-memfiles)
+ * [9 Frame Advancing](#9-frame-advancing)
+ * [10 Pause Screen Editor](#10-pause-screen-editor)
++* [11 Macros](#11-macros)
+ 
+ ## 1 Introduction
+ The main interface for kz, is used by bringing up the menu which by default is done by pressing the `R + L` Buttons.
+@@ -135,12 +137,13 @@ When using the c buttons to move the camera, holding the **Z** button will move
  ## 2.4 States
  The states menu will allow you to change the active savestate slot, create a name for your save state, and export and import states to the SD card.  See the [states section](#3-save-states) for more information on save states.
  
@@ -38,7 +54,25 @@ index dab7bc8..ef41444 100644
  
  ### 2.5 Watches
  The Watches menu provides a list of custom memory watches
-@@ -360,7 +361,15 @@ The lite version of kz, allows most of the kz features to be used on systems tha
+@@ -348,6 +351,17 @@ The `import` button will allow you to import a saved position from the sd card i
+ 
+ The `commands` menu will allow you to customize the bindings for command activation.  To change a binding, select the button combination or `none`.  This will change the text or button combination to green indication that input is pending.  You can use up to 4 buttons in an activator, and as soon as all buttons are released the binding is saved.  Press and hold the button combination to unbind a command.
+ 
++### 2.11 Macro
++The macro menu records and plays back controller input.  It sits under the states menu in the main menu.  See [macros](#11-macros) for how recording and playback work.
++
++**record** starts recording at the current macro frame.  While recording the button reads `stop recording`.  
++**play** plays the macro from the current macro frame, or from the start if the macro already finished.  While playing the button reads `stop playing`.  
++**rewind** moves the current macro frame back to 0.  
++**trim** removes every recorded frame after the current macro frame.  
++**clear** deletes the macro.  
++Underneath is the current macro frame, the length of the macro, and `rec` or `play` while a macro is recording or playing.  
++**export** saves the macro to the sd card as a `.kzmc` file, and **import** loads one.  See [sd features](#7-sd-features).
++
+ ## 3 Save States
+ Save states are implemented in a way which only saves information which is needed to reconstruct the state of the game when the state is created.  Because of this there are a few things that are not restored in the same state when the savestate was created.
+ 
+@@ -360,7 +374,15 @@ The lite version of kz, allows most of the kz features to be used on systems tha
  
  Because kz-lite must be placed in a much smaller memory area, features had to be elimiated in order to make this viable.  The [debug menu](#29-debug) is removed completely.
  
@@ -46,7 +80,7 @@ index dab7bc8..ef41444 100644
 +[SD Features](#7-sd-features) work in lite versions when the rom is run from a flashcart with an SD card.
 +
 +### Save States in Lite
-+Lite versions do not have enough free memory to hold an uncompressed save state, so states are compressed as they are created and decompressed directly back into game memory when they are loaded.  A state does not need one contiguous block of memory, it can use any free memory kz has.  How many states fit depends on how much is going on in the scene; a typical state is around 100kb, and two fit in the scenes tested so far.  The [states menu](#24-states) shows the compressed size of the selected state, and how much memory kz has free.
++Lite versions do not have enough free memory to hold an uncompressed save state, so states are compressed as they are created and decompressed directly back into game memory when they are loaded.  A state does not need one contiguous block of memory, it can use any free memory kz has.  How many states fit depends on how much is going on in the scene; a typical state is around 100kb, and in testing there was room for two.  The [states menu](#24-states) shows the compressed size of the selected state, and how much memory kz has free.
 +
 +* Saving a state into a slot that already holds a state replaces it.  If there is not enough memory to keep both while saving, the old state is freed first.
 +* If there is still not enough memory, `not enough memory for state` is displayed.  Clearing states in other slots will free memory.
@@ -55,17 +89,47 @@ index dab7bc8..ef41444 100644
  
  Item icons that are normally displayed in the [inventory menu](#26-inventory) are replaced with check boxes to enable/disable those items.  A tooltip is provided so which item is being switched is known.
  
-@@ -405,7 +414,9 @@ While holding `R`:
+@@ -394,6 +416,8 @@ kz implements the following commands
+ * load position - set's link's position to the position saved in the current slot
+ * next position - moves to the next position slot
+ * prev position - moves to the previous position slot
++* record macro - starts or stops recording a macro (not bound by default).  see [macros](#11-macros)
++* play macro - starts or stops playing a macro (not bound by default).  see [macros](#11-macros)
+ 
+ ## 6 Keyboard
+ kz implements an on screen keyboard for easy text editing.  There are a few shortcuts to make editing a bit faster.
+@@ -405,7 +429,9 @@ While holding `R`:
  * `D-Down` : Accept
  
  ## 7 SD Features
 -kz is able to communicate with the SD Card in the WiiVC Version.
 +kz is able to communicate with the SD Card in the WiiVC Version, and in lite versions running on an n64 flashcart with an SD card: 64drive, EverDrive-64 X-series, EverDrive-64 v1-v3 and ED64+, and SummerCart64.  In lite versions the SD card must be formatted as FAT32 (FAT16 also works), exFAT is not supported.
 +
-+States, memfiles and positions can be exported to and imported from the SD card.
++States, memfiles, positions and macros can be exported to and imported from the SD card.
  
  When a feature is used that needs the sd card, a files menu will pop up.
  
+@@ -442,3 +468,20 @@ When the game is paused using the `pause` or `advance` commands, the game will s
+ 
+ ## 10 Pause Screen Editor
+ Holding the `L` Button (`c-stick-down` on VC) while in the pause screen will enable inventory editing.  When this mode is enabled a red `i` will be shown in the lower right corner of the screen.  This mode will allow you to move the cursor into any item or mask slot in order to select an item to place in that slot.  When on the `Quest Status` subscreen, selecting each item in the menu with the `L` button will toggle that item as obtained or not.  
++
++## 11 Macros
++A macro is a recording of controller input, one entry per game frame, that kz can play back into the game in place of the controller.  It works together with save states the same way as macros in gz:
++
++1. Save a state where the macro should start, or start recording first and save states along the way.
++2. Use `record macro` (or **record** in the [macro menu](#211-macro)) and play.  The red `rec` counter in the top right shows the current macro frame.
++3. Use `record macro` again to stop.
++4. Load the state and use `play macro`.  The green `play` counter shows the frame being played and the length of the macro.  When the last frame has been played, `macro finished` is displayed and the controller takes over again.
++
++Every save state remembers the macro frame it was saved at while a macro was recording or playing.  Loading that state while a macro is recording or playing moves the macro back to that frame, so the inputs line up with the game again.  This means a mistake can be fixed by loading an earlier state while recording: recording continues from the frame the state was saved at, and replaces the frames that were recorded after it.  Frames past the end of the new recording are kept; use **trim** to remove them.
++
++For each frame the macro stores the buttons that are held, pressed and released, and the raw and adjusted control stick positions.  The game reseeds its random number generator when a scene is loaded.  kz records that seed while recording and gives the game the same seed while playing, so scene loads during a macro play out the same way.
++
++Playback is frame exact only when it starts from the same game state the recording started from, which in practice means loading the state that was saved while recording.  Some things are not handled:
++* While a macro is playing, controller input to the game is ignored, but kz commands such as `load state` still work.
++* States exported to the sd card do not keep their macro frame.
++* Macro files can only be imported into the same mm version they were recorded on.
 diff --git a/include/cart.h b/include/cart.h
 new file mode 100644
 index 0000000..9407d54
@@ -160,7 +224,7 @@ index 0000000..9407d54
 +
 +#endif /* __CART_H__ */
 diff --git a/include/commands.h b/include/commands.h
-index 7f3c6ae..7d2df31 100644
+index 7f3c6ae..125b7ad 100644
 --- a/include/commands.h
 +++ b/include/commands.h
 @@ -24,12 +24,10 @@ enum {
@@ -176,7 +240,16 @@ index 7f3c6ae..7d2df31 100644
      KZ_CMD_SAVE_MEMFILE,
      KZ_CMD_LOAD_MEMFILE,
      KZ_CMD_PREV_MEMFILE,
-@@ -73,12 +71,10 @@ void    command_load_position   (void);
+@@ -38,6 +36,8 @@ enum {
+     KZ_CMD_LOAD_POSITION,
+     KZ_CMD_PREV_POSITION,
+     KZ_CMD_NEXT_POSITION,
++    KZ_CMD_RECORD_MACRO,
++    KZ_CMD_PLAY_MACRO,
+     KZ_CMD_MAX
+ };
+ 
+@@ -73,12 +73,12 @@ void    command_load_position   (void);
  void    command_next_position   (void);
  void    command_prev_position   (void);
  void    command_title_screen    (void);
@@ -186,6 +259,8 @@ index 7f3c6ae..7d2df31 100644
  void    command_prev_state      (void);
  void    command_next_state      (void);
 -#endif
++void    command_record_macro    (void);
++void    command_play_macro      (void);
  
  extern struct command kz_commands[KZ_CMD_MAX];
  
@@ -1011,10 +1086,10 @@ index 0000000..c7bf938
 +
 +/*--- End of configuration options ---*/
 diff --git a/include/kz.h b/include/kz.h
-index 45aa10c..0ea8f58 100644
+index 45aa10c..ec66fbe 100644
 --- a/include/kz.h
 +++ b/include/kz.h
-@@ -112,10 +112,8 @@ typedef struct {
+@@ -112,10 +112,9 @@ typedef struct {
      sph_coord_t             cam_sph;
      uint16_t                input_mask;
      uint8_t                 stick_x_mask, stick_y_mask;
@@ -1022,15 +1097,17 @@ index 45aa10c..0ea8f58 100644
      kz_state_hdr_t         *states[STATE_MAX];
      int                     state_slot;
 -#endif
++    int32_t                 state_macro_frame[STATE_MAX];
      menu_t                  pause_menu;
      menu_item_t            *pause_item_list;
  } kz_ctxt_t;
-@@ -128,8 +126,8 @@ menu_t *create_cheats_menu      (void);
+@@ -128,8 +127,9 @@ menu_t *create_cheats_menu      (void);
  menu_t *create_file_menu        (void);
  menu_t *create_equips_menu      (void);
  menu_t *create_settings_menu    (void);
 -#ifndef LITE
  menu_t *create_states_menu      (void);
++menu_t *create_macro_menu       (void);
 +#ifndef LITE
  menu_t *create_debug_menu       (void);
  #endif
@@ -1099,6 +1176,146 @@ index 0000000..958b37a
 +void    sd_pi_dma_wr        (const void *dram, u32 cart, u32 size);
 +
 +#endif
+diff --git a/include/macro.h b/include/macro.h
+new file mode 100644
+index 0000000..f8cb0d7
+--- /dev/null
++++ b/include/macro.h
+@@ -0,0 +1,41 @@
++/*
++* macro.h
++*
++* input macros: record controller 1's input frame by frame and play it back.
++* rng reseeds that happen while recording (on every scene load) are recorded
++* too, and replayed, so macros stay in sync across scenes.
++*/
++
++#ifndef _MACRO_H
++#define _MACRO_H
++
++#include <stdint.h>
++#include "z2.h"
++#include "macro_store.h"
++
++enum macro_mode {
++    MACRO_IDLE,
++    MACRO_RECORDING,
++    MACRO_PLAYING,
++};
++
++/* patches the game's rng seeding so seeds can be recorded and replayed */
++void            macro_init          (void);
++
++/* called once per game frame with the game's input for controller 1 */
++void            macro_update_input  (z2_input_t *input);
++
++void            macro_record        (void);
++void            macro_play          (void);
++void            macro_stop          (void);
++void            macro_rewind        (void);
++void            macro_trim          (void);
++void            macro_clear         (void);
++void            macro_seek          (uint32_t frame);
++
++enum macro_mode macro_mode          (void);
++uint32_t        macro_frame         (void);
++uint32_t        macro_length        (void);
++macro_store_t  *macro_get_store     (void);
++
++#endif
+diff --git a/include/macro_store.h b/include/macro_store.h
+new file mode 100644
+index 0000000..24cbaa7
+--- /dev/null
++++ b/include/macro_store.h
+@@ -0,0 +1,87 @@
++/*
++* macro_store.h
++*
++* storage for input macros: one recorded input per game frame, plus the rng
++* seeds the game was reseeded with while recording.  inputs are kept in fixed
++* size pages so a long macro does not need one large block of memory.
++*/
++
++#ifndef _MACRO_STORE_H
++#define _MACRO_STORE_H
++
++#include <stdint.h>
++#include <stddef.h>
++
++#define MACRO_PAGE_FRAMES   512
++#define MACRO_FILE_VERSION  1
++
++/* controller 1 input for one game frame, as the game saw it */
++typedef struct {
++    uint16_t    pad;
++    uint16_t    pressed;
++    uint16_t    released;
++    int8_t      x;
++    int8_t      y;
++    int8_t      adjusted_x;
++    int8_t      adjusted_y;
++} macro_input_t;
++
++typedef struct {
++    uint32_t    frame;
++    uint32_t    seed;
++} macro_seed_t;
++
++typedef struct {
++    macro_input_t **pages;
++    uint32_t        page_cnt;
++    uint32_t        length;
++    macro_seed_t   *seeds;
++    uint32_t        seed_cnt;
++    uint32_t        seed_cap;
++} macro_store_t;
++
++/* file header, followed by length inputs and seed_cnt seeds */
++typedef struct {
++    char        magic[4];
++    uint16_t    version;
++    uint16_t    z2_version;
++    uint32_t    length;
++    uint32_t    seed_cnt;
++} macro_file_hdr_t;
++
++#define MACRO_READ_MEMORY   1
++#define MACRO_READ_IO       2
++#define MACRO_READ_FORMAT   3
++#define MACRO_READ_VERSION  4
++
++void            macro_store_init    (macro_store_t *store);
++void            macro_store_clear   (macro_store_t *store);
++
++/* the input recorded for a frame, NULL past the end of the macro */
++macro_input_t  *macro_store_get     (macro_store_t *store, uint32_t frame);
++
++/* records the input for a frame, at most one past the end.  returns 0 when out of memory */
++int             macro_store_set     (macro_store_t *store, uint32_t frame, const macro_input_t *input);
++
++/* drops everything from frame length on, including seeds */
++void            macro_store_trim    (macro_store_t *store, uint32_t length);
++
++/* rng seeds recorded at a frame.  set returns 0 when out of memory, get returns 0 when there is none */
++int             macro_store_set_seed(macro_store_t *store, uint32_t frame, uint32_t seed);
++int             macro_store_get_seed(macro_store_t *store, uint32_t frame, uint32_t *seed);
++
++/* bytes in the macro's file */
++size_t          macro_store_size    (macro_store_t *store);
++
++int             macro_store_write   (macro_store_t *store, uint16_t z2_version,
++                                     int (*write_fn)(void *ctx, const void *buf, size_t len), void *ctx);
++
++/*
++ * replaces the store with a macro read through read_fn, which must provide
++ * size bytes.  on failure the store is left empty and a MACRO_READ_* error
++ * is returned.
++ */
++int             macro_store_read    (macro_store_t *store, uint16_t z2_version, size_t size,
++                                     int (*read_fn)(void *ctx, void *buf, size_t len), void *ctx);
++
++#endif
 diff --git a/include/mem.h b/include/mem.h
 index 0f5af6c..0c33fff 100644
 --- a/include/mem.h
@@ -1159,17 +1376,18 @@ index eca64a4..b0b9855 100644
 +
 +#endif
 diff --git a/include/settings.h b/include/settings.h
-index de3bd99..5d8ef91 100644
+index de3bd99..4df9224 100644
 --- a/include/settings.h
 +++ b/include/settings.h
 @@ -16,7 +16,11 @@
  #define IO_BLOCK_SIZE       0x80
  #define SIZE_TO_BLOCK(x)    ((x + IO_BLOCK_SIZE - 1) / IO_BLOCK_SIZE)
  
+-#define SETTINGS_VER        12
 +#ifdef LITE
-+#define SETTINGS_VER        13
++#define SETTINGS_VER        14
 +#else
- #define SETTINGS_VER        12
++#define SETTINGS_VER        13
 +#endif
  #define SETTINGS_ADDR       0x1C000
  #define SETTINGS_SIZE       (sizeof(struct settings_header) + sizeof(struct settings_data))
@@ -1366,6 +1584,54 @@ index 0000000..b8146f5
 +void    lz_decompress   (lz_stream_t *in, void *dst, size_t len);
 +
 +#endif
+diff --git a/include/z2.h b/include/z2.h
+index b84e14c..b897bc4 100644
+--- a/include/z2.h
++++ b/include/z2.h
+@@ -1866,6 +1866,7 @@ z2_extern void                     *z2_song_ptr;
+ z2_extern uint32_t                  z2_song_ctr;
+ z2_extern uint16_t                  z2_unk_song_pos;
+ z2_extern uint32_t                  z2_random;
++z2_extern char                      z2_Rand_Seed[];
+ z2_extern z2_night_sfx_t            z2_night_sfx[];
+ z2_extern char                      z2_saturation[];
+ z2_extern char                      z2_hide_clock;
+diff --git a/lib/libNZSE.a b/lib/libNZSE.a
+index 1d38054..918cda1 100644
+--- a/lib/libNZSE.a
++++ b/lib/libNZSE.a
+@@ -8,6 +8,7 @@ osEPiReadIo                 = 0x800920B0;
+ osEPiWriteIo                = 0x80093BB0;
+ z2_vi_counter               = 0x80096B78;
+ z2_random                   = 0x80097530;
++z2_Rand_Seed                = 0x80086FD0;
+ z2_file_msgqueue            = 0x8009B2C0;
+ z2_arena                    = 0x8009CD20;
+ z2_file_table               = 0x8009F8B0;
+diff --git a/lib/libNZSJ.a b/lib/libNZSJ.a
+index 65aff77..43ae5fe 100644
+--- a/lib/libNZSJ.a
++++ b/lib/libNZSJ.a
+@@ -8,6 +8,7 @@ osEPiReadIo                 = 0x80092FB0;
+ osEPiWriteIo                = 0x80094AB0;
+ z2_vi_counter               = 0x80097A98;
+ z2_random                   = 0x80098490;
++z2_Rand_Seed                = 0x80087970;
+ z2_file_msgqueue            = 0x8009CE10;
+ z2_arena                    = 0x8009E860;
+ z2_file_table               = 0x800A13F0;
+diff --git a/lib/libNZSJ10.a b/lib/libNZSJ10.a
+index eb8548a..3250875 100644
+--- a/lib/libNZSJ10.a
++++ b/lib/libNZSJ10.a
+@@ -8,6 +8,7 @@ osEPiReadIo                 = 0x80093050;
+ osEPiWriteIo                = 0x80094B70;
+ z2_vi_counter               = 0x80097B58;
+ z2_random                   = 0x80098550;
++z2_Rand_Seed                = 0x80087A10;
+ z2_file_msgqueue            = 0x8009CED0;
+ z2_arena                    = 0x8009E920;
+ z2_file_table               = 0x800A14B0;
 diff --git a/makefile b/makefile
 index 3df9111..1696b83 100644
 --- a/makefile
@@ -1401,10 +1667,18 @@ index d0b7f52..2f2464d 100644
  .L11:
      jr      $ra
 diff --git a/src/commands.c b/src/commands.c
-index f2511da..be0ae9a 100644
+index f2511da..83dc11e 100644
 --- a/src/commands.c
 +++ b/src/commands.c
-@@ -22,12 +22,10 @@ struct command kz_commands[KZ_CMD_MAX] = {
+@@ -5,6 +5,7 @@
+ #include "settings.h"
+ #include "z2.h"
+ #include "state.h"
++#include "macro.h"
+ #include "hb_heap.h"
+ 
+ struct command kz_commands[KZ_CMD_MAX] = {
+@@ -22,12 +23,10 @@ struct command kz_commands[KZ_CMD_MAX] = {
      {"start/stop timer",    COMMAND_PRESS,  command_timer},
      {"reset timer",         COMMAND_PRESS,  command_timer_reset},
      {"title screen",        COMMAND_PRESS,  command_title_screen},
@@ -1417,15 +1691,31 @@ index f2511da..be0ae9a 100644
      {"save memfile",        COMMAND_PRESS,  command_save_memfile},
      {"load memfile",        COMMAND_PRESS,  command_load_memfile},
      {"prev memfile",        COMMAND_PRESS,  command_prev_memfile},
-@@ -38,7 +36,6 @@ struct command kz_commands[KZ_CMD_MAX] = {
+@@ -36,9 +35,10 @@ struct command kz_commands[KZ_CMD_MAX] = {
+     {"load position",       COMMAND_PRESS,  command_load_position},
+     {"prev position",       COMMAND_PRESS,  command_prev_position},
      {"next position",       COMMAND_PRESS,  command_next_position},
++    {"record macro",        COMMAND_PRESS,  command_record_macro},
++    {"play macro",          COMMAND_PRESS,  command_play_macro},
  };
  
 -#ifndef LITE
  void command_prev_state(void) {
      kz.state_slot += STATE_MAX - 1;
      kz.state_slot %= STATE_MAX;
-@@ -101,6 +98,38 @@ void command_save_state(){
+@@ -82,6 +82,11 @@ void command_load_state(){
+     kz_state_hdr_t *state = kz.states[kz.state_slot];
+     if(state != NULL) {
+         load_state(state);
++        /* continue the macro from where it was when the state was saved */
++        int32_t macro_frame = kz.state_macro_frame[kz.state_slot];
++        if(macro_frame >= 0 && macro_mode() != MACRO_IDLE) {
++            macro_seek(macro_frame);
++        }
+ #ifdef WIIVC
+         char name[64];
+         hmemcpy(name, state->name, 64);
+@@ -101,6 +106,40 @@ void command_save_state(){
      }
  
      kz_state_hdr_t *state = kz.states[kz.state_slot];
@@ -1443,6 +1733,7 @@ index f2511da..be0ae9a 100644
 +        state_free(state);
 +        state = NULL;
 +        kz.states[kz.state_slot] = NULL;
++        kz.state_macro_frame[kz.state_slot] = -1;
 +        new_state = save_state_alloc();
 +    }
 +
@@ -1459,17 +1750,27 @@ index f2511da..be0ae9a 100644
 +    new_state->state_version = STATE_HDR_VERSION;
 +    memcpy(new_state->name, name, sizeof(name));
 +    kz.states[kz.state_slot] = new_state;
++    kz.state_macro_frame[kz.state_slot] = macro_mode() != MACRO_IDLE ? (int32_t)macro_frame() : -1;
 +    kz_log("saved state %d (%s, %dkb)", kz.state_slot, new_state->name, (new_state->size + 1023) / 1024);
 +#else
      char *tmp_name = NULL;
      if(state != NULL) {
          tmp_name = malloc(sizeof(state->name));
-@@ -152,8 +181,8 @@ void command_save_state(){
+@@ -152,8 +191,17 @@ void command_save_state(){
      kz_log("saved state %d (%s)", kz.state_slot, state->name);
  #endif
      kz.states[kz.state_slot] = state;
 -}
++    kz.state_macro_frame[kz.state_slot] = macro_mode() != MACRO_IDLE ? (int32_t)macro_frame() : -1;
  #endif
++}
++
++void command_record_macro(void){
++    macro_record();
++}
++
++void command_play_macro(void){
++    macro_play();
 +}
  
  void command_timer(void){
@@ -24227,36 +24528,215 @@ index 7340409..27dc6fa 100644
  
          for(int i = 0; i < loader->num_tiles; i++)
 diff --git a/src/kz.c b/src/kz.c
-index c5813f5..8c25f77 100644
+index c5813f5..bb2ffb5 100644
 --- a/src/kz.c
 +++ b/src/kz.c
-@@ -640,12 +640,8 @@ static void init(void) {
+@@ -17,6 +17,7 @@
+ #include "hb_heap.h"
+ #include "sys.h"
+ #include "state.h"
++#include "macro.h"
+ #include "mem.h"
+ #include "printf.h"
+ #include "vc.h"
+@@ -465,6 +466,13 @@ static void kz_main(void) {
+         }
+     }
+ 
++    /* print macro status */
++    if(macro_mode() == MACRO_RECORDING) {
++        gfx_printf_color(Z2_SCREEN_WIDTH - 100, 44, 0xFF4040FF, "rec %d", (int)macro_frame());
++    } else if(macro_mode() == MACRO_PLAYING) {
++        gfx_printf_color(Z2_SCREEN_WIDTH - 100, 44, 0x40FF40FF, "play %d/%d", (int)macro_frame(), (int)macro_length());
++    }
++
+     /* print frame advance status */
+     if(kz.pending_frames == 0) {
+         gfx_draw_sprite(resource_get(R_Z2_ICON), Z2_SCREEN_WIDTH - 40, 20, 3, 20, 20);
+@@ -640,12 +648,9 @@ static void init(void) {
      menu_submenu_add(&kz.main_menu, 0, 2, "cheats", create_cheats_menu());
      menu_submenu_add(&kz.main_menu, 0, 3, "scene", create_scene_menu());
  
 -#ifndef LITE
- #define Y 5
+-#define Y 5
++#define Y 6
      menu_submenu_add(&kz.main_menu, 0, 4, "states", create_states_menu());
 -#else
 -#define Y 4
 -#endif
++    menu_submenu_add(&kz.main_menu, 0, 5, "macro", create_macro_menu());
      menu_submenu_add(&kz.main_menu, 0, Y, "watches", create_watches_menu());
      menu_submenu_add(&kz.main_menu, 0, Y + 1, "inventory", create_inventory_menu());
      menu_submenu_add(&kz.main_menu, 0, Y + 2, "equips", create_equips_menu());
-@@ -682,13 +678,11 @@ static void init(void) {
+@@ -682,13 +687,14 @@ static void init(void) {
  
      memset(&kz.log, 0, sizeof(kz.log));
  
 -#ifndef LITE
      for(int i = 0; i < STATE_MAX; i++) {
          kz.states[i] = NULL;
++        kz.state_macro_frame[i] = -1;
      }
  
++    macro_init();
++
      kz.state_slot = 0;
 -#endif
  
      kz.input_mask = BUTTON_DPAD;
      kz.stick_x_mask = 0x00;
+@@ -760,6 +766,7 @@ HOOK void input_hook(void) {
+         inp->raw.x &= ~kz.stick_x_mask;
+         inp->raw.y &= ~kz.stick_y_mask;
+         z2_adjust_stick(inp);
++        macro_update_input(inp);
+     }
+ }
+ 
+diff --git a/src/kz_macro_menu.c b/src/kz_macro_menu.c
+new file mode 100644
+index 0000000..cdfc1ff
+--- /dev/null
++++ b/src/kz_macro_menu.c
+@@ -0,0 +1,138 @@
++#include <stdint.h>
++#include <sys/stat.h>
++#include "kz.h"
++#include "menu.h"
++#include "menu_file.h"
++#include "sys.h"
++#include "kzresource.h"
++#include "macro.h"
++#include "printf.h"
++
++static char macro_frame_text[40];
++
++static int record_onupdate(event_handler_t *handler, menu_event_t event, void **event_data){
++    menu_item_t *item = handler->subscriber;
++    if(event == MENU_EVENT_ACTIVATE) {
++        macro_record();
++    } else if(event == MENU_EVENT_UPDATE) {
++        item->text = macro_mode() == MACRO_RECORDING ? "stop recording" : "record";
++    }
++    return 1;
++}
++
++static int play_onupdate(event_handler_t *handler, menu_event_t event, void **event_data){
++    menu_item_t *item = handler->subscriber;
++    if(event == MENU_EVENT_ACTIVATE) {
++        macro_play();
++    } else if(event == MENU_EVENT_UPDATE) {
++        item->text = macro_mode() == MACRO_PLAYING ? "stop playing" : "play";
++    }
++    return 1;
++}
++
++static int rewind_onactivate(event_handler_t *handler, menu_event_t event, void **event_data){
++    macro_rewind();
++    return 1;
++}
++
++static int trim_onactivate(event_handler_t *handler, menu_event_t event, void **event_data){
++    macro_trim();
++    kz_log("macro trimmed to %d frames", macro_length());
++    return 1;
++}
++
++static int clear_onactivate(event_handler_t *handler, menu_event_t event, void **event_data){
++    macro_clear();
++    kz_log("macro cleared");
++    return 1;
++}
++
++static int frame_onupdate(event_handler_t *handler, menu_event_t event, void **event_data){
++    static const char *mode_text[] = {"", " rec", " play"};
++    snprintf(macro_frame_text, sizeof(macro_frame_text), "frame %d / %d%s",
++             (int)macro_frame(), (int)macro_length(), mode_text[macro_mode()]);
++    return 1;
++}
++
++static int file_write(void *ctx, const void *buf, size_t len){
++    return write(*(int*)ctx, (void*)buf, len) == len;
++}
++
++static int file_read(void *ctx, void *buf, size_t len){
++    return read(*(int*)ctx, buf, len) == len;
++}
++
++static void do_export_macro(char *path, void *data){
++    int file = creat(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
++    if(file == -1) {
++        kz_log("could not create file");
++        return;
++    }
++    if(macro_store_write(macro_get_store(), Z2_VERSION, file_write, &file)) {
++        kz_log("exported macro (%d frames)", macro_length());
++    } else {
++        kz_log("could not write macro");
++    }
++    close(file);
++}
++
++static void do_import_macro(char *path, void *data){
++    int file = open(path, O_RDONLY);
++    if(file == -1) {
++        kz_log("could not open file");
++        return;
++    }
++
++    struct stat sbuf;
++    int error = MACRO_READ_IO;
++    macro_clear();
++    if(stat(path, &sbuf) == 0) {
++        error = macro_store_read(macro_get_store(), Z2_VERSION, sbuf.st_size, file_read, &file);
++    }
++    close(file);
++
++    switch(error) {
++        case 0:                     kz_log("imported macro (%d frames)", macro_length()); break;
++        case MACRO_READ_MEMORY:     kz_log("not enough memory for macro"); break;
++        case MACRO_READ_FORMAT:     kz_log("not a macro file"); break;
++        case MACRO_READ_VERSION:    kz_log("wrong mm version"); break;
++        default:                    kz_log("could not read macro"); break;
++    }
++}
++
++static int export_onactivate(event_handler_t *handler, menu_event_t event, void **event_data){
++    if(macro_length() == 0) {
++        kz_log("no macro");
++        return 1;
++    }
++    menu_file_get(FILE_MODE_SAVE, "macro", ".kzmc", do_export_macro, NULL);
++    return 1;
++}
++
++static int import_onactivate(event_handler_t *handler, menu_event_t event, void **event_data){
++    menu_file_get(FILE_MODE_LOAD, "macro", ".kzmc", do_import_macro, NULL);
++    return 1;
++}
++
++menu_t *create_macro_menu(void){
++    static menu_t macro_menu;
++    menu_init(&macro_menu, 0, 0);
++    macro_menu.selected_item = menu_button_add(&macro_menu, 0, 0, "return", menu_return, NULL);
++
++    menu_item_t *item = menu_button_add(&macro_menu, 0, 1, "record", NULL, NULL);
++    menu_item_register_event(item, MENU_EVENT_ACTIVATE | MENU_EVENT_UPDATE, record_onupdate, NULL);
++    item = menu_button_add(&macro_menu, 0, 2, "play", NULL, NULL);
++    menu_item_register_event(item, MENU_EVENT_ACTIVATE | MENU_EVENT_UPDATE, play_onupdate, NULL);
++
++    menu_button_add(&macro_menu, 0, 3, "rewind", rewind_onactivate, NULL);
++    menu_button_add(&macro_menu, 8, 3, "trim", trim_onactivate, NULL);
++    menu_button_add(&macro_menu, 14, 3, "clear", clear_onactivate, NULL);
++
++    item = menu_label_add(&macro_menu, 0, 4, macro_frame_text);
++    item->color = COLOR_FADED;
++    menu_item_register_event(item, MENU_EVENT_UPDATE, frame_onupdate, NULL);
++
++    menu_gfx_button_add(&macro_menu, 0, 5, pexport_sprite, export_onactivate, NULL)->tooltip = "export macro";
++    menu_gfx_button_add(&macro_menu, 4, 5, pimport_sprite, import_onactivate, NULL)->tooltip = "import macro";
++    return &macro_menu;
++}
 diff --git a/src/kz_settings_menu.c b/src/kz_settings_menu.c
 index 4cfa794..97b3f7d 100644
 --- a/src/kz_settings_menu.c
@@ -24301,7 +24781,7 @@ index 4cfa794..97b3f7d 100644
      return &settingsm;
  }
 diff --git a/src/kz_states_menu.c b/src/kz_states_menu.c
-index d19bf87..553ccd5 100644
+index d19bf87..19fd404 100644
 --- a/src/kz_states_menu.c
 +++ b/src/kz_states_menu.c
 @@ -1,11 +1,15 @@
@@ -24323,7 +24803,7 @@ index d19bf87..553ccd5 100644
  
  static const char *no_state = "no state";
  static char *state_name = NULL;
-@@ -73,6 +77,89 @@ static int name_onupdate(event_handler_t *handler, menu_event_t event, void **ev
+@@ -73,6 +77,90 @@ static int name_onupdate(event_handler_t *handler, menu_event_t event, void **ev
      return 1;
  }
  
@@ -24407,13 +24887,22 @@ index d19bf87..553ccd5 100644
 +
 +    state_free(kz.states[kz.state_slot]);
 +    kz.states[kz.state_slot] = state;
++    kz.state_macro_frame[kz.state_slot] = -1;
 +    kz_log("imported to state %d", kz.state_slot);
 +}
 +#else
  static void do_export_state(char *path, void *data){
      int file = creat(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
      if(file != -1){
-@@ -124,6 +211,8 @@ static void do_import_state(char *path, void *data){
+@@ -110,6 +198,7 @@ static void do_import_state(char *path, void *data){
+         if(state_res == 0) {
+             read(file, (char*)state + sizeof(*state), sbuf.st_size - sizeof(*state));
+             kz.states[kz.state_slot] = state;
++            kz.state_macro_frame[kz.state_slot] = -1;
+             kz_log("imported to state %d", kz.state_slot);
+         } else {
+ #ifdef WIIVC
+@@ -124,6 +213,8 @@ static void do_import_state(char *path, void *data){
  
  }
  
@@ -24422,7 +24911,7 @@ index d19bf87..553ccd5 100644
  static int export_state_onactivate(event_handler_t *handler, menu_event_t event, void **event_data)
  {
      if(!kz.states[kz.state_slot])
-@@ -146,6 +235,8 @@ static int delete_state_onactivate(event_handler_t *handler, menu_event_t event,
+@@ -146,6 +237,8 @@ static int delete_state_onactivate(event_handler_t *handler, menu_event_t event,
      if(kz.states[kz.state_slot]) {
  #ifdef WIIVC
          hfree(kz.states[kz.state_slot]);
@@ -24431,7 +24920,7 @@ index d19bf87..553ccd5 100644
  #else
          free(kz.states[kz.state_slot]);
  #endif
-@@ -179,6 +270,11 @@ menu_t *create_states_menu(void) {
+@@ -179,6 +272,11 @@ menu_t *create_states_menu(void) {
      name_item->color = COLOR_FADED;
      menu_item_register_event(name_item, MENU_EVENT_UPDATE | MENU_EVENT_ACTIVATE | MENU_EVENT_KEYBOARD, name_onupdate, NULL);
  
@@ -24443,7 +24932,7 @@ index d19bf87..553ccd5 100644
      menu_gfx_button_add(&states_menu, 0, 4, pexport_sprite, export_state_onactivate, NULL)->tooltip = "export state";
      menu_gfx_button_add(&states_menu, 4, 4, pimport_sprite, import_state_onactivate, NULL)->tooltip = "import state";
  
-@@ -192,4 +288,3 @@ menu_t *create_states_menu(void) {
+@@ -192,4 +290,3 @@ menu_t *create_states_menu(void) {
      menu_gfx_button_add(&states_menu, 8, 4, &clear_state_sprite, delete_state_onactivate, NULL)->tooltip = "clear state";
      return &states_menu;
  }
@@ -26288,6 +26777,375 @@ index 0000000..5cddbf6
 +}
 +
 +#endif
+diff --git a/src/macro.c b/src/macro.c
+new file mode 100644
+index 0000000..8498971
+--- /dev/null
++++ b/src/macro.c
+@@ -0,0 +1,146 @@
++#include <stdint.h>
++#include "kz.h"
++#include "cache.h"
++#include "macro.h"
++
++static macro_store_t    store;
++static enum macro_mode  mode;
++static uint32_t         frame;
++static z2_controller_t  last_raw;
++
++/*
++* the game only reseeds its rng in Play_Init, through Rand_Seed:
++*
++*   lui at, %hi(sRandInt); jr ra; sw a0, %lo(sRandInt)(at)
++*
++* macro_init replaces the first instruction with a jump to macro_rand_seed,
++* after checking that the function looks exactly like that.
++*/
++static void macro_rand_seed(uint32_t seed){
++    if(mode == MACRO_RECORDING) {
++        if(!macro_store_set_seed(&store, frame, seed)) {
++            kz_log("macro out of memory");
++        }
++    } else if(mode == MACRO_PLAYING) {
++        if(!macro_store_get_seed(&store, frame, &seed)) {
++            kz_log("macro rng seed not recorded");
++        }
++    }
++    z2_random = seed;
++}
++
++void macro_init(void){
++    macro_store_init(&store);
++
++    uint32_t *code = (uint32_t*)z2_Rand_Seed;
++    uint32_t rng = (uint32_t)&z2_random;
++    if(code[0] == (0x3C010000 | ((rng + 0x8000) >> 16)) &&
++       code[1] == 0x03E00008 &&
++       code[2] == (0xAC240000 | (rng & 0xFFFF))) {
++        code[0] = 0x08000000 | (((uint32_t)macro_rand_seed >> 2) & 0x03FFFFFF);
++        code[1] = 0x00000000;
++        osWritebackDCache(code, 8);
++        osInvalICache(code, 8);
++    }
++}
++
++void macro_update_input(z2_input_t *input){
++    if(mode == MACRO_RECORDING) {
++        macro_input_t in = {
++            input->raw.pad, input->pad_pressed, input->pad_released,
++            input->raw.x, input->raw.y, input->adjusted_x, input->adjusted_y,
++        };
++        if(!macro_store_set(&store, frame, &in)) {
++            mode = MACRO_IDLE;
++            kz_log("macro out of memory");
++            return;
++        }
++        frame++;
++    } else if(mode == MACRO_PLAYING) {
++        macro_input_t *in = macro_store_get(&store, frame);
++        if(in == NULL) {
++            mode = MACRO_IDLE;
++            kz_log("macro finished");
++            return;
++        }
++        input->raw_prev = last_raw;
++        input->raw.pad = in->pad;
++        input->raw.x = in->x;
++        input->raw.y = in->y;
++        input->pad_pressed = in->pressed;
++        input->pad_released = in->released;
++        input->adjusted_x = in->adjusted_x;
++        input->adjusted_y = in->adjusted_y;
++        frame++;
++    }
++    last_raw = input->raw;
++}
++
++void macro_record(void){
++    if(mode == MACRO_RECORDING) {
++        macro_stop();
++        return;
++    }
++    if(frame > store.length) {
++        frame = store.length;
++    }
++    mode = MACRO_RECORDING;
++    kz_log("recording macro from frame %d", frame);
++}
++
++void macro_play(void){
++    if(mode == MACRO_PLAYING) {
++        macro_stop();
++        return;
++    }
++    if(store.length == 0) {
++        kz_log("no macro");
++        return;
++    }
++    if(frame >= store.length) {
++        frame = 0;
++    }
++    mode = MACRO_PLAYING;
++    kz_log("playing macro from frame %d", frame);
++}
++
++void macro_stop(void){
++    if(mode != MACRO_IDLE) {
++        kz_log("macro stopped at frame %d", frame);
++    }
++    mode = MACRO_IDLE;
++}
++
++void macro_rewind(void){
++    frame = 0;
++}
++
++void macro_trim(void){
++    macro_store_trim(&store, frame);
++}
++
++void macro_clear(void){
++    mode = MACRO_IDLE;
++    frame = 0;
++    macro_store_clear(&store);
++}
++
++void macro_seek(uint32_t new_frame){
++    frame = new_frame > store.length ? store.length : new_frame;
++}
++
++enum macro_mode macro_mode(void){
++    return mode;
++}
++
++uint32_t macro_frame(void){
++    return frame;
++}
++
++uint32_t macro_length(void){
++    return store.length;
++}
++
++macro_store_t *macro_get_store(void){
++    return &store;
++}
+diff --git a/src/macro_store.c b/src/macro_store.c
+new file mode 100644
+index 0000000..8977555
+--- /dev/null
++++ b/src/macro_store.c
+@@ -0,0 +1,211 @@
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++#include "macro_store.h"
++
++static const char macro_magic[4] = {'k', 'z', 'm', 'c'};
++
++void macro_store_init(macro_store_t *store){
++    memset(store, 0, sizeof(*store));
++}
++
++void macro_store_clear(macro_store_t *store){
++    for(uint32_t i = 0; i < store->page_cnt; i++) {
++        free(store->pages[i]);
++    }
++    free(store->pages);
++    free(store->seeds);
++    macro_store_init(store);
++}
++
++macro_input_t *macro_store_get(macro_store_t *store, uint32_t frame){
++    if(frame >= store->length) {
++        return NULL;
++    }
++    return &store->pages[frame / MACRO_PAGE_FRAMES][frame % MACRO_PAGE_FRAMES];
++}
++
++int macro_store_set(macro_store_t *store, uint32_t frame, const macro_input_t *input){
++    if(frame > store->length) {
++        return 0;
++    }
++
++    uint32_t page = frame / MACRO_PAGE_FRAMES;
++    if(page >= store->page_cnt) {
++        macro_input_t **pages = realloc(store->pages, sizeof(*pages) * (page + 1));
++        if(pages == NULL) {
++            return 0;
++        }
++        store->pages = pages;
++        pages[page] = malloc(sizeof(macro_input_t) * MACRO_PAGE_FRAMES);
++        if(pages[page] == NULL) {
++            return 0;
++        }
++        store->page_cnt = page + 1;
++    }
++
++    store->pages[page][frame % MACRO_PAGE_FRAMES] = *input;
++    if(frame == store->length) {
++        store->length++;
++    }
++    return 1;
++}
++
++void macro_store_trim(macro_store_t *store, uint32_t length){
++    if(length >= store->length) {
++        return;
++    }
++    store->length = length;
++
++    uint32_t pages = (length + MACRO_PAGE_FRAMES - 1) / MACRO_PAGE_FRAMES;
++    for(uint32_t i = pages; i < store->page_cnt; i++) {
++        free(store->pages[i]);
++    }
++    store->page_cnt = pages;
++    if(pages == 0) {
++        free(store->pages);
++        store->pages = NULL;
++    }
++
++    uint32_t keep = 0;
++    while(keep < store->seed_cnt && store->seeds[keep].frame < length) {
++        keep++;
++    }
++    store->seed_cnt = keep;
++}
++
++/* seeds are kept sorted by frame */
++static uint32_t seed_find(macro_store_t *store, uint32_t frame){
++    uint32_t i = 0;
++    while(i < store->seed_cnt && store->seeds[i].frame < frame) {
++        i++;
++    }
++    return i;
++}
++
++int macro_store_set_seed(macro_store_t *store, uint32_t frame, uint32_t seed){
++    uint32_t i = seed_find(store, frame);
++    if(i < store->seed_cnt && store->seeds[i].frame == frame) {
++        store->seeds[i].seed = seed;
++        return 1;
++    }
++
++    if(store->seed_cnt == store->seed_cap) {
++        uint32_t cap = store->seed_cap ? store->seed_cap * 2 : 8;
++        macro_seed_t *seeds = realloc(store->seeds, sizeof(*seeds) * cap);
++        if(seeds == NULL) {
++            return 0;
++        }
++        store->seeds = seeds;
++        store->seed_cap = cap;
++    }
++
++    memmove(&store->seeds[i + 1], &store->seeds[i], sizeof(*store->seeds) * (store->seed_cnt - i));
++    store->seeds[i].frame = frame;
++    store->seeds[i].seed = seed;
++    store->seed_cnt++;
++    return 1;
++}
++
++int macro_store_get_seed(macro_store_t *store, uint32_t frame, uint32_t *seed){
++    uint32_t i = seed_find(store, frame);
++    if(i < store->seed_cnt && store->seeds[i].frame == frame) {
++        *seed = store->seeds[i].seed;
++        return 1;
++    }
++    return 0;
++}
++
++size_t macro_store_size(macro_store_t *store){
++    return sizeof(macro_file_hdr_t) + sizeof(macro_input_t) * store->length +
++           sizeof(macro_seed_t) * store->seed_cnt;
++}
++
++int macro_store_write(macro_store_t *store, uint16_t z2_version,
++                      int (*write_fn)(void *ctx, const void *buf, size_t len), void *ctx){
++    macro_file_hdr_t hdr;
++    memcpy(hdr.magic, macro_magic, sizeof(hdr.magic));
++    hdr.version = MACRO_FILE_VERSION;
++    hdr.z2_version = z2_version;
++    hdr.length = store->length;
++    hdr.seed_cnt = store->seed_cnt;
++    if(!write_fn(ctx, &hdr, sizeof(hdr))) {
++        return 0;
++    }
++
++    for(uint32_t frame = 0; frame < store->length; frame += MACRO_PAGE_FRAMES) {
++        uint32_t cnt = store->length - frame;
++        if(cnt > MACRO_PAGE_FRAMES) {
++            cnt = MACRO_PAGE_FRAMES;
++        }
++        if(!write_fn(ctx, store->pages[frame / MACRO_PAGE_FRAMES], sizeof(macro_input_t) * cnt)) {
++            return 0;
++        }
++    }
++
++    return store->seed_cnt == 0 || write_fn(ctx, store->seeds, sizeof(macro_seed_t) * store->seed_cnt);
++}
++
++int macro_store_read(macro_store_t *store, uint16_t z2_version, size_t size,
++                     int (*read_fn)(void *ctx, void *buf, size_t len), void *ctx){
++    macro_store_clear(store);
++
++    macro_file_hdr_t hdr;
++    if(size < sizeof(hdr) || !read_fn(ctx, &hdr, sizeof(hdr))) {
++        return MACRO_READ_IO;
++    }
++    /* the limits keep the size calculation from overflowing on a corrupt file */
++    if(memcmp(hdr.magic, macro_magic, sizeof(hdr.magic)) != 0 ||
++       hdr.length > 0x1000000 || hdr.seed_cnt > 0x100000 ||
++       size != sizeof(hdr) + sizeof(macro_input_t) * (size_t)hdr.length + sizeof(macro_seed_t) * (size_t)hdr.seed_cnt) {
++        return MACRO_READ_FORMAT;
++    }
++    if(hdr.version != MACRO_FILE_VERSION || hdr.z2_version != z2_version) {
++        return MACRO_READ_VERSION;
++    }
++
++    int error = MACRO_READ_MEMORY;
++    uint32_t pages = (hdr.length + MACRO_PAGE_FRAMES - 1) / MACRO_PAGE_FRAMES;
++    if(pages > 0) {
++        store->pages = calloc(pages, sizeof(*store->pages));
++        if(store->pages == NULL) {
++            goto fail;
++        }
++        for(uint32_t i = 0; i < pages; i++) {
++            store->pages[i] = malloc(sizeof(macro_input_t) * MACRO_PAGE_FRAMES);
++            store->page_cnt = i + (store->pages[i] != NULL);
++            if(store->pages[i] == NULL) {
++                goto fail;
++            }
++        }
++    }
++    if(hdr.seed_cnt > 0) {
++        store->seeds = malloc(sizeof(macro_seed_t) * hdr.seed_cnt);
++        if(store->seeds == NULL) {
++            goto fail;
++        }
++        store->seed_cap = hdr.seed_cnt;
++    }
++
++    error = MACRO_READ_IO;
++    for(uint32_t frame = 0; frame < hdr.length; frame += MACRO_PAGE_FRAMES) {
++        uint32_t cnt = hdr.length - frame;
++        if(cnt > MACRO_PAGE_FRAMES) {
++            cnt = MACRO_PAGE_FRAMES;
++        }
++        if(!read_fn(ctx, store->pages[frame / MACRO_PAGE_FRAMES], sizeof(macro_input_t) * cnt)) {
++            goto fail;
++        }
++    }
++    if(hdr.seed_cnt > 0 && !read_fn(ctx, store->seeds, sizeof(macro_seed_t) * hdr.seed_cnt)) {
++        goto fail;
++    }
++
++    store->length = hdr.length;
++    store->seed_cnt = hdr.seed_cnt;
++    return 0;
++
++fail:
++    macro_store_clear(store);
++    return error;
++}
 diff --git a/src/mem.c b/src/mem.c
 index 5a3dd21..42a67a3 100644
 --- a/src/mem.c
@@ -27704,7 +28562,7 @@ index 0000000..999b0df
 +
 +#endif
 diff --git a/src/settings.c b/src/settings.c
-index ba68c3d..9d866f1 100644
+index ba68c3d..ce5ba96 100644
 --- a/src/settings.c
 +++ b/src/settings.c
 @@ -26,12 +26,10 @@ void load_default_settings(void){
@@ -27720,6 +28578,15 @@ index ba68c3d..9d866f1 100644
      settings->binds[KZ_CMD_SAVE_MEMFILE] = make_bind(2, BUTTON_C_LEFT, BUTTON_D_LEFT);
      settings->binds[KZ_CMD_LOAD_MEMFILE] = make_bind(2, BUTTON_C_LEFT, BUTTON_D_RIGHT);
      settings->binds[KZ_CMD_PREV_MEMFILE] = BIND_END;
+@@ -41,6 +39,8 @@ void load_default_settings(void){
+     settings->binds[KZ_CMD_PREV_POSITION] = BIND_END;
+     settings->binds[KZ_CMD_NEXT_POSITION] = BIND_END;
+     settings->binds[KZ_CMD_TITLE_SCREEN] = BIND_END;
++    settings->binds[KZ_CMD_RECORD_MACRO] = BIND_END;
++    settings->binds[KZ_CMD_PLAY_MACRO] = BIND_END;
+     settings->input_display = 1;
+     settings->id_x = 16;
+     settings->id_y = Z2_SCREEN_HEIGHT - 20;
 diff --git a/src/state.c b/src/state.c
 index 226d3ae..7b6dcb7 100644
 --- a/src/state.c

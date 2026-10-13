@@ -4,7 +4,7 @@ kz-lite with save states
 kz is a practice rom for The Legend of Zelda: Majora's Mask
 (https://github.com/krimtonz/kz). This package patches your own rom with
 kz-lite, the version that runs on a real N64 (with an Expansion Pak),
-the Wii U VC and standard emulators, with save states added.
+the Wii U VC and standard emulators, with save states and input macros added.
 
 Supported roms (unmodified, .z64, .n64 or .v64):
   * NTSC-U 1.0  (USA)
@@ -42,6 +42,17 @@ states menu -> export / import, and settings -> memfile / position.
 The SD card must be FAT32 (or FAT16); exFAT is not supported.
 States from kz-lite and from the full/Wii VC versions of kz are not
 interchangeable.
+
+Macros
+------
+Like gz's macros: record controller input, then play it back from a state.
+  R + L -> macro    record / play / rewind / trim / clear, export / import
+                    (.kzmc files on the SD card)
+The "record macro" and "play macro" commands have no default buttons; bind
+them in settings -> commands.  Save a state while recording, stop recording,
+then load the state and play.  A state saved while a macro records or plays
+remembers the macro frame, and loading it jumps the macro back to that frame.
+Scene loads replay the same rng seed as while recording.
 
 This package contains no game data. Everything is applied to your own rom.
 
