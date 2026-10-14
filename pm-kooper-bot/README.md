@@ -75,7 +75,7 @@ python3 explore.py runs/r1 6        # run directory, hours
 
 **Why it doesn't work here:**
 - `npc_do_player_collision` skips partners and any NPC with `NPC_FLAG_IGNORE_PLAYER_COLLISION`.
-- `spawn_encounter_npcs`-style setup (`src/encounter.c`) sets that flag on every enemy that isn't `ENEMY_FLAG_PASSIVE`.
+- When enemy NPCs are created (`src/encounter.c`), the game sets that flag on every enemy that isn't `ENEMY_FLAG_PASSIVE`.
 - Everything that moves in nok_14 is a non-passive enemy: Koopa Troopa, Spiked Goomba, Paratroopa. The only passive NPC is hidden and also ignores player collision.
 - In the emulator, the Spiked Goomba chases Mario (2.5 units/frame) and stops at touching distance without moving him. It then attacks.
 - `pushVel` is only set by moving platforms and conveyors in other areas, and `overlapPushAmount` is never set.
