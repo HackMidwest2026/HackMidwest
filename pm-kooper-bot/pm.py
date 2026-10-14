@@ -5,6 +5,8 @@ PLAYER = 0x8010F188             # gPlayerStatus
 COLLISION = 0x8015F4D0          # gCollisionStatus
 SAVE = 0x800DACA0               # gCurrentSaveFile
 STORY = SAVE + 0x10B0           # GB_StoryProgress = globalBytes[0]
+PLAYER_DATA = 0x8010F450        # gPlayerData
+PARTNER_GOOMBARIO = 1
 
 AREA_NOK = 6
 MAP_NOK_13, MAP_NOK_14, MAP_NOK_15 = 6, 7, 8
@@ -41,3 +43,19 @@ def player(e):
         'action': e.s8(p + PS_ACTION), 'speed': e.f32(p + PS_CURSPEED),
         'yaw': e.f32(p + PS_CURYAW), 'flags': e.u32(p + PS_FLAGS),
     }
+
+NPC_LIST_PTR = 0x8009E9A0       # gCurrentNpcListPtr (static in npc.c; from get_npc_by_index)
+NPC_FLAG_PARTNER = 0x100
+
+
+def npcs(e):
+    lst = e.u32(NPC_LIST_PTR)
+    out = []
+    for i in range(64):
+        n = e.u32(lst + 4 * i)
+        if n == 0 or e.u32(n) == 0:
+            continue
+        out.append({'slot': i, 'addr': n, 'flags': e.u32(n), 'id': e.s8(n + 0xA4),
+                    'x': e.f32(n + 0x38), 'y': e.f32(n + 0x3C), 'z': e.f32(n + 0x40),
+                    'diam': e.s16(n + 0xA6), 'height': e.s16(n + 0xA8), 'speed': e.f32(n + 0x18)})
+    return out
