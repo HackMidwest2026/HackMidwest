@@ -4,8 +4,8 @@ import os
 import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CORE = os.environ.get('M64P_CORE', os.path.join(HERE, 'mupen64plus-core', 'projects', 'unix', 'libmupen64plus.so.2'))
-RSP = os.environ.get('M64P_RSP', '/usr/lib/x86_64-linux-gnu/mupen64plus/mupen64plus-rsp-hle.so')
+CORE = os.path.join(HERE, '..', 'mupen64plus-core', 'projects', 'unix', 'libmupen64plus.so.2')
+RSP = '/usr/lib/x86_64-linux-gnu/mupen64plus/mupen64plus-rsp-hle.so'
 
 # n64 controller bits as the input plugin expects them (BUTTONS.Value)
 R_DPAD, L_DPAD, D_DPAD, U_DPAD = 0x0001, 0x0002, 0x0004, 0x0008
@@ -77,7 +77,13 @@ class Emu:
         self.lib.h_save(os.path.abspath(path).encode())
 
     def load(self, path, frame=0):
-        self.lib.h_load(os.path.abspath(path).encode(), frame)
+        for attempt in range(5):
+            r = self.lib.h_load(os.path.abspath(path).encode(), frame)
+            if r == 0:
+                return
+            if r == -1:
+                raise RuntimeError('emulator stopped')
+        raise RuntimeError('savestate load failed (%d): %s' % (r, path))
 
     @property
     def frame(self):

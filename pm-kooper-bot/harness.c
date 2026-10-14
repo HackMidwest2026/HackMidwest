@@ -71,8 +71,12 @@ static void frame_cb(unsigned int n){
     block_here();
 }
 
+static int last_state_event, last_state_ok;
+
 static void state_cb(void *ctx, m64p_core_param p, int v){
     if(p == M64CORE_STATE_SAVECOMPLETE || p == M64CORE_STATE_LOADCOMPLETE) {
+        last_state_event = p;
+        last_state_ok = v;
         if(verbose) fprintf(stderr, "harness: state %s %d\n", p == M64CORE_STATE_SAVECOMPLETE ? "saved" : "loaded", v);
         block_here();
     }
@@ -153,16 +157,33 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
     if(pCoreDoCommand(M64CMD_ROM_OPEN, sz, buf) != M64ERR_SUCCESS) return -4;
     free(buf);
 
+    /* the core wants plugins attached in the order video, audio, input, rsp */
+    const char *gfxlib = getenv("M64P_GFX");
+    if(gfxlib && *gfxlib) {
+        void *gfx = dlopen(gfxlib, RTLD_NOW);
+        if(!gfx) { fprintf(stderr, "%s\n", dlerror()); return -9; }
+        m64p_error (*gs)(m64p_dynlib_handle, void *, void (*)(void *, int, const char *)) = dlsym(gfx, "PluginStartup");
+        gs(core, NULL, debug_cb);
+        if(pCoreAttachPlugin(M64PLUGIN_GFX, gfx) != M64ERR_SUCCESS) return -10;
+    }
+    const char *audlib = getenv("M64P_AUDIO");
+    if(audlib && *audlib) {
+        void *aud = dlopen(audlib, RTLD_NOW);
+        if(!aud) { fprintf(stderr, "%s\n", dlerror()); return -11; }
+        m64p_error (*as)(m64p_dynlib_handle, void *, void (*)(void *, int, const char *)) = dlsym(aud, "PluginStartup");
+        as(core, NULL, debug_cb);
+        if(pCoreAttachPlugin(M64PLUGIN_AUDIO, aud) != M64ERR_SUCCESS) return -12;
+    }
+    Dl_info di;
+    dladdr((void*)h_init, &di);
+    void *self = dlopen(di.dli_fname, RTLD_NOW);
+    if(pCoreAttachPlugin(M64PLUGIN_INPUT, self) != M64ERR_SUCCESS) return -7;
+
     void *rsp = dlopen(rsplib, RTLD_NOW);
     if(!rsp) { fprintf(stderr, "%s\n", dlerror()); return -5; }
     m64p_error (*ps)(m64p_dynlib_handle, void *, void (*)(void *, int, const char *)) = dlsym(rsp, "PluginStartup");
     ps(core, NULL, debug_cb);
     if(pCoreAttachPlugin(M64PLUGIN_RSP, rsp) != M64ERR_SUCCESS) return -6;
-
-    Dl_info di;
-    dladdr((void*)h_init, &di);
-    void *self = dlopen(di.dli_fname, RTLD_NOW);
-    if(pCoreAttachPlugin(M64PLUGIN_INPUT, self) != M64ERR_SUCCESS) return -7;
 
     pCoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, (void*)frame_cb);
     int zero = 0;
@@ -204,10 +225,15 @@ int h_save(const char *path){
     return emu_done ? -1 : 0;
 }
 
+/* returns 0 on success, -1 if the emulator stopped, -2 if the core refused the load,
+   -3 if it reached a frame instead of loading, -4 if the load itself failed */
 int h_load(const char *path, unsigned frame){
-    pCoreDoCommand(M64CMD_STATE_LOAD, 0, (void*)path);
+    last_state_event = 0;
+    if(pCoreDoCommand(M64CMD_STATE_LOAD, 0, (void*)path) != M64ERR_SUCCESS) return -2;
     release();
     wait_blocked();
     frame_no = frame;
-    return emu_done ? -1 : 0;
+    if(emu_done) return -1;
+    if(last_state_event != M64CORE_STATE_LOADCOMPLETE) return -3;
+    return last_state_ok ? 0 : -4;
 }

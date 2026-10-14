@@ -14,8 +14,10 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROM = os.environ.get('PM_ROM', os.path.join(HERE, 'pm-jp.z64'))
-START = os.path.join(HERE, 'states', 'nok14_start_goombario.st')
-COLL = os.path.join(HERE, 'nok14_collision.json')
+sys.path.insert(0, HERE)
+from rooms import ROOM, in_goal
+START = os.path.join(HERE, ROOM['start'])
+COLL = os.path.join(HERE, ROOM['collision'])
 SHM = os.environ.get('PM_TMP', '/dev/shm/pmbot')
 
 A, B, Z = 0x0080, 0x0040, 0x0020
@@ -73,7 +75,7 @@ def cell_of(s):
 
 
 # only keep spots in the right half of the path (east of the ledge) that are close to a solid wall
-FOCUS_MIN_X = -480
+FOCUS_MIN_X = ROOM['focus_min_x']
 FOCUS_WALL_DIST = 40
 MAX_CELLS = 25000
 
@@ -127,10 +129,19 @@ def worker_try(job):
         # buttons are pressed on the first frame of the segment only, so repeated tries can chain them
         e.step(buttons if f == 0 else (buttons & A), sx, sy, 2)
         if e.s16(GAME_MODE) != GM_WORLD:
+            if e.s16(GAME_MODE) == 5:     # took an exit: only exits listed as goals count
+                from pm import where
+                dest = where(e)
+                if tuple(dest[:2]) in [tuple(m) for m in ROOM.get('goal_maps', [])]:
+                    clip = {'wall': -1, 'frame': f, 'why': 'exit to %s' % (dest,), 'from': (p0['x'], p0['y'], p0['z']), 'action': -1}
+                    return {'res': 'exit', 'clip_only': clip, 'trace': trace}
+                return {'res': 'other_exit'}
             return {'res': 'battle'}
         p1 = player(e)
         trace.append((p1['x'], p1['y'], p1['z'], p1['action']))
         w = crossed_wall(W['walls'], (p0['x'], p0['z']), (p1['x'], p1['z']), min(p0['y'], p1['y']))
+        if w is None and in_goal(p1['x'], p1['z']):
+            w = -2
         if w is not None and clip is None:
             clip = {'wall': w, 'frame': f, 'from': (p0['x'], p0['y'], p0['z']), 'to': (p1['x'], p1['y'], p1['z']),
                     'action': p1['action']}
@@ -152,7 +163,7 @@ def main():
         A_ = pickle.load(open(arch_path, 'rb'))
     else:
         base = read_state(START)
-        s0 = {'x': -855.0, 'y': 75.0, 'z': -35.0, 'action': 0, 'floor': 2}
+        s0 = dict(ROOM['start_pos'])
         A_ = {'cells': {cell_of(s0): {'blob': to_blob(base, base), 'path': [], 'chosen': 0, 'pos': s0}},
               'tries': 0, 'clips': [], 'results': {}}
 
@@ -192,9 +203,13 @@ def main():
             k, act, r = p[0], p[1], p[2].get()
             A_['tries'] += 1
             A_['results'][r['res']] = A_['results'].get(r['res'], 0) + 1
+            parent = A_['cells'][k]
+            if r['res'] == 'exit':
+                A_['clips'].append({'path': parent['path'] + [act], 'clip': r['clip_only'], 'trace': r['trace']})
+                print('EXIT TAKEN (possible clip):', r['clip_only'], 'path len', len(parent['path']) + 1, flush=True)
+                continue
             if r['res'] != 'ok':
                 continue
-            parent = A_['cells'][k]
             path = parent['path'] + [act]
             if r['clip']:
                 A_['clips'].append({'path': path, 'clip': r['clip'], 'trace': r['trace'], 'blob': r['blob']})

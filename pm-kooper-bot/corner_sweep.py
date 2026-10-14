@@ -16,22 +16,30 @@ import json, math, multiprocessing as mp, os, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROM = os.environ.get('PM_ROM', os.path.join(HERE, 'pm-jp.z64'))
-START = os.path.join(HERE, 'states', 'nok14_start_goombario.st')
+sys.path.insert(0, HERE)
+from rooms import ROOM, NAME as ROOM_NAME, in_goal
+START = os.path.join(HERE, ROOM['start'])
 SHM = os.environ.get('PM_TMP', '/dev/shm/pmbot')
 
 A, B, Z = 0x0080, 0x0040, 0x0020
-GAP_FLOOR = 14
+GOAL_FLOORS = ROOM['goal_floors']
+RING_STEP = float(os.environ.get('RING_STEP', '10'))      # degrees between run-up start positions
+ACT_STEP = int(os.environ.get('ACT_STEP', '2'))           # degrees between stick angles for run-up starts
+MAGS = tuple(int(m) for m in os.environ.get('MAGS', '80,40,20,10').split(','))
 
-# corner point, and the directions (degrees, atan2(dz, dx)) of the two walls leaving it into the play area side
-CORNERS = {
-    'north': {'p': (-100.0, -100.0), 'walls': ((-110.0, -102.0), (-100.0, -20.0))},
-    'south': {'p': (-100.0, -20.0), 'walls': ((-100.0, -100.0), (-127.0, 32.0))},
-}
+CORNERS = ROOM['corners']
 
 
 def wedge_angles(c, step):
     """angles (deg) from the corner pointing into the play area, between its two walls"""
     p = c['p']
+    if c.get('wedge'):
+        lo, hi = c['wedge']
+        out, a = [], lo + step
+        while a < hi - step / 2:
+            out.append(a % 360)
+            a += step
+        return out
     a1 = math.degrees(math.atan2(c['walls'][0][1] - p[1], c['walls'][0][0] - p[0]))
     a2 = math.degrees(math.atan2(c['walls'][1][1] - p[1], c['walls'][1][0] - p[0]))
     # the play area is west of x = -100, i.e. the wedge containing angle 180
@@ -73,11 +81,12 @@ def make_start(job):
     e = W['e']
     e.load(START)
     e.step(0, 0, 0, 2)
-    e.wf32(PLAYER + PS_POS, x); e.wf32(PLAYER + PS_POS + 4, 0.0); e.wf32(PLAYER + PS_POS + 8, z)
+    e.wf32(PLAYER + PS_POS, x); e.wf32(PLAYER + PS_POS + 4, ROOM['floor_y'](x, z)); e.wf32(PLAYER + PS_POS + 8, z)
     # debug "can't touch": enemies can't start battles (they never push mario anyway), so the
     # spiked goomba chasing mario doesn't end every attempt
     from pm import game_status
-    e.w8(game_status(e) + 0x74, 1)
+    if ROOM['disable_enemy_contact']:
+        e.w8(game_status(e) + 0x74, 1)
     if settle_deg is not None:
         sx, sy = stick_for(settle_deg, 50)
         for i in range(40):
@@ -90,28 +99,40 @@ def make_start(job):
 
 
 def run_actions(job):
-    from pm import player, GAME_MODE, GM_WORLD, COLLISION
+    from pm import player, GAME_MODE, GM_WORLD, COLLISION, where
     from explore_clip import crossed_wall
-    state, actions, frames = job
+    state, actions, frames, expect = job
     e = W['e']
     hits, battles, maxx = [], 0, -1e9
+    W['bad_loads'] = 0
     for act in actions:
         sx, sy, buttons = act
         e.load(state)
         p0 = player(e)
+        if abs(p0['x'] - expect[0]) > 0.01 or abs(p0['z'] - expect[2]) > 0.01:
+            e.load(state)
+            p0 = player(e)
+            if abs(p0['x'] - expect[0]) > 0.01 or abs(p0['z'] - expect[2]) > 0.01:
+                W['bad_loads'] += 1
+                continue
         for f in range(frames):
             e.step(buttons if f == 0 else 0, sx, sy, 2)
             if e.s16(GAME_MODE) != GM_WORLD:
-                battles += 1
+                if e.s16(GAME_MODE) == 5 and tuple(where(e)[:2]) in [tuple(m) for m in ROOM.get('goal_maps', [])]:
+                    p1 = player(e)
+                    hits.append({'action': act, 'frame': f, 'why': 'map change', 'pos': (p1['x'], p1['y'], p1['z']),
+                                 'floor': e.s16(COLLISION + 2)})
+                else:
+                    battles += 1
                 break
             p1 = player(e)
             floor = e.s16(COLLISION + 2)
             maxx = max(maxx, p1['x'])
             why = None
-            if floor == GAP_FLOOR:
-                why = 'on gap floor'
-            elif p1['x'] > -100 and -100 < p1['z'] < -20:
-                why = 'east of bridge wall'
+            if floor in GOAL_FLOORS:
+                why = 'on goal floor %d' % floor
+            elif in_goal(p1['x'], p1['z']):
+                why = 'inside goal area'
             else:
                 w = crossed_wall(W['walls'], (p0['x'], p0['z']), (p1['x'], p1['z']), min(p0['y'], p1['y']))
                 if w is not None:
@@ -120,7 +141,7 @@ def run_actions(job):
                 hits.append({'action': act, 'frame': f, 'why': why, 'pos': (p1['x'], p1['y'], p1['z']), 'floor': floor})
                 break
             p0 = p1
-    return hits, battles, maxx, len(actions)
+    return hits, battles, maxx, len(actions) - W['bad_loads']
 
 
 def main():
@@ -134,7 +155,7 @@ def main():
     for cn in corners:
         c = CORNERS[cn]
         px, pz = c['p']
-        angles = wedge_angles(c, 10)
+        angles = wedge_angles(c, RING_STEP)
         # settled into the corner, approaching from several directions
         for a in wedge_angles(c, 20):
             jobs.append(('%s settle from %.0f' % (cn, a), px + 30 * math.cos(math.radians(a)),
@@ -163,16 +184,16 @@ def main():
             continue
         if name in done_names:
             continue
-        step = 1 if kind == 'settle' else 2
+        step = 1 if kind == 'settle' else ACT_STEP
         acts = []
         for deg in range(0, 360, step):
-            for mag in (80, 40, 20, 10):
+            for mag in MAGS:
                 sx, sy = stick_for(deg, mag)
                 for b in (0, Z, A, B):
                     acts.append((sx, sy, b))
         frames = 25 if kind in ('settle', 'ring20') else (32 if kind == 'ring40' else 45)
         chunks = [acts[i::16] for i in range(16)]
-        res = pool.map(run_actions, [(path, ch, frames) for ch in chunks])
+        res = pool.map(run_actions, [(path, ch, frames, pos) for ch in chunks])
         hits = [h for r in res for h in r[0]]
         battles = sum(r[1] for r in res)
         maxx = max(r[2] for r in res)
