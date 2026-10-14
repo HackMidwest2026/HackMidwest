@@ -1,0 +1,68 @@
+# Kooper skip bot (Paper Mario, JP 1.0)
+
+A bot that searches for out-of-bounds routes in **nok_14** (Pleasant Path, "Path to Fortress 1"): get from the left loading zone to the right one without hitting the switch that raises the bridge, using loading zone storage (LZS) jumps.
+
+It runs the real game in a headless mupen64plus, reads Mario's state from RAM using addresses from the [pmret/papermario](https://github.com/pmret/papermario) decomp, and tries jump sequences many times faster than real time.
+
+No ROM or savestates are included. You need your own *Mario Story* (J) ROM. The decomp's JP baserom has SHA-1 `b9cca3ff260b9ff427d981626b82f96de73586d3`.
+
+## The room
+
+![nok_14 collision](nok14_map.png)
+
+Collision read from RAM after the room loads (`dump_collision.py`, `draw_map.py`). The camera looks toward −z, so the top of the image is the back of the room.
+
+| collider | what it is |
+|---|---|
+| 5 `deili1` | left exit floor (to nok_13), x −970…−870, y 75 |
+| 21 `deili2` | right exit floor (to nok_15), x 450…550, y 0 |
+| 4, 20 `deilit`, `deilit2` | walls behind each exit, disabled on load (`COLLIDER_FLAGS_UPPER_MASK`) |
+| 12 | wall at x=−100 that stops Mario reaching the unbuilt bridge. Kooper's shell passes through it (`IGNORE_SHELL`). |
+| 14 | floor across the bridge gap, x −100…100, y 0 |
+
+Every wall in the room is vertical and every floor is flat. So an out-of-bounds route can only use pieces of floor that extend past the walls, which several do.
+
+## How loading zone storage works (from the decomp, confirmed in the emulator)
+
+1. Both exits are `TRIGGER_FLOOR_ABOVE` triggers (`src/trigger.c`). They fire as soon as the floor under Mario's shadow (`gCollisionStatus.floorBelow`) is the exit collider, even in midair. The trigger starts `EVT_EXIT_WALK_NOK`.
+2. That script first calls `UseExitHeading` (`src/evt/player_api.c`). It blocks until `can_trigger_loading_zone()` (`src/7BB60.c`) is true, which needs Mario's action state to be idle, walk, run, tweester or spin. Until then the exit is **stored**.
+3. Each frame, `step_game_loop` runs scripts *before* the player update. So the exit fires on the first frame that **starts** with Mario grounded.
+4. Landing:
+   - **Stick held:** `player_handle_floor_collider_type` goes straight to walk/run and the frame ends grounded, so the exit fires on the next frame.
+   - **Stick neutral:** the landing frame ends in `ACTION_STATE_LAND`, which doesn't count as grounded.
+5. On the next frame, the LAND update falls through to idle. `phys_update_action_state` runs the idle update in the same frame (its `do … while (ACTION_STATE_CHANGED)` loop), and idle checks for a jump. Pressing A on that frame makes Mario jump without ever ending a frame grounded, so the exit stays stored.
+
+So each LZS jump needs a **neutral stick on the landing frame** and **A on the next frame**. The JP game reads input one game frame late, so with the inputs as sent to the emulator, A goes on the frame after the one where Mario is first seen in LAND.
+
+If Mario walks or falls off the collision, the cubic gravity integrator eventually flips sign and launches him upward, and the game puts him back at his last landing spot. The stored exit survives this.
+
+## How the bot works
+
+- **`harness.c` + `emu.py`:** a mupen64plus core driven one rendered frame at a time from Python. Savestates are synchronous and uncompressed, and RDRAM is read directly. The game renders twice per game frame, so the bot always steps two callbacks at a time. `harness.c` doubles as the input plugin.
+- **`mupen64plus-core-headless.patch`:** two changes to mupen64plus-core (commit `ba95bab`):
+  - raise the RDP "frame done" interrupt itself, since no video plugin runs and the game would otherwise wait forever
+  - make savestates synchronous and uncompressed
+- **`make_state.py`:** boots, starts a new file, and redirects its first map load to nok_14 entry 0 with story progress set to "arrived at Koopa Village". It then saves `states/nok14_start.st`.
+- **`lzs.py`:** the LZS jump primitive. From a "ready" state (Mario just landed with the exit stored), it jumps with a stick direction and an A-hold length. It runs once to find the landing frame, then replays with a neutral stick on that frame. The result is a new ready state, `exit` (the stored exit fired), or `void` (Mario never landed).
+- **`explore.py`:** a Go-Explore search over ready states, using 4 worker processes.
+  - **Cells:** (floor collider, x/12, z/12, y/30).
+  - **Each try:** pick a cell (weighted toward ones tried less often) and try a random jump. There are 32 stick angles, 3 stick strengths and 6 A-hold lengths, plus a jump in place.
+  - **Archive:** any landing in a new cell is kept, with the shortest input path that reached it. States are stored as XOR diffs against the first ready state, about 136KB each.
+  - **Goal:** the floor below Mario becomes `deili2` (collider 21) while the nok_13 exit is still stored.
+
+## Running it
+
+```sh
+# 1. build mupen64plus-core with the patch
+git clone https://github.com/mupen64plus/mupen64plus-core && cd mupen64plus-core
+git checkout ba95bab && git apply ../mupen64plus-core-headless.patch
+make -C projects/unix all NETPLAY=0 OSD=0 NEW_DYNAREC=1 && cd ..
+# 2. build the harness (needs mupen64plus-rsp-hle, e.g. from the distro's mupen64plus packages)
+gcc -O2 -shared -fPIC -o harness.so harness.c -Imupen64plus-core/src/api -ldl -lpthread
+# 3. make the start state and search
+export PM_ROM=/path/to/mario-story-jp.z64
+python3 make_state.py
+python3 explore.py runs/r1 6        # run directory, hours
+```
+
+`M64P_CORE`, `M64P_RSP` and `PM_TMP` (scratch directory, default `/dev/shm/pmbot`) override the default paths. A `.n64` (byte-swapped) dump has to be converted to `.z64` first.

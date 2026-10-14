@@ -1,0 +1,8 @@
+states/
+runs/
+*.so
+*.z64
+*.n64
+*.st
+__pycache__/
+mupen64plus-core/

@@ -1,0 +1,35 @@
+diff --git a/src/device/rcp/rsp/rsp_core.c b/src/device/rcp/rsp/rsp_core.c
+index 99767bc..1dbacc3 100644
+--- a/src/device/rcp/rsp/rsp_core.c
++++ b/src/device/rcp/rsp/rsp_core.c
+@@ -345,6 +345,8 @@ void do_SP_Task(struct rsp_core* sp)
+         sp->regs2[SP_PC_REG] |= save_pc;
+         new_frame();
+ 
++        /* headless: no video plugin raises the rdp full sync interrupt, so raise it here */
++        sp->mi->regs[MI_INTR_REG] |= MI_INTR_DP;
+         if (sp->mi->regs[MI_INTR_REG] & MI_INTR_DP)
+         {
+             sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_DP;
+diff --git a/src/main/savestates.c b/src/main/savestates.c
+index 4e6c85d..15775d4 100644
+--- a/src/main/savestates.c
++++ b/src/main/savestates.c
+@@ -1494,7 +1494,7 @@ static void savestates_save_m64p_work(struct work_struct *work)
+     SDL_LockMutex(savestates_lock);
+ 
+     // Write the state to a GZIP file
+-    f = osal_gzopen(save->filepath, "wb");
++    f = osal_gzopen(save->filepath, "wb0");
+ 
+     if (f==NULL)
+     {
+@@ -1923,7 +1923,7 @@ static int savestates_save_m64p(const struct device* dev, char *filepath)
+     PUTDATA(curr, uint64_t, *r4300_cp2_latch((struct cp2*)&dev->r4300.cp2));
+ 
+     init_work(&save->work, savestates_save_m64p_work);
+-    queue_work(&save->work);
++    savestates_save_m64p_work(&save->work);
+ 
+     return 1;
+ }
