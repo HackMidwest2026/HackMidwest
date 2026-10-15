@@ -215,3 +215,14 @@ So the low entry is real but TAS-precise. Lining Mario up to within 0.06 units i
 - **Long approaches** (`house_simplehold2.py`): 4,004 up-left starts placed on the 45° line through the step-up strip, and 2,204 left starts at every z from −147 to −136. Plain or spinning, 0 got in.
 
 **Why:** step-up only triggers in the strip x −395.96…−395.26. At any x in that strip, the front wall stops Mario at z −134 before he reaches it, so straight up never gets there. He has to start just east of the strip (x ≥ −395.24) and drift about 0.1 left during the final 5.4-unit frame. That's the raw stick (−8, 80), roughly 6° left of up. Left and up-left reach the strip moving too far sideways, so the step-up's 3-unit move doesn't carry him past z −147.25.
+
+**Gentler sticks** (`house_walkwin.py`): 96 stick positions from a light walk (y = 10) to full tilt (y = 80), each with x from 0 to about 35% left. Every standable spot with x −395.30…−394.60 (0.01 steps) and z −146.9…−130.4 (0.5 steps) was tried, 198 hits in all. A walk at (−5, 20) is the most forgiving:
+
+| stick | start x | start z | hits |
+|---|---|---|---|
+| (−5, 20) walk | −395.25 … −395.13 | −145.4 … −140.9 | 78 |
+| (−7, 60) | −395.25 … −395.18 | −142.4 … −138.4 | 48 |
+| (−8, 80) | −395.25 … −395.18 | −142.4 … −138.4 | 48 |
+| (−6, 40) | −395.25 … −395.22 | −143.9 … −140.9 | 24 |
+
+In every case the clip happens on the first frame. Very small x values don't register. On open ground, (−1, 10), (−3, 10) and (0, 10) all walk the same direction, about 2.8° left of straight up (the camera is turned slightly). That's the same as pure up and too straight. The entry needs Mario moving about 5–7° left of up.
