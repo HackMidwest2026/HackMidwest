@@ -164,3 +164,18 @@ Getting into the locked blue house (the Odd Key door) by clipping in at its fron
 - **`house_hover.py` / `house_hold.py`:** from the hover, 121 of 7,200 single held directions get in, at every phase of the 5-frame loop. The hover lasts indefinitely, so this last input has no timing.
 - **`house_stageB.py`:** from that wall-face landing, the jump that reaches the hover is narrow. Stick 296–300° at low strength for the first 6 frames, then up-slightly-right.
 - **`record_house.py`** renders `blue_house_clip.mp4` and `blue_house_clip_slow.mp4`.
+
+### A setup a human can try (`house_setup_tol.py`, `blue_house_setup.mp4`)
+
+World angles below assume the default camera: 0° = right, 90° = toward the camera (down), 180° = left, 270° = away (up).
+
+1. **Start:** walk up into the house front a few units left of the corner (x = −406, z = −134).
+2. **Spin:** spin (Z) holding up-right (world 340°). Mario slides along the house front, round the corner, and out to about (−353, −162).
+3. **First jump:** jump on spin frame 9, holding down-left (world 150°). Let go of the stick after 10 frames, before landing; holding it into the corner makes the front wall push him off the notch. The spin speed carries him back round the corner, and he lands on the leaning wall face at about (−394.6, 45, −140.1).
+4. **Second jump:** jump again holding a light up-right (world 304° at 30% tilt) for 6 frames. Then hold up, slightly right (276°, full tilt). He snaps up the wall to y 100.7, gets pushed inside, and lands on the block inside and then the house floor (collider 47).
+
+**How forgiving it is:** over 50,400 variations of steps 1–3 (start x −426…−400, spin angle 316–344°, jump on spin frame 6–10, air stick angle and strength, release frame):
+- 1,783 (3.5%) land on the wall face.
+- 516 (1.0%) end up inside, using one of 5 second jumps.
+
+The best setups still only have about 1 in 6 of their neighbours working (start ±4 units, spin ±4°, jump ±1 frame). The second jump is the narrowest step: from one landing, only about 5° of stick angle at light tilt works. So the clip is reproducible, but it isn't consistent yet. The hover (when the second jump reaches it) removes the timing from the last input.
