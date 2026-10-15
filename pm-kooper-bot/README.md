@@ -201,3 +201,11 @@ The TAS doesn't go over the top: Mario rises only about 10 at the corner and is 
 Mario's sprite is still drawn in front of the wall on the first frames inside. That's why in the TAS he seems to land next to Kooper and then vanish.
 
 `house_lowwin.py` maps how wide this window is (starting x and z, stick direction). `record_house_low.py` renders the video.
+
+**How forgiving the low entry is:**
+- **From a standstill** (`house_lowwin.py`): Mario has to start with x between −395.24 and −395.18, a window 0.06 units wide, and z between −141.5 and −138.5. He also has to hold exactly raw stick (−8, 80). In total, 15 of about 136,000 tries worked.
+- **Holding one direction from a rough spot** (`house_lowhold.py`): no successes in about 20,000 tries.
+- **Sliding along the house front and then switching the stick** (`house_slide.py`): one combination works, with a 1-frame switch window. That's sliding with raw (12, 80), switching to (−8, 70) at x −395.07.
+- **Single-frame stick taps** move Mario at least 2 units, so they can't be used to line him up.
+
+So the low entry is real but TAS-precise. Lining Mario up to within 0.06 units is the hard part.
