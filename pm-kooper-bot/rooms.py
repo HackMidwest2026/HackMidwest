@@ -16,7 +16,17 @@ ROOMS = {
         'focus_min_x': -480,
         'corners': {
             'north': {'p': (-100.0, -100.0), 'wedge': None, 'walls': ((-110.0, -102.0), (-100.0, -20.0))},
+            # the same corner approached from every in-bounds side: the corridor (west/south-west) and the grass
+            # behind the fence (north-west/north); start points off the floor are skipped
+            'north_all': {'p': (-100.0, -100.0), 'wedge': (90.0, 340.0)},
             'south': {'p': (-100.0, -20.0), 'wedge': None, 'walls': ((-100.0, -100.0), (-127.0, 32.0))},
+            # points along the thin diagonal wall (-110,-102)-(-52,-118) between the north lobe and the gap,
+            # approached from the lobe (north) side
+            'lobe1': {'p': (-104.2, -103.6), 'wedge': (164.3, 344.3)},
+            'lobe2': {'p': (-92.6, -106.8), 'wedge': (164.3, 344.3)},
+            'lobe3': {'p': (-81.0, -110.0), 'wedge': (164.3, 344.3)},
+            'lobe4': {'p': (-69.4, -113.2), 'wedge': (164.3, 344.3)},
+            'lobe5': {'p': (-57.8, -116.4), 'wedge': (164.3, 344.3)},
         },
         'floor_y': lambda x, z: 0.0,
         'disable_enemy_contact': True,

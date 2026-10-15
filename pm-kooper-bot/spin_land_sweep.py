@@ -24,7 +24,7 @@ START = os.path.join(HERE, ROOM['start'])
 SHM = os.environ.get('PM_TMP', '/dev/shm/pmbot')
 A, Z = 0x0080, 0x0020
 KEEP_DIST = float(os.environ.get('KEEP_DIST', '22'))   # keep pre-landing states this close to the corner
-LAND_MAGS = (80, 50, 25)
+LAND_MAGS = tuple(int(m) for m in os.environ.get('LAND_MAGS', '80,50,25').split(','))
 AFTER_FRAMES = 8
 
 W = {}
@@ -64,8 +64,11 @@ def gen(job):
     e = W['e']
     base = base_state(sx0, sz0)
     out = []
-    # pass 1: find the landing frame
+    # pass 1: find the landing frame (skip start points that aren't on solid ground in bounds)
     e.load(base)
+    from pm import COLLISION
+    if e.s16(COLLISION + 2) < 0 or abs(player(e)['y'] - ROOM['floor_y'](sx0, sz0)) > 1:
+        return out
     stick = stick_for(theta, 80)
     stick_air = stick_for(theta_air, 80) if theta_air is not None else (0, 0)
     airborne, land_f = False, None
@@ -92,7 +95,7 @@ def gen(job):
     p = player(e)
     d = math.hypot(p['x'] - corner[0], p['z'] - corner[1])
     if d <= KEEP_DIST and p['action'] in (3, 4, 5, 8) and abs(p['speed'] - 8.0) < 0.01:
-        out.append({'pos': (p['x'], p['y'], p['z']), 'dist': d, 'speed': p['speed'], 'land_f': land_f,
+        out.append({'pos': (p['x'], p['y'], p['z']), 'dist': d, 'speed': p['speed'], 'land_f': land_f, 'corner': corner,
                     'inputs': {'start': (sx0, sz0), 'spin_deg': theta, 'jump_frame': k, 'air_deg': theta_air}})
     return out
 
@@ -142,17 +145,26 @@ def sweep(job):
     path, pos = rebuild(pre)
     if math.dist((pos[0], pos[2]), (pre['pos'][0], pre['pos'][2])) > 0.01:
         return [{'why': 'rebuild mismatch', 'pre': pre, 'got': pos}], 0, 0.0
-    for deg in range(0, 360, step):
+    window = float(os.environ.get('LAND_WINDOW', '180'))
+    to_corner = math.degrees(math.atan2(pre['corner'][1] - pos[2], pre['corner'][0] - pos[0]))
+    degs = range(0, 360, step) if window >= 180 else \
+        [round(to_corner + d) % 360 for d in range(-int(window), int(window) + 1, step)]
+    after_modes = os.environ.get('AFTER_MODES', 'hold').split(',')
+    for deg in degs:
+      for mode in after_modes:
         for mag in LAND_MAGS:
             sx, sy = stick_for(deg, mag)
             e.load(path)
             p0 = player(e)
             landed = False
             for f in range(AFTER_FRAMES):
-                e.step(0, sx, sy, 2)
+                if landed and mode == 'neutral':
+                    e.step(0, 0, 0, 2)
+                else:
+                    e.step(0, sx, sy, 2)
                 if e.s16(GAME_MODE) != GM_WORLD:
                     if e.s16(GAME_MODE) == 5 and tuple(where(e)[:2]) in [tuple(m) for m in ROOM.get('goal_maps', [])]:
-                        hits.append({'deg': deg, 'mag': mag, 'frame': f, 'why': 'goal exit', 'pre': pre})
+                        hits.append({'deg': deg, 'mag': mag, 'mode': mode, 'frame': f, 'why': 'goal exit', 'pre': pre})
                     break
                 p1 = player(e)
                 if not landed and p1['action'] not in (3, 4, 5, 8):
@@ -160,7 +172,7 @@ def sweep(job):
                     max_land_move = max(max_land_move, math.hypot(p1['x'] - p0['x'], p1['z'] - p0['z']))
                 why = check(p0, p1, e)
                 if why:
-                    hits.append({'deg': deg, 'mag': mag, 'frame': f, 'why': why, 'pos': (p1['x'], p1['y'], p1['z']),
+                    hits.append({'deg': deg, 'mag': mag, 'mode': mode, 'frame': f, 'why': why, 'pos': (p1['x'], p1['y'], p1['z']),
                                  'pre': pre})
                     break
                 p0 = p1
@@ -168,44 +180,59 @@ def sweep(job):
     return hits, tries, max_land_move
 
 
+def env_list(name, default):
+    return [float(v) for v in os.environ.get(name, default).split(',')]
+
+
 def main():
     out_dir = sys.argv[1]
-    cname = sys.argv[2] if len(sys.argv) > 2 else 'north'
-    c = ROOM['corners'][cname]
-    corner = c['p']
+    cnames = sys.argv[2:] or ['north']
     os.makedirs(out_dir, exist_ok=True)
     pool = mp.get_context('spawn').Pool(4, initializer=worker_init)
     t0 = time.time()
+    radii = env_list('RADII', '20,30,40,55,70,90')
+    angle_step = float(os.environ.get('ANGLE_STEP', '8'))
+    offsets = env_list('OFFSETS', '-30,-20,-10,0,10,20,30')
+    ks = [int(v) for v in env_list('JUMP_FRAMES', '1,2,3,4,6,8')]
+    air_offsets = env_list('AIR_OFFSETS', '0,15,-15')
 
-    # phase 1: spin-jump landings near the corner
+    # phase 1: spin-jump landings near each target point
     jobs = []
-    for r in (20, 30, 40, 55, 70, 90):
-        for a in wedge_angles(c, 8):
-            sx0 = corner[0] + r * math.cos(math.radians(a))
-            sz0 = corner[1] + r * math.sin(math.radians(a))
-            toward = (a + 180) % 360
-            for off in (-30, -20, -10, 0, 10, 20, 30):
-                theta = (toward + off) % 360
-                for k in (1, 2, 3, 4, 6, 8):
-                    for air in (toward, theta, None, (toward + 15) % 360, (toward - 15) % 360):
-                        jobs.append((sx0, sz0, theta, k, air, corner, out_dir))
+    for cname in cnames:
+        c = ROOM['corners'][cname]
+        corner = c['p']
+        for r in radii:
+            for a in wedge_angles(c, angle_step):
+                sx0 = corner[0] + r * math.cos(math.radians(a))
+                sz0 = corner[1] + r * math.sin(math.radians(a))
+                toward = (a + 180) % 360
+                for off in offsets:
+                    theta = (toward + off) % 360
+                    for k in ks:
+                        airs = [(toward + ao) % 360 for ao in air_offsets] + [theta, None]
+                        for air in airs:
+                            jobs.append((sx0, sz0, theta, k, air, corner, out_dir))
     print('phase 1: %d spin-jump setups' % len(jobs), flush=True)
     pres = [p for r in pool.imap_unordered(gen, jobs, chunksize=8) for p in r]
     # one pre-landing state per 0.5-unit cell: near-duplicates add nothing
     seen, uniq = set(), []
+    res = float(os.environ.get('DEDUP', '0.5'))
     for p in sorted(pres, key=lambda p: p['dist']):
-        key = (round(p['pos'][0] * 2), round(p['pos'][2] * 2))
+        key = (round(p['pos'][0] / res), round(p['pos'][2] / res))
         if key not in seen:
             seen.add(key)
             uniq.append(p)
-    print('phase 1 done in %.0fs: %d landings within %.0f units of the corner, %d distinct' % (
+    print('phase 1 done in %.0fs: %d landings within %.0f units of a target point, %d distinct' % (
         time.time() - t0, len(pres), KEEP_DIST, len(uniq)), flush=True)
     json.dump(uniq, open(os.path.join(out_dir, 'prelanding.json'), 'w'))
 
     # phase 2: every landing-frame stick angle from each
-    results = {'corner': corner, 'prelanding': len(uniq), 'tries': 0, 'hits': [], 'max_land_move': 0}
+    results = {'targets': cnames, 'prelanding': len(uniq), 'tries': 0, 'hits': [], 'max_land_move': 0}
     done = 0
-    for hits, tries, mlm in pool.imap_unordered(sweep, [(p, 1) for p in uniq]):
+    uniq = uniq[:int(os.environ.get('MAX_STATES', '1000000'))]
+    results['prelanding'] = len(uniq)
+    land_step = int(os.environ.get('LAND_STEP', '1'))
+    for hits, tries, mlm in pool.imap_unordered(sweep, [(p, land_step) for p in uniq]):
         done += 1
         results['tries'] += tries
         results['hits'] += hits
