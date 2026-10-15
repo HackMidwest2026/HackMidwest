@@ -135,7 +135,8 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
     pDebugMemGetPointer = dlsym(core, "DebugMemGetPointer");
     pConfigOpenSection = dlsym(core, "ConfigOpenSection");
     pConfigSetParameter = dlsym(core, "ConfigSetParameter");
-    if(pCoreStartup(0x020001, datadir, datadir, NULL, debug_cb, NULL, state_cb) != M64ERR_SUCCESS) return -2;
+    const char *datapath = getenv("M64P_DATA") ? getenv("M64P_DATA") : datadir;
+    if(pCoreStartup(0x020001, datadir, datapath, NULL, debug_cb, NULL, state_cb) != M64ERR_SUCCESS) return -2;
 
     m64p_handle sec;
     if(pConfigOpenSection("Core", &sec) == M64ERR_SUCCESS) {
