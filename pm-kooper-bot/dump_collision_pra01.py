@@ -37,7 +37,7 @@ def read_triggers(e):
     return out
 
 if __name__ == '__main__':
-    e = Emu('/tmp/claude-0/pm/rom/pm-jp.z64', '/dev/shm/pmbot')
+    e = Emu(os.environ.get('PM_ROM', 'pm-jp.z64'), os.environ.get('PM_TMP', '/dev/shm/pmbot'))
     e.load('states/pra01_start.st')
     for i in range(60): e.step()
     print('ran 600 frames, mode', e.s16(GAME_MODE), player(e))
