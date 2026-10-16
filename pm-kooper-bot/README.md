@@ -363,3 +363,6 @@ S 20–100 crosses nowhere in x 520–800, z −60 to −12, and S ≥ 150 cross
     | Best speed | 34–38 | 17–23 | 6 | 71 | 101–108 | 64 | ≤ 20 |
 
     The 6 is the cap while Lakilester is below Mario. The 101–108 window is his flight to the stale target and back.
+- **No stop after the jump down** (`rev_nostop.py`): the running jump flows straight into a continuous run, either one direction or switching angle partway, held up to 150 frames, with C-down on every frame. 22,680 C-downs, 0 hits.
+  - Best speed at the mount is 85.4, around frame 124. Mario is against the back of the mirror at (910, −13) and ends at (897, −20).
+  - The speed peak comes from Lakilester's round trip to the stale target, about 110–125 frames after Mario leaves the corner. A continuous run gets Mario to the mirror long before that, so he is pressing into it when the peak arrives.
