@@ -1,5 +1,5 @@
 """dump nok_14's loaded collision (gCollisionData) and its triggers to json."""
-import json, sys
+import json, os, sys
 from emu import Emu
 from pm import *
 
