@@ -27,7 +27,7 @@ def floor_y(x):
 def run(x):
     e = W['e']
     out = []
-    for k in range(57):
+    for k in range(0, 57, 2):
         z = -40 + 0.5 * k
         for S in SPEEDS:
             e.load('states/pra01_top_start.st')
@@ -50,7 +50,7 @@ def run(x):
 
 
 if __name__ == '__main__':
-    xs = list(range(700, 1001, 2))
+    xs = list(range(640, 1001, 3))
     pool = mp.get_context('spawn').Pool(4, initializer=init)
     res = [r for o in pool.imap_unordered(run, xs, chunksize=2) for r in o]
     json.dump(res, open(sys.argv[1], 'w'))
