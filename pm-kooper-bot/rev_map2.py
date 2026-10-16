@@ -1,0 +1,62 @@
+"""pra_01 reflected side (behind the mirror), forced-speed map: Mario placed at (x, z), C-down, Lakilester's speed
+forced to S until the mount; hit = Mario riding on the real side (z > 1). x 700..1000 step 2, z -40..-12 step 0.5,
+S 80..200 step 10. Output: list of (x, z, S, end_x, end_y, end_z)."""
+import os, sys, json, multiprocessing as mp
+os.environ.setdefault('PM_ROM', 'pm-jp.z64')
+from pm import *
+CD = 0x0400
+W = {}
+SPEEDS = list(range(80, 201, 10))
+
+
+def init():
+    from emu import Emu
+    d = '/dev/shm/pmbot/rv%d' % os.getpid(); os.makedirs(d, exist_ok=True)
+    W['e'] = Emu(os.environ['PM_ROM'], d)
+
+
+def laki(e):
+    for n in npcs(e):
+        if n['id'] == -4: return n
+
+
+def floor_y(x):
+    return -60.0 if x < 610 else (-30.0 if x < 1000 else 0.0)
+
+
+def run(x):
+    e = W['e']
+    out = []
+    for k in range(57):
+        z = -40 + 0.5 * k
+        for S in SPEEDS:
+            e.load('states/pra01_top_start.st')
+            e.wf32(PLAYER + PS_POS, float(x)); e.wf32(PLAYER + PS_POS + 4, floor_y(x) + 3); e.wf32(PLAYER + PS_POS + 8, float(z))
+            for i in range(20): e.step(0, 0, 0, 2)
+            p0 = player(e)
+            if abs(p0['x'] - x) > 0.5 or abs(p0['z'] - z) > 0.5 or tuple(where(e)[:2]) != (21, 0):
+                break
+            e.step(CD, 0, 0, 2)
+            for i in range(30):
+                if player(e)['action'] != 33:
+                    l = laki(e)
+                    if l: e.wf32(l['addr'] + 0x18, float(S))
+                e.step(0, 0, 0, 2)
+            if tuple(where(e)[:2]) != (21, 0): continue
+            p = player(e)
+            if p['action'] == 33 and p['z'] > 1 and 400 < p['x'] < 1050 and p['y'] > -100:
+                out.append((x, z, S, round(p['x'], 1), round(p['y'], 1), round(p['z'], 1)))
+    return out
+
+
+if __name__ == '__main__':
+    xs = list(range(700, 1001, 2))
+    pool = mp.get_context('spawn').Pool(4, initializer=init)
+    res = [r for o in pool.imap_unordered(run, xs, chunksize=2) for r in o]
+    json.dump(res, open(sys.argv[1], 'w'))
+    print(len(res), 'crossings')
+    import collections
+    for S in SPEEDS:
+        pts = [r for r in res if r[2] == S]
+        if pts: print('S', S, len(pts), 'x', min(r[0] for r in pts), max(r[0] for r in pts), 'z', min(r[1] for r in pts), max(r[1] for r in pts))
+    pool.terminate()
