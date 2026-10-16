@@ -339,3 +339,18 @@ S 20–100 crosses nowhere in x 520–800, z −60 to −12, and S ≥ 150 cross
 - **Smooth video:** `reverse_mirror_progress_smooth.mp4`, every frame at 30 fps, made with `record_rev3.py` (chunked per-frame states) and `render_states.py`.
 - **Emulator:** the harness is the mupen64plus 2.5.9 core (Debian build) behind my own C frontend, with the rice video plugin used only to render.
 - **Settings difference:** when `M64P_DATA` is set, the core finds its ROM database. That sets `CountPerOp=1` for Mario Story (J); without it the default is 2. That changes CPU timing, and with it the lag frames. This, not the video plugin, is why "video" runs drifted. All searches so far ran without the database.
+
+### Running down to the mirror from the top step
+
+- `rev_rundown.py`: running jump onto the top step, wait, then run down toward the mirror, with C-down tried on every frame.
+  - Up to **112.7** at the mount on the way down.
+  - **107** with Mario right at the mirror, (966, −13). Mario ends pressed on the back of the mirror at (875, 2.7, −20), with no crossing.
+- `rev_local_rundown.py` (random sequences from the top step, 1,664 of them): 0 hits.
+- `rev_rundown_left.py`, best mount speed with Mario near the mirror, by his x:
+
+  | Mario x | 720 | 760 | 800 | 820 | 930–990 |
+  |---|---|---|---|---|---|
+  | best speed | 44 | 57 | 65 | 72 | ~107 |
+
+  Laki is racing back toward Mario, so the further left Mario goes, the slower Laki is when he gets there. But the crossing spots near the mirror are x 691–823 and need 110–140, while x 900+ doesn't cross at any speed.
+- Video: `reverse_mirror_rundown.mp4` (every frame).
