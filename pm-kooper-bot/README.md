@@ -488,3 +488,4 @@ Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_
 **pra_02 palace room, right end of the back side** (floor y 0):
 - **Speed 170:** x 980.00–981.50 for z −13 to −68, plus a small triangle at z −87 to −98 (x 981.50 at z −87, widening to 980.00–981.00 at z −97 and −98). Nothing for z −69 to −86, and nothing below 170 (160 and 165 tested).
 - **Speed 175 to 220:** the same, but from x 979.50 for z −13 to −68.
+- **Exact speed threshold in the strip:** 110, 112, 114, 115 and 115.5 clip nowhere in the triangle (`fine_zone.py`, all 1,807 spots). 115.9 and 116 clip everywhere. At three spots spread across the strip, 115.7 fails and **115.75** clips, so the cutoff is between 115.7 and 115.75 everywhere in the strip. The working clip had 115.8.
