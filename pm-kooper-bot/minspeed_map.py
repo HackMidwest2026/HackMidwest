@@ -5,25 +5,27 @@ Grey = Mario can stand there but no tested speed clips. Hatched = clips for a ru
 follow formula allows with Lakilester anywhere on the floor, his next history point at a far corner, and him not
 below Mario (speed_bound.py verified the formula in RAM).
 usage: minspeed_map.py <fullmap.jsonl> <collision.json> <out.png>"""
-import json, math, sys
+import json, math, os, sys
 import numpy as np
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 src, col, out = sys.argv[1:4]
 rows = [json.loads(l) for l in open(src)]
-xs = np.arange(500, 1001, 5); zs = np.arange(-215, -14, 5)
+X0, X1 = int(os.environ.get('X0', 500)), int(os.environ.get('X1', 1000))
+xs = np.arange(X0, X1 + 1, 5); zs = np.arange(-215, -14, 5)
 MIN = np.full((len(zs), len(xs)), np.nan); STAND = np.zeros_like(MIN, bool); RANGE = np.zeros_like(MIN, bool)
 for r in rows:
-    i = int((r['x'] - 500) / 5)
+    i = int((r['x'] - X0) / 5)
     for z, v in r['z'].items():
         j = int((int(z) + 215) / 5); STAND[j, i] = True
         S = v['S']
         if S:
             MIN[j, i] = min(S)
             run, best = 1, 1
+            step = int(os.environ.get('SSTEP', 5))
             for a, b in zip(S, S[1:]):
-                run = run + 1 if b == a + 5 else 1; best = max(best, run)
+                run = run + 1 if b == a + step else 1; best = max(best, run)
             RANGE[j, i] = best >= 4
 # theoretical best speed for Mario at each spot: Lakilester can only turn around at a point of Mario's history, so
 # both his position L and his next history point H range over spots where Mario can stand (5-unit grid). For a given
@@ -38,7 +40,7 @@ def has_floor(x, z):
     return False
 SP = np.array([(x, z) for j, z in enumerate(zs) for i, x in enumerate(xs) if STAND[j, i]], float)
 DMAX = np.array([np.hypot(SP[:, 0] - lx, SP[:, 1] - lz).max() for lx, lz in SP])
-ROCK = np.array([[555.0, -13.0], [592.0, -13.0]])          # turnaround with the rock start (history fill)
+ROCK = np.array(json.loads(os.environ.get('TURN', '[[555.0, -13.0], [592.0, -13.0]]')))   # turnaround of the planned route
 ROCK_DMAX = np.array([np.hypot(SP[:, 0] - lx, SP[:, 1] - lz).max() for lx, lz in ROCK])
 def best_from(L, dmax, mx, mz):
     dM = np.hypot(L[:, 0] - mx, L[:, 1] - mz)
@@ -49,7 +51,7 @@ for j, z in enumerate(zs):
     for i, x in enumerate(xs):
         if not np.isnan(MIN[j, i]):
             BEST[j, i] = best_from(SP, DMAX, x, z); BEST_ROCK[j, i] = best_from(ROCK, ROCK_DMAX, x, z)
-TOL = 4                                                    # 5-step grid: the true minimum can be up to 4 lower
+TOL = int(os.environ.get('SSTEP', 5)) - 1                                                    # 5-step grid: the true minimum can be up to 4 lower
 OVER = (~np.isnan(MIN)) & (MIN - TOL > BEST)               # needs more than Laki can ever reach there
 REACH = (~np.isnan(MIN)) & (MIN - TOL <= BEST_ROCK)        # reachable with the rock-start route
 print('room-wide max possible speed at any clip spot: %.1f' % np.nanmax(BEST))
@@ -65,16 +67,16 @@ G = np.where(STAND & np.isnan(MIN) & ~OVER, 1.0, np.nan)
 GO = np.where(OVER, 1.0, np.nan)
 ax.pcolormesh(xs, zs, G, cmap=LinearSegmentedColormap.from_list('g', ['#d6d5cf', '#d6d5cf']), shading='nearest')
 ax.pcolormesh(xs, zs, GO, cmap=LinearSegmentedColormap.from_list('o', ['#b9b8b1', '#b9b8b1']), shading='nearest')
-vmin, vmax = 110, 140
+vmin, vmax = float(os.environ.get('VMIN', 110)), float(os.environ.get('VMAX', 140))
 im = ax.pcolormesh(xs, zs, MIN, cmap=cmap, vmin=vmin, vmax=vmax, shading='nearest')
 ax.contourf(xs, zs, RANGE.astype(float), levels=[0.5, 1.5], colors='none', hatches=['////'])
 if REACH.any():
     ax.contour(xs, zs, REACH.astype(float), levels=[0.5], colors=[INK], linewidths=2)
-ax.set_xlim(497.5, 1002.5); ax.set_ylim(-217.5, 0); ax.invert_yaxis()
-ax.text(860, -4, 'mirror (z = 0)', color=INK2, fontsize=9)
-ax.text(740, -216, 'top wall', color=INK2, fontsize=9, va='top')
+ax.set_xlim(X0 - 2.5, X1 + 2.5); ax.set_ylim(-217.5, 0); ax.invert_yaxis()
+ax.text(X0 + 0.72 * (X1 - X0), -4, 'mirror (z = 0)', color=INK2, fontsize=9)
+ax.text(X0 + 0.48 * (X1 - X0), -216, 'back wall', color=INK2, fontsize=9, va='top')
 ax.set_xlabel('x (where Mario stands)'); ax.set_ylabel('z')
-ax.set_title('Minimum Lakilester speed needed to clip, by where Mario stands (unreachable spots removed)', loc='left', fontsize=12)
+ax.set_title(os.environ.get('TITLE', 'Minimum Lakilester speed needed to clip, by where Mario stands (unreachable spots removed)'), loc='left', fontsize=12)
 cb = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02); cb.set_label('minimum speed that clips', color=INK2)
 cb.outline.set_edgecolor('#d6d5cf')
 from matplotlib.patches import Patch
@@ -82,10 +84,10 @@ from matplotlib.lines import Line2D
 ax.legend(handles=[Patch(facecolor='#d6d5cf', label='Mario can stand here, no speed 20-300 clips'),
                    Patch(facecolor='white', edgecolor=INK2, hatch='////', label='clips for a range of speeds (not one exact value)'),
                    Patch(facecolor='#b9b8b1', label='clips only above the most Laki can reach there (removed)'),
-                   Line2D([], [], color=INK, lw=2, label='reachable with the rock-start push (turnaround x 555-592)'),
+                   Line2D([], [], color=INK, lw=2, label=os.environ.get('TURNLABEL', 'reachable with the rock-start push (turnaround x 555-592)')),
                    Patch(facecolor=SURF, edgecolor='#d6d5cf', label='blank = Mario cannot stand here')],
           loc='upper left', bbox_to_anchor=(0, -0.11), ncol=2, fontsize=8, frameon=False)
-fig.text(0.01, 0.01, 'Forced-speed test: 5-unit grid, speeds in steps of 5 (true minimum up to 4 lower; the strip is really 116).\nMax reachable: verified follow formula, with Laki and his next history point anywhere Mario can stand (at most %.0f anywhere).' % np.nanmax(BEST), fontsize=8, color=INK2)
+fig.text(0.01, 0.01, os.environ.get('FOOT', 'Forced-speed test: 5-unit grid, speeds in steps of 5 (true minimum up to 4 lower; the strip is really 116).') + '\nMax reachable: verified follow formula, with Laki and his next history point anywhere Mario can stand (at most %.0f anywhere).' % np.nanmax(BEST), fontsize=8, color=INK2)
 fig.tight_layout(rect=(0, 0.045, 1, 1))
 fig.savefig(out, facecolor=SURF)
 n = int((~np.isnan(MIN)).sum())
