@@ -448,3 +448,22 @@ The current route's turnaround is near the rock (x 555–600), and the pre-push 
 - The outline marks where the minimum is within reach with the rock-start route (turnaround x 555–592): only the top end of the strip, about x 875–880, z −130 to −145.
 
 **Newest-setup video** (`record_rev5.py`, `reverse_mirror_newest_setup.mp4`, plus `_slow`): CountPerOp 1, every frame. The stages are the rock start, the history fill, the arc push, the ledge (3 up and two jumps), the top-wall push, then the brute force's best release (mount speed 75.2 in the strip, no clip). Each stage replays from the same saved state the searches used.
+
+## Reverse mirror clip: DONE in the emulator (CountPerOp 1)
+
+Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_clip_end_slow.mp4` (the end at 1/3 speed). Recorded by `record_rev6.py` stage by stage from the same saved states. The inputs are in `data/reverse_mirror_clip_hit.json`; replay with `verify_hit.py`.
+
+1. **Rock jump** (`make_state_rockjump.py 180 12 8`):
+   - From the rock start (Mario at the bottom of the mirror, (555, −13), Laki idle on his right, pointer 2), jump left onto the small rock, holding left 12 frames.
+   - Wait for Laki to follow and go idle at (567, −13), then wiggle on the rock until the history ring is full. Every old history point is now on the rock (x 531–565, y ≈ −37).
+   - Hop down to the right (8 frames of right) next to Laki. Stale target (564.5, −13), intact.
+2. **Arc push:** stop-and-go aimed at Laki, to the lower corner (719, −212).
+3. **Ledge:** 3 frames up, jump holding right 12 frames (Laki goes up the ledge), jump holding right 16 frames (Mario goes up). Then stop-and-go right along the top wall to the palace wall, (987, −212), **467.3** from the stale target. Wait about 1 s.
+4. **Release** (`rev_jumpdown4.py`, then `rev_strip_refine.py`):
+   - Running jump down onto the top step, then into the stair strip, stepping back and forth while Laki flies to his stale target.
+   - Laki turns around at the rock top, x ≈ 531. He's already higher than Mario, so there's no climbing delay.
+   - Walk into the strip's up-right corner while moving toward the rock. Mario's newest history point is then slightly farther from Laki than Mario is, so the follow formula adds d/16.
+   - **C-down on the spike frame** at (882.7, −20, −144.7): Laki's speed freezes at **115.8**.
+   - About 18 frames later Mario rides Laki at **(812.7, −18, +20.2)**: front side of the mirror, same map (21, 0).
+- **Why it works:** the rock jump moves Laki's turnaround from x 555 to 531, and puts it higher. The idealized peak in the strip goes from 112–118 to 119–125 (`speed_ideal_rock.py`). Then the C-down has to land on the one-frame spike while Mario walks toward the rock.
+- **Not yet known:** how wide the input window is, and whether `CountPerOp` 2 (other emulators, console timing) behaves the same.
