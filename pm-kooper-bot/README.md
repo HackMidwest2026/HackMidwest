@@ -489,3 +489,16 @@ Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_
 - **Speed 170:** x 980.00–981.50 for z −13 to −68, plus a small triangle at z −87 to −98 (x 981.50 at z −87, widening to 980.00–981.00 at z −97 and −98). Nothing for z −69 to −86, and nothing below 170 (160 and 165 tested).
 - **Speed 175 to 220:** the same, but from x 979.50 for z −13 to −68.
 - **Exact speed threshold in the strip:** 110, 112, 114, 115 and 115.5 clip nowhere in the triangle (`fine_zone.py`, all 1,807 spots). 115.9 and 116 clip everywhere. At three spots spread across the strip, 115.7 fails and **115.75** clips, so the cutoff is between 115.7 and 115.75 everywhere in the strip. The working clip had 115.8.
+- **Upper limit:** forced speeds clip everywhere in the strip from 115.75 up to **193.75**. From **194** up (tested to 600), nothing clips: Mario lands back behind the mirror (e.g. (738, −188) at 194, (638, −184) at 300). So the window is about 115.75–193.75, and overshooting isn't a risk in practice.
+- **Moving vs standing, and near the mirror** (`speed_moving.py`: Laki planted at the rock-top turnaround (531, −17, −13), next history point set relative to Mario, one frame stepped):
+
+  | Mario at | Distance to Laki | Standing still | Walking toward Laki | Walking away |
+  |---|---|---|---|---|
+  | strip corner (883, −145) | 376 | 93.9 | **117.7** | 92.6 |
+  | strip middle (876, −110) | 358 | 89.6 | 112.3 | 88.3 |
+  | near mirror (820, −18) | 289 | 72.3 | 90.6 | 71.0 |
+  | near mirror (780, −20) | 249 | 62.3 | 78.2 | 61.0 |
+
+  - Standing still gives 0.25 × distance. Walking toward Laki (the rock) adds distance/16: about 25% more.
+  - The near-mirror spots are too close to Laki: at most about 91 there.
+  - **Only part of the strip reaches 115.75**: it needs a distance ≥ 370 from the turnaround (530.8, −13), i.e. z −132 to −145 with x from about 877 (at z −145) to 882 (at z −132) up to the step edge.
