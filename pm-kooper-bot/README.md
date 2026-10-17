@@ -514,3 +514,16 @@ Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_
   | speed | 94.3 | **117.6** | 117.3 | 116.8 | 116.7 | 115.6 | 113.3 |
 
   The bonus needs only a nonzero move toward the rock. Every unit Mario covers after his point is recorded costs about 0.25 speed, so the smallest possible nudge (a slow walk) is best. Two running frames already drop below 115.75.
+- **Movement direction at the C-down** (`speed_dir.py`: Mario's recorded point at the strip corner (884.25, −145), Mario moved 1 unit before C-down; up = −z):
+
+  | Direction | Speed |
+  |---|---|
+  | up | 94.3 (blocked by the step edge at z −145, so no movement) |
+  | up, 5–20° to the left | **117.8** |
+  | up-left 45° | 117.7 |
+  | left | 117.6 |
+  | down-left (toward Laki) | 117.6 |
+  | down | 117.8 |
+  | right | 94.3 |
+
+  Laki is at the rock, down-left on screen, so what counts is the component toward him: left or down helps, right or up doesn't. At the strip's top edge (z −145), "up" is blocked, so up-with-a-little-left becomes a small slide left, which is the ideal tiny move toward Laki. Away from that edge, up-slightly-left would move Mario away from Laki (e.g. 10° left of up), lose the bonus and drop to about 94.
