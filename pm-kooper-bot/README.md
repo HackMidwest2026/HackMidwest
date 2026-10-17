@@ -440,3 +440,9 @@ The current route's turnaround is near the rock (x 555–600), and the pre-push 
   - If Laki starts low (y −40), he spends 1–3 frames capped at 6 while he climbs above Mario. A high next history point (Mario recorded mid-jump) shortens that.
   - Mario at (878, −100) peaks at only 107–113.
   - So the clip is possible only at the far corner of the strip, on one frame, with about 0–2 speed to spare.
+
+**Minimum-speed map with unreachable spots removed** (`minspeed_map.py`):
+- A spot is greyed out when its minimum (less 4 for the 5-step grid) is above the most Laki can reach with Mario standing there. That limit uses the verified formula, with Laki's position and his next history point both limited to spots where Mario can stand (history points are Mario's positions). At most 163 anywhere.
+- 862 of 910 clipping spots are removed, including the whole 185–245 block on the left.
+- **Left:** the stair strip, and the exact-speed band against the mirror at x 770–865.
+- The outline marks where the minimum is within reach with the rock-start route (turnaround x 555–592): only the top end of the strip, about x 875–880, z −130 to −145.
