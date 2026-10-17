@@ -414,3 +414,10 @@ The current route's turnaround is near the rock (x 555–600), and the pre-push 
 **Speed map** (`speed_map.py`, `figures/laki_speed_map.png`): Lakilester's speed by where he is, using the verified game formula. Mario is in the clip strip, Laki's next history point is the top-right corner, and Laki is not below Mario.
 - Laki reaches 120 only in a band at the far left, x ≲ 520–535; up to about 136 at x 470–500, z −50 to −150.
 - The current push start (592, −13) is in the 95–105 range.
+
+**Minimum speed by Mario's position** (`rev_fullmap.py` → `data/fullmap_reflected.jsonl`; `minspeed_map.py` → `figures/mario_minspeed_map.png`): forced speeds 20–300 in steps of 5 on a 5-unit grid over the whole reflected side.
+- 910 spots clip at some speed. The minimum anywhere is **120**.
+- **Stair strip**, x 872–884, z −145 to −95 on this grid: 120 and up, for a range of speeds.
+- **Against the mirror**, z −15 to −20, x 755–865: 120–125, one exact value per spot.
+- **New: a large left region**, x 525–645, z −215 to −15, clips for wide speed ranges, but only at **185–245**. Earlier maps never tested above 100 there. It's far above anything Laki can reach.
+- **Reachable in theory** (formula best ≥ minimum): only the strip and the mirror spots at x ~790–865. That bound allows Laki anywhere with floor, including the x 470–500 band; with Laki at x ≥ 505 the strip's best is about 124.
