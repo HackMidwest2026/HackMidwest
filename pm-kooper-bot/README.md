@@ -541,4 +541,4 @@ Start: Mario in the very top-right corner (`states/pra01_topright_rj.st`; hold u
   - `rta_end3.py`: delayed up, so the riser slide happens at Laki's arrival. Best on the ground is **115.25**, which does not clip (the mount reaches only z −38). 115.93 is possible, but only with Mario still mid-drop, where C-down does not mount.
   - `rta_end4.py`: wait on the rail. No clips.
   - **No cardinal-only ending clips.** The working clip (115.8) used analog diagonals.
-- **Video** (`record_rta.py`): `reverse_mirror_rta_attempt.mp4` (`_slow` = 10 fps) shows the 115.25 attempt from the corner to the failed mount. Spike frames are held.
+- **Video** (`record_rta.py`, `SHOT=1` with the video plugin: a continuous replay of the real inputs, screenshotting every frame, so the animations are correct): `reverse_mirror_rta_attempt.mp4` (`_slow` = 10 fps) shows the 115.25 attempt from the corner to the failed mount. Spike frames are held.

@@ -1,8 +1,10 @@
 """Video of the best simple-input (cardinal only) ending: from the top-right corner state, up 10, right 10, down 6,
 A + down 26, left until the forced drop onto step 3 (released during it), left T, stand, hold up from frame X (Mario
 slides down the riser into the corner at z -145), C-down with D on frame c, then 70 frames of the mount. Saves one
-state per frame into OUT for render_states.py plus OUT/log.json. usage: record_rta.py OUT [T X c D]"""
-import json, os, sys
+state per frame into OUT for render_states.py plus OUT/log.json. With SHOT=1 (run with the video plugin and DISPLAY), screenshot each frame
+to OUT/f%04d.png during the continuous replay instead, so animations use the real inputs.
+usage: record_rta.py OUT [T X c D]"""
+import json, os, subprocess, sys
 from rta_end2 import *
 HIST, IDX, PTR, STATE = 0x8010CEF8, 0x8010D178, 0x8010D17C, 0x8010D188
 OUT = sys.argv[1]; os.makedirs(OUT, exist_ok=True)
@@ -14,7 +16,10 @@ def step(b, s, tag):
     p, l = player(e), laki(e); ptr = e.u32(PTR)
     log.append({'i': len(log), 'tag': tag, 'x': p['x'], 'y': p['y'], 'z': p['z'], 'ls': l['speed'], 'lx': l['x'], 'ly': l['y'], 'lz': l['z'],
                 'st': e.u32(STATE) >> 16, 'ptr': ptr, 'tx': e.f32(HIST + 16 * ptr + 4), 'tz': e.f32(HIST + 16 * ptr + 12), 'act': p['action']})
-    e.save(os.path.join(OUT, 's%04d.st' % (len(log) - 1)))
+    if os.environ.get('SHOT'):
+        subprocess.run(['import', '-window', 'root', os.path.join(OUT, 'f%04d.png' % (len(log) - 1))], check=True)
+    else:
+        e.save(os.path.join(OUT, 's%04d.st' % (len(log) - 1)))
 e.load(os.environ.get('START', 'states/pra01_topright_rj.st')); step(0, (0, 0), 'start: Laki in the top-right corner, stale target at the rock')
 for i in range(10): step(0, U_, 'hold up')
 for i in range(10): step(0, SD['R'], 'hold right: very top-right corner (987, -212)')
