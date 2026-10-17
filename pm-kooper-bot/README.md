@@ -476,3 +476,15 @@ Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_
 - **Formula ceiling:** the room is 1000 wide, so up to about 309 with Laki and his next history point anywhere.
 - **With the back-wall push that already works here** (back-left pillar, x ≈ 275, to the back-right pillar, x ≈ 722; turnaround x ≈ 275–315), only the x = 980 column is within reach: about 219 versus 170 needed, a much bigger margin than outside.
 - **Open problem: timing.** The spike comes right after Laki gets back to the left pillar. Mario has to cover about 260 units from the right pillar to x = 980 before that. Laki is capped at 6 while he's lower than Mario, so running jumps should slow him down (the witness's "when you're higher than laki, laki goes back slower").
+
+### Exact standing ranges (`fine_zone.py`: x step 0.25, z step 1; `data/fine_zone_*.json`)
+
+**pra_01 outside, stair strip** (the working clip; floor y −20). The shape is identical for every speed from 116 to 130:
+- Triangle with corners (871.5, −72), (871.5, −145), (884.25, −145).
+- Left edge x = 871.5 is fixed by the clip; standing further left on the same floor doesn't clip.
+- Right edge slants from x 871.5 at z −72 to x 884.25 at z −145: x ≤ 871.5 + 0.175·(−72 − z). This edge is the step up to the y −10 floor.
+- The working clip pressed C-down at (882.7, −144.7), in the widest part.
+
+**pra_02 palace room, right end of the back side** (floor y 0):
+- **Speed 170:** x 980.00–981.50 for z −13 to −68, plus a small triangle at z −87 to −98 (x 981.50 at z −87, widening to 980.00–981.00 at z −97 and −98). Nothing for z −69 to −86, and nothing below 170 (160 and 165 tested).
+- **Speed 175 to 220:** the same, but from x 979.50 for z −13 to −68.
