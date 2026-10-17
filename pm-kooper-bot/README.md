@@ -421,3 +421,22 @@ The current route's turnaround is near the rock (x 555–600), and the pre-push 
 - **Against the mirror**, z −15 to −20, x 755–865: 120–125, one exact value per spot.
 - **New: a large left region**, x 525–645, z −215 to −15, clips for wide speed ranges, but only at **185–245**. Earlier maps never tested above 100 there. It's far above anything Laki can reach.
 - **Reachable in theory** (formula best ≥ minimum): only the strip and the mirror spots at x ~790–865. That bound allows Laki anywhere with floor, including the x 470–500 band; with Laki at x ≥ 505 the strip's best is about 124.
+
+### Push start, history fill, exact threshold, ideal turnaround
+
+- **Exact strip threshold:** `t_force.py` at 1-unit speed steps shows 115 fails and **116** clips, at (884, −144), (880, −120), (878, −100) and (876, −76). The 5-step maps rounded this up to 120.
+- **The push can't start further left.**
+  - In open floor each push frame moves Laki 1 away from Mario and 2 toward the top wall, so he climbs about 2 for every 1 to the right.
+  - The only start that clears the north rock (x 588–648 at the top wall) is from the bottom of the mirror at about x ≥ 590, right of the small rock (x 512–548): the original rock start.
+  - From far-left starts (`make_state_pra01_farleft.py`) Laki ends up at the top wall at x ≈ 561, left of the rock, and stays there (`rev_aim_explore2.py`: x ≤ 583).
+- **History fill** (`fill_history.py`): wiggle Mario up and down next to the idle Laki (about 32 frames) until the ring is full. Every unconsumed history point then sits at the rock, (555–592, −13), so Laki's turnaround is at x 555 instead of about 600.
+- **Route rebuilt from the filled rock start (CountPerOp 1):**
+  - Corner: (716, −212).
+  - Ledge (`rev_ledge4.py`): 3 frames up to the wall, then the same two jumps.
+  - Push to the palace wall, (987, −212), d 442.7; the ring stays intact.
+  - State: `states/pra01_topright_full.st` (not committed).
+- **Ideal turnaround** (`speed_ideal.py`): Laki planted at (555, −13) with Mario in the strip, stepped frame by frame.
+  - The peak lasts **one frame**: 116.1–118.3 at (884, −144), then about 80 the next frame.
+  - If Laki starts low (y −40), he spends 1–3 frames capped at 6 while he climbs above Mario. A high next history point (Mario recorded mid-jump) shortens that.
+  - Mario at (878, −100) peaks at only 107–113.
+  - So the clip is possible only at the far corner of the strip, on one frame, with about 0–2 speed to spare.

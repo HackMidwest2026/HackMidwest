@@ -26,7 +26,7 @@ jumps = [(W, H) for W in range(0, 6) for H in (0, 2, 4, 6, 8, 10, 12, 14)]
 plans = [[j] for j in jumps] + [[(0, 12), j] for j in jumps]
 for plan in plans:
     for G in (1, 2):
-        e.load('states/pra01_corner.st'); e.step(0, 0, 0, 2)
+        e.load(os.environ.get('CORNER', 'states/pra01_corner.st')); e.step(0, 0, 0, 2)
         ptr0 = e.u32(PTR); tx, tz = e.f32(HIST + 16 * ptr0 + 4), e.f32(HIST + 16 * ptr0 + 12)
         def intact():
             return e.u32(PTR) == ptr0 and e.f32(HIST + 16 * ptr0 + 4) == tx and e.f32(HIST + 16 * ptr0 + 12) == tz and (e.u32(STATE) >> 16) == 5

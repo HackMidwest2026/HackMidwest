@@ -15,7 +15,7 @@ def laki():
 arch = json.load(open(sys.argv[1]))
 best = max((a for k, a in arch.items() if k != 'seed'), key=lambda a: a.get('d', a['lx'] - a['lz']))
 seq = best['seq']
-e.load('states/pra01_top_rock.st'); e.step(0, 0, 0, 2)
+e.load(os.environ.get('SEED', 'states/pra01_top_rock.st')); e.step(0, 0, 0, 2)
 for item in seq:
     g, th, sl = item if len(item) == 3 else (*item, 2)
     p, l = player(e), laki()
@@ -25,11 +25,12 @@ for item in seq:
     for i in range(sl): e.step(0, 0, 0, 2)
 p, l = player(e), laki()
 print('corner after %d cycles: mario %.1f %.1f laki %.1f %.1f spd %.1f' % (len(seq), p['x'], p['z'], l['x'], l['z'], l['speed']))
-e.save('states/pra01_corner.st')
-json.dump(seq, open('states/pra01_corner_seq.json', 'w'))
+e.save(os.environ.get('CORNER', 'states/pra01_corner.st'))
+json.dump(seq, open(os.environ.get('CORNER', 'states/pra01_corner.st').replace('.st', '_seq.json'), 'w'))
+if os.environ.get('NOREL'): sys.exit(0)
 for deg in (90, 80, 100, 110, 120, 135):
     sx, sy = stick_for(deg, 80)
-    e.load('states/pra01_corner.st'); e.step(0, 0, 0, 2)
+    e.load(os.environ.get('CORNER', 'states/pra01_corner.st')); e.step(0, 0, 0, 2)
     sp = []
     for f in range(60):
         e.step(0, sx, sy, 2)
@@ -38,7 +39,7 @@ for deg in (90, 80, 100, 110, 120, 135):
     pk = max(range(60), key=lambda i: sp[i][0])
     hits = []
     for f in range(60):
-        e.load('states/pra01_corner.st'); e.step(0, 0, 0, 2)
+        e.load(os.environ.get('CORNER', 'states/pra01_corner.st')); e.step(0, 0, 0, 2)
         for i in range(f): e.step(0, sx, sy, 2)
         e.step(CD, sx, sy, 2)
         for i in range(28): e.step(0, 0, 0, 2)
