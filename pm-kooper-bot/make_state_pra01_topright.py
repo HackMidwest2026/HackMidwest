@@ -14,11 +14,14 @@ def laki():
         if n['id'] == -4: return n
 rx, ry = stick_for(0, 80)
 e.load('states/pra01_corner.st'); e.step(0, 0, 0, 2)
-e.step(0, rx, ry, 2)
-for i in range(24):
-    e.step(0x80 if i < 8 else 0, 0, 0, 2)
-    if i > 3 and player(e)['action'] in (0, 1, 2): break
-for i in range(3): e.step(0, 0, 0, 2)
+def jump(W, H):                         # as rev_ledge3.py: right W frames, A held 8 with right held H frames
+    for i in range(W): e.step(0, rx, ry, 2)
+    for i in range(24):
+        e.step(0x80 if i < 8 else 0, rx if i < H else 0, ry if i < H else 0, 2)
+        if i > 3 and player(e)['action'] in (0, 1, 2): break
+    for i in range(3): e.step(0, 0, 0, 2)
+for item in os.environ.get('PLAN', '1,0').split(';'):   # CountPerOp 1 (ROM database): PLAN='0,12;1,0'
+    jump(*map(int, item.split(',')))
 p, l = player(e), laki(); print('after jump M (%.1f, %.1f, %.1f) L (%.1f, %.1f, %.1f)' % (p['x'], p['y'], p['z'], l['x'], l['y'], l['z']))
 for c in range(150):
     e.step(0, rx, ry, 2); e.step(0, 0, 0, 2); e.step(0, 0, 0, 2)
