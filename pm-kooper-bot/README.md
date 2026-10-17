@@ -446,3 +446,5 @@ The current route's turnaround is near the rock (x 555–600), and the pre-push 
 - 862 of 910 clipping spots are removed, including the whole 185–245 block on the left.
 - **Left:** the stair strip, and the exact-speed band against the mirror at x 770–865.
 - The outline marks where the minimum is within reach with the rock-start route (turnaround x 555–592): only the top end of the strip, about x 875–880, z −130 to −145.
+
+**Newest-setup video** (`record_rev5.py`, `reverse_mirror_newest_setup.mp4`, plus `_slow`): CountPerOp 1, every frame. The stages are the rock start, the history fill, the arc push, the ledge (3 up and two jumps), the top-wall push, then the brute force's best release (mount speed 75.2 in the strip, no clip). Each stage replays from the same saved state the searches used.
