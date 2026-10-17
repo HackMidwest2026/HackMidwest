@@ -388,3 +388,25 @@ S 20–100 crosses nowhere in x 520–800, z −60 to −12, and S ≥ 150 cross
 - **Witness account** (2018 chat): pushed left to right, "a precise turn around at the last moment", and "when you're higher than laki, laki goes back slower". The last part is the code's speed cap of 6 while Laki is below Mario.
 - **Facing:** the mount code (`lakilester.c` RIDE_STATE_MOUNT_1) always steps −z, +x, +z, −x (yaw 0/90/180/270), so Mario's facing doesn't matter.
 - **Airborne C-down** (`rev_air.py`: C-down on each frame of the jump down from the corner, forced speed 40–250): 0 crossings.
+
+### Is 120 in the strip possible in theory?
+
+`speed_bound.py` plants Lakilester's position, follow state 0 and his history target in RAM, with Mario in the strip (878, −20, −108). It checks the follow formula against the game frame by frame, and the formula matches every case exactly:
+
+`s = 0.25·dM` (if dM ≥ 50 and Laki is not below Mario; otherwise 8, then capped at 6), then against the entry distance d: `s = 0.25·d` if s ≥ 0.25·d, else `s + d/16`.
+
+| Laki at | Next history entry | Speed |
+|---|---|---|
+| (510, −200), y −10 | (985, −205) | **124.5** |
+| (510, −60) | (985, −205) | **123.8** |
+| (530, −150) | (985, −205) | 116.3 |
+| (560, −40) | (985, −205) | 109.8 |
+| (600, −100) | (985, −205) | 94.5 |
+| any of these, y −40 (below Mario) | any | 6 |
+
+**Ceiling about 124–125 with Mario in the strip**, so 120 is possible but needs all of these at once:
+1. **Laki at the far left**, x ≲ 520–530, so the distance to Mario is ≥ ~360.
+2. **His next history entry at the far right** (the corner / top step), ≥ ~450 away. So the ring buffer must hold only far-left old entries followed by far-right new ones.
+3. **Laki not below Mario.** Over the low floor he floats near y −40, below the strip (y −20), and is capped at 6. He climbs 1/8 of the way to his target entry's y + 20 each frame, so he must climb for a few frames before the speed applies.
+
+The current route's turnaround is near the rock (x 555–600), and the pre-push walk leaves entries at x 600–740. That caps it at about 95, which is why the brute force plateaued at 70.
