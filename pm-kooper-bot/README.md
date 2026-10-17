@@ -542,3 +542,16 @@ Start: Mario in the very top-right corner (`states/pra01_topright_rj.st`; hold u
   - `rta_end4.py`: wait on the rail. No clips.
   - **No cardinal-only ending clips.** The working clip (115.8) used analog diagonals.
 - **Video** (`record_rta.py`, `SHOT=1` with the video plugin: a continuous replay of the real inputs, screenshotting every frame, so the animations are correct): `reverse_mirror_rta_attempt.mp4` (`_slow` = 10 fps) shows the 115.25 attempt from the corner to the failed mount. Spike frames are held.
+- **Wait in the corner and jumps** (`rta_end5.py`, `rta_end6.py`):
+  - Waiting 0–40 frames in the top-right corner barely matters: 115.26–115.58, best at W=2 (115.58: stand in the step-2 corner, left 1 frame, then left + C-down).
+  - Full jumps on the steps make it worse: best 114.6, and best in the corner 113.3.
+- **What actually decides the speed:** Laki does not turn around at the end of the fill. About 6 frames after reaching the stale target (564.5, −13), with Laki near (537, −17), he switches to Mario's newest history point. So the stale target sets the ceiling. Moving the rock points changes nothing.
+- **What-if, stale target and fill moved K units left** (`rta_shift.py`, `rta_shift_win.py`, a RAM edit of the start state). The simple ending clips at every K tested:
+
+  | K | Best speed | Clips with |
+  |---|---|---|
+  | 1 | 115.86 | step-2 corner (left 5), left 1 frame before + C-down |
+  | 8 | 116.6 | also down 2–3 frames before |
+  | 16 | 119.2 | both corners (left 5 or 6), left 1–2 or down 2–3 frames before |
+
+  The C-down itself stays a 1-frame input, and holding left only on the C-down frame never works. The stale target is set in the rock-jump setup, before the ending.
