@@ -527,3 +527,18 @@ Video: `reverse_mirror_clip.mp4` (whole setup, every frame) and `reverse_mirror_
   | right | 94.3 |
 
   Laki is at the rock, down-left on screen, so what counts is the component toward him: left or down helps, right or up doesn't. At the strip's top edge (z −145), "up" is blocked, so up-with-a-little-left becomes a small slide left, which is the ideal tiny move toward Laki. Away from that edge, up-slightly-left would move Mario away from Laki (e.g. 10° left of up), lose the bonus and drop to about 94.
+
+### RTA ending with simple inputs (`rta_*.py`, `record_rta.py`)
+
+Start: Mario in the very top-right corner (`states/pra01_topright_rj.st`; hold up 10, right 10). Only cardinal directions and A.
+
+- **Route to the strip:** down 6, A + down 22–34 frames (any length works), release, hold left. The step from the top floor to step 3 is a **forced drop** (4 frames × 4 units). Releasing left at any point during it lands Mario at x 911.89 every time, which gives the x anchor.
+- **Funnel** (`rta_xwin.py`): step 3 has a wall at z −145 for x ≤ 890. Holding up from anywhere on step 3 with x 881.0–887.5 slides Mario down the slanted riser into the step-2 corner (877–883.5, −145). From x 887.75–890 he ends at (884.35, −145).
+- **Left count after the landing:** 6 frames → x 884.6 → corner (880.5, −145); 5 frames → 889.1 → (884.35, −145).
+- **Why the speed is short** (`rta_full.py`): history recording restarts on the frame Laki reaches his stale target. Mario's position on that frame becomes Laki's target about 6 frames later (the spike), so the speed ≈ ¼·|Laki − Mario now| + |Laki − that earlier position|/16. Mario has to be slightly farther away at Laki's arrival and then move toward the rock by the spike.
+- **Searches** (cardinal only, C-down on frames 117–124):
+  - `rta_end2.py`: wait against the wall, then 1–2 segments. Best 114.0 (left 6) and 115.06 (left 5).
+  - `rta_end3.py`: delayed up, so the riser slide happens at Laki's arrival. Best on the ground is **115.25**, which does not clip (the mount reaches only z −38). 115.93 is possible, but only with Mario still mid-drop, where C-down does not mount.
+  - `rta_end4.py`: wait on the rail. No clips.
+  - **No cardinal-only ending clips.** The working clip (115.8) used analog diagonals.
+- **Video** (`record_rta.py`): `reverse_mirror_rta_attempt.mp4` (`_slow` = 10 fps) shows the 115.25 attempt from the corner to the failed mount. Spike frames are held.
