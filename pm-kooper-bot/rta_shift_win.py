@@ -5,7 +5,7 @@ import os, sys
 from rta_end5 import *
 K = float(sys.argv[1])
 e = Emu(os.environ['PM_ROM'], '/dev/shm/pmbot/shw%d' % os.getpid())
-e.load('states/pra01_topright_rj.st'); e.step(0, 0, 0, 2)
+e.load(os.environ.get('BASE', 'states/pra01_topright_rj.st')); e.step(0, 0, 0, 2)
 for i in range(40):
     if e.f32(HIST + 16 * i + 4) < 570: e.wf32(HIST + 16 * i + 4, e.f32(HIST + 16 * i + 4) - K)
 e.save('/dev/shm/pmbot/shw_start.st'); os.environ['START'] = '/dev/shm/pmbot/shw_start.st'
@@ -22,6 +22,7 @@ for T in (5, 6):
                 for i in range(P): e.step(0, *SD[D], 2)
                 e.step(CD, *SD[D], 2); spd = laki(e)['speed']
                 if spd < 100: row.append('.'); continue
+                if os.environ.get('SHOWSPD'): print('   c %d spd %.2f Mario (%.2f, %.2f, %.2f)' % (c, spd, player(e)['x'], player(e)['y'], player(e)['z']))
                 for i in range(60): e.step(0, 0, 0, 2)
                 row.append('Y' if player(e)['z'] > 1 else 'n')
             print('K %g T %d dir %s P %d  C-down frames 112..129: %s' % (K, T, D, P, ''.join(row)))

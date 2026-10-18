@@ -2,7 +2,9 @@
 small rock, Laki idle on his right) jump left onto the small rock (stick angle D, A held 8, R frames of stick), stand
 until Lakilester follows and goes idle (follow state 5), wiggle in place on the rock until the history ring is full,
 then hop back down to the right next to Lakilester (stick 0, A held 8, H frames of stick). Prints where everything
-ends up and whether the frozen target is intact. usage: make_state_rockjump.py D R H [out.st]"""
+ends up and whether the frozen target is intact. Env PRE=k: first walk left k frames and stand WAIT frames (default 60) so Laki follows and idles there, which moves
+the stale target (Mario's jump start) further left.
+usage: make_state_rockjump.py D R H [out.st]"""
 import os, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
 from emu import Emu
@@ -18,6 +20,11 @@ def st(tag):
     print('%-10s M (%.1f, %.1f, %.1f) act %d  L (%.1f, %.1f, %.1f)  state %d ptr %d idx %d tgt (%.1f, %.1f)' % (tag, p['x'], p['y'], p['z'], p['action'], l['x'], l['y'], l['z'], e.u32(STATE) >> 16, ptr, e.u32(IDX), e.f32(HIST + 16 * ptr + 4), e.f32(HIST + 16 * ptr + 12)))
 D, R, H = float(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
 e.load('states/pra01_top_rock.st'); e.step(0, 0, 0, 2)
+st('start')
+for i in range(int(os.environ.get('PRE', 0))): e.step(0, *stick_for(180, 80), 2)
+if os.environ.get('PRE'):
+    for i in range(int(os.environ.get('WAIT', 60))): e.step(0, 0, 0, 2)
+    st('walked')
 s = stick_for(D, 80)
 for i in range(30):
     e.step(0x80 if i < 8 else 0, *(s if i < R else (0, 0)), 2)

@@ -555,3 +555,20 @@ Start: Mario in the very top-right corner (`states/pra01_topright_rj.st`; hold u
   | 16 | 119.2 | both corners (left 5 or 6), left 1–2 or down 2–3 frames before |
 
   The C-down itself stays a 1-frame input, and holding left only on the C-down frame never works. The stale target is set in the rock-jump setup, before the ending.
+
+### Setup with the stale target further left (real, no RAM edits)
+
+- **Why the ending tops out at 115.6:** Laki switches to Mario's newest history point about 6 frames after reaching the stale target. So the stale target's position sets the turnaround point. The spike also needs Laki at least as high as Mario (y ≥ −20); below that his speed stays capped at 6. So the history fill must stay on the rock top (y −37). A fill on the ground (y −60) delays the spike by 5 frames and drops the speed to 109.
+- **New start** (`make_setup_left.py`, `pipeline_left.sh pa160 160 10 12 20`):
+  1. From `pra01_top_rock.st`, walk at world angle 160° for 10 frames and wait 60 frames.
+  2. Jump left, holding the stick for 12 frames. Mario lands on the rock at (522.4, −39.2) and the stale target is (555.4, −13), 9.1 units left of the old one.
+  3. Wiggle to fill the history ring, then hop right.
+  4. Push arc: a new `rev_aim_explore2.py` search, 20 minutes.
+  5. Ledge (`rev_ledge4.py`): 3 frames up, a jump at 340° holding 12 frames, then 2 frames at 340° and a jump.
+  6. Top wall: stop-and-go aimed at Laki (`make_topright_from_corner.py`, `AIM=0`). Laki ends at (987.1, −212.3) and Mario at (966, −212), the same spot as the original setup. Pushing straight right instead (`wall_push_aim.py`) leaves Laki at about 968 with Mario past him. Then Laki abandons the stale target as soon as Mario jumps down.
+- **Simple ending from that state** (`rta_shift_win.py`, `BASE=states/pra01_topright_pa160.st`). Inputs: up, right, wait 2, down 4, A + down 22, left through the drop, left T, hold up, then the final input + C-down. Clips with:
+  - left 5 frames after the landing, then left for 1–2 frames, or down for 2–3 frames, before and on the C-down;
+  - left 6 frames, then left for 1 frame.
+  The C-down itself is still a 1-frame input.
+- **Video:** `reverse_mirror_rta_clip.mp4` (`_slow`): from the top-right corner, C-down speed 116.81, Mario lands on the front side.
+- **Earlier attempts:** walking left 7 frames moves the target to 550.8. But Mario then misses the rock (the walk drifts up), so the fill is on the ground. The ledge also needed new plans, and the straight top-wall push failed.
