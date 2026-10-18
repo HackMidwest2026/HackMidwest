@@ -678,3 +678,32 @@ The idea: from the very top-right corner, run left along the top wall, jump over
 - **The ending windows are unchanged.** A + down: 2 frames. Stopping hammer: 1 frame. C-down: 1 frame, 4 frames after the step-2 landing with A + down 32 (2 frames after with 33).
   - The extra speed doesn't help the hammer. One frame late (x 884.6) lands Mario at (880.78, −140.08). There Laki's spike doesn't line up with any C-down frame: best 6, not a near miss.
   - These windows are set by timing (Mario's slide has to meet Laki's turnaround), not by the speed margin.
+
+### Wider ending search from the top-right corner (`rta_wide.py`, `run_wide.sh`, `wide_report.py`)
+
+From `states/pra01_topright_v2.st`, cardinal stick, A and hammer only:
+- up, right into the corner;
+- optionally hammer into left and go left 0–9 frames (Laki stays idle that close);
+- hammer into down, down for D0 frames, A + down for N frames;
+- then one of two tails.
+
+For every run, the C-down was tried at each frame after Mario's step-2 landing.
+
+- **Hammer stop** (B+left, run onto step 3, B+up on the K-th frame after the step-3 landing, hold up), 1,960 runs:
+  - Clips with no left-first, or with 1–9 frames of left first (mostly A + down 32 or 36).
+  - The stop is always K = 4 (x 889.16), a 1-frame input. No variant widens anything.
+- **Release and wait** (release, hold left through the forced drop, release during it, left T frames, release, stand U frames, then hold up), 19,800 runs:
+  - **A + down is nearly free:** 21–27 frames with T = 5, or 29–40 with T = 4 (28 fails). Every one stops Mario at x 889.16.
+  - **Up press: a 4-frame window** for every N. Each extra frame of A + down moves the window 2 frames earlier:
+
+    | A + down | Stand before up |
+    |---|---|
+    | 33 | 11–14 |
+    | 37 | 3–6 |
+    | 38 | 1–4 |
+    | 39 | 0–2 |
+
+    With about 38 frames of A + down, pressing up 2–3 frames after letting go of left works for 37, 38 and 39.
+  - **C-down:** always frame 136 of the ending (counted from the top-right state), i.e. Laki's turnaround at the rock. 1 frame.
+  - **Still exact:** the left count after the step-3 landing (4 or 5 frames, 1 frame) and the C-down.
+- **Video:** `reverse_mirror_v2_release_wait.mp4` (`_slow`): full v2 setup with this ending (A + down 38, left 4, release, up 2 frames later). C-down speed 118.18.

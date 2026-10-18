@@ -66,12 +66,29 @@ t0 = len(log)
 st(0, (0, 0), 'ending: hold up, right into the corner')
 fr = [0]
 def st2(b, s, tag=''): st(b, s, tag); fr[0] += 1
-route(e, N, st2)
-while fr[0] < h: st2(0, SD['L'], 'hold left: off the top step onto step 3, keep running')
-st2(B, U_, 'hammer (B) with up held: Mario stops at x 889.2 on step 3')
-for i in range(9): st2(0, U_, 'hammer swing, holding up')
-while fr[0] < c: st2(0, U_, 'hold up: into the wall, slide down onto step 2; wait for Laki to turn around')
-st2(CD, U_, 'C-down (still holding up) on the spike frame: Laki speed %.2f')
+if os.environ.get('ENDING') == 'W':
+    # release-and-wait ending (rta_wide.py family W): args N = A + down, h = left frames T after the step-3 landing,
+    # c = frames standing before up (U); C-down on frame CDABS (default 136) of the ending
+    T, U = h, c
+    for i in range(10): st2(0, U_, 'ending: hold up')
+    for i in range(10): st2(0, SD['R'], 'hold right: very top-right corner')
+    st2(B, SD['D'], 'hammer (B) with down held')
+    for i in range(13): st2(0, SD['D'], 'hold down')
+    for i in range(N): st2(0x80 if i < 12 else 0, SD['D'], 'A + hold down (%d frames): jump onto the top step, walk down' % N)
+    st2(0, (0, 0), 'release')
+    while player(e)['action'] != 9: st2(0, SD['L'], 'hold left')
+    for i in range(8): st2(0, (0, 0), 'release during the forced drop: lands on step 3')
+    for i in range(T): st2(0, SD['L'], 'left %d frames: Mario at x 889.2' % T)
+    for i in range(1 + U): st2(0, (0, 0), 'release, stand %d frame(s)' % (1 + U))
+    while fr[0] < int(os.environ.get('CDABS', 136)): st2(0, U_, 'hold up: into the wall, slide down onto step 2; wait for Laki to turn around')
+    st2(CD, U_, 'C-down (still holding up) on the spike frame: Laki speed %.2f')
+else:
+    route(e, N, st2)
+    while fr[0] < h: st2(0, SD['L'], 'hold left: off the top step onto step 3, keep running')
+    st2(B, U_, 'hammer (B) with up held: Mario stops at x 889.2 on step 3')
+    for i in range(9): st2(0, U_, 'hammer swing, holding up')
+    while fr[0] < c: st2(0, U_, 'hold up: into the wall, slide down onto step 2; wait for Laki to turn around')
+    st2(CD, U_, 'C-down (still holding up) on the spike frame: Laki speed %.2f')
 log[-1]['tag'] = log[-1]['tag'] % log[-1]['ls']
 ok = log[-1]['ls'] >= 115.75
 for i in range(70): st(0, U_ if i < 3 else (0, 0), 'mount -> FRONT side of the mirror' if ok else 'mount: not enough speed')
