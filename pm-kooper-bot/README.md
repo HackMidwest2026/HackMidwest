@@ -617,3 +617,26 @@ From `states/pra01_topright_pa160.st`:
 - **Windows:** the A + down length has 2 frames. The stopping hammer has 1 frame: it must catch Mario at x 889.16, the 5th frame after he lands on step 3. The C-down keeps its visual cue (Mario landing on step 2).
 - **Without the corner hammer** (`HC=0`: release 2 instead): N = 31 or 32 also clip (115.82 and 116.93).
 - **Video:** `reverse_mirror_rta_clip_holdup2.mp4` (`_slow`), N = 31.
+
+### Full setup video and input windows
+
+- **Full run** (`record_full_setup.py OUT pa160b`; it reads `states/arc_pa160b.json` and `states/ledge_pa160b.json`, which are copied to `data/`): one continuous run from `states/pra01_top_rock.st`.
+  1. Walk at 160° for 10 frames, wait 60, jump left onto the rock (stick held 12 frames), wait 60.
+  2. Wiggle until Laki's history is full, wait 10, hop right (stick held 8 frames), wait 21.
+  3. Push arc (`arc_pa160b.json`) into the lower corner.
+  4. Ledge: 3 frames up, jump at 340° holding 12 frames, then 2 frames at 340° and a jump at 340° holding 12 frames.
+  5. Stop-and-go push aimed at Laki along the top wall, until Laki is at (987.0, −212.3); wait 30.
+  6. Hold-up ending: A + down 31, stopping hammer, hold up, C-down.
+  
+  Result: C-down speed 117.33, Mario ends on the front side. The run matches the saved stage states at every step. Video: `reverse_mirror_full_setup.mp4` (`_slow`).
+- **Rebuilt arc:** `pipeline_left2.sh` re-runs the arc search, ledge and top-wall push from `states/pra01_rockjump_pa160.st` and keeps the chosen arc and ledge plan on disk. It was needed because the first `pa160` arc was lost with `/dev/shm`. The rebuilt arc gives the same top-right position, and the ending clips with A + down 31 (117.33) or 32 (116.62).
+- **Input windows of the ending** (`rta_tol.py`, one input varied at a time):
+
+  | Input | Window |
+  |---|---|
+  | Right hold into the corner | free (6+ frames) |
+  | Down after the corner hammer | free (3+ frames) |
+  | A hold | free (6+ frames) |
+  | A + down length, ended by B+left | **2 frames** (31 or 32) |
+  | Stopping B+up | **1 frame**: the 4th frame after the step-3 landing (x 889.16) |
+  | C-down | **1 frame**: 3rd frame after the step-2 landing with A + down 31; the frame after the landing with 32 |
