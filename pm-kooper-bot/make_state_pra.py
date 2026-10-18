@@ -38,7 +38,7 @@ e.w8(PLAYER_DATA + 0x14 + 8 * 8, 1)
 e.w8(PLAYER_DATA + 0x12, 8)
 for i in range(300):
     e.step(0, -80, 0, 2)
-    if where(e)[0] == 21 and e.s16(GAME_MODE) == GM_WORLD:
+    if where(e)[0] == int(os.environ.get('PRA_AREA', '21')) and e.s16(GAME_MODE) == GM_WORLD:
         break
 for i in range(200):
     e.step(0, 0, 0, 2)

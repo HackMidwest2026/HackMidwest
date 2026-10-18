@@ -841,3 +841,55 @@ Why it can't work:
 
 The far-away version of the idea, Laki parked on a stale target while Mario moves away, is what the reverse mirror
 setup already uses.
+
+## Lakilester ignores Mario after an out-of-bounds fall (the "other" stuck glitch)
+
+`laki_oob_stale_target.mp4` shows the whole sequence in mac_01 (Toad Town plaza with Rowf's shop): Laki stops following
+Mario and flies off out of bounds for about 200 frames, then comes back with a large speed spike.
+
+**What happens:**
+1. **Mario falls out of bounds.** For this test he was placed off the map with a RAM write. Every frame of the fall
+   saves a new history entry. Laki idles or lags behind, so the 40-entry ring fills up and recording stops.
+2. **The respawn doesn't clear the history.** `update_player` (77480.c) teleports Mario to `lastGoodPos` once
+   `timeInAir > 100` (or y < −2000), but it leaves Laki's history ring untouched. Laki's pointer still points at the
+   fall entries, which can be 500–1000 units away and deep below the floor.
+3. **Laki chases the stale entries.** He follows those entries (follow state 0) and ignores Mario. Because his target
+   is below Mario, his speed is capped at 6, so he crawls away for 100–210 frames while Mario walks around.
+4. **Speed spike on the way back.** Once Laki reaches the stale entries, recording restarts and his next target is
+   Mario's current spot. He is far from Mario and back above him, so the normal ¼·distance + target/16 rule gives a
+   huge one-frame spike.
+
+**Results** from `laki_oob_search.py`: random out-of-bounds points in mac_01, random air steering, then random walking.
+Six hits:
+
+| Seed | Laki > 100 from Mario after the respawn | Peak Laki speed |
+|---|---|---|
+| 9 | 105 frames | 162.5 |
+| 100024 | 212 frames | **331.8** (the video) |
+| 100028 | 104 frames | 223.4 |
+| 200027 | 165 frames | 183.5 |
+| 300060 | 99 frames | 170.4 |
+| 300027 | 139 frames | 6.3 (no spike in the 600 frames run) |
+
+This is the same stale-target mechanism the reverse mirror setup uses (the speed comes from Laki turning around far
+away), but the fall makes the stale target far more distant than any push can. In this search the peaks reached
+**332**. For comparison, the pra_01 clip needs about 116.
+
+Scripts and data:
+- `laki_oob_search.py STATE COLLISION.json SEED0 NRUNS OUT.jsonl [F]` runs the search. With `REPLAY=1 EVERY=k` it
+  prints one seed frame by frame.
+- `record_laki_oob.py` (SHOT=1) and `make_oob_video.py` make the video.
+- `laki_oob.py` is the single-fall logger.
+- `data/mac01_collision.json` comes from `dump_collision_mac01.py`; `make_state_pra.py` now takes `PRA_AREA`, so
+  `PRA_MAP=mac_01 PRA_AREA=1` builds the Toad Town start state.
+- `data/laki_oob_mac01.jsonl` holds the search hits.
+
+**Ruled out along the way:**
+- **Random walking with no fall** (`laki_stuck_search.py`, about 1,500 runs in each of pra_01, pra_02 and pra_03)
+  never froze Laki.
+- **Corners** (`laki_corner_pin.py`): a diagonal push into a 90° corner still sets the "colliding forward" flag, so
+  Laki hops out and goes back to Mario.
+- **Pinned against walls** (`laki_pin_scan.py`, pra_01, 3,538 points × 8 directions; `data/laki_pin_scan_pra01.jsonl`):
+  Laki can freeze in follow state 0 against a wall, with his pointer stuck. This only happens when his target is
+  behind a wall, such as beyond the mirror at z > 0 or behind the palace wall.
+- **The hidden-panel flag** that skips the follow code only lasts while a panel is flipping.
