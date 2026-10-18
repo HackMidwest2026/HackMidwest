@@ -734,3 +734,19 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
 - **Figure** `figures/pra03_clip_speed_map.png` (`pra03_paths.py`):
   - Top: the "speed needed to clip out" map. It's one colour, because no speed works anywhere on the floor.
   - Bottom: where a mount from (100, −75) ends at speeds 60, 150, 300 and 2,000.
+
+### pra_02 back side again: push search and natural speeds (`pra02_*.py`, `make_state_pra02_mid.py`)
+
+- **What clips from the right side** (`pra02_strip_window.py`, `pra02_strip_fine.py`, forced speeds):
+  - Strip x 979.5–981.5 at z −13 to −68: needs 170, and every speed up to 400 still clips (no upper limit).
+  - Against the right wall (x 987) at any z from −15 to −205: needs 220. That would be an easy anchor (just hold right).
+  - x 970–987 everywhere: needs 230.
+- **Push** (`rev_aim_explore_fast.py` with `MAPID=1`, aimed stop-and-go with holds of 1–8 frames, 30 minutes each):
+  - From the far-left back-wall fill (`pra02_back_left.st`, frozen target (46.5, −196)): Laki gets no further than x 216, pinned on the back wall at the left pillar (x 234–266).
+  - From a far-left mid-depth fill (`make_state_pra02_mid.py`, target (49, −96)): every push drifts Laki toward the back wall, and the left pillar stops him at x 216 again. In open floor he only reaches x 85–117.
+  - So the only usable push is the known one along the back wall between the pillars, ending at the right pillar (x ≈ 722), with the frozen target near the left pillar (≈ 312).
+- **Laki's return on flat floor** (`pra02_whatif.py`, logs): his height follows Mario's, so he is never "below" Mario and never capped at 6, even with Mario on the 15-high block. He crosses the room at 70–140 per frame and turns around about 6–10 frames after leaving idle. Mario can't get from the push end to x ≈ 980 that fast.
+- **Ending search** (`pra02_end_eval.py`: hold one direction for 0–32 frames, then a second to the end, C-down on every frame), with Laki placed in RAM idle at the push end (722, −212) and Mario at (703, −212):
+  - Frozen target at the left pillar (reachable): best speed **102**, no clip.
+  - Frozen target at the far left (49; no push can get Laki from there to the right pillar): best **193.6** at (767, −156), where 240 is needed. No clip.
+- **Conclusion:** with Lakilester pushes, pra_02's back side can't reach the speeds its clip spots need where Mario can actually be.

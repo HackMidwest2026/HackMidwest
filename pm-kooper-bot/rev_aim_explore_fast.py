@@ -49,7 +49,7 @@ def play(seq):
         for i in range(sl):
             e.step(0, 0, 0, 2)
             if e.u32(PTR) != ptr0 or (e.u32(STATE) >> 16) != 5 or e.f32(HIST + 16 * ptr0 + 4) != tx or e.f32(HIST + 16 * ptr0 + 12) != tz: ok = False; break
-        if not ok or tuple(where(e)[:2]) != (21, 0): break
+        if not ok or tuple(where(e)[:2]) != (21, int(os.environ.get('MAPID', 0))): break
         p, l = player(e), laki(e)
         d = math.hypot(l['x'] - tx, l['z'] - tz)
         cells.setdefault((round(l['x'] / 10), round(l['z'] / 10), round(l['y'] / 10)), (k, l['x'], l['z'], p['x'], p['z'], d))
