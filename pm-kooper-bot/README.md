@@ -719,3 +719,7 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
   - **Every run ends inside the upper room on the floor (y 0).** The four room walls stop each mount step. Example: from (237, −20) at speed 260, Mario stops at the back, right and front walls in turn, then the last step carries him to x −28.
   - The pra_01 clip goes through the mirror. Nothing in this room lets a mount step through.
 - **The lower room is directly under the red X**, inside the upper room's own walls. A sideways clip can't drop into it: leaving through any wall puts Mario over empty space, not over the lower room.
+- **From on top of the save block** (`BLOCK=1 Y0=85 pra03_force_map.py`; `data/pra03_block_force.jsonl`):
+  - The block top is height 85, x −215 to −185, z −90 to −60.
+  - 585 mounts started on top of it (5-unit grid, speeds 20–2,000).
+  - All of them end inside the room: back on the block, or on the floor near the front wall (z ≈ −20). The walls reach height 150 (the ceiling), so starting 85 up doesn't get a mount step over them.
