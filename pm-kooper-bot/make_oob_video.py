@@ -23,7 +23,7 @@ for c in C:
         if abs(t['n'][1]) < 0.5:
             pts = [P(v[0], v[2]) for v in t['v']]; pts = [(a - BX0, b - BY0) for a, b in pts]
             bd.line(pts + [pts[0]], fill=(200, 60, 60), width=1)
-STN = {0: 'follow (0)', 1: 'hop (1)', 2: 'hop (2)', 5: 'idle (5)', 15: 'move beside Mario (15)'}
+STN = {0: 'follow (0)', 1: 'hop start (1)', 2: 'hop (2)', 5: 'idle (5)', 15: 'move beside Mario (15)'}
 first = next(l['i'] for l in L if Image.open(os.path.join(d, 'f%04d.png' % l['i'])).getbbox())
 tmp = os.path.join(d, 'c'); os.makedirs(tmp, exist_ok=True)
 peak = max(range(len(L)), key=lambda i: L[i]['ls'])
@@ -46,11 +46,11 @@ for l in L:
     o((6, 340), 'Mario y %.0f   Laki y %.0f   Laki target y %.0f' % (l['y'], l['ly'], l['ty']), f=small)
     if l['idx'] == (l['ptr'] - 1) % 40: o((6, 278), 'RING FULL: recording blocked', (255, 120, 120))
     if l['ly'] < l['y'] and l['st'] == 0: o((6, 256), 'Laki below Mario: speed capped at 6', (255, 220, 80))
-    if l['i'] >= peak and l['i'] <= peak + 40: o((150, 120), 'SPEED SPIKE: %.1f' % L[peak]['ls'], (120, 255, 120), big)
+    if not os.environ.get('NOSPIKE') and l['i'] >= peak and l['i'] <= peak + 40: o((150, 120), 'SPEED SPIKE: %.1f' % L[peak]['ls'], (120, 255, 120), big)
     if title: o((6, 4), title, (255, 220, 120), small)
     dr.text((BX0, 4), 'top-down: walls red, floor green; blue Mario, orange Laki, red X target', fill=(220, 220, 220), font=small)
     dr.rectangle((0, 392, W, H), fill=(0, 0, 0)); dr.text((8, 402), l['tag'], fill=(255, 255, 255), font=font)
-    for r in range(6 if abs(l['i'] - peak) <= 3 else 1):
+    for r in range(6 if abs(l['i'] - peak) <= 3 and not os.environ.get('NOSPIKE') else 1):
         im.save(os.path.join(tmp, 'c%04d.png' % n)); n += 1
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', '30', '-i', os.path.join(tmp, 'c%04d.png'), '-pix_fmt', 'yuv420p',
                 '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', '-c:v', 'libx264', '-crf', '20', outp], check=True)

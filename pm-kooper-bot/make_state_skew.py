@@ -1,7 +1,7 @@
 """Skewed map entry (the early-Laki LZS effect) with Lakilester: like make_state_pra.py, but gGameStatus.exitTangent is
 forced to TANGENT every frame through the transition, so UseEntryHeading places Mario 0.3*TANGENT sideways of the entry.
 env PRA_MAP / PRA_ENTRY / PRA_AREA / TANGENT; saves states/<map>_e<entry>_skew<TANGENT>.st right after the map loads."""
-import os, struct
+import os, struct, sys
 from emu import *
 from pm import *
 
@@ -39,9 +39,12 @@ assert patched
 e.w8(PLAYER_DATA + 0x14 + 8 * 8, 1)
 e.w8(PLAYER_DATA + 0x12, 8)
 T = float(os.environ.get('TANGENT', '0'))
+PRE = os.environ.get('PRE_SAVE')
 for i in range(300):
     e.wf32(e.u32(GAME_STATUS_PTR) + 0x94, T)
     e.step(0, -80, 0, 2)
+    if PRE and e.s16(GAME_MODE) != GM_WORLD:  # map change started: save the pre-load state and stop
+        e.save(PRE); print('pre-load state saved at mode', e.s16(GAME_MODE), player(e)); sys.exit(0)
     if where(e)[0] == int(os.environ.get('PRA_AREA', '21')) and e.s16(GAME_MODE) == GM_WORLD:
         break
 for i in range(3):

@@ -43,7 +43,7 @@ e.wf32(PLAYER + PS_POS, x); e.wf32(PLAYER + PS_POS + 4, y); e.wf32(PLAYER + PS_P
 for f in range(130 + F):
     if f < 130:
         b, sx, sy = (0,) + (stick_for(d, 80) if f < air else (0, 0))
-        tag = 'Mario put out of bounds (RAM) at (%.0f, %.0f): falls; every frame adds a history entry' % (x, z)
+        tag = os.environ.get('FALL_TAG', 'Mario put out of bounds (RAM) at (%.0f, %.0f): falls; every frame adds a history entry') % (x, z)
     else:
         b, sx, sy = seq[f - 130]; tag = 'random walking after the respawn'
     st(b, sx, sy, tag)

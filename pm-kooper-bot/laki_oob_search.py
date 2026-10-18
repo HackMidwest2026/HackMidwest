@@ -3,6 +3,7 @@
 (laki_stuck_search_policy) after the respawn. Flags runs where, for 90 frames after the respawn, Mario travels > 100
 while Laki either stays within 3 units or stays > 150 away (3D). Writes jsonl lines with everything needed to replay.
 usage: laki_oob_search.py STATE COLLISION.json SEED0 NRUNS OUT.jsonl [F=600]
+env STUCKHOP=1: instead flag Laki stuck in the hop (state 2, jumpScale 0, jumpVel 0) for 30 frames.
 env REPLAY=1: print every frame (EVERY=k) of each seed instead of searching; SAVE_AT=f SAVE=path saves a state."""
 import json, math, os, random, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
@@ -37,7 +38,7 @@ for seed in range(s0, s0 + n):
     e.load(st0); e.step(0, 0, 0, 2)
     for i in range(pre): e.step(0, 0, 0, 2)  # let Laki settle / go idle first
     e.wf32(PLAYER + PS_POS, x); e.wf32(PLAYER + PS_POS + 4, y); e.wf32(PLAYER + PS_POS + 8, z)
-    M, L, resp = [], [], None
+    M, L, resp = [], [], None; hop_run = 0
     for f in range(130 + F):
         if f < 130: b, sx, sy = (0,) + (stick_for(d, 80) if f < air else (0, 0))
         else: b, sx, sy = seq[f - 130]
@@ -45,6 +46,14 @@ for seed in range(s0, s0 + n):
         p = player(e); ls = [q for q in npcs(e) if q['id'] == -4]
         if not ls: break
         l = ls[0]; M.append((p['x'], p['y'], p['z'])); L.append((l['x'], l['y'], l['z']))
+        if os.environ.get('STUCKHOP'):
+            a = l['addr']; sh = (e.u32(STATE) >> 16) == 2 and e.f32(a + 0x14) == 0 and e.f32(a + 0x1C) == 0
+            hop_run = hop_run + 1 if sh else 0
+            if hop_run == 30:
+                fo.write(json.dumps({'state': st0, 'seed': seed, 'F': F, 'frame': f, 'kind': 'stuckhop', 'mario': M[-1], 'laki': L[-1],
+                                     'speed': l['speed'], 'yaw': e.f32(a + 0xC), 'oob': [x, y, z], 'air_dir': d, 'air': air, 'pre': pre}) + '\n'); fo.flush()
+                break
+            continue
         if os.environ.get('SAVE_AT') and f == int(os.environ['SAVE_AT']): e.save(os.environ['SAVE'])
         if os.environ.get('REPLAY'):
             if f % int(os.environ.get('EVERY', '1')) == 0:

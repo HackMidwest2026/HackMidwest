@@ -954,3 +954,40 @@ sideways (JP: game status + 0x94). `EnterWalk` then teleports Laki onto Mario an
 - He also sinks lower on screen (template y 252 → 312).
 
 So in the clip Laki really is drifting in the world, slowly and steadily, and the cause isn't identified yet.
+
+### Early Laki drift: SOLVED — Laki stuck in the hop state
+
+The user's clip, in which Laki slowly drifts in one direction and ignores Mario, is follow state 2 (the hop) that can
+never end.
+
+**The engine mechanism (partners.c):**
+1. **A hop starts.** While following (state 0), Laki flies into something and gets the "colliding forward" flag.
+   State 1 sets up a hop toward the next history entry and records its landing height, `moveToPos.y` = Laki's current
+   height. Then state 2 runs the hop every frame: `jumpVel -= jumpScale`, `y += jumpVel`, `npc_move_heading(moveSpeed,
+   yaw)`. It lands, back to state 0, once `jumpVel <= 0` and `y < moveToPos.y`.
+2. **The snap zeroes the hop's gravity.** In `partner_flying_update_motion`, if Laki is more than 1,000 units above or
+   below Mario, he is teleported onto Mario and `jumpVel = jumpScale = 0`, but the follow state is not reset.
+3. **The hop can't end.** With no gravity, Laki can never get back under `moveToPos.y`, which is the height where the
+   hop started (deep out of bounds). So every frame he moves `moveSpeed` along the hop's yaw, and the height
+   correction in `partner_flying_update_motion` keeps him near Mario's height.
+   - `moveSpeed` = horizontal hop distance / duration. When the hop target was far above or below him, the duration
+     is long and the speed tiny: 0.31–0.34 units per frame in the natural cases. That is the slow drift.
+
+**Natural trigger** (`laki_oob_search.py` with `STUCKHOP=1`, flo_08; hits in `data/laki_stuck_hop_flo08.jsonl`, seeds
+39 and 100036):
+- Mario falls out of bounds in flo_08, the same thing a skewed early-Laki entry does. Laki dives after him and
+  bumps something below the map, which starts a hop.
+- During the hop, Mario's height runs away. Out of bounds it drops to about −1,100, then climbs to +17,900. That
+  passes the 1,000-unit limit.
+- After Mario's respawn (timeInAir > 100 → lastGoodPos), Laki stays in the hop and drifts at 0.34 units per frame
+  for the rest of the run, about 230 units over 800 frames, wherever Mario walks.
+- Video: `laki_stuck_hop_flo08.mp4`. The same state set by RAM (`laki_hop_stuck.py`): `laki_stuck_hop_ram.mp4`.
+
+**What ends it** (seed 39 state, frame 300):
+- **C-down to mount, then B to dismount:** Laki goes back to idle (state 5).
+- **Jumping:** doesn't clear it (he keeps drifting).
+- **A room change:** not confirmed here, but map loads always reset the follow state.
+
+**How to cause it on purpose:** with Laki out, have him start a hop (fly into a wall or geometry while following)
+while Mario is, or is about to be, more than 1,000 units above or below him. The easiest way is an out-of-bounds
+fall: Laki follows Mario down, bumps geometry under the map, and Mario's out-of-bounds height then runs away.
