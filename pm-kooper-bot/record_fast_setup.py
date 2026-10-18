@@ -12,7 +12,7 @@ SHOT=1 screenshots every frame (video plugin + DISPLAY); writes OUT/log.json for
 usage: record_full_setup.py OUT TAG [N h c]   (h, c count frames from the top-right state, as in rta_holdup2.py)"""
 import json, math, os, subprocess, sys
 from rta_holdup2 import *
-from fast_setup import rock_part
+from fast_setup import rock_part, rock_part2
 HIST, IDX, PTR, STATE = 0x8010CEF8, 0x8010D178, 0x8010D17C, 0x8010D188
 OUT, TAG = sys.argv[1], sys.argv[2]; os.makedirs(OUT, exist_ok=True)
 N, h, c = (int(a) for a in sys.argv[3:6]) if len(sys.argv) > 5 else (31, 97, 132)
@@ -34,7 +34,7 @@ def jump(stick, hold, tag, maxf=30):
         st(0x80 if i < 8 else 0, stick if i < hold else (0, 0), tag)
         if i > 3 and player(e)['action'] in (0, 1, 2): break
 e.load('states/pra01_top_rock.st'); st(0, (0, 0), 'start: Mario by the small rock, Laki idle on his right')
-rock_part(e, st)
+(rock_part2 if os.environ.get('V2') else rock_part)(e, st)
 show('fill')
 st(0, (0, 0), 'push Laki along the arc')
 for g, th, sl in arc:
