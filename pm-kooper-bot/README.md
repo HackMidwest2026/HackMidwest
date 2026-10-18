@@ -600,3 +600,19 @@ From `states/pra01_topright_pa160.st`:
 - **Why it works:** Laki's speed is capped while he's below Mario. Mario landing on step 2 (y −20) lifts the cap right as Laki turns around near (528, −20). Mario was still on step 3, further from the rock, when Laki reached his stale target, so Laki's next history point is far away.
 - **Windows:** the up press has 2 frames. The C-down is 1 frame but has a visual cue (Mario landing on step 2), always 14 frames after the up press. No other left count (3, 4, 6) clips this way.
 - **Video:** `reverse_mirror_rta_clip_holdup.mp4` (`_slow`).
+
+### One-run hold-up ending (`rta_holdup2.py`, `record_rta_holdup2.py`)
+
+From `states/pra01_topright_pa160.st`:
+1. Up 10, right 10 into the corner, release 2, then down 4. No hammer next to Laki.
+2. A + down for N frames.
+3. B+left (hammer), then hold left: off the top step onto step 3 and keep running.
+4. Press B with up held; the hammer stops Mario. Hold up to the end.
+5. C-down (up still held) on the frame after Mario lands on step 2.
+
+- **Clips:**
+  - N = 31: B+up on frame 89 (Mario at x 889.16), C-down on frame 123, speed 115.82.
+  - N = 32: B+up on frame 90, C-down on frame 124, speed 116.93.
+  - No other N from 16 to 45 clips.
+- **Windows:** the A + down length has 2 frames. The stopping hammer has 1 frame: it must catch Mario at x 889.16, the 5th frame after he lands on step 3. The C-down keeps its visual cue (Mario landing on step 2).
+- **Video:** `reverse_mirror_rta_clip_holdup2.mp4` (`_slow`).
