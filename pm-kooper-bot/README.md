@@ -707,3 +707,15 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
   - **C-down:** always frame 136 of the ending (counted from the top-right state), i.e. Laki's turnaround at the rock. 1 frame.
   - **Still exact:** the left count after the step-3 landing (4 or 5 frames, 1 frame) and the C-down.
 - **Video:** `reverse_mirror_v2_release_wait.mp4` (`_slow`): full v2 setup with this ending (A + down 38, left 4, release, up 2 frames later). C-down speed 118.18.
+
+## pra_03 (save block + red X room): Lakilester clip to the lower room?
+
+- **State:** `make_state_pra.py` patches the nok_14 exit to `pra_03` (entry 0 = back-left door, 1 = right door) with Lakilester as the partner.
+- **Room layout (collision):**
+  - Upper room: x −250 to 250, z −150 to 0, floor y 0.
+  - Under the right half (x 0–250) is a hidden lower room: floor y −200, ceiling y −50, its own right door alcove (x 250–300) and back door (x 100–150).
+  - The right half of the upper floor is a 50-thick slab (collider 23) with a hole at x 100–150, z −100 to −50. The red X floor tile (collider 22) fills that hole.
+- **Forced-speed mounts** (`pra03_force_map.py`; `data/pra03_force_map.jsonl`): Mario placed every 20 units over the whole floor; C-down with Laki's speed forced to 40–260 (2,100 runs) and 400–2,000 (455 runs); then ride, dismount, wait.
+  - **Every run ends inside the upper room on the floor (y 0).** The four room walls stop each mount step. Example: from (237, −20) at speed 260, Mario stops at the back, right and front walls in turn, then the last step carries him to x −28.
+  - The pra_01 clip goes through the mirror. Nothing in this room lets a mount step through.
+- **The lower room is directly under the red X**, inside the upper room's own walls. A sideways clip can't drop into it: leaving through any wall puts Mario over empty space, not over the lower room.
