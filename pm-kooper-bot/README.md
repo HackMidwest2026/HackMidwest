@@ -893,3 +893,33 @@ Scripts and data:
   Laki can freeze in follow state 0 against a wall, with his pointer stuck. This only happens when his target is
   behind a wall, such as beyond the mirror at z > 0 or behind the palace wall.
 - **The hidden-panel flag** that skips the follow code only lasts while a panel is flipping.
+
+## "Early Laki" (LZS) movement: Lakilester with his follow AI switched off
+
+In the user's clip (Flower Fields, after the early-Laki LZS), Lakilester hangs around one spot instead of following.
+He only moves when Mario walks into him, then sits still again. On C-down he still flies over and Mario rides him.
+
+This matches follow state 50 (`wPartnerFollowState` = 50, JP RAM 0x8010D188 upper halfword), which means partner AI
+is off. `laki_ai_off_reference.mp4` (made with `record_laki_ai_off.py`, mac_01) reproduces it by setting the state
+directly:
+- In state 50, `partner_flying_follow_player` does nothing.
+- `partner_flying_update_motion` still runs every frame. Its player-collision push (1 unit away from Mario plus 2
+  along the camera yaw) and height adjustment are the only things that move him.
+- The ride ability doesn't depend on this state, so C-down still works.
+
+**How a recruitment leaves him in state 50.** flo_13's Lakilester scene turns the NPC into the partner with
+`ChangeNpcToPartner` → `func_800EB2A4` → `PARTNER_CMD_INSTA_TAKE_OUT`:
+- That command sets `D_8010CFC4` = 2 (JP 0x8010D184).
+- `partner_flying_enable` then puts Laki in state 50.
+- Only the script's later `EnablePartnerAI` returns him to state 0.
+
+The same goes for any cutscene's `DisablePartnerAI(0)` (state 50) or `DisablePartnerAI(1)` (state 40, which also
+forces the idle animation).
+
+If a skip makes Laki the partner, or interrupts a scene, before `EnablePartnerAI` runs, his AI stays off in that room.
+
+**A room change fixes it.** `laki_ai_off.py` shows this: map loading always sends `PARTNER_CMD_RESET`. In the JP
+version that sets `D_8010CFC4` to 1, so partner init goes back to state 0. Even with `D_8010CFC4` forced to 2, the
+next room is normal.
+
+The exact early-Laki route still needs testing in the emulator.
