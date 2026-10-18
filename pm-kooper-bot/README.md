@@ -640,3 +640,12 @@ From `states/pra01_topright_pa160.st`:
   | A + down length, ended by B+left | **2 frames** (31 or 32) |
   | Stopping B+up | **1 frame**: the 4th frame after the step-3 landing (x 889.16) |
   | C-down | **1 frame**: 3rd frame after the step-2 landing with A + down 31; the frame after the landing with 32 |
+
+### Fast setup (no standing around, longer pushes)
+
+- **Rock part** (`fast_fill.py`, `fast_setup.py`): 61 frames, was 210. Walk at 160° for 10 frames, 1 neutral frame, jump left (stick 12 frames), wiggle until Laki's history is full, 1 neutral frame, hop right (stick 8 frames). Result is identical: frozen target (555.4, −13), same Mario and Laki positions. The two 1-frame gaps are the only waits that are needed.
+- **Arc** (`rev_aim_explore_fast.py`): pushes hold the stick 1–8 frames with stops of 1–4, and the search keeps the arc with the fewest frames. Corner arcs take 146–163 frames; the old arc took 217. Chosen arc: `data/arc_fast.json`.
+- **Ledge:** 3 frames up, jump at 0° holding 12 frames, then 2 frames at 340° and a jump at 340° holding 16 frames.
+- **Top wall** (`fast_wall.py`): aimed 10° off, 2 frames of stick then 1 neutral frame: 75 frames, with no wait afterwards (`data/wall_fast.json`). The old push used 1 frame of stick and 2 neutral, plus a 30-frame wait.
+- **Ending:** unchanged. A + down 31 → 117.32, 32 → 116.34; both clip.
+- **Whole run** (`record_fast_setup.py OUT fast`): 530 frames from `pra01_top_rock.st` to the end of the mount (was 850). Video: `reverse_mirror_fast_setup.mp4` (`_slow`).
