@@ -807,3 +807,37 @@ frame by frame.
 - then stands STAND frames.
 
 For example, `laki_ptr0.py states/pra03_e0.st 36 200 19 3600`.
+
+### Videos, the "flying through the front wall" moment, and whether the glitch is useful
+
+`laki_stuck_glitch.mp4` shows the natural trigger above (A = 19), followed by the A = 24 control.
+`laki_stuck_then_move.mp4` shows the glitch, then Mario walking left, up, right and down.
+- Laki follows again on the first frame Mario moves, because moving saves a new history entry.
+- Made with `record_laki_stuck.py` (SHOT=1, rice video plugin) and `make_stuck_video.py`.
+
+**The front wall.** In the `laki_stuck.py` teleport test, Laki flew through pra_03's front wall. This was a teleport
+artifact, not part of the glitch:
+- The front wall is a one-sided collision plane at z = 0, facing into the room (normal -z).
+- I had placed Laki outside it at z = +30, so he crossed it from the back side.
+- Partner wall collision (`npc_do_world_collision`) is five radius-length probes from the current position: yaw,
+  yaw ±45 and yaw+180 ±45. A one-sided plane only blocks from its front.
+
+**Can the stuck state be used for speed?** No. `laki_stuck_use.py` runs each action below from the stuck state and
+from the normal-idle control, and logs 90 frames.
+
+| Action | Peak Laki speed | After the action |
+|---|---|---|
+| Pause / C-left menu / C-right menu / hammer | 2.04 | Still stuck, same jitter |
+| Jump / spin jump | 4.00 | Unstuck (Mario's y changes, so a new entry is saved); Laki idles |
+| Walk any direction / long walk | 4.4–4.55 | Normal follow, the same as the control |
+| C-down | 4.00 | Normal mount, the same as the control |
+
+Why it can't work:
+- `moveSpeed` is reset to 3 at the start of every follow-state-0 frame. It only grows from the current distances
+  (0.25 × Mario distance once that is ≥ 50, then the target terms), so nothing builds up while Laki is stuck.
+- The stuck state needs his target inside Mario's collision push zone, which means he is always within about 15 units
+  of Mario. He cannot be stuck far away.
+- Laki's update doesn't run while the game is paused or in a menu, and any Mario movement ends the state.
+
+The far-away version of the idea, Laki parked on a stale target while Mario moves away, is what the reverse mirror
+setup already uses.
