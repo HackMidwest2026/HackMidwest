@@ -1,7 +1,8 @@
 """pra_03 (save block + red X room): place Mario at (x, 0, z), C-down with Laki's speed forced to S during the mount,
 then 40 frames of riding and a dismount (C-down again) + 40 frames. Records where Mario ends (riding and after the
 dismount): anything outside the room (x beyond -250..250, z beyond -150..0) or below the floor (y < -10) is a clip.
-BLOCK=1 Y0=85: start on top of the save block (dropped onto it from 30 above).
+BLOCK=1 Y0=85: start on top of the save block (dropped onto it from 30 above). DENSE=1: every spot within 30 of a
+wall on a 5-unit grid, speeds 20-300 step 5.
 usage: pra03_force_map.py OUT.jsonl"""
 import itertools, json, os, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
@@ -13,7 +14,9 @@ w = '/dev/shm/pmbot/p3f%d' % os.getpid()
 e.load(os.environ.get('START', 'states/pra03_e1.st')); e.step(0, 0, 0, 2); e.save(w + '/b.st')
 part, nparts = int(os.environ.get('PART', 0)), int(os.environ.get('NPARTS', 1))
 Y0 = float(os.environ.get('Y0', 0))
-grid = [(x, z, S) for x in range(-215, -184, 5) for z in range(-90, -59, 5) for S in (20, 40, 60, 80, 100, 130, 160, 200, 260, 400, 700, 1000, 2000)][part::nparts] if os.environ.get('BLOCK') else ([(x, z, S) for x in range(-240, 245, 20) for z in range(-140, -5, 10) for S in (40, 80, 120, 160, 200, 260)] if not os.environ.get('HIGH') else [(x, z, S) for x in range(-240, 245, 40) for z in range(-140, -5, 20) for S in (400, 700, 1000, 1500, 2000)])[part::nparts]
+def near_wall(x, z): return min(x + 250, 250 - x, z + 150, -z) <= 30
+grid = [(x, z, S) for x in range(-245, 246, 5) for z in range(-145, -4, 5) if near_wall(x, z) for S in range(20, 301, 5)][part::nparts] if os.environ.get('DENSE') else \
+       [(x, z, S) for x in range(-215, -184, 5) for z in range(-90, -59, 5) for S in (20, 40, 60, 80, 100, 130, 160, 200, 260, 400, 700, 1000, 2000)][part::nparts] if os.environ.get('BLOCK') else ([(x, z, S) for x in range(-240, 245, 20) for z in range(-140, -5, 10) for S in (40, 80, 120, 160, 200, 260)] if not os.environ.get('HIGH') else [(x, z, S) for x in range(-240, 245, 40) for z in range(-140, -5, 20) for S in (400, 700, 1000, 1500, 2000)])[part::nparts]
 with open(sys.argv[1], 'w') as f:
     for x, z, S in grid:
         e.load(w + '/b.st')
@@ -21,7 +24,7 @@ with open(sys.argv[1], 'w') as f:
         for i in range(30 if Y0 else 12): e.step(0, 0, 0, 2)
         p0 = player(e)
         e.step(CD, 0, 0, 2)
-        for i in range(40):
+        for i in range(int(os.environ.get('RIDE', 40))):
             for n in npcs(e):
                 if n['id'] == -4 and player(e)['action'] != 33: e.wf32(n['addr'] + 0x18, float(S))
             e.step(0, 0, 0, 2)

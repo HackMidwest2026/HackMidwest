@@ -727,3 +727,6 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
   - Full jumps in 8 directions from 5 spots on the block top peak at height 113.2, 37 short of the walls and ceiling (150).
   - C-down was also tried on every frame of each jump (frames 1–23) with Laki's speed forced to 60–2,000. Mounts only happen once Mario is back on the block or the floor.
   - No run ends outside the room.
+- **Dense wall sweep** (`DENSE=1 RIDE=25 pra03_force_map.py`; `data/pra03_dense_force.jsonl.gz`):
+  - Every spot within 30 units of a wall on a 5-unit grid; Laki's speed 20–300 in steps of 5. That's 79,344 mounts, dense enough to catch a narrow speed window like pra_01's.
+  - None ends outside the room or below the floor.
