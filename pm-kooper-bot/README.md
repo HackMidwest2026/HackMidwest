@@ -572,3 +572,17 @@ Start: Mario in the very top-right corner (`states/pra01_topright_rj.st`; hold u
   The C-down itself is still a 1-frame input.
 - **Video:** `reverse_mirror_rta_clip.mp4` (`_slow`): from the top-right corner, C-down speed 116.81, Mario lands on the front side.
 - **Earlier attempts:** walking left 7 frames moves the target to 550.8. But Mario then misses the rock (the walk drifts up), so the fill is on the ground. The ledge also needed new plans, and the straight top-wall push failed.
+
+### Hammer version of the ending (`rta_hammer2.py`, `record_rta_hammer.py`)
+
+RTA runners can't swing the stick 90° without passing through diagonals, so each 90° turn is done with the hammer: press B with the new direction already held, then keep holding it. The swing freezes Mario for 10 frames (action 18). Then he moves at full speed in the held direction with no turn frame. Releasing the stick (it snaps to neutral) needs no hammer.
+
+- **Route** (from `states/pra01_topright_pa160.st`):
+  1. Up 10, then B+right; hold right 10 frames into the corner.
+  2. B+down, down 4, A + down 22.
+  3. B+left; hold left through the drop, releasing during the forced drop.
+  4. Left 5 frames, then B+up; hold up.
+  5. Final: flick the stick from up to down (2 neutral frames, then 1 frame of down), then C-down with down held.
+- **Result:** clips with the C-down on frame 137 (115.74) or 138 (117.51), so the final flick has a 2-frame window. With left 6, only frame 138 clips (116.45). Video: `reverse_mirror_rta_clip_hammer.mp4` (`_slow`).
+- **Don't hammer right before the C-down** (`rta_hammer.py`). During the swing, Laki rises to Mario's height early, so he turns around about 18 units further right (x 545 instead of 527). Best result: about 115 (no clip). An up→down flick passes through neutral and needs no hammer.
+- **Keep holding up while waiting.** Pushing into the wall counts as moving. Standing idle for 4+ frames before the final input also makes the spike early and weak.
