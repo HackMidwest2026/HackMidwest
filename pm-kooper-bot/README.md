@@ -586,3 +586,17 @@ RTA runners can't swing the stick 90° without passing through diagonals, so eac
 - **Result:** clips with the C-down on frame 137 (115.74) or 138 (117.51), so the final flick has a 2-frame window. With left 6, only frame 138 clips (116.45). Video: `reverse_mirror_rta_clip_hammer.mp4` (`_slow`).
 - **Don't hammer right before the C-down** (`rta_hammer.py`). During the swing, Laki rises to Mario's height early, so he turns around about 18 units further right (x 545 instead of 527). Best result: about 115 (no clip). An up→down flick passes through neutral and needs no hammer.
 - **Keep holding up while waiting.** Pushing into the wall counts as moving. Standing idle for 4+ frames before the final input also makes the spike early and weak.
+
+### Hold-up ending (no flick) (`rta_holdup.py`, `record_rta_holdup.py`)
+
+From `states/pra01_topright_pa160.st`:
+1. Up 10, then right 10 into the corner. No hammer: Laki is idle there.
+2. B+down (hammer), down 4, A + down 22.
+3. B+left, then hold left; release during the forced drop (lands at x 911.9).
+4. Left 5 frames, release, and stand at (889.2, −10, −101).
+5. **Press up on frame 114 or 115 and hold it to the end.**
+6. Mario walks up step 3 into the z −145 wall and drops off the riser into the step-2 corner (884.35, −20, −145). **C-down on the first frame after he lands, still holding up**: speed 118.17 (up on 114) or 116.24 (up on 115). Both clip.
+
+- **Why it works:** Laki's speed is capped while he's below Mario. Mario landing on step 2 (y −20) lifts the cap right as Laki turns around near (528, −20). Mario was still on step 3, further from the rock, when Laki reached his stale target, so Laki's next history point is far away.
+- **Windows:** the up press has 2 frames. The C-down is 1 frame but has a visual cue (Mario landing on step 2), always 14 frames after the up press. No other left count (3, 4, 6) clips this way.
+- **Video:** `reverse_mirror_rta_clip_holdup.mp4` (`_slow`).
