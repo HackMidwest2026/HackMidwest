@@ -923,3 +923,34 @@ version that sets `D_8010CFC4` to 1, so partner init goes back to state 0. Even 
 next room is normal.
 
 The exact early-Laki route still needs testing in the emulator.
+
+### Early Laki: skewed entry into flo_08 (work in progress)
+
+**How the skip works.** Early Laki is an out-of-bounds LZS in the Flower Fields hub (flo_00). Its northwest exit leads
+to flo_08 entry 0. On the way in, `UseEntryHeading` places Mario at the entry point plus 0.3 × `gGameStatus.exitTangent`
+sideways (JP: game status + 0x94). `EnterWalk` then teleports Laki onto Mario and clears his history.
+
+**Reproducing the skew.** `make_state_skew.py` forces `exitTangent` during the transition. `skew_sweep.sh` and
+`skew_probe.py` then classify Laki's behavior in flo_08. Two regimes appear:
+
+| Skew | What happens |
+|---|---|
+| 0 to 900 | Normal following |
+| ≥ 950, or ≤ −400 | Mario enters out of bounds and falls, then respawns at the entrance. Laki ends up "glued" to Mario (see below). |
+
+**The glued state:**
+- During the fall Mario's y goes as high as +15,880, and those positions fill the history ring.
+- After the respawn, the ring is full and Laki's target is one of those entries.
+- Each frame he rises 1/8 of the way toward that height. That is more than 1,000 units, so `partner_flying_update_motion`
+  snaps him back to Mario's position.
+- The ring therefore stays full, and Laki sits on Mario at floor height for as long as Mario stays in the room.
+  `record_skew.py` records this state.
+
+**This doesn't match the user's clip yet.** Tracking Laki and the star piece in the clip (`video_track_ncc.py`) shows:
+- Laki's position relative to the star piece varies with the camera pan, which fits a fixed depth (parallax slope about
+  0.45–0.49).
+- On top of that, Laki gains a steadily growing offset to the right: about 0, +31, +90 and +119 px at frames 0–60,
+  100–120, 170–200 and 240.
+- He also sinks lower on screen (template y 252 → 312).
+
+So in the clip Laki really is drifting in the world, slowly and steadily, and the cause isn't identified yet.
