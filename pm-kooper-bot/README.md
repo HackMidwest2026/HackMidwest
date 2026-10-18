@@ -750,3 +750,60 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
   - Frozen target at the left pillar (reachable): best speed **102**, no clip.
   - Frozen target at the far left (49; no push can get Laki from there to the right pillar): best **193.6** at (767, −156), where 240 is needed. No clip.
 - **Conclusion:** with Lakilester pushes, pra_02's back side can't reach the speeds its clip spots need where Mario can actually be.
+
+## Lakilester "stuck and drifting" glitch: why it happens
+
+Sometimes Laki stops next to Mario but never settles: his speed sits around 1.3–2, and his position jitters or creeps
+back and forth forever. The cause is in `partner_flying_follow_player` (partners.c in the decomp).
+
+**How the follow code works.** Mario's positions go into a 40-entry ring (`gPlayerMoveHistory`, write index `idx` at
+0x8010D178). Laki chases the entry at `ptr` (0x8010D17C).
+
+In follow state 0, each frame Laki flies toward `hist[ptr]` at about 0.25·distance. When he gets within `moveSpeed`
+of that entry:
+- if `ptr == idx`, his speed is set to 0 and he **stays in state 0**. The tether check is skipped here.
+- otherwise, if Mario is within the tether distance, he goes idle (state 5).
+- otherwise `ptr++`.
+
+**The stuck state.** The glitch is state 0 with a target entry lying where Mario is standing. Usually that entry is
+`ptr == idx`, which is Mario's own spot. Laki can never get within `moveSpeed` (3) of it, because every frame
+`partner_do_player_collision` pushes him 1 unit away from Mario plus 2 units along the camera yaw.
+
+So he never reaches the entry and never gets to the tether check. The pull toward the target and the push away balance
+5–8 units from Mario. That balance point slides slowly as the two forces trade off frame by frame, which is the drift.
+Only a new history entry gets him out, meaning Mario has to move.
+
+**Natural trigger (reproduced, `laki_ptr0.py`).** It needs a full ring followed by an exactly-timed stop:
+1. Laki idles with `ptr != 0`.
+2. Mario keeps moving inside the tether radius until the ring is full (`idx == ptr - 1`). Recording then stops. This
+   is the `D_8010CFBC != idx + 1` check in `partner_flying_update_player_tracking`.
+3. Mario walks away and **stops just as he leaves the tether radius**. In pra_03 that is walking left 18–22 frames
+   after the wiggle.
+4. In state 5, the skip loop discards every entry pointing away from Mario. All the stale entries do, so `ptr` runs
+   all the way around the ring to `idx`.
+5. That `ptr++` re-enables recording. The ring stores exactly one new entry, Mario's standing spot, because he is no
+   longer moving.
+6. Laki steps onto that entry, and it is `ptr == idx` → stuck.
+
+Results:
+
+| Run | End state | Laki's movement |
+|---|---|---|
+| A = 19 | `ptr == idx == 39` | z oscillates between -102.2 and -104.6 over 3600 frames |
+| A = 21 | ptr one behind (target is the entry 9 units short of Mario) | frozen in place with speed 1.72 |
+| Walking 1–2 frames longer or shorter, or K = 36 / ptr = 0 runs | normal idle | — |
+
+At A = 21, Laki's target sits inside Mario's push zone, so the same balance happens without `ptr == idx`.
+
+The rare timing explains why the glitch is rare.
+
+`laki_stuck.py` builds the same state directly. It teleports Laki so that `ptr == idx` while Mario stands still, and logs
+frame by frame.
+
+`laki_ptr0.py STATE K WIG A [STAND]` runs the natural trigger:
+- walks right K frames,
+- wiggles WIG frames,
+- walks left A frames,
+- then stands STAND frames.
+
+For example, `laki_ptr0.py states/pra03_e0.st 36 200 19 3600`.
