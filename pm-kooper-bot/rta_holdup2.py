@@ -1,4 +1,4 @@
-"""Hold-up ending, one-run version: up 10, right 10 into the corner, release W, down D1 (no hammer near Laki),
+"""Hold-up ending, one-run version: up 10, right 10 into the corner, B+down (hammer; HC=0: release W instead), down D1,
 A + down N, B+left (hammer), hold left through the forced drop onto step 3 and keep running left; at frame h press
 B with up held (the hammer stops Mario), then hold up to the end; C-down (up still held) on frame c.
 Scans N, h, c and prints every clip. usage: rta_holdup2.py [N ...]"""
@@ -9,7 +9,11 @@ B = 0x40
 def route(e, N, st, W=2, D1=4):
     for i in range(10): st(0, U_, 'hold up')
     for i in range(10): st(0, SD['R'], 'hold right: very top-right corner')
-    for i in range(W): st(0, (0, 0), 'release')
+    if int(os.environ.get('HC', 1)):
+        st(B, SD['D'], 'hammer (B) with down held')
+        for i in range(9): st(0, SD['D'], 'hammer swing, holding down')
+    else:
+        for i in range(W): st(0, (0, 0), 'release')
     for i in range(D1): st(0, SD['D'], 'hold down')
     for i in range(N): st(0x80 if i < 12 else 0, SD['D'], 'A + hold down: jump onto the top step, walk down')
     st(B, SD['L'], 'hammer (B) with left held')
