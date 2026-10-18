@@ -35,9 +35,9 @@ def run(a):
         if player(e)['z'] > 1: offs.append(off)
     return a, best, (q['x'], q['z']), offs
 if __name__ == '__main__':
-    base = dict(R=10, D=4, AH=12, N=31, HS=4)
+    base = dict(R=10, D=4, AH=12, N=int(os.environ.get('BN', 31)), HS=4)
     cases = []
-    for k, vals in (('R', range(4, 31, 2)), ('D', range(0, 11)), ('AH', range(4, 31, 2)), ('N', range(28, 36)), ('HS', range(2, 7))):
+    for k, vals in (('R', range(4, 31, 2)), ('D', range(0, 11)), ('AH', range(4, 31, 2)), ('N', range(int(os.environ.get('BN', 31)) - 3, int(os.environ.get('BN', 31)) + 5)), ('HS', range(2, 7))):
         for v in vals:
             d = dict(base); d[k] = v; cases.append((k, (d['R'], d['D'], d['AH'], d['N'], d['HS'])))
     with Pool(4, maxtasksperchild=1) as p:

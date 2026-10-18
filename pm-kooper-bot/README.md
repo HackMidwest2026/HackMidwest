@@ -661,3 +661,20 @@ From the fast top-right state, the stale target and the history points between i
 | 559.4 and right | no clip |
 
 So the frozen target must be **left of x ≈ 559**. The old setup (564.5) is 5.5 units on the wrong side. The walk-left setup (555.4) is 3.5 units inside. Walking left only 3 frames gave 559.9, just outside. The figure is a game screenshot with Laki placed at the targets (the faint figures are the mirror's reflections).
+
+### Running left along the top wall (`rta_topleft.py`): doesn't work
+
+The idea: from the very top-right corner, run left along the top wall, jump over the stair railing holding down, then walk back up into the corner.
+- **Laki leaves early.** He leaves idle as soon as Mario is about 58 units away along the top wall (x ≈ 928). Mario is at Laki's height there, so Laki's speed isn't capped at 6: he flies at about 30 and his frozen-target trip is ruined. Best speed over 36 combinations (left 20–23, run-up 3–6, jump hold 8–16): about 5.
+- **The jump itself:** from a standstill Mario can't clear the railing (a wall at z −181). With a 3–6 frame run-up he clears it and lands on step 3 (x ≥ 891.5) or step 2 (x ≤ 887).
+
+### Frozen target further left: walk past the rock (`fill_left_search.py`, `fast_setup.rock_part2`)
+
+- **Inputs:** walk straight left 12–14 frames, past the rock. Wait 10–20 frames (a 12-frame walk needs 15+), so Laki follows further left. Jump holding down 8–10 frames onto the rock top (520.4, −36, −13). Then the usual wiggle and hop.
+- **Result:** frozen target (549.6, −15.9), against 555.4 for the angled walk. That's 9.4 units inside the 559 cutoff. Cardinal inputs only.
+  - The best target with Mario jumping onto the rock directly was 554.3.
+  - Walking past the rock and jumping right or up doesn't reach the rock top; only a downward jump does.
+- **Full setup** (`pipeline_fast.sh v2`; arc and wall inputs in `data/arc_v2.json` and `data/wall_v2.json`): the ending clips with A + down 32 (118.22) or 33 (118.01).
+- **The ending windows are unchanged.** A + down: 2 frames. Stopping hammer: 1 frame. C-down: 1 frame, 4 frames after the step-2 landing with A + down 32 (2 frames after with 33).
+  - The extra speed doesn't help the hammer. One frame late (x 884.6) lands Mario at (880.78, −140.08). There Laki's spike doesn't line up with any C-down frame: best 6, not a near miss.
+  - These windows are set by timing (Mario's slide has to meet Laki's turnaround), not by the speed margin.
