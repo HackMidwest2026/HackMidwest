@@ -791,7 +791,7 @@ Results:
 |---|---|---|
 | A = 19 | `ptr == idx == 39` | z oscillates between -102.2 and -104.6 over 3600 frames |
 | A = 21 | ptr one behind (target is the entry 9 units short of Mario) | frozen in place with speed 1.72 |
-| Walking 1–2 frames longer or shorter, or K = 36 / ptr = 0 runs | normal idle | — |
+| Walking 1–2 frames longer or shorter, or runs where Laki idled with ptr = 0 (K = 37) | normal idle | — |
 
 At A = 21, Laki's target sits inside Mario's push zone, so the same balance happens without `ptr == idx`.
 
