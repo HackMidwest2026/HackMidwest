@@ -730,3 +730,7 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
 - **Dense wall sweep** (`DENSE=1 RIDE=25 pra03_force_map.py`; `data/pra03_dense_force.jsonl.gz`):
   - Every spot within 30 units of a wall on a 5-unit grid; Laki's speed 20–300 in steps of 5. That's 79,344 mounts, dense enough to catch a narrow speed window like pra_01's.
   - None ends outside the room or below the floor.
+- **Extreme speeds** (`pra03_probe.py`): 3,000 to 10,000,000 from 7 spots (all four corners, the front and back walls, the middle). Every one ends at (−232, 12, −20). The mount's steps go back, right, front, left; each slides until a wall stops it, so fast mounts pile into the front-left corner instead of passing through.
+- **Figure** `figures/pra03_clip_speed_map.png` (`pra03_paths.py`):
+  - Top: the "speed needed to clip out" map. It's one colour, because no speed works anywhere on the floor.
+  - Bottom: where a mount from (100, −75) ends at speeds 60, 150, 300 and 2,000.
