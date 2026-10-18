@@ -723,3 +723,7 @@ For every run, the C-down was tried at each frame after Mario's step-2 landing.
   - The block top is height 85, x −215 to −185, z −90 to −60.
   - 585 mounts started on top of it (5-unit grid, speeds 20–2,000).
   - All of them end inside the room: back on the block, or on the floor near the front wall (z ≈ −20). The walls reach height 150 (the ceiling), so starting 85 up doesn't get a mount step over them.
+- **Jumping off the save block** (`pra03_block_jump.py`; `data/pra03_block_jump.jsonl`):
+  - Full jumps in 8 directions from 5 spots on the block top peak at height 113.2, 37 short of the walls and ceiling (150).
+  - C-down was also tried on every frame of each jump (frames 1–23) with Laki's speed forced to 60–2,000. Mounts only happen once Mario is back on the block or the floor.
+  - No run ends outside the room.
