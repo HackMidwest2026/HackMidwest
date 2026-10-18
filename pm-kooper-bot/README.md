@@ -649,3 +649,15 @@ From `states/pra01_topright_pa160.st`:
 - **Top wall** (`fast_wall.py`): aimed 10° off, 2 frames of stick then 1 neutral frame: 75 frames, with no wait afterwards (`data/wall_fast.json`). The old push used 1 frame of stick and 2 neutral, plus a 30-frame wait.
 - **Ending:** unchanged. A + down 31 → 117.32, 32 → 116.34; both clip.
 - **Whole run** (`record_fast_setup.py OUT fast`): 530 frames from `pra01_top_rock.st` to the end of the mount (was 850). Video: `reverse_mirror_fast_setup.mp4` (`_slow`).
+
+### Where Laki's frozen target must be (`target_threshold.py`, `figures/laki_target_cutoff.png`)
+
+From the fast top-right state, the stale target and the history points between it and the rock (x < 570) were shifted right in RAM. The full hold-up ending search (A + down 29–34, every stopping-hammer frame, every C-down frame) was run for each shift:
+
+| Frozen target x | Result |
+|---|---|
+| 555.4 (the real setup) | clips, 117.28 (2 ways) |
+| 557.4 – 558.9 | clips, 116.4 – 116.3 (1 way) |
+| 559.4 and right | no clip |
+
+So the frozen target must be **left of x ≈ 559**. The old setup (564.5) is 5.5 units on the wrong side. The walk-left setup (555.4) is 3.5 units inside. Walking left only 3 frames gave 559.9, just outside. The figure is a game screenshot with Laki placed at the targets (the faint figures are the mirror's reflections).
