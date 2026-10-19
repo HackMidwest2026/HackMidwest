@@ -21,7 +21,7 @@ COLL = os.path.join(HERE, ROOM['collision'])
 SHM = os.environ.get('PM_TMP', '/dev/shm/pmbot')
 
 A, B, Z = 0x0080, 0x0040, 0x0020
-BUTTON_SETS = [0, 0, 0, A, Z, Z, B, A | Z]
+BUTTON_SETS = [0, 0, 0, A, Z, Z, B, A | Z] + ([0x400, 0x400] if ROOM.get('cdown') else [])   # C-down: Laki mount / ride
 SEG_LENS = [1, 2, 3, 4, 6, 8, 12]
 MAGS = [80, 80, 60, 40, 20, 10]
 
@@ -143,6 +143,8 @@ def worker_try(job):
         w = crossed_wall(W['walls'], (p0['x'], p0['z']), (p1['x'], p1['z']), min(p0['y'], p1['y']))
         if w is None and in_goal(p1['x'], p1['z']):
             w = -2
+        if w is None and ROOM.get('goal_fn3') and ROOM['goal_fn3'](p1['x'], p1['y'], p1['z']):
+            w = -3
         if w is not None and clip is None:
             clip = {'wall': w, 'frame': f, 'from': (p0['x'], p0['y'], p0['z']), 'to': (p1['x'], p1['y'], p1['z']),
                     'action': p1['action']}

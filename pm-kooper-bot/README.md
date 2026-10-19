@@ -1035,3 +1035,78 @@ The only way through a wall is for one of the four rays to pass it.
   23,800 rays) hits collider 0 or the rubble face (16). **No gap.** The doorway walls are one-sided facing into the
   cell, so even a point placed beyond them would be carried back by the final −x move.
 - `kpa17_push_test.py`: the same with Mario standing in the doorway. The end point is always 1187 − speed (west).
+
+## Chapter 8 flood room (kpa_133): Laki clip to the key, no result
+
+- **Goal:** the key ledge (collider 6, y 215) at about (−350, 215, −50), from the left room.
+- **Water levels:** water down (`kpa133w0`) and water level 1 with Mario under the surface (`kpa133w1u`, surface
+  collider 38 at y 100). Level 2 is skipped because it doesn't happen in a glitched run.
+- **Collision:** `dump_collision_kpa133_w{0,1,2}.py` → `data/kpa133_w*_collision.json`.
+- **Search:**
+  - `kpa133_mount_grid.py`: RAM mounts over the room. 92,430 mounts, none reach the ledge or leave the room.
+  - `explore_clip.py` with C-down in the button set. A hit is y ≥ 100 or z < −100.5.
+- **Results:**
+
+| state | attempts | clips |
+|---|---|---|
+| water down | 106,681 | 0 |
+| water level 1, under the surface | 83,690 | 0 |
+
+## Outside the castle (kpa_62): dismount → hold down → remount clip into the tower
+
+**The room.**
+- **The tower** (collider 1, top y 160) stands beside the Deep Focus platform.
+- **The y-60 platform** (collider 20) is below and left of the tower.
+- **The ledge below it** (collider 23, y 50) wraps around the tower's south-west side.
+- Figure: `figures/kpa62_map.png`. The magenta box is the clip band.
+
+**What the clip is.** The mount moves Mario's target point four times by Laki's `moveSpeed` S: −z, +x, +z, −x. Each move
+is `npc_test_move_simple_with_slipping`, which slides along walls. From the ledge in front of the tower's south-west
+face, the slides leave the target inside the tower (`kpa62_mount_map.py`, 105,000 RAM mounts in
+`data/kpa62_mount_map.jsonl.gz`). The target is inside when:
+- x is between about −381 and −376.75 (the band is narrower at its edges, e.g. −379 to −376.75 needs S 18–32);
+- z is anywhere from about −4 to 24, plus a second strip along z ≈ 21–25 for x −392 to −377;
+- S is about 16–36, depending on x.
+
+On top of that, Laki has to fly to the target in 12 frames. If he starts too far west, the tower's west face stops
+him and Mario lands outside. So the full run has to be simulated, and the map only says where to look.
+
+**Where the big S comes from.** After a dismount, Laki runs follow state 15 for 16 frames. He moves to a point
+beside where Mario landed, then `partner_clear_player_tracking` fills Mario's move history with Laki's own position.
+- On the next frame, follow state 0 sets S = 0.25 × (distance Laki→Mario).
+- Each frame after that, Laki moves S closer, so S drops by about 25% per frame.
+- S is frozen on the C-down frame.
+
+So the C-down has to land on the frame right after Laki's return ends. **That is frame 34 after the dismount B,
+whatever else Mario does.** Stick input during the dismount hop (frames 1–14) is ignored, which is why holding down
+from frame 1, 4, 7 or 11 all give the same C-down frame. If Mario stands still, Laki does not freeze: Mario's position
+is written to the cleared history, and Laki flies to him.
+
+**Working input sequence** (`kpa62_trace.py states/kpa62_e1.st 90 6 3 30`):
+1. From (−460, 60, −60), walk at stick angle 90 for 6 frames, then wait 6 frames. Mario is at (−440.7, −40.7).
+2. Press C-down and ride idle for 40 frames.
+3. Press B, then hold down.
+4. Press C-down on frame 34 after the B. Mario is at (−380.6, 50, 19.3) and Laki at S = 20.5.
+5. Mario lands at (−381.7, 60, −29.7), inside the tower.
+
+**Why there's no easy RTA setup yet:**
+- **The C-down is frame-perfect:** frame 34 after B. A spin dash after landing (Z, speed 8 for about 13 frames) gets
+  Mario about 106 units from Laki, so S is 26.6 then 20.0 then 15.0. The S part could then cover 2 frames, but no
+  spin path tested (`kpa62_spin.py`, 1,368 programs) ended inside.
+- **The spot is very sensitive:** `kpa62_tol.py` around the working walk start found only x −440.75 to −440.6
+  (0.15 units), with z −45.7 to −39.7. Under RTA-like conditions (Laki idle when mounting, so the first mount doesn't
+  shift Mario), no spot in a 6×6 area around the working dismount spot works. Laki's motion before the first mount
+  matters too.
+- **Searches with notch inputs from wall- or corner-fixed dismount spots found no repeatable setup:**
+
+| script | what it tried | hits |
+|---|---|---|
+| `kpa62_rta.py`, `kpa62_rta3.py` | rides into corners, then one or two notch legs | 0 |
+| `kpa62_rta4.py` | dismount timing with Z/A presses | 0 |
+| `kpa62_rta5.py` | two-notch programs from 41 dismount spots | one, 1-frame window: ride stick 45 for 20 frames, B, hold down-left 19 frames then down, C-down on frame 34 |
+| `kpa62_wallscan.py` | 562 wall-pushed spots × 8 notches × C-down frames 32–36 | 0 |
+
+- **One mechanic that could help:** holding the right notch against the tower's south-west face makes Mario creep
+  toward its corner at about 0.18 units per frame. That runs straight through the x band (test: from (−395, 0) he
+  reaches (−379.55, −0.24) after 60 frames). It fixes the position part, but Laki's speed still has to be right on
+  frame 34.

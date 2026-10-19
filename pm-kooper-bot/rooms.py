@@ -72,6 +72,48 @@ ROOMS = {
         'floor_y': lambda x, z: 30.0,
         'disable_enemy_contact': True,
     },
+    # Bowser's Castle flood room (left, kpa_133). Key at (-350, 215, -50) on the top-left back ledge (y 215).
+    # Water level 0 (kpa133w0): Mario on the front floor y 0. Water level 2, under the water (kpa133w2u): Mario at
+    # y 0 below the y-200 water surface. Goal: out of the room, behind the back blocks' front faces, or up to y >= 100.
+    'kpa133w0': {
+        'collision': 'kpa133_w0_collision.json',
+        'start': 'states/kpa133_e0_w0.st',
+        'start_pos': {'x': -347.0, 'y': 0.0, 'z': 115.0, 'action': 0, 'floor': 6},
+        'map': (22, 48), 'goal_floors': [], 'goal_maps': [], 'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: z > 205.5 or (abs(x) > 400.5 and not (75 < z < 160)),
+        'goal_fn3': lambda x, y, z: y >= 100 or z < -100.5,
+        'focus_min_x': -1e9, 'cdown': True, 'corners': {},
+        'floor_y': lambda x, z: 0.0, 'disable_enemy_contact': True,
+    },
+    'kpa133w1u': {
+        'collision': 'kpa133_w1_collision.json',
+        'start': 'states/kpa133_e0_w1.st',
+        'start_pos': {'x': -347.0, 'y': 0.0, 'z': 115.0, 'action': 0, 'floor': 6},
+        'map': (22, 48), 'goal_floors': [], 'goal_maps': [], 'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: z > 205.5 or (abs(x) > 400.5 and not (75 < z < 160)),
+        'goal_fn3': lambda x, y, z: y >= 100 or z < -100.5,
+        'focus_min_x': -1e9, 'cdown': True, 'corners': {},
+        'floor_y': lambda x, z: 0.0, 'disable_enemy_contact': True,
+    },
+    'kpa133w2u': {
+        'collision': 'kpa133_w2_collision.json',
+        'start': 'states/kpa133_e0_w2.st',
+        'start_pos': {'x': -347.0, 'y': 0.0, 'z': 115.0, 'action': 0, 'floor': 6},
+        'map': (22, 48), 'goal_floors': [], 'goal_maps': [], 'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: z > 205.5 or (abs(x) > 400.5 and not (75 < z < 160)),
+        'goal_fn3': lambda x, y, z: y >= 100 or z < -100.5,
+        'focus_min_x': -1e9, 'cdown': True, 'corners': {},
+        'floor_y': lambda x, z: 0.0, 'disable_enemy_contact': True,
+    },
+    # Outside Bowser's Castle (kpa_62): Laki dismount / hold down / remount teleport into a wall
+    'kpa62': {
+        'collision': 'kpa62_collision.json',
+        'start': 'states/kpa62_e0.st',
+        'start_pos': {'x': -191.0, 'y': 0.0, 'z': -95.0, 'action': 0, 'floor': 6},
+        'map': (22, 23), 'goal_floors': [11, 41], 'goal_maps': [], 'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'focus_min_x': -1e9, 'cdown': True, 'corners': {},
+        'floor_y': lambda x, z: 0.0, 'disable_enemy_contact': True,
+    },
     # Toad Town Tunnels, Rip Cheato's room: get past the bombable wall at x = -250 (|z| < 50)
     'tik15': {
         'collision': 'tik15_collision.json',
