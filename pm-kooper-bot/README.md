@@ -1166,3 +1166,37 @@ down, C-down on frame 34 after the B. Mario's standing spot before mounting must
 2. Run 9 frames on the **down-right notch**.
 
 This avoids the diagonal walk, but only N = 8 push frames worked, because the line is thinnest near z −60.
+
+### RTA setup with cardinal directions only
+
+Diagonal notches vary between controllers, so RTA setups may only use up, down, left and right.
+
+**Camera mapping:**
+
+| stick | world direction |
+|---|---|
+| right | (+x, −z) |
+| down | (+x, +z) |
+| left | (−x, +z) |
+| up | (−x, −z) |
+
+A full-tilt cardinal moves Mario 3.215 units per axis per frame, with no acceleration or slide.
+
+**Fixed points:**
+- **The up-corner.** Holding **up** from almost anywhere on the y-60 platform ends at (−473.974, −125.650): 68 of the
+  start spots in `kpa62_card_check`'s grid landed on that exact point.
+- **The right-corner.** Holding **right** into the tower/castle corner is *not* reliable: it settles at more than ten
+  slightly different spots depending on the approach.
+
+**Setup** (`kpa62_card_tol.py`):
+1. Hold **up** until Mario stops in the north-west corner.
+2. Hold **right** for 27–33 frames or more. Any hold of 3–60 frames ends at the same spot, (−475.065, −123.767).
+3. Hold **left** for **11–12 frames**. Mario runs into the raised platform's east face, which pins his x.
+4. Hold **down** for **exactly 12 frames**. Mario stands at (−440.698, −58.37).
+5. Wait (any time), press C-down, ride (any time), press B, hold down, and press C-down **exactly on frame 34** after
+   the B.
+
+**Two frame-exact inputs remain:** the 12-frame down hold and the frame-34 C-down. No wall touches the line, so the
+last move onto it always needs an exact frame count. `kpa62_card_grid.py` checked every two-segment cardinal program
+(1–40 frames each) from both corners, and `kpa62_card3.py` checked three-move programs with walks, spins, jumps and
+wall holds. Every other setup they found clips on only one frame count for each of its moves.
