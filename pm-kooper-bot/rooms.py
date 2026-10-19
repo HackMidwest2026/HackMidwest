@@ -52,6 +52,26 @@ ROOMS = {
         'floor_y': lambda x, z: 75.0,
         'disable_enemy_contact': True,
     },
+    # Bowser's Castle jail cell (kpa_17): get out through the bombable doorway (x = 1200, z -600..-550) onto the
+    # exit floor (collider 14), or anywhere outside the cell walls (x 750..1200, z -650..-350)
+    'kpa17': {
+        'collision': 'kpa17_collision.json',
+        'start': 'states/kpa17_e1.st',
+        'start_pos': {'x': 1168.0, 'y': 30.0, 'z': -560.0, 'action': 0, 'floor': 4},
+        'map': (22, 12),
+        'goal_floors': [14],
+        'goal_maps': [],
+        'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: x > 1200.5 or x < 749.5 or z < -650.5 or z > -349.5,
+        'focus_min_x': -1e9,
+        'corners': {
+            'door_n': {'p': (1200.0, -600.0), 'wedge': (90.0, 270.0)},
+            'door_s': {'p': (1200.0, -550.0), 'wedge': (90.0, 270.0)},
+            'ne': {'p': (1200.0, -650.0), 'wedge': (90.0, 180.0)},
+        },
+        'floor_y': lambda x, z: 30.0,
+        'disable_enemy_contact': True,
+    },
     # Toad Town Tunnels, Rip Cheato's room: get past the bombable wall at x = -250 (|z| < 50)
     'tik15': {
         'collision': 'tik15_collision.json',

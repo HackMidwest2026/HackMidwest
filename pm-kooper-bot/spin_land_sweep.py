@@ -114,6 +114,11 @@ def base_state(sx0, sz0):
         for i in range(6):
             e.step(0, 0, 0, 2)
         e.save(base)
+        # keep only the few most recent start states per worker: each is a 16 MB savestate in /dev/shm
+        W.setdefault('bases', []).append(base)
+        while len(W['bases']) > 6:
+            old = W['bases'].pop(0)
+            if os.path.exists(old): os.remove(old)
     return base
 
 

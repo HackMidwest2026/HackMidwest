@@ -1009,3 +1009,29 @@ Because the speed is the same on every frame, the C-down has no timing window. F
 need to be about 1,800. That means an out-of-bounds fall in pra_01 itself (room changes reset it), whose fall column
 is about 1,800 units behind the C-down spot in the direction of the push. I haven't found an out-of-bounds fall in
 pra_01 yet.
+
+## Bowser's Castle jail (kpa_17): Laki mount "teleport" can't escape
+
+**The room.**
+- **The cell:** walls at x 750–1200, z −650 to −350.
+- **The doorway** on the east wall (x 1200, z −600 to −550) is filled by rubble: face collider 16, block collider 17.
+  Only the bomb trigger at (1186, 30, −562) disables it.
+- **The exit floor** (collider 14, x 1200–1280) is right behind the rubble.
+- **The wall above the doorway**, from y 93 up to y 210, is collider 0.
+- Make the state with `PRA_MAP=kpa_17 PRA_AREA=22 PRA_ENTRY=1 make_state_pra.py`. Entry 1 puts Mario inside the cell
+  next to the rubble, in control; entry 0 is the fall-in cutscene.
+
+**How the mount moves Mario** (`RIDE_STATE_MOUNT_1`, lakilester.c). The mount target starts at Mario's position and is
+moved by Laki's `moveSpeed` four times: yaw 0 (−z), 90 (+x), 180 (+z), 270 (−x). Each move goes through
+`npc_test_move_simple_with_slipping`, which is a single horizontal ray at Mario's y + 10.01 and stops at the first wall
+it hits. Laki flies to the final point and Mario rides there. So the direction Laki approaches from doesn't matter.
+The only way through a wall is for one of the four rays to pass it.
+
+**Results:**
+- `kpa17_mount_grid.py` (RAM brute force): Mario anywhere in the east part of the cell (x 1100–1188, z −640 to −510,
+  y 30–130, since the mount also works in mid-air), with Laki speeds of 10–400. **54,648 mounts, none past x 1200 or
+  onto the exit floor.** Fast mounts only throw Mario west, because the +x ray is blocked and the −x ray isn't.
+- Ray scan from the collision data: the +x ray at every height y 30–200 and every z from −640 to −500 (1-unit steps,
+  23,800 rays) hits collider 0 or the rubble face (16). **No gap.** The doorway walls are one-sided facing into the
+  cell, so even a point placed beyond them would be carried back by the final −x move.
+- `kpa17_push_test.py`: the same with Mario standing in the doorway. The end point is always 1187 − speed (west).
