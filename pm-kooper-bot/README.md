@@ -1206,3 +1206,36 @@ wall holds. Every other setup they found clips on only one frame count for each 
   34. Mario lands inside the tower wall at y 60 and then drops to y ≈ 10 inside it.
 - **Overlay:** the current input and frame count, plus a top-down map with the tower and the clip line.
 - **Speed:** the long holds and waits play at 3x; the clip is replayed at 1/3 speed.
+
+### Setups starting on the y-35 ledge below (where a run arrives)
+
+**Mario must face left when he mounts.** Mario's facing is set by the last left/right input. At the same spot with
+Laki in the same place:
+- last horizontal input left → clips;
+- last horizontal input right → after the dismount Laki returns to Mario's other side and the clip fails
+  (`kpa62_ledge3.py`: 132 on-line programs, all facing right, 0 clips).
+
+Every setup below therefore ends its walks with a left input.
+
+**Ledge fixed point.** Holding **right** on the ledge (collider 22) converges to (−518.77, 35, −18.23). It creeps
+slowly, so hold it about 150 frames before the spin in route B.
+
+**Route A** (forgiving; video `kpa62_ledge_routeA.mp4`, check `kpa62_ledge_check.py`):
+1. On the ledge, hold **right**.
+2. **Full jump** while holding right: any right hold of 17 or more frames works, so just keep holding. A short jump
+   (A held 8) also works.
+3. Hold **up** into the north-west corner of the y-60 platform (60–120 frames).
+4. Hold **right** (5–30 frames all work).
+5. Hold **left** for 11–12 frames.
+6. Hold **down** for **exactly 12 frames**.
+7. Mount, ride, press B, hold down, and press C-down **on frame 34**.
+
+Only the 12-frame down hold and the frame-34 C-down are exact.
+
+**Route B** (short, but every step is exact; video `kpa62_ledge_routeB.mp4`, search `kpa62_ledge4.py` found 1,034
+programs):
+1. On the pinned ledge spot, **spin with up held exactly 6 frames**, then a full **jump** holding right for 1–11
+   frames. Mario always lands at (−495.3, −41.7). With a spin of 1–3 frames he always lands at (−493.3, −43.7), but
+   from there walk lengths can't reach the line.
+2. Walk **right 10, down 8, left 1** (or right 12, down 6, left 1: right + down must total 18 more than left).
+3. Mount, B, hold down, and C-down on frame 34.

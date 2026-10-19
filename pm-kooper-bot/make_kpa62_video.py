@@ -12,7 +12,7 @@ font, small, big = ImageFont.truetype(F % '', 14), ImageFont.truetype(F % '', 12
 W, H = 1020, 430
 first = next(l['i'] for l in L if Image.open(os.path.join(d, 'f%04d.png' % l['i'])).getbbox())
 cd = [l['i'] for l in L if l['inp'].startswith('C-DOWN + DOWN')][0]
-def P(x, z): return (607 + (x + 520) * 2.0, 40 + (z + 140) * 1.85)
+def P(x, z): return (607 + (x + 535) * 1.9, 40 + (z + 140) * 1.85)
 def frame(l, trail, tag2=''):
     im = Image.new('RGB', (W, H), (20, 20, 20))
     g = Image.open(os.path.join(d, 'f%04d.png' % max(l['i'], first))).crop((103, 96, 696, 460)).convert('RGB')

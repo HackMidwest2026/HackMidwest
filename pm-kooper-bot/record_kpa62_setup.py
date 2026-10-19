@@ -1,7 +1,9 @@
 """Record a kpa_62 cardinal-only setup run for a video. Mario is placed with Laki settled (kpa62_place), then the
-program runs: segments 'dir:frames' or 'wait:frames' (neutral), then mount (C-down), ride RIDE frames, B, hold down,
+program runs: segments 'dir:frames' or 'wait:frames' (neutral), 'Z:dir:k' (spin, dir held k frames) or
+'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), then mount (C-down), ride RIDE frames, B, hold down,
 C-down on frame T after the B, hold down 30 more, stand 40. SHOT=1 screenshots every frame (Xvfb :99 + video plugin).
 Writes OUT/log.json with per-frame tag, input, Mario/Laki state.
+env START=x,z[,y] (default -480,-100,60)
 usage: record_kpa62_setup.py STATE OUT 'up:120 wait:10 right:30 wait:20 left:12 wait:20 down:12 wait:40' [T=34] [RIDE=40]"""
 import json, os, subprocess, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
@@ -23,9 +25,19 @@ def st(b, s, tag, inp):
     log.append({'i': len(log), 'tag': tag, 'inp': inp, 'x': p['x'], 'y': p['y'], 'z': p['z'], 'act': p['action'],
                 'lx': l['x'], 'ly': l['y'], 'lz': l['z'], 'ls': l['speed'], 'st': e.u16(0x8010D188), 'in': inside_tower(p['x'], p['z'])})
     if os.environ.get('SHOT'): subprocess.run(['import', '-window', 'root', os.path.join(OUT, 'f%04d.png' % (len(log) - 1))], check=True)
-e.load(st0); e.step(0, 0, 0, 2); place(e, -480.0, -100.0)
+_s = [float(v) for v in os.environ.get('START', '-480,-100,60').split(',')]
+e.load(st0); e.step(0, 0, 0, 2); place(e, _s[0], _s[1], y=_s[2] if len(_s) > 2 else 60.0)
 for seg in PROG.split():
-    d, k = seg.split(':'); k = int(k)
+    f = seg.split(':')
+    if f[0] == 'Z':
+        k = int(f[2])
+        for i in range(k): st(0x20 if i == 0 else 0, CARD[f[1]], 'spin (Z) holding %s %d frames' % (f[1].upper(), k), ('Z + ' if i == 0 else '') + '%s %d/%d' % (f[1].upper(), i + 1, k))
+        continue
+    if f[0] == 'A':
+        a, dd = int(f[2]), int(f[3])
+        for i in range(45): st(0x80 if i < a else 0, CARD[f[1]] if i < dd else (0, 0), 'jump (A held %d) holding %s %d frames' % (a, f[1].upper(), dd), ' + '.join(x for x in (('A' if i < a else ''), ('%s %d/%d' % (f[1].upper(), i + 1, dd) if i < dd else '')) if x))
+        continue
+    d, k = f[0], int(f[1])
     for i in range(k):
         st(0, CARD[d], ('hold %s (%d frames)' % (d.upper(), k)) if d != 'wait' else 'stand', ('%s %d/%d' % (d.upper(), i + 1, k)) if d != 'wait' else '')
 st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
