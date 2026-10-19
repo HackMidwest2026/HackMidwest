@@ -76,6 +76,7 @@ def cell_of(s):
 
 # only keep spots in the right half of the path (east of the ledge) that are close to a solid wall
 FOCUS_MIN_X = ROOM['focus_min_x']
+FOCUS_BOX = ROOM.get('focus_box')          # optional (x0, x1, z0, z1): only keep cells inside it
 FOCUS_WALL_DIST = 40
 MAX_CELLS = 25000
 
@@ -216,6 +217,8 @@ def main():
                 print('CLIP through wall %d:' % r['clip']['wall'], r['clip'], 'path len', len(path), flush=True)
             wd = wall_dist(r['state'])
             if r['state']['x'] < FOCUS_MIN_X or wd > FOCUS_WALL_DIST:
+                continue
+            if FOCUS_BOX and not (FOCUS_BOX[0] < r['state']['x'] < FOCUS_BOX[1] and FOCUS_BOX[2] < r['state']['z'] < FOCUS_BOX[3]):
                 continue
             nc = cell_of(r['state'])
             old = A_['cells'].get(nc)

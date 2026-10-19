@@ -991,3 +991,21 @@ never end.
 **How to cause it on purpose:** with Laki out, have him start a hop (fly into a wall or geometry while following)
 while Mario is, or is about to be, more than 1,000 units above or below him. The easiest way is an out-of-bounds
 fall: Laki follows Mario down, bumps geometry under the map, and Mario's out-of-bounds height then runs away.
+
+### Can the stuck hop or the glued state give a speed boost?
+
+**The stuck hop: no.** Its speed is the hop's own `moveSpeed`, horizontal hop distance / duration. The distance is
+capped at 50 and the duration is at least 10, so it is at most 5. In the natural cases it is 0.34.
+
+**The glued state (the other result of an out-of-bounds fall): yes, and with no timing.** While glued, Laki is snapped
+onto Mario every frame and his history target is a stale out-of-bounds entry. His speed is recomputed every frame as
+**3 + dT/16**, where dT is the horizontal distance from Mario to that stale entry.
+
+`glue_speed.py` (flo_08, skew-3000 entry state) checks this:
+- **The formula matches exactly:** speed 21.81 at dT 301, 24.31 at dT 343, and 35.21 at dT 515.
+- **The push uses it:** a C-down at 35.21 moved Mario 37.2 units during the mount, toward the stale entry.
+
+Because the speed is the same on every frame, the C-down has no timing window. For the pra_01 clip (115.75), dT would
+need to be about 1,800. That means an out-of-bounds fall in pra_01 itself (room changes reset it), whose fall column
+is about 1,800 units behind the C-down spot in the direction of the push. I haven't found an out-of-bounds fall in
+pra_01 yet.

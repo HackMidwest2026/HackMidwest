@@ -31,6 +31,27 @@ ROOMS = {
         'floor_y': lambda x, z: 0.0,
         'disable_enemy_contact': True,
     },
+    # Kooper skip room, front-left corner of the top level (y 75, near the five coins): get through the front wall
+    # (-870,0)-(-848,18)-(-743,59)-(-695,48) onto the out-of-bounds part of floor collider 2 in front of it
+    'nok14fl': {
+        'collision': 'nok14_collision.json',
+        'start': 'states/nok14_start_goombario.st',
+        'start_pos': {'x': -855.0, 'y': 75.0, 'z': -35.0, 'action': 0, 'floor': 2},
+        'map': (6, 7),
+        'goal_floors': [],
+        'goal_maps': [],
+        'goal_box': (1e9, -1e9, 1e9, -1e9),   # unused (goal_fn)
+        'goal_fn': lambda x, z: _past_front_wall(x, z),
+        'focus_min_x': -1e9,
+        'focus_box': (-875.0, -660.0, -80.0, 75.0),
+        'corners': {
+            'c1': {'p': (-848.0, 18.0), 'wedge': (219.3, 381.3)},
+            'c2': {'p': (-743.0, 59.0), 'wedge': (201.3, 347.1)},
+            'c3': {'p': (-695.0, 48.0), 'wedge': (167.1, 360.0)},
+        },
+        'floor_y': lambda x, z: 75.0,
+        'disable_enemy_contact': True,
+    },
     # Toad Town Tunnels, Rip Cheato's room: get past the bombable wall at x = -250 (|z| < 50)
     'tik15': {
         'collision': 'tik15_collision.json',
@@ -54,10 +75,25 @@ ROOMS = {
     },
 }
 
+FRONT_WALL = [(-870.0, 0.0), (-848.0, 18.0), (-743.0, 59.0), (-695.0, 48.0)]
+
+
+def _past_front_wall(x, z):
+    """in front of (larger z than) the nok_14 top-level front wall polyline, between its ends, by more than 1 unit"""
+    if not (FRONT_WALL[0][0] < x < FRONT_WALL[-1][0]):
+        return False
+    for (x0, z0), (x1, z1) in zip(FRONT_WALL, FRONT_WALL[1:]):
+        if x0 <= x <= x1:
+            return z > z0 + (z1 - z0) * (x - x0) / (x1 - x0) + 1.0
+    return False
+
+
 NAME = os.environ.get('ROOM', 'nok14')
 ROOM = ROOMS[NAME]
 
 
 def in_goal(x, z):
+    if 'goal_fn' in ROOM:
+        return ROOM['goal_fn'](x, z)
     x0, x1, z0, z1 = ROOM['goal_box']
     return x0 < x < x1 and z0 < z < z1

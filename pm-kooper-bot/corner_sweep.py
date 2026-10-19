@@ -182,6 +182,9 @@ def main():
         if mode != 4:
             print('skip', name, 'not in world mode', flush=True)
             continue
+        if in_goal(pos[0], pos[2]):
+            print('skip', name, 'starts past the wall already', flush=True)
+            continue
         if name in done_names:
             continue
         step = 1 if kind == 'settle' else ACT_STEP
