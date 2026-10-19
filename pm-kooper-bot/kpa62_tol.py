@@ -1,7 +1,7 @@
 """kpa_62 remount clip: tolerance of the dismount spot. Mario is placed (RAM) at (x, 60, z) on the y-60 platform, mounts
 Laki, rides idle 40 frames, dismounts (B = frame 0), holds notch D from frame 1 and presses C-down on frame T.
 Prints a map of which start spots clip for each T.
-usage: kpa62_tol.py STATE CX CZ HALF STEP D [T...]"""
+usage: kpa62_tol.py STATE CX CZ HALF STEP D [T...]   env: ZHALF, ZSTEP (separate z range)"""
 import os, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
 from emu import Emu
@@ -14,13 +14,18 @@ e = Emu(os.environ['PM_ROM'], '/dev/shm/pmbot/ktol%d' % os.getpid())
 tmp = '/dev/shm/pmbot/ktol%d' % os.getpid()
 e.load(st0); e.step(0, 0, 0, 2); e.save(tmp + '.base')
 n = int(round(2 * HALF / STEP)) + 1
-zs = [CZ - HALF + i * STEP for i in range(n)]; xs = [CX - HALF + i * STEP for i in range(n)]
+ZH, ZS = float(os.environ.get('ZHALF', HALF)), float(os.environ.get('ZSTEP', STEP))
+zs = [CZ - ZH + i * ZS for i in range(int(round(2 * ZH / ZS)) + 1)]; xs = [CX - HALF + i * STEP for i in range(n)]
 rows = {}
 for z in zs:
     for x in xs:
         e.load(tmp + '.base')
         e.wf32(PLAYER + PS_POS, x); e.wf32(PLAYER + PS_POS + 4, 60.0); e.wf32(PLAYER + PS_POS + 8, z)
-        for i in range(60): e.step(0, 0, 0, 2)          # let Laki catch up, as in a real run
+        idle = 0                                         # let Laki catch up and settle, as in a real run
+        for i in range(900):
+            e.step(0, 0, 0, 2)
+            idle = idle + 1 if [q for q in npcs(e) if q['id'] == -4][0]['speed'] == 0 else 0
+            if idle >= 10: break
         p = player(e)
         if abs(p['x'] - x) > .05 or abs(p['z'] - z) > .05 or abs(p['y'] - 60) > .5: rows[(x, z)] = '#'; continue
         e.step(0x400, 0, 0, 2)

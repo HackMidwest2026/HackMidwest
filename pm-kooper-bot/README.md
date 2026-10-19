@@ -1110,3 +1110,59 @@ is written to the cleared history, and Laki flies to him.
   toward its corner at about 0.18 units per frame. That runs straight through the x band (test: from (−395, 0) he
   reaches (−379.55, −0.24) after 60 frames). It fixes the position part, but Laki's speed still has to be right on
   frame 34.
+
+### Correction: Laki was stuck in the tower in the searches above
+
+The searches above teleported Mario onto the platform from the room-entry savestate. Laki then flew from the entry
+(x 276), hit the tower and stayed in follow state 1 with moveSpeed ≈ 29 at (−377, 102, −88), forever. That never
+happens in a real run, so the "no RTA setup" results above are not valid. `kpa62_place.py` now moves Laki with Mario,
+fills the move history with Laki's position and resets the follow state. Laki then settles beside Mario (state 5,
+speed 0), like after following him there.
+
+### The line (matches the in-game position near Deep Focus)
+
+**Screen to world.** In this room's camera:
+- screen up-right / down-left = world ∓z;
+- holding down = world (+x, +z);
+- the down-left notch = pure +z;
+- the up-left notch = pure −x;
+- the down-right notch = pure +x.
+
+**Results with Laki settled** (`kpa62_line.py`). The sequence is mount, ride idle (20–80 frames all work), B, hold
+down, C-down on frame 34 after the B. Mario's standing spot before mounting must be on a north–south line:
+
+| z | working x | width |
+|---|---|---|
+| −60 | −440.68 … −440.52 | 0.16 |
+| −50 | −440.78 … −440.58 | 0.20 |
+| −40 | −440.80 … −440.58 | 0.22 |
+
+- Nothing works for z < −60 or z > −40.
+- A second, thinner line at x ≈ −445.1 works with C-down on frame 35.
+- The C-down frame is exact: 33 and 35 fail on the main line.
+
+### RTA setup (chain A, `kpa62_chain.py`)
+
+**Steps:**
+1. On the y-60 platform north of the line (tested from (−440, −85)), hold the **down-right notch** (world +x) into the
+   tower's west face. Mario stops against it and creeps along it toward +z, by 0.095 z and 0.0045 x per frame.
+   Release when he is between z −78.2 and −74.9: from the test start, any push of **74–108 frames** works (about
+   35 frames of slack). Holding longer takes him round the corner of the tower, where x changes fast.
+2. Hold the **up-left notch** (world −x) for exactly **3 frames**. Each frame is 4.547 units, and Mario ends at
+   x ≈ −440.79 … −440.65.
+3. Hold the **down-left notch** (world +z) for **6–7 frames**, so Mario stands at z ≈ −50 … −45.
+4. Let Laki settle (15–100 frames all work). Press C-down and ride (20–80 frames all work).
+5. Press B, hold down, and press C-down **exactly 34 frames after the B**. Mario lands in the tower.
+
+**Sensitivity** (`kpa62_chain_sens.py`):
+- **The down-left walk** in step 3 must be an exact 45° diagonal. Raw (−57, −57), (−60, −60) and (−70, −70) work, but
+  (−57, −58) or (−58, −57) moves x by 0.2 and fails.
+- **The up-left tap** in step 2 only shifts z when slightly off-angle, which doesn't matter.
+- **The timings:** the 3-frame tap and the frame-34 C-down are exact.
+
+### Chain B (`kpa62_chain_b.py`)
+
+1. Push the **up-left notch** into the raised platform's (c21) east face near z −58.
+2. Run 9 frames on the **down-right notch**.
+
+This avoids the diagonal walk, but only N = 8 push frames worked, because the line is thinnest near z −60.
