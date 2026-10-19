@@ -1200,3 +1200,9 @@ A full-tilt cardinal moves Mario 3.215 units per axis per frame, with no acceler
 last move onto it always needs an exact frame count. `kpa62_card_grid.py` checked every two-segment cardinal program
 (1–40 frames each) from both corners, and `kpa62_card3.py` checked three-move programs with walks, spins, jumps and
 wall holds. Every other setup they found clips on only one frame count for each of its moves.
+
+**Video:** `kpa62_cardinal_setup.mp4` (`record_kpa62_setup.py` + `make_kpa62_video.py`).
+- **Run:** a full run of the setup: up 120, right 30, left 12, down 12, mount, ride 40, B, hold down, C-down on frame
+  34. Mario lands inside the tower wall at y 60 and then drops to y ≈ 10 inside it.
+- **Overlay:** the current input and frame count, plus a top-down map with the tower and the clip line.
+- **Speed:** the long holds and waits play at 3x; the clip is replayed at 1/3 speed.
