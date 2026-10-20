@@ -1257,3 +1257,37 @@ toward the camera, then the dismount, always toward −x/−z. It's repeatable a
 frames and waits of 25 or 40 gave the same step; a 10-frame wait didn't). But the line is not that step away from any
 wall-pinned spot. From route A's left-pin spot the line is +38.6 units along +x/+z, the opposite direction to the
 cycle step.
+
+### Forgiving ledge jumps, and riding Laki at walking speed (half tilt; full tilt on Laki is banned)
+
+**Forgiving jumps** (`kpa62_landings.py`). These start from the pinned ledge spot, and the landing doesn't change
+across a range of inputs:
+
+| inputs | landing |
+|---|---|
+| spin (Z, any cardinal held 1–3 frames) + jump with A held ≥ 8, right held 0–11 frames | (−493.33, −43.67) |
+| spin (Z, **down** held 1 frame) + jump with A held ≥ 5, right held **29–45** frames (just keep holding right) | (−428.36, −90.91), the tower/castle corner |
+| spin (Z, down held 2–3 frames) + jump with right held ≥ 28 frames | about (−427.7, −89.5) |
+
+**Riding step sizes.**
+- Half-tilt riding moves 2.123 units per axis per frame. Full-tilt riding moves 4.246.
+- The first half-tilt frame from a stop turns Laki and moves him less.
+- The ride's end point depends on when you start riding: in the route below it works only if the ride starts **28–36
+  frames after the C-down**, probably because Laki is still settling after the mount.
+
+**Route C** (`kpa62_ridewalk.py`, video `kpa62_ledge_ride.mp4`):
+1. On the ledge, hold right.
+2. Spin with down held 1 frame, then jump holding right (A held 5–25 frames, right held 30–45 frames all work).
+   Mario lands at the tower corner.
+3. Walk **down exactly 7 frames**.
+4. Mount and wait 28–36 frames.
+5. Ride **half-tilt left exactly 5 frames**.
+6. Press B, hold down, and press **C-down on frame 34**.
+
+Down 6 or 8 fails, and so does a ride of 4 or 6.
+
+**Comparison.**
+- Route A has one exact count (down 12) but long holds into walls.
+- Route C is quicker but has two exact counts plus the mount timing window.
+- `kpa62_onexact.py` (forgiving jump → wall holds → 0–8 mount/dismount cycles → a single exact walk or half-tilt ride)
+  found no setup with only one exact count.

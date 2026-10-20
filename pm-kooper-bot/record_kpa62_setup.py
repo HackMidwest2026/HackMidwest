@@ -1,6 +1,7 @@
 """Record a kpa_62 cardinal-only setup run for a video. Mario is placed with Laki settled (kpa62_place), then the
 program runs: segments 'dir:frames' or 'wait:frames' (neutral), 'Z:dir:k' (spin, dir held k frames) or
-'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), then mount (C-down), ride RIDE frames, B, hold down,
+'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), 'mount[:n]' (C-down + n frames, default 40) or
+'hDIR:k' (half-tilt hold, for riding Laki at walking speed), then (unless already riding) mount (C-down), ride RIDE frames, B, hold down,
 C-down on frame T after the B, hold down 30 more, stand 40. SHOT=1 screenshots every frame (Xvfb :99 + video plugin).
 Writes OUT/log.json with per-frame tag, input, Mario/Laki state.
 env START=x,z[,y] (default -480,-100,60)
@@ -13,6 +14,8 @@ from corner_sweep import stick_for
 from kpa62_place import place
 from kpa62_tower import inside_tower
 CARD = {'right': stick_for(0, 80), 'down': stick_for(90, 80), 'left': stick_for(180, 80), 'up': stick_for(270, 80), 'wait': (0, 0)}
+CARD.update({'h' + d: stick_for(a, 45) for d, a in (('right', 0), ('down', 90), ('left', 180), ('up', 270))})
+riding = False
 st0, OUT, PROG = sys.argv[1], sys.argv[2], sys.argv[3]
 T = int(sys.argv[4]) if len(sys.argv) > 4 else 34; RIDE = int(sys.argv[5]) if len(sys.argv) > 5 else 40
 os.makedirs(OUT, exist_ok=True)
@@ -29,6 +32,11 @@ _s = [float(v) for v in os.environ.get('START', '-480,-100,60').split(',')]
 e.load(st0); e.step(0, 0, 0, 2); place(e, _s[0], _s[1], y=_s[2] if len(_s) > 2 else 60.0)
 for seg in PROG.split():
     f = seg.split(':')
+    if f[0] == 'mount':
+        st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
+        for i in range(int(f[1]) if len(f) > 1 else 40): st(0, (0, 0), 'ride Laki', '')
+        riding = True
+        continue
     if f[0] == 'Z':
         k = int(f[2])
         for i in range(k): st(0x20 if i == 0 else 0, CARD[f[1]], 'spin (Z) holding %s %d frames' % (f[1].upper(), k), ('Z + ' if i == 0 else '') + '%s %d/%d' % (f[1].upper(), i + 1, k))
@@ -39,9 +47,10 @@ for seg in PROG.split():
         continue
     d, k = f[0], int(f[1])
     for i in range(k):
-        st(0, CARD[d], ('hold %s (%d frames)' % (d.upper(), k)) if d != 'wait' else 'stand', ('%s %d/%d' % (d.upper(), i + 1, k)) if d != 'wait' else '')
-st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
-for i in range(RIDE): st(0, (0, 0), 'ride Laki', '')
+        st(0, CARD[d], ('hold %s (%d frames)' % (d.upper(), k) if not d.startswith('h') else 'ride at walking speed: half-tilt %s (%d frames)' % (d[1:].upper(), k)) if d != 'wait' else ('stand' if not riding else 'ride Laki'), (('%s %d/%d' % (d.upper(), i + 1, k)) if not d.startswith('h') else ('half %s %d/%d' % (d[1:].upper(), i + 1, k))) if d != 'wait' else '')
+if not riding:
+    st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
+    for i in range(RIDE): st(0, (0, 0), 'ride Laki', '')
 st(0x40, (0, 0), 'B: dismount (frame 0)', 'B  (frame 0)')
 dn = CARD['down']
 for fr in range(1, T): st(0, dn, 'hold DOWN, count frames after B', 'DOWN  frame %d' % fr)
