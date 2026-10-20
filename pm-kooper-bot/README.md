@@ -1408,3 +1408,11 @@ and Laki's `moveToPos` is read. Out of bounds means |x| or |z| > 500, outside th
 
 A speed of 230+ means Laki ≥ about 920 units away horizontally (speed = 0.25 × distance, with Laki at or above Mario's
 height), or a stale-target speed spike like the one seen after the mac_01 out-of-bounds fall (speeds of 160–332).
+
+**Speed vs position figures** (`dgb01_speed_panels.py`):
+- `figures/dgb01_speed_panels.png`: one top-down map per Laki speed (220–390, every 10), with the spots that clip out
+  in green.
+- `figures/dgb01_speed_columns.png`: one chart per x column, z against Laki speed. Green means that spot and speed
+  clips out, grey means it stays inside, white means no floor.
+
+The widest windows are x −320 and x −310 (speed ≈ 285–400 for z −390…−110), x −350 (310–380) and x −280 (270–380).
