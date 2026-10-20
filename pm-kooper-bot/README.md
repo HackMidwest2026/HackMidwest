@@ -1596,3 +1596,42 @@ Scripts:
 - `dgb01_escape_states.py` builds the states.
 - `dgb01_escape_try.py "tokens"` runs an input sequence and reports the peak.
 - `dgb01_escape_video.py` records and captions a sequence.
+
+### Going up the broken stairs (`dgb01_stairs_explore.py`, `dgb01_stairs_corner.py`)
+
+**What the broken stairs are made of (collision).**
+- Debris slab (c44): y 234 at the back to 251 at the front, over x 37..195. A lower piece (y 234..243) runs out to x 245.
+  - Its east walls (x 187..191 and 241..245) close off the walkway under it.
+  - From the walkway the step is 24..33 units, so a plain jump gets onto it. Tubba starts standing on it.
+- Leaning plank (c45): its top surface rises from y 295 (back, x 110) to 349 (front, x -25..1).
+  - Its east side has a one-sided wall ("plank wall"). That wall cuts across the whole walkway and the slab.
+  - The plank's west side is open. Anything west of the plank wall can walk off the walkway end (x < 0) and fall to 1F.
+- Standing broken railing chunk: its top is a floor at y 326..328, z 96..132.
+- Up on 3F there are floating pieces at y 421. Even from the high end of the plank they're far out of reach.
+
+**Brute force from every reachable spot** (146 spots, 15-unit grid, on the walkway and the slab east of the plank
+wall; Tubba parked out of the way). Each spot tried:
+- 8 stick directions;
+- walk 0/3/6 frames first;
+- jump with A held;
+- tornado (second A) at 6..9 frames, or none.
+
+None of the 17,520 runs from those spots got Mario off. Every one ended on the walkway or the slab. The highest peak
+is a tornado from the slab's front edge: **y 326.1**. That is level with the chunk top (326..328). But the chunk top
+starts at z 96, Mario can't get past z 86 because of the wall, and the tornado has no sideways movement.
+
+**The sharp corner** between the plank wall and the front wall (68 degrees, Mario pins at (45.8, 250, 86)):
+- every stick angle in 2-degree steps;
+- 4 tilt amounts;
+- hold / jump / jump + tornado.
+
+All 2,160 runs failed: no clip past the plank wall and nothing below the walkway.
+
+**The PutAway snap from the slab doesn't reach the plank either.** The snap rays are fixed by the camera: one ray
+14.4 units toward -z, two at +-120 degrees. Mario (riding) stays about 14.5 units off the plank wall, and the wall
+leans about 5 units further out than the plank's top edge. So the nearest snap ray still lands about 11 units outside
+the plank top.
+
+**Result: with Ultra Boots, tornado jump, Laki (the C-down + C-right boost and the snap) and no Parakarry, there is
+no way up or over the broken stairs from the east side.** The missing piece is the same as on the walkway: sideways
+movement once Mario is above about y 300.
