@@ -1239,3 +1239,21 @@ programs):
    from there walk lengths can't reach the line.
 2. Walk **right 10, down 8, left 1** (or right 12, down 6, left 1: right + down must total 18 more than left).
 3. Mount, B, hold down, and C-down on frame 34.
+
+### Trying to remove the exact walk (no spins, cardinals only)
+
+All of the following found nothing better than route A:
+
+| script | what it tried | result |
+|---|---|---|
+| `kpa62_wallpin.py` | 532 wall-pinned standing spots × 4 directions held after the B × C-down frames 28–45 | 0 clips |
+| `kpa62_ridepin.py` | 385 spots reached by riding Laki into walls (Laki's larger radius pins him differently) | 0 clips |
+| `kpa62_shorttap.py` | wall-pinned spots + one or two 1–4 frame taps | only from a 10-frame hold that hadn't reached a wall yet (not repeatable) |
+| `kpa62_ledgejump.py` | 29,120 single jumps from the pinned ledge spot (full or short, one or two cardinal directions in the air) | 6 landings near the line, none on it |
+| `kpa62_cycles.py` | wall-pinned spots + 1–25 mount/dismount cycles | 0 spots on the line |
+
+**Mount/dismount cycles.** Each full cycle moves Mario by exactly (−2.729, −2.725): the ride offset of 2 units
+toward the camera, then the dismount, always toward −x/−z. It's repeatable and needs no timing (rides of 20 or 40
+frames and waits of 25 or 40 gave the same step; a 10-frame wait didn't). But the line is not that step away from any
+wall-pinned spot. From route A's left-pin spot the line is +38.6 units along +x/+z, the opposite direction to the
+cycle step.
