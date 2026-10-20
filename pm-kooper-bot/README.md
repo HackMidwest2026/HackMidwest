@@ -1416,3 +1416,32 @@ height), or a stale-target speed spike like the one seen after the mac_01 out-of
   clips out, grey means it stays inside, white means no floor.
 
 The widest windows are x −320 and x −310 (speed ≈ 285–400 for z −390…−110), x −350 (310–380) and x −280 (270–380).
+
+### dgb_01 with the floor intact (the normal layout): the clip speeds change completely
+
+**State:** `GB_SET=0x0=0xF0` (story −16, after Tubba's defeat) → `states/dgb01_e0_intact.st`.
+- The room script restores the intact bridges (c38, c39).
+- It turns off all the smashed pieces, including the ground debris c46 (x −298…−164, z −480…−57), c48 and c49 near
+  the west door.
+- Sentinels are inert, and Tubba is not present with entry 0.
+- Collision: `data/dgb01_intact_collision.json`.
+
+The north-west clip zone of the smashed room came entirely from that debris. With the floor clean:
+- **Target map** (`dgb01_mount_map.py`, 20-unit grid, speeds 10–400, 76,960 mounts): no target past ±500.
+  `dgb01_floorcheck.py` re-checks targets against the real floor triangles (the room is an octagon) and flags 25 spots,
+  almost all next to the south-west diagonal wall.
+- **Full-mount map** (`dgb01_full_map.py`, 10-unit grid over x −340…−40, z 340…490, speeds 10–400): 80 spots
+  really clip (Mario falls to y −251).
+
+| spot | speeds that clip |
+|---|---|
+| (−280, 430), (−270, 430) — where the south-west diagonal wall meets the south wall, west of the south door | every speed from 160 to 400 |
+| (−260, 440), (−250, 440) | 215–400 |
+| (−230, 450) | 270–400 |
+| x −210 … −70, near the south wall | narrow bands between 330 and 400 |
+
+Nothing clips below 160 (`dfm2`, speeds 10–155). Figures:
+- `figures/dgb01_intact_speed_panels.png`: one map per speed over the whole room.
+- `figures/dgb01_intact_speed_columns.png`: z vs speed for each x column in the south-west corner.
+
+Data: `data/dgb01_intact_maps.jsonl.gz`.

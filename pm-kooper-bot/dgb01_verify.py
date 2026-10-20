@@ -20,5 +20,5 @@ for spec in sys.argv[2:]:
     t = (e.f32(a + 0x60), e.f32(a + 0x68))
     for i in range(40): e.step(0, 0, 0, 2)
     p = player(e)
-    out = abs(p['x']) > 500 or abs(p['z']) > 500
+    out = abs(p['x']) > 500 or abs(p['z']) > 500 or p['y'] < -30
     print('spot (%g, %g) S %g: target (%.0f, %.0f) -> Mario (%.1f, %.1f, %.1f) %s' % (x, z, S, t[0], t[1], p['x'], p['y'], p['z'], 'OUT OF BOUNDS' if out else 'inside'), flush=True)
