@@ -1523,3 +1523,76 @@ keeps Laki pressed against the north railing (z −60) while he slides along it 
 **No clip.** Playing out the 12 fastest remounts on each floor, every one ends back on the same bridge near
 (−470, z 54), with the mount target inside the bridge. At the west end, the north railing stops the −z slide and the
 other slides cancel, so the target barely moves even at 245.
+
+## Tubba escape: climbing out over the broken 2F bridge without Parakarry (not found yet)
+
+**The route, from the decomp.** Mario walks left on 3F (story `TUBBA_WOKE_UP`, -29). At x < 100 the smash cutscene
+starts (`EVS_Scene_TubbaSmashBridges`). Tubba talks, smashes the bridges and Mario lands on 2F. Story becomes
+`TUBBA_SMASHED_THE_BRIDGES` (-28) and Tubba's map byte becomes 1. Mario is walked out of the 2F east door into dgb_08 2F
+(entry 1). "Going back left" is the dgb_08 door that leads back into dgb_01 2F east (entry 4). Because the map byte is 1,
+Tubba is spawned on the broken bridge at (137, 244, 35) and runs at Mario (touching him sends Mario back to dgb_08).
+1F has no Tubba from this entry. So escaping means getting over a railing and dropping to 1F, then leaving through the
+south door (dgb_00).
+
+`dgb01_escape_states.py` plays all of this for real from `states/dgb01_e6_woke.st`. It saves `states/dgb08_e1_kicked.st`
+and `states/dgb01_e4_ctrl.st` (first controllable frame, Mario at (445, 210, 0)). Note: writing Tubba's map byte
+directly before loading entry 4 hangs the room load, so the states must come from the real cutscene.
+
+**Geometry of the 2F walkway (smashed collision).**
+- Walkway floor: y 210, x 0..500, z -74..74.
+- Back railing: z -99..-74, x 0..450, solid from y 210 to 285.
+- Front railing: z 74..99, x 238..500, also 210 to 285.
+- From x 0 to 238 the front side is a broken railing piece standing up to y 328.
+- A leaning plank (c45) crosses the west end of the walkway. Tubba's debris slab (c44, y 234..251) is under it.
+- The railing tops are 75 above the walkway. Over either railing there is only air down to the 1F floor.
+
+**Heights measured (Ultra Boots, Goombario/Kooper/Bombette/Laki).** All from `dgb01_escape_try.py`.
+
+| move | peak y |
+|---|---|
+| jump | 248.0 |
+| tornado jump (second A, best timing 2 frames after the apex) | **285.96** |
+| Laki mount arc | 237.0 |
+| riding Laki | 221 |
+| C-down dismount hop | 240.4 |
+| switch partner while riding (normal hop, then switch) | 239.7 |
+| **C-DOWN + C-RIGHT on the same frame while riding, then pick a partner** | **254.4** |
+
+- The tornado jump just clears the railing top, but it sets Mario's speed to 0, so he only goes straight up.
+- C-down in the air does nothing: `check_input_use_partner` needs the idle, walk or run action. So Laki can't be
+  mounted mid-air.
+- The partner menu can only open while idle, walking, running or riding. It does not open during a jump, a fall or
+  the mount.
+
+**Why C-down + C-right is a boost.**
+1. C-down starts Laki's dismount hop.
+2. C-right opens the partner menu in the same frame, which freezes Mario a few frames into the hop (y ~236).
+3. Picking a new partner runs Laki's `PutAway`. That starts a second dismount hop from the frozen height:
+   `jumpVel = 6 (+ (moveToPos.y - laki.y)/14 if the target is higher)`, about +18.
+4. The menu can't be opened again inside that hop, so it only stacks once.
+
+**The railing snap.** `PutAway` decides where Mario lands with `npc_raycast_down_around`. That casts 3 rays from
+Mario's head (y + 37) down 37 units, 14.4 units out from Mario (Laki's diameter / 2.5). If any ray finds a floor,
+Mario's y is set to that floor.
+- Ride half-tilt UP against the back railing. Riding stops at z -59.5, so the "ahead" ray lands at z ~-74, on the
+  railing top.
+- Do the C-DOWN + C-RIGHT boost there. Once the boosted hop gets above y 248, Mario is snapped to **y 285**, level
+  with the railing top (`dgb01_escape_snap.mp4`).
+- It still fails. `PutAway` then puts him in the falling action with speed 0, because mounting zeroes Mario's speed
+  and riding never sets it. His own floor rays are only about 7 units out, and the wall rays (feet + 0.1 and + 10.6)
+  only pass over the railing while he is above 285. So he drops straight back onto the walkway.
+
+**What's still missing.** Sideways movement while Mario's feet are above y 285. Parakarry provides that in the normal
+route. The sideways sources found so far all fall short:
+- jump: run speed 4, but it only gets 38 units of height;
+- tornado jump: no sideways movement at all;
+- dismount hops: drift 2/14 units per frame toward a target 2 units away;
+- riding Laki: needs a floor within 12 units, and nothing up here is high enough.
+
+Tubba also reaches Mario within roughly 100-150 frames, which limits trips onto the slab (the slab is the only floor
+higher than the walkway).
+
+Scripts:
+- `dgb01_escape_states.py` builds the states.
+- `dgb01_escape_try.py "tokens"` runs an input sequence and reports the peak.
+- `dgb01_escape_video.py` records and captions a sequence.
