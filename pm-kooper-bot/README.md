@@ -1635,3 +1635,23 @@ the plank top.
 **Result: with Ultra Boots, tornado jump, Laki (the C-down + C-right boost and the snap) and no Parakarry, there is
 no way up or over the broken stairs from the east side.** The missing piece is the same as on the walkway: sideways
 movement once Mario is above about y 300.
+
+### Laki partner-swap upwarp at every spot, including the corners (`dgb01_upwarp_scan.py`)
+
+**What each run does** (130 reachable spots on the walkway and slab, plus the two corners, Tubba parked):
+1. Mount Laki in place.
+2. Ride in each of 8 directions at half or full tilt for 4, 10 or 20 frames, or don't ride at all.
+3. Press C-DOWN + C-RIGHT on the same frame, pick Bombette.
+4. Hold none/up/down/left/right after the swap. These post-swap holds were only tried when an upwarp happened.
+
+**Results** (13,354 runs):
+- 8,730 runs upwarped.
+  - 7,965 of them were set to y 284.6, the railing tops: 7,765 on the front railing, 200 on the back one.
+  - The rest were set to lower debris ledges (241..279).
+- Highest point in any run: **y 293.9**, from riding on the slab near the plank-wall corner.
+- Every run ended on the walkway (y 210..223) or on the slab.
+  - None fell to 1F.
+  - None stayed on a railing, the plank top or the chunk top.
+- In the corner (45.8, 250, 86): 205 of 262 runs upwarped, all to 284.6, with a peak of 293.7.
+  - The plank top above that corner is at y ~335, about 30 units west of where Mario can be.
+  - So the swap rays never reach it.
