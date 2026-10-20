@@ -1445,3 +1445,24 @@ Nothing clips below 160 (`dfm2`, speeds 10–155). Figures:
 - `figures/dgb01_intact_speed_columns.png`: z vs speed for each x column in the south-west corner.
 
 Data: `data/dgb01_intact_maps.jsonl.gz`.
+
+**Why far-away geometry matters.**
+- At speed S, each of the mount's four slides (−z, +x, +z, −x) is S units long. At 160–400 a slide crosses most of the
+  room.
+- Example, Mario at (−280, 360), S 270:
+  - Smashed room: the +x slide hits the central debris pile (c47) at x ≈ −120. The last slide then ends past the
+    south-west diagonal wall at (−372, 380), and Mario clips.
+  - Intact room: all four slides run their full length and cancel, so the target is Mario's own spot.
+- The smashed room clips in the south-west corner too (137 spots in the same full-mount test, against 80 in the intact
+  room). The first smashed map missed this because it only counted targets outside the ±500 square.
+- The two rooms disagree on about 6% of spot/speed pairs. Moving Laki's start position doesn't change that (0 of 40
+  sampled cases), so the difference comes from the slides.
+
+**Can normal play reach those speeds?** No (`dgb01_max_speed.py`, intact room).
+- Setup: dismount at 5 spots, then run or spin-dash in each cardinal direction, with the C-down on every frame 1–70.
+- The highest mount speed was **26.3**: running away and pressing C-down on frame 34, the first frame after Laki's
+  16-frame post-dismount return.
+- The clips need **≥ 160**, about 6× more, which means Laki ≈ 640 units away at Mario's height or above.
+- Nothing clips below 160 in the intact room, and nothing clips below 60 even with the debris.
+- A clip here would need a speed glitch, like the stale-target spike after an out-of-bounds fall (160–332 in mac_01).
+  That needs an out-of-bounds fall first, and this room has none on the normal floor.
