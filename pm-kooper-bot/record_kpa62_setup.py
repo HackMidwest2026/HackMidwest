@@ -6,7 +6,7 @@ attempt: mount, ride 40, B, hold down, C-down on frame T (T=99: none), let go af
 'hDIR:k' (half-tilt hold, for riding Laki at walking speed), then (unless already riding) mount (C-down), ride RIDE frames, B, hold down,
 C-down on frame T after the B, hold down 30 more, stand 40. SHOT=1 screenshots every frame (Xvfb :99 + video plugin).
 Writes OUT/log.json with per-frame tag, input, Mario/Laki state.
-env START=x,z[,y] (default -480,-100,60)
+env START=x,z[,y] (default -480,-100,60), HOLD (direction held after B, default down)
 usage: record_kpa62_setup.py STATE OUT 'up:120 wait:10 right:30 wait:20 left:12 wait:20 down:12 wait:40' [T=34] [RIDE=40]"""
 import json, os, subprocess, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
@@ -88,10 +88,10 @@ if not riding:
     st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
     for i in range(RIDE): st(0, (0, 0), 'ride Laki', '')
 st(0x40, (0, 0), 'B: dismount (frame 0)', 'B  (frame 0)')
-dn = CARD['down']
-for fr in range(1, T): st(0, dn, 'hold DOWN, count frames after B', 'DOWN  frame %d' % fr)
-st(0x400, dn, 'C-down on frame %d after B (+ DOWN)' % T, 'C-DOWN + DOWN  frame %d' % T)
-for i in range(30): st(0, dn, 'remount: Laki carries Mario into the tower', 'DOWN')
+HOLD = os.environ.get('HOLD', 'down'); dn = CARD[HOLD]
+for fr in range(1, T): st(0, dn, 'hold %s, count frames after B' % HOLD.upper(), '%s  frame %d' % (HOLD.upper(), fr))
+st(0x400, dn, 'C-down on frame %d after B (+ %s)' % (T, HOLD.upper()), 'C-DOWN + %s  frame %d' % (HOLD.upper(), T))
+for i in range(30): st(0, dn, 'remount' if HOLD != 'down' else 'remount: Laki carries Mario into the tower', HOLD.upper())
 for i in range(40): st(0, (0, 0), 'inside the tower' if log[-1]['in'] else 'end', '')
 json.dump(log, open(os.path.join(OUT, 'log.json'), 'w'))
 q = log[-1]; print(len(log), 'frames; end (%.1f %.1f %.1f) inside=%s' % (q['x'], q['y'], q['z'], q['in']))

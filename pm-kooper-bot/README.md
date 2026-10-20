@@ -1466,3 +1466,5 @@ Data: `data/dgb01_intact_maps.jsonl.gz`.
 - Nothing clips below 160 in the intact room, and nothing clips below 60 even with the debris.
 - A clip here would need a speed glitch, like the stale-target spike after an out-of-bounds fall (160–332 in mac_01).
   That needs an out-of-bounds fall first, and this room has none on the normal floor.
+
+Video of the fastest case: `dgb01_fastest_remount.mp4` (`make_speed_video.py`). Mario at the centre: mount, ride, B, run left, C-down on frame 34 after the B. Laki speed peaks at 26.3 on that frame (shown live with a graph), far below the 160 the clips need.
