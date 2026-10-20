@@ -6,7 +6,7 @@ measure the remount speed it gives.
    state stays 5 and the pointer and target are unchanged. Reports d = distance Laki -> frozen target.
 3. Release from the push end: walk at angle REL (or toward START when unset) and press C-down on frame f (1..70);
    the mount speed is Laki's moveSpeed when the mount reads it. Reports the best f and speed.
-usage: dgb01_push.py STATE START_X START_Z GOAL_X GOAL_Z [OUT.st]   env: REL (angle), MAXC (push cycles)"""
+usage: dgb01_push.py STATE START_X START_Z GOAL_X GOAL_Z [OUT.st]   env: REL (angle), MAXC (push cycles), Y (floor height, 0)"""
 import math, os, sys
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
 from emu import Emu
@@ -19,7 +19,7 @@ MAXC = int(os.environ.get('MAXC', '600'))
 e = Emu(os.environ['PM_ROM'], '/dev/shm/pmbot/dpu%d' % os.getpid())
 tmp = '/dev/shm/pmbot/dpu%d' % os.getpid()
 laki = lambda: [q for q in npcs(e) if q['id'] == -4][0]
-e.load(st0); e.step(0, 0, 0, 2); place(e, SX, SZ, y=0.0)
+e.load(st0); e.step(0, 0, 0, 2); place(e, SX, SZ, y=float(os.environ.get('Y', '0')))
 for i in range(60): e.step(0, 0, 0, 2)
 # 1. fill the history ring with small wiggles while Laki idles
 for k in range(400):
@@ -50,7 +50,7 @@ print('push end after %d cycles: Mario (%.1f, %.1f) Laki (%.1f, %.1f), d = %.1f 
 if OUT:
     e.step(0, 0, 0, 2); e.save(OUT)        # a save right after another save (or a load) fails without a frame between
 # 3. release
-e.save(tmp + '.end')
+e.step(0, 0, 0, 2); e.save(tmp + '.end')
 REL = float(os.environ['REL']) if os.environ.get('REL') else math.degrees(math.atan2(tz - p['z'], tx - p['x']))
 best = (0, None, None)
 for f in range(1, 71):

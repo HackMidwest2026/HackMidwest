@@ -1503,3 +1503,23 @@ circles in the figure), and the push can only end in the north half.
 - Smashed room: its north-west clip zone (x −380…−260) needs ≥ 230 there, slightly more than the 206 found.
 
 Video: `dgb01_push_206.mp4` (`dgb01_record_push.py` + `make_speed_video.py`). Shows the history fill at (250, 420), the 500-cycle push (4x), the release walking west, and the C-down on release frame 20: Laki speed 205.9, with Mario at (−177.9, −454.4).
+
+### Laki push on the 2nd and 3rd floors (intact bridges)
+
+**Bridges** (c38 and c39): walkways at y 210 and y 420, x −500…500, z −74…74, with railings to z ±99 and door landings
+at both ends.
+
+**Push** (`dgb01_push.py` with env `Y`): frozen target at the east end (480, 0), stop-and-go push west. The camera push
+keeps Laki pressed against the north railing (z −60) while he slides along it to the west end.
+
+| floor | push end distance | best mount speed | release | Mario at mount |
+|---|---|---|---|---|
+| 2nd (y 210) | 915.7 | **196.2** | walk 180°, C-down on frame 19 | (−487, −54) |
+| 3rd (y 420) | 923.2 | **244.5** | walk 165°, C-down on frame 19 | (−487, −46) |
+
+- On the 3rd floor, 244.5 is one standout frame; the next best releases are about 195.
+- The push west → east breaks on its first cycle: Laki isn't idle at the west end.
+
+**No clip.** Playing out the 12 fastest remounts on each floor, every one ends back on the same bridge near
+(−470, z 54), with the mount target inside the bridge. At the west end, the north railing stops the −z slide and the
+other slides cancel, so the target barely moves even at 245.
