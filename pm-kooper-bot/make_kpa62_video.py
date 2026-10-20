@@ -11,7 +11,7 @@ F = '/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf'
 font, small, big = ImageFont.truetype(F % '', 14), ImageFont.truetype(F % '', 12), ImageFont.truetype(F % '-Bold', 22)
 W, H = 1020, 430
 first = next(l['i'] for l in L if Image.open(os.path.join(d, 'f%04d.png' % l['i'])).getbbox())
-cd = [l['i'] for l in L if l['inp'].startswith('C-DOWN + DOWN')][0]
+cd = [l['i'] for l in L if l['inp'].startswith('C-DOWN + DOWN')][-1]   # the final (successful) attempt
 def P(x, z): return (607 + (x + 535) * 1.9, 40 + (z + 140) * 1.85)
 def frame(l, trail, tag2=''):
     im = Image.new('RGB', (W, H), (20, 20, 20))
@@ -19,6 +19,7 @@ def frame(l, trail, tag2=''):
     im.paste(g, (0, 0)); dr = ImageDraw.Draw(im)
     if title: dr.text((6, 4), title, fill=(255, 220, 120), font=small, stroke_width=2, stroke_fill=(0, 0, 0))
     if l['inp']: dr.text((10, 300), l['inp'], fill=(255, 255, 120), font=big, stroke_width=3, stroke_fill=(0, 0, 0))
+    if l['tag'].startswith('MISTAKE') or l['tag'].startswith('RECOVER'): dr.text((10, 270), l['tag'].split(':')[0], fill=(255, 90, 90) if l['tag'].startswith('MISTAKE') else (120, 230, 120), font=big, stroke_width=3, stroke_fill=(0, 0, 0))
     dr.text((10, 334), 'Mario (%.2f, %.1f, %.2f)   Laki speed %.2f' % (l['x'], l['y'], l['z'], l['ls']), fill=(255, 255, 255), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
     if tag2: dr.text((10, 22), tag2, fill=(255, 150, 150), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
     dr.rectangle((600, 22, 1014, 380), fill=(250, 250, 248), outline=(120, 120, 120))

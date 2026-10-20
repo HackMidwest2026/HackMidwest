@@ -1320,3 +1320,22 @@ holding up; then redo steps 3–8.
 | C-down on frame 30 | Mario falls off the platform | the recovery fails |
 
 Holding up into the corner resets Mario's position from anywhere on the y-60 platform.
+
+**Backups video:** `kpa62_routeA_backups.mp4`. It shows four mistakes, each followed by the recovery and a clip:
+1. C-down one frame late (frame 35).
+2. No C-down at all.
+3. Run down 13 instead of 12.
+4. Left 14 instead of 11–12.
+
+After a late C-down, or after a bad run or left count, the mount carries Mario off the edge riding Laki. Pressing B
+there drops him, and the game puts him back on the y-50 ledge. He then jumps back up holding up and redoes the chain.
+The emulator recordings show no lava hit, but the fall and respawn cost a few seconds.
+
+**Clipping straight from a corner** (`kpa62_corner_clip.py`) doesn't work. None of these spots clips:
+- the up-corner;
+- the up-corner + right;
+- the left-pin spot;
+- the tower corner reached by the spin-jump.
+
+Each was tried with a direct mount holding any cardinal, and with mount → B → hold any cardinal → C-down on frames
+20–50. The corners aren't on the clip line (x ≈ −440.7, z −60…−40), so the run down is still needed.

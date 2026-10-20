@@ -1,6 +1,8 @@
 """Record a kpa_62 cardinal-only setup run for a video. Mario is placed with Laki settled (kpa62_place), then the
 program runs: segments 'dir:frames' or 'wait:frames' (neutral), 'Z:dir:k' (spin, dir held k frames) or
-'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), 'mount[:n]' (C-down + n frames, default 40) or
+'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), 'mount[:n]' (C-down + n frames, default 40), 'try:T[:label]' (a missed
+attempt: mount, ride 40, B, hold down, C-down on frame T (T=99: none), let go after the moment passes),
+'recover' (B if riding; if Mario is on the y-50 ledge, jump back up holding up), or
 'hDIR:k' (half-tilt hold, for riding Laki at walking speed), then (unless already riding) mount (C-down), ride RIDE frames, B, hold down,
 C-down on frame T after the B, hold down 30 more, stand 40. SHOT=1 screenshots every frame (Xvfb :99 + video plugin).
 Writes OUT/log.json with per-frame tag, input, Mario/Laki state.
@@ -32,6 +34,25 @@ _s = [float(v) for v in os.environ.get('START', '-480,-100,60').split(',')]
 e.load(st0); e.step(0, 0, 0, 2); place(e, _s[0], _s[1], y=_s[2] if len(_s) > 2 else 60.0)
 for seg in PROG.split():
     f = seg.split(':')
+    if f[0] == 'try':
+        TT = int(f[1]); what = ('C-down on frame %d (should be 34)' % TT) if TT < 99 else 'no C-down'
+        if len(f) > 2: what = f[2].replace('_', ' ')
+        st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
+        for i in range(40): st(0, (0, 0), 'ride Laki', '')
+        st(0x40, (0, 0), 'B: dismount (frame 0)', 'B  (frame 0)')
+        for fr in range(1, 46):
+            held = CARD['down'] if fr <= max(34, min(TT, 36)) else (0, 0)
+            st(0x400 if fr == TT else 0, held, 'MISTAKE: ' + what, ('C-DOWN  frame %d' % fr) if fr == TT else ('DOWN  frame %d' % fr if held != (0, 0) else ''))
+        for i in range(45): st(0, CARD['down'] if TT <= 36 else (0, 0), 'MISTAKE: ' + what + ' - no clip', '')
+        continue
+    if f[0] == 'recover':
+        if player(e)['action'] == 33:
+            st(0x40, (0, 0), 'RECOVER: B to get off Laki', 'B')
+            for i in range(40): st(0, (0, 0), 'RECOVER: B to get off Laki', '')
+        if player(e)['y'] < 58:
+            for i in range(50): st(0x80 if i < 25 else 0, CARD['up'], 'RECOVER: jump back up holding UP', 'A + UP' if i < 25 else 'UP')
+            for i in range(15): st(0, (0, 0), 'stand', '')
+        continue
     if f[0] == 'mount':
         st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
         for i in range(int(f[1]) if len(f) > 1 else 40): st(0, (0, 0), 'ride Laki', '')
