@@ -1370,3 +1370,41 @@ This clips from 13 of 13 spots.
 
 **Direct "hole in one" rides** from the miss spot to the riding target (`kpa62_miss_backup.py`) exist from only 2 of
 the 13 spots, each with different exact counts. Riding straight from the corner point to the target found none.
+
+## Tubba's Castle main hall (dgb_01): Laki speed needed to clip out, at every spot
+
+**State:** `make_state_pra.py` with `PRA_MAP=dgb_01 PRA_AREA=15 PRA_ENTRY=0 GB_SET=0x0=0xE4`.
+- Story progress −28 (`STORY_CH3_TUBBA_SMASHED_THE_BRIDGES`) gives the smashed-bridge layout, which lasts until
+  Tubba's defeat (−16). After that the room script restores the intact bridges.
+- The Sentinels are inert from `STORY_CH3_TUBBA_WOKE_UP` on.
+- Tubba only appears for entries 2, 4 and 6.
+- With entry 0, Laki is the only NPC.
+
+**Collision:** `dump_collision_dgb01.py` → `data/dgb01_collision.json`.
+- The ground floor is an octagon about 1,000 units wide (±500) at y 0, with door alcoves to the west, east and south.
+- The bridge remains are at y 210 and 420.
+
+**Map** (`dgb01_mount_map.py`). For each spot, Mario is placed there, Laki's `moveSpeed` is forced to S at the mount,
+and Laki's `moveToPos` is read. Out of bounds means |x| or |z| > 500, outside the door alcoves.
+
+| pass | grid | speeds | mounts | out of bounds |
+|---|---|---|---|---|
+| full ground floor | 10 units, 7,299 standable spots | 4–60 | 211,671 | 0 |
+| full ground floor | 20 units | 60–400 | 62,930 | 1,013 |
+| north-west region | 10 units | 150–400 | 54,876 | 7,775 |
+
+- Every hit is in the north-west quarter, between the west door alcove and the staircase (x ≈ −380…−260,
+  z ≈ −440…80), and exits toward −x.
+- The smallest speed that clips is about 230. Spots at x ≈ −320 clip for every speed from 285 to 400.
+- Most spots have speed bands rather than "anything above a threshold".
+- Figure: `figures/dgb01_clip_speed_map.png` (colour = smallest clipping speed, grey = standable but no tested speed
+  clips). Data: `data/dgb01_mount_map.jsonl.gz`.
+
+**Full-mount check** (`dgb01_verify.py`):
+- (−320, −300) at speed 250 and 300: Mario ends at x −739 and −794, y −251 (fell out of the level).
+- (−270, −350) at speed 250 and 300: x −739 and −839, out of bounds.
+- (−320, −200) at speed 350: x −894, out of bounds.
+- Spots and speeds that the map says don't clip stay inside.
+
+A speed of 230+ means Laki ≥ about 920 units away horizontally (speed = 0.25 × distance, with Laki at or above Mario's
+height), or a stale-target speed spike like the one seen after the mac_01 out-of-bounds fall (speeds of 160–332).
