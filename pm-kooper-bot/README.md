@@ -1279,15 +1279,44 @@ across a range of inputs:
 1. On the ledge, hold right.
 2. Spin with down held 1 frame, then jump holding right (A held 5–25 frames, right held 30–45 frames all work).
    Mario lands at the tower corner.
-3. Walk **down exactly 7 frames**.
+3. Run **down exactly 7 frames** (full tilt on foot).
 4. Mount and wait 28–36 frames.
 5. Ride **half-tilt left exactly 5 frames**.
 6. Press B, hold down, and press **C-down on frame 34**.
 
-Down 6 or 8 fails, and so does a ride of 4 or 6.
+Running down 6 or 8 fails, and so does a ride of 4 or 6.
 
 **Comparison.**
 - Route A has one exact count (down 12) but long holds into walls.
 - Route C is quicker but has two exact counts plus the mount timing window.
 - `kpa62_onexact.py` (forgiving jump → wall holds → 0–8 mount/dismount cycles → a single exact walk or half-tilt ride)
   found no setup with only one exact count.
+
+### Recommended: route A, with its windows and backups
+
+Step image: `figures/kpa62_route_a_steps.png`. Video: `kpa62_ledge_routeA.mp4`.
+
+| step | input | window |
+|---|---|---|
+| 1 | on the y-35 ledge, hold right | any length |
+| 2 | full jump, keep holding right | right held ≥ 17 frames; A held 8–25 |
+| 3 | hold up into the north-west corner | ≥ 60 frames |
+| 4 | hold right | 3–60 frames (same spot) |
+| 5 | hold left | 11–12 frames (the raised platform's face pins x) |
+| 6 | run down | **exactly 12 frames** |
+| 7 | mount, ride, B | any timing (ride 20–80 frames) |
+| 8 | hold down, C-down | **frame 34** after the B |
+
+**Backups** (`kpa62_backup.py`). The recovery is: press B if riding; if Mario is on the y-50 ledge, jump back up
+holding up; then redo steps 3–8.
+
+| mistake | first try | after recovery |
+|---|---|---|
+| C-down on frame 33 or 35 | miss | clips |
+| C-down on frame 40 | miss | clips |
+| no C-down at all | miss | clips |
+| run down 11 or 13 | miss | clips |
+| left 10 or 14 | miss | clips |
+| C-down on frame 30 | Mario falls off the platform | the recovery fails |
+
+Holding up into the corner resets Mario's position from anywhere on the y-60 platform.
