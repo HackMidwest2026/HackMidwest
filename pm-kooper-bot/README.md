@@ -1339,3 +1339,34 @@ The emulator recordings show no lava hit, but the fall and respawn cost a few se
 
 Each was tried with a direct mount holding any cardinal, and with mount → B → hold any cardinal → C-down on frames
 20–50. The corners aren't on the clip line (x ≈ −440.7, z −60…−40), so the run down is still needed.
+
+### Lava must be on: use entry 2
+
+The room script runs `EVS_DisableLavaCollision` on entries 0, 1 and 3. It sets collider flags on o1710, o1508 (the lava
+floor under the platforms, x −660…−100) and o1705, so with those entries a fall drops into the void. Only
+**entry 2** keeps the lava, and `states/kpa62_e2.st` is the state to use. Results with lava on:
+- Route A, route C and the clip line are unchanged.
+- Misses that carry Laki out over the lava leave him at lava level (y ≈ −35), too low to ride back up.
+
+### Universal backup after a missed remount (`kpa62_universal_backup.py`, video `kpa62_universal_backup.mp4`)
+
+`kpa62_miss_spots.py` tried 17 mistakes with lava on and hands off after the C-down:
+
+| mistake | where Mario ends up |
+|---|---|
+| C-down on frames 32–38 | still riding Laki at y 61.7 over the y-50 ledge next to the tower |
+| run down 10, 11, 13 or 14 | same |
+| left 10, 13 or 14 | same |
+| C-down on frame 31 | standing on the y-50 ledge |
+| C-down on frame 40, or no C-down while holding down | walks into the lava and is reset to x 386, far away |
+
+**Backup from all 13 riding spots:**
+1. Stay on Laki and ride at half tilt **up, right, up**, holding each for ≥ 45 frames. Holds of 45–150 frames, or
+   up 60 / right 20 / up 60, all end at (−472.4, −120.5) from every spot (`kpa62_ride_converge.py`).
+2. Press B.
+3. Do route A's tail: hold up, right, left 11–12, run down 12, mount, B, hold down, C-down on frame 34.
+
+This clips from 13 of 13 spots.
+
+**Direct "hole in one" rides** from the miss spot to the riding target (`kpa62_miss_backup.py`) exist from only 2 of
+the 13 spots, each with different exact counts. Riding straight from the corner point to the target found none.

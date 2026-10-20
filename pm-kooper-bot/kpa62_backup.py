@@ -1,4 +1,4 @@
-"""kpa_62 route A backups: run route A from the ledge with a deliberate mistake, then the recovery (dismount if riding, jump back up holding UP if Mario is on the y-50 ledge,
+"""kpa_62 route A backups: run route A from the ledge with a deliberate mistake, then the recovery (if riding: ride back half-tilt UP until over the platforms, then B; jump back up holding UP if Mario is on the y-50 ledge,
 hold UP into the north-west corner, RIGHT, LEFT 12, run DOWN 12, mount, B, hold down, C-down on frame 34). Reports where
 the mistake leaves Mario and whether the recovery clips.
 usage: kpa62_backup.py STATE"""
@@ -37,7 +37,11 @@ def attempt(T=34):
     return ins
 def recover():
     p = player(e)
-    if p['action'] == 33:                                                    # still riding: dismount
+    if p['action'] == 33:                                                    # still riding
+        for i in range(300):                                                 # over the lava: ride back (half-tilt UP)
+            if player(e)['y'] > 58: break                                    # until above the y-50 ledge / y-60 platform
+            e.step(0, *stick_for(270, 45), 2)
+        for i in range(10): e.step(0, 0, 0, 2)
         e.step(0x40, 0, 0, 2)
         for i in range(40): e.step(0, 0, 0, 2)
     p = player(e)

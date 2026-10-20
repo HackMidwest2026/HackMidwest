@@ -2,7 +2,7 @@
 program runs: segments 'dir:frames' or 'wait:frames' (neutral), 'Z:dir:k' (spin, dir held k frames) or
 'A:dir:a:d' (jump: A held a frames, dir held d frames, 45 frames total), 'mount[:n]' (C-down + n frames, default 40), 'try:T[:label]' (a missed
 attempt: mount, ride 40, B, hold down, C-down on frame T (T=99: none), let go after the moment passes),
-'recover' (B if riding; if Mario is on the y-50 ledge, jump back up holding up), or
+'miss:T' (a missed C-down on frame T, then hands off), 'B' (dismount), 'recover' (B if riding; if Mario is on the y-50 ledge, jump back up holding up), or
 'hDIR:k' (half-tilt hold, for riding Laki at walking speed), then (unless already riding) mount (C-down), ride RIDE frames, B, hold down,
 C-down on frame T after the B, hold down 30 more, stand 40. SHOT=1 screenshots every frame (Xvfb :99 + video plugin).
 Writes OUT/log.json with per-frame tag, input, Mario/Laki state.
@@ -45,6 +45,21 @@ for seg in PROG.split():
             st(0x400 if fr == TT else 0, held, 'MISTAKE: ' + what, ('C-DOWN  frame %d' % fr) if fr == TT else ('DOWN  frame %d' % fr if held != (0, 0) else ''))
         for i in range(45): st(0, CARD['down'] if TT <= 36 else (0, 0), 'MISTAKE: ' + what + ' - no clip', '')
         continue
+    if f[0] == 'miss':
+        TT = int(f[1])
+        st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
+        for i in range(40): st(0, (0, 0), 'ride Laki', '')
+        st(0x40, (0, 0), 'B: dismount (frame 0)', 'B  (frame 0)')
+        for fr in range(1, TT): st(0, CARD['down'], 'MISTAKE: C-down on frame %d (should be 34)' % TT, 'DOWN  frame %d' % fr)
+        st(0x400, CARD['down'], 'MISTAKE: C-down on frame %d (should be 34)' % TT, 'C-DOWN + DOWN  frame %d' % TT)
+        for i in range(120): st(0, (0, 0), 'MISTAKE: hands off, Mario is still riding Laki', '')
+        riding = True
+        continue
+    if f[0] == 'B':
+        st(0x40, (0, 0), 'BACKUP: B to get off Laki in the corner', 'B')
+        for i in range(40): st(0, (0, 0), 'stand', '')
+        riding = False
+        continue
     if f[0] == 'recover':
         if player(e)['action'] == 33:
             st(0x40, (0, 0), 'RECOVER: B to get off Laki', 'B')
@@ -68,7 +83,7 @@ for seg in PROG.split():
         continue
     d, k = f[0], int(f[1])
     for i in range(k):
-        st(0, CARD[d], ('hold %s (%d frames)' % (d.upper(), k) if not d.startswith('h') else 'ride at walking speed: half-tilt %s (%d frames)' % (d[1:].upper(), k)) if d != 'wait' else ('stand' if not riding else 'ride Laki'), (('%s %d/%d' % (d.upper(), i + 1, k)) if not d.startswith('h') else ('half %s %d/%d' % (d[1:].upper(), i + 1, k))) if d != 'wait' else '')
+        st(0, CARD[d], ('hold %s (%d frames)' % (d.upper(), k) if not d.startswith('h') else ('BACKUP: ' if riding else '') + 'ride at walking speed: half-tilt %s (%d frames)' % (d[1:].upper(), k)) if d != 'wait' else ('stand' if not riding else 'ride Laki'), (('%s %d/%d' % (d.upper(), i + 1, k)) if not d.startswith('h') else ('half %s %d/%d' % (d[1:].upper(), i + 1, k))) if d != 'wait' else '')
 if not riding:
     st(0x400, (0, 0), 'C-down: mount Laki', 'C-DOWN')
     for i in range(RIDE): st(0, (0, 0), 'ride Laki', '')
