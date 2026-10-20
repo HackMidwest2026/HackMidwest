@@ -1468,3 +1468,36 @@ Data: `data/dgb01_intact_maps.jsonl.gz`.
   That needs an out-of-bounds fall first, and this room has none on the normal floor.
 
 Video of the fastest case: `dgb01_fastest_remount.mp4` (`make_speed_video.py`). Mario at the centre: mount, ride, B, run left, C-down on frame 34 after the B. Laki speed peaks at 26.3 on that frame (shown live with a graph), far below the 160 the clips need.
+
+### Pushing Laki across the room (reverse-mirror-clip style)
+
+`dgb01_push.py` uses the reverse mirror clip technique:
+1. **Freeze the target:** wiggle in place until the 40-entry history ring is full. Laki idles (follow state 5), the
+   pointer stops, and its entry, the target, stays frozen at the start spot.
+2. **Push:** stop-and-go (go 1, stop 2) aimed at Laki. A cycle is kept only while state 5, the pointer and the target
+   are unchanged.
+
+**Push direction is limited.** Each overlap moves Laki 1 away from Mario plus 2 away from the camera, which is −z
+(north) in this hall. So he can be pushed north and sideways, but not south.
+
+| frozen target (start) | where Laki ends | distance d | speed cap (≈ 0.25 × d) |
+|---|---|---|---|
+| (250, 420) | (−90, −486), north wall | 967.5 | ≈ 242 |
+| (0, 455) | (−90, −486) | 945 | ≈ 236 |
+| (−100, 470) | (−90, −486) | 956 | ≈ 239 |
+| (100, 470), aimed north-east | (−237, −289), mid-room | 830 | ≈ 208 |
+
+Most routes end at the same point on the north wall, whichever goal the push is steered toward.
+
+**Release** (`dgb01_release_map.py`): walk off at every 15° with a C-down on frames 1–90.
+- From the north-wall push end, the best mount speed is **205.9**: walking at 180° (−x, west), C-down on frame 20,
+  Mario mounting at (−178, −454).
+- From the mid-room push end, the best is 180.4: walking at 240°, C-down on frame 20, at (−279, −366).
+- Speeds ≥ 160 occur at 55 mount spots, all within about 100 units of the push end (the spike comes about 20 frames
+  into the release).
+
+Figure: `figures/dgb01_push_release_speeds.png`.
+
+**So the speed exists, but not where the clip is.** The clean-floor clip spots are in the south-west corner (red
+circles in the figure), and the push can only end in the north half.
+- Smashed room: its north-west clip zone (x −380…−260) needs ≥ 230 there, slightly more than the 206 found.
