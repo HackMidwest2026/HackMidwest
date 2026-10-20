@@ -1501,3 +1501,5 @@ Figure: `figures/dgb01_push_release_speeds.png`.
 **So the speed exists, but not where the clip is.** The clean-floor clip spots are in the south-west corner (red
 circles in the figure), and the push can only end in the north half.
 - Smashed room: its north-west clip zone (x −380…−260) needs ≥ 230 there, slightly more than the 206 found.
+
+Video: `dgb01_push_206.mp4` (`dgb01_record_push.py` + `make_speed_video.py`). Shows the history fill at (250, 420), the 500-cycle push (4x), the release walking west, and the C-down on release frame 20: Laki speed 205.9, with Mario at (−177.9, −454.4).
