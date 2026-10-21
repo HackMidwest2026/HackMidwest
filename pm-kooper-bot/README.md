@@ -1825,3 +1825,75 @@ Measured on the stationary Toad at (-26, 0, -220): jumping over it during the wi
      flo_*);
    - `WaitForPlayerToLand` and `SuperBlock_WaitForPlayerToLand` treat her as acting;
    - napping Clubbas wake on BOMBETTE_2.
+
+### Map scripts that check "partner in use"
+
+`GetPartnerInUse` and the two `WaitForPlayerToLand` helpers are called at 69 sites. The full list was read; JP-absent
+scripts are noted.
+
+**The real gap: `InterruptUsePartner` does nothing in BOMBETTE_3.** It only sets `PA_FLAG_INTERRUPT_USE_PARTNER`.
+Bombette's ability reads that flag only while she's walking (DEPLOY), and the next frame it's cleared. So every
+cutscene that does "if partner in use → InterruptUsePartner, Wait(n)" runs with her ability still going: FLY and
+FINISH keep writing her position.
+
+| Effect | Scripts |
+|---|---|
+| **Refuses the action while in use**: harmless, you just can't use it during the window | pipes; flo_00 bean patch; flo_10 water-stone socket; statue/clock pushes (pra_22, kpa_04/111/113/115, dgb_03); star ship (hos_05, kpa_63); kmr_20 bed; every Super Block |
+| **Refuses Bombette by name** | ziplines (jan_22, kzn_03, kzn_09); jan_22 basket elevator |
+| **Allows Bombette by name** | `shops.c` item purchase (NONE / Kooper / Bombette allowed): you can buy while she's mid-air |
+| **Interrupt, then cutscene**: Bombette keeps moving during it | flo_14 big bubble (press A); hos_01/hos_02 star-beam exit; sam_11 roof/chimney falls; mac_03 machine prompt; hos_05; story scenes in jan_01, jan_07, jan_22, mim_07, flo_21, iwa_04, kzn_09, sam_01, sam_12, omo_15 |
+| **Waits for Bombette specifically**: safe | kpa_81 toad dialog loops while she's in use (the devs knew Interrupt doesn't stop her); trd_05 trap and kzn SpinyTromp loop until free |
+| **Skips the reset for Bombette** | kkj_25 Bowser trap scene (`Goto` past the interrupt) |
+| **Checks for one other partner**: Bombette takes the "other" path | jan_23 fall exit (only Lakilester; with Bombette in use she isn't pulled to Mario but lerped from her blast position while FALL also moves her); sam_06 Merle scenes (only Lakilester interrupted); tik_09, kzn_10, mac_03 crank, omo station switches, flo_03 moles: harmless |
+
+Nothing in this list opens an interaction that's normally blocked "while a partner is in use". The candidates for odd
+behaviour are:
+- the cutscenes where she is still mid-air, most promisingly jan_23, flo_14, hos_01/02 and sam_11;
+- buying from a shop mid-window.
+
+### Step-down interactions
+
+`set_action_state(ACTION_STATE_STEP_DOWN)` (7BB60.c) only happens when the floor below is within about 10.6 units
+(`outLength <= colliderHeight/2 + 2*colliderHeight/7` from mid-body). Bigger drops become FALLING, which never runs the
+interact test. So step-down means walking down stairs or small steps, for a few frames per step. In normal play,
+`phys_can_player_interact` forbids interaction there, so no step-down interaction exists without the Bombette window.
+
+With the window, any press-A wall trigger (door, sign, Toad/inspect wall) at the bottom or side of a staircase or small
+step can be activated mid-step. Step-down also runs `check_input_jump`, so the same A press fires the trigger and does
+the coyote jump.
+
+### Extending the window: Bombette falls forever (`bombette_oob*.py`, `bombette_infinite.py`)
+
+**Setup** (kmr_11 after the Goomba King, Bombette): Mario stands on the strip behind Bush2, whose east edge is open
+void. He faces west, C-down, then holds down-right to walk off into the void **25 or 26 game frames after the C-down**.
+
+**Why it works:**
+1. At liftoff (frame 87) Mario is about 1,040 units down. Her launch speed `(mario.y - her.y)/20 + 30` is about -24,
+   so she flies **downward**.
+2. Mario's out-of-bounds respawn rule (`update_player`: timeInAir > 100 or y < -2000 → `lastGoodPos`) puts him back on
+   the strip during her flight.
+3. FLY ends at y -745, below the strip, at Mario's x/z.
+4. FALL's check is `|mario.y - her.y| < 500 → finish, else snap-to-ground → cancel, else keep falling`. She's 745 below
+   him with no ground under her, so she **falls forever**.
+
+**Measured:**
+- Still in BOMBETTE_3 after **20,000 game frames** (11 minutes). She was at y -362,522, falling 18 units per frame.
+- Mario walks and jumps normally the whole time.
+- Float precision only stops her moving around |y| ~ 5e8 (about 8 hours); the state itself never ends.
+- Only walk frames 25 and 26 work; 23-24 and 27-31 end after 12 frames.
+
+**Odd side effect:** after the first void respawn Mario is launched upward (to y 14,029) and respawns a second time,
+because timeInAir passes 100 again, before standing.
+
+**While stuck:**
+- the interaction gate stays open, so the spin and step-down interactions work for as long as you like;
+- C-right partner menu, Start pause menu and C-down are all dead (no menus, no saving, no partner swap);
+- Bombette is invisible far below;
+- NPCs ignore her.
+
+**What ends it:**
+- a loading zone: in kmr_12 the partner reset and C-down worked again;
+- starting a battle: the pre-battle hook resets her;
+- in principle, landing on ground under her drop point.
+
+Nothing crashed in any test.
