@@ -2201,3 +2201,51 @@ partner).
 | C-down while he falls | Same: nothing opens, nothing changes, he is put back on Mario. |
 | C-down + A same frame | Same: Mario hops in place, speed 4.00 stored, text opens mid-air. |
 | Loading zone | Same: any earlier C-down stops Mario. In one run the chasing Koopa touched him exactly 5 frames after C-down, so it was the text-during-battle-start case again, not a loading-zone effect. |
+
+## Ruins Stones Skip (isk_11, Stone Puzzle Room) — work in progress
+
+**Goal:** reach isk_19 (Boss Antechamber, below the room) without solving the stone puzzle.
+
+**Room layout.** Before the puzzle is solved, a −520 floor covers the hidden staircase. The isk_19 exit is a
+`TRIGGER_FLOOR_ABOVE` on collider 13: a −910 floor at x 188–252, z 500–564. That trigger fires whenever the floor
+directly below Mario is collider 13, even in mid-air.
+
+**Confirmed clip** (Laki's speed forced with a RAM write for this test):
+1. Stand on the −575 step (the 2nd from the bottom) at x ≈ 316–328.
+2. Mount Laki (C-down) with his move speed in a band:
+
+   | x on the step | Speeds that clip |
+   |---|---|
+   | 316 | 92–110 |
+   | 320 | 96–110 |
+   | 324 | 100–110 |
+   | 328 | 110 |
+
+   About 130 or more misses again.
+3. The mount's landing point (4 test moves of that speed: north, east, south, west) ends south of the front edge, so
+   Mario rides Laki off into the void.
+4. Hold the stick toward (225, 540) while falling. Once Mario is below the upper floors, the floor under him is
+   collider 13 and the game loads isk_19 (map index 16) after about 40 frames.
+
+**Where the speed comes from** (`partner_flying_follow_player`, case 0).
+- *Pushing Laki away from a frozen target:*
+  - Fill the 40-entry move history while standing still; Laki idles in follow state 5.
+  - Then push him with stop-and-go taps. `partner_do_player_collision` moves him 1 unit away from Mario plus 2 units
+    along the camera, with no collision test.
+  - His follow target stays frozen at the start spot.
+- *The speed ramp:* once Mario is more than 40 units away (the tether), Laki leaves state 5 and dashes toward the frozen
+  target. If he is above Mario, his speed grows by distance/16 per frame up to distance/4.
+- *Why the window is narrow:* the mount uses his speed from the C-down frame, so the input window is the frames where
+  that speed is inside the band.
+
+**Natural setup so far:**
+- Start against the back wall just left of the leftmost pedestal. A greedy stop-and-go push (`isk11_greedy_push.py`)
+  gets Laki across to the north-east corner, (266, 452), 377 units from his frozen target, with no RAM edits.
+- The camera part of the push always nets north, so he can't be pushed down toward the steps.
+- When Mario walks to the step, Laki leaves idle about 10 frames in. His dash peaks near 49 (still climbing when it was
+  cut off) before he collides and switches follow states. He then returns at only about 13. So the clip speed isn't
+  reached on the step yet.
+- Still missing: the runners' exact route, and the 2-frame-window variant.
+
+Files: `isk11_mount_map.py`, `isk11_push.py`, `isk11_greedy_push.py`, `isk11_release.py`, `data/isk11_collision.json`,
+`figures/isk11_map.png`.
