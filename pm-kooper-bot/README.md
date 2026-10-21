@@ -1956,3 +1956,32 @@ stuck, because a loading zone ends it.
 
 A stuck-state test of talking to NPCs in mac_01 was inconclusive: from the out-of-bounds grass, Mario can't reach any
 NPC.
+
+### C-down while stepping off an edge: why Mario's momentum stops, then comes back
+
+Test: mac_01 west grass, running south off the edge, C-down on the frame he leaves the ground.
+
+1. **Why the ability starts at all.** `phys_update_standard` (77480.c) calls `check_input_use_partner()` *before*
+   `phys_update_action_state()`. On that frame Mario is still RUN, so C-down passes the "action ≤ RUN" check. The same
+   frame's movement then carries him off the edge into FALLING.
+   - Bombette's BEGIN only refuses when `PS_FLAG_JUMPING` is set or input is already disabled. A fall isn't a jump.
+   - GATHER and LIFT only cancel on jumping, getting hit or knockback, so the ability carries on in mid-air.
+2. **Why the momentum drops to zero.** BEGIN calls `disable_player_input()`. The air movement code
+   (`collision_main_lateral`, default branch) starts with `speed = 0` and only adds the stored `curSpeed` plus stick
+   input `if (!(flags & (SCRIPTED_FALL | INPUT_DISABLED)))`. So with input disabled Mario only falls straight down.
+   `curSpeed` itself is never cleared.
+   - Measured: moved 0.00/frame on game frames 11-33, while `curSpeed` stayed 4.00.
+3. **Why it continues once she's thrown.** After LIFT (Mario holds her for 10 frames) she's set down and DEPLOY starts.
+   DEPLOY calls `enable_player_input()` 10 frames in. From then on the air code adds `curSpeed` again, so Mario resumes
+   the same 4 units/frame with no re-acceleration.
+   - Measured: 4.00/frame from frame 34.
+
+**Bonus: why Mario flies upward after a long fall.** Falling uses a third-order integrator (`integrate_gravity`,
+start values `GravityParamsStartFall` = {0.154, -0.350, -0.182, +0.01152}). Each frame:
+- the constant +0.01152 is added to the third term;
+- the third term to the acceleration;
+- the acceleration to the velocity.
+
+Nothing caps it. After about 45 falling frames the velocity turns positive and Mario rises with no limit. In this
+test he bottomed out at y -1,078 and climbed; in the kmr_11 test he reached y 14,029. A normal fall never lasts that
+long, because he lands or the out-of-bounds respawn (timeInAir > 100) catches him first.
