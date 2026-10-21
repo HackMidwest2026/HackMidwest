@@ -1985,3 +1985,113 @@ start values `GravityParamsStartFall` = {0.154, -0.350, -0.182, +0.01152}). Each
 Nothing caps it. After about 45 falling frames the velocity turns positive and Mario rises with no limit. In this
 test he bottomed out at y -1,078 and climbed; in the kmr_11 test he reached y 14,029. A normal fall never lasts that
 long, because he lands or the out-of-bounds respawn (timeInAir > 100) catches him first.
+
+## Clippy (Lakilester partner swap into a battle), and Goombario/Bombette
+
+### What clippy is in the code
+
+Lakilester turns Mario's wall collision off while he rides by calling `disable_player_static_collisions()`. He turns
+it back on with `enable_player_static_collisions()`. Both edit a counter, `PlayerStatus.enableCollisionOverlapsCheck`
+(byte at gPlayerStatus+0x14), plus the flag `PS_FLAG_NO_STATIC_COLLISION` (77480.c):
+
+- **disable:** set the flag, then counter += 1.
+- **enable:** counter -= 1, and clear the flag only when the counter reaches 0.
+
+Normally riding goes 0 → 1 → 0. Two separate Laki functions can re-enable while he is mounted:
+
+| Where | Condition | Also resets |
+|---|---|---|
+| PutAway `FINISH_1` (the swap-out script) | `PlayerCollisionDisabled` is still true | that flag only; `MountState` is cleared one frame later, in `FINISH_2` |
+| `pre_battle` (called by `partner_handle_before_battle` when the battle loads) | `MountState != NONE` | nothing: doesn't look at `PlayerCollisionDisabled`, doesn't clear `MountState` |
+
+If the battle hook lands on the exact frame where PutAway has run `FINISH_1` but not yet `FINISH_2`, both re-enable.
+The counter goes 1 → 0 → **-1** and the flag stays clear. That's clippy.
+
+**Effect.** With the counter non-zero, the walk/run wall code (7BB60.c, end of the lateral-collision block) skips
+`collision_check_player_intersecting_world`, the 4-way push-out that shoves Mario's body back out of any wall it
+overlaps. Two things still stop Mario:
+- the forward move test (`player_test_move_with_slipping`);
+- the two ±35° side probes.
+
+So Mario still stops at walls, but nothing pushes him back out when he ends up partly inside one.
+- Sliding into kmr_11 walls at an angle, he usually ends a few units closer to the wall plane than with a counter of 0.
+- The kmr_11 Bush2 corner is still not clippable: 0 hits in 1,350 wiggle runs at -1, same as at 0.
+  (`clippy_corner_test.py`)
+
+Riding Laki again in this state makes it worse. Mounting goes -1 → 0 and sets the flag. Dismounting goes 0 → -1 and
+the flag is **not** cleared (it only clears at exactly 0). With the flag set, `update_player_input` zeroes the stick
+and every button, so Mario can't move at all. (Read from the code; not run.)
+
+### Why the swap timing makes it happen
+
+Frame order: `update_workers` (the partner-swap worker), then `update_scripts` (Laki's PutAway), then
+`update_encounters` (the battle hook), then `update_player` (menus).
+
+1. **Mario must touch the enemy himself.** If the enemy first-strikes, the action becomes ENEMY_FIRST_STRIKE and the
+   menu refuses to open.
+2. **Press C-right on the contact frame.** Contact disables input, but Laki's riding input was already copied into
+   `gPartnerStatus` earlier that frame by the worker. The menu opens during the battle wind-up.
+3. **The battle start time is fixed.** The hook and the switch to battle happen 41 game frames after contact in this
+   room, whatever the menu is doing.
+4. **The menu adds fixed delays.** Picking a partner closes the menu 15 frames after A. The swap worker starts PutAway
+   on the next frame.
+5. **PutAway itself takes time.** It needs one setup frame, then moves Mario until a downward raycast from his head
+   finds floor. On flat ground that's 13 frames, longer than the window allows.
+6. **So the ground has to be higher.** With floor at least ~18 units above Laki's within his radius, `FINISH_1` runs
+   on PutAway's second frame. `clippy_dismount_map.py` found such spots on the nok_13 stumps (y 50) next to the y 75
+   plateau. (The 18 units come from Mario riding ~12 above the floor, plus the 6 he rises on that frame.)
+
+Putting it together: contact on frame C, C-right on C, cursor move, A on C+23. The menu closes on C+39 and PutAway
+starts on C+40. On C+41 PutAway runs `FINISH_1` (counter 0), then the hook kills it and calls Laki's `pre_battle`
+(counter -1).
+
+`clippy_verify.py -660 68 -660 50 23 -80` reproduces this. For this check only, Mario/Laki and the Koopa were placed
+with RAM writes.
+- With A on C+23, the log reads counter **-1**, flag 0, as the battle starts.
+- With A on C+16..C+22 the hook kills PutAway before `FINISH_1`, so only `pre_battle` re-enables (counter 0).
+- With A on C+25 or later the menu is still open when the battle starts and no swap happens.
+
+**After the battle.** In every run where the new partner came out during the battle load (counter -1 or 0), the field
+came back stuck. This was true whether the battle was fled (`clippy_flee.py`) or won (`clippy_win.py`, which forces
+the win with RAM writes). The stuck state:
+- the encounter sits in post-battle (`gEncounterState` 5);
+- time stays partially frozen;
+- `inputDisabledCount` stays at 2.
+
+The cause: the swap worker's take-out step had set a partial freeze and disabled input. `partner_handle_after_battle`
+then killed the take-out script and reset the command to INIT, so the step that undoes both never ran. The counter was
+still -1 in those runs.
+
+I haven't found a battle exit in this setup that avoids the softlock. That's why there's no video of Mario walking
+around in clippy.
+
+### Goombario and Bombette
+
+- **Neither can create clippy on their own.** Neither one touches the counter or the flag: no
+  `disable/enable_player_static_collisions` call anywhere in goombario.c or bombette.c. The imbalance needs Laki's
+  mount state. Goombario or Bombette can only be the partner you swap *to*; the -1 run above swapped to Goombario.
+  Picking Bombette (cursor up) goes through the same code.
+- **Jump during Goombario's text: works.**
+  - Press C-down and A on the same frame. `check_input_use_partner` runs before `phys_update_action_state`, so the
+    tattle starts and the jump also starts.
+  - The tattle disables input, so Mario's air movement is zeroed. Same rule as the Bombette ledge case: `curSpeed`
+    stays 4.00 but x doesn't change.
+  - Mario hops in place and lands while the text box opens.
+- **Goombario text in battle: not reproduced.** (`goombario_battle_text.py`)
+  - C-down 2 or more frames before contact: the tattle sets a partial time freeze, which turns on
+    `GLOBAL_OVERRIDES_DISABLE_BATTLES`. No contact can register while the text is up.
+  - C-down 1 frame before contact: the contact's input lock makes the tattle cancel itself at the end of its 3-frame
+    delay.
+  - Closing the text with the Koopa next to Mario: the battle starts only after `TattleEnd`, with no text left.
+- **JP-only Goombario quirk (a lead, not tested).** In the JP build, `SelectTattleMsg` returns early when Goombario
+  isn't grounded, without setting LVar0 = -1.
+  - The script then sees MSG_NONE and runs `TattleEnd`.
+  - `TattleEnd` sets time freeze to NONE unconditionally and clears `actingPartner`.
+  - So C-down while Goombario is mid-air (following a jump) can drop a time freeze someone else set.
+
+Files:
+- **Scripts:** `clippy_scan3.py`, `clippy_dismount_map.py`, `clippy_verify.py`, `clippy_flee.py`, `clippy_win.py`,
+  `clippy_corner_test.py`, `goombario_battle_text.py`.
+- **Data and figures:** `data/nok13_collision.json`, `figures/nok13_floor_map.png`.
+- **Local states (not committed):** the nok_13 states come from `make_state_room.py`
+  (`PRA_MAP=nok_13 PRA_AREA=6 PARTNER=8`), then a real partner-menu swap to Lakilester.
