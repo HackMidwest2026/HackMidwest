@@ -2,11 +2,12 @@
 Records: C-down, Mario walks off the void edge 26 game frames later, falls, respawns; Bombette ends her flight below
 the strip and keeps falling; Mario walks/jumps around and presses START (nothing opens); then a 2000-frame skip and
 more footage. Overlay: partner action state, Bombette y, Mario position/action.
-usage: bombette_infinite_video.py OUT.mp4"""
+usage: bombette_infinite_video.py OUT.mp4 [STATE X Y Z FACE OFF W TITLE]  (defaults: the kmr_11 setup)"""
 import os, subprocess, sys
 from emu import *
 from pm import *
 from PIL import Image, ImageDraw, ImageFont
+from nav import stick_world
 
 PSTAT = 0x8010ED70
 outp = sys.argv[1]
@@ -27,30 +28,40 @@ def step(b, sx, sy, label, note=''):
     subprocess.run(['import', '-window', 'root', path], check=True)
     s = e.s8(PSTAT); bo = bomb(); p = player(e)
     frames.append((path, label, note, s, bo['y'], p))
-e.load('states/kmr11_e0_bombette.st'); e.step(0, 0, 0, 2)
-e.w8(game_status(e) + 0x74, 1)
-e.wf32(PLAYER + PS_POS, -230.0); e.wf32(PLAYER + PS_POS + 4, 0.0); e.wf32(PLAYER + PS_POS + 8, 10.0)
-e.step(0, 0, 0, 40); e.step(0, -80, 0, 2); e.step(0, 0, 0, 10)
+GENERIC = len(sys.argv) > 2
+if GENERIC:
+    STATE = sys.argv[2]; X, Y, Z, FACE, OFF = (float(a) for a in sys.argv[3:8]); W = int(sys.argv[8]); TITLE = sys.argv[9]
+    e.load(STATE); e.step(0, 0, 0, 2)
+    e.wf32(PLAYER + PS_POS, X); e.wf32(PLAYER + PS_POS + 4, Y); e.wf32(PLAYER + PS_POS + 8, Z)
+    e.step(0, 0, 0, 360); e.step(0, *stick_world(e, FACE), 2); e.step(0, 0, 0, 240)
+else:
+    TITLE = 'kmr_11: Bombette stuck falling forever (infinite post-blast window)'; W = 26
+    e.load('states/kmr11_e0_bombette.st'); e.step(0, 0, 0, 2)
+    e.w8(game_status(e) + 0x74, 1)
+    e.wf32(PLAYER + PS_POS, -230.0); e.wf32(PLAYER + PS_POS + 4, 0.0); e.wf32(PLAYER + PS_POS + 8, 10.0)
+    e.step(0, 0, 0, 40); e.step(0, -80, 0, 2); e.step(0, 0, 0, 10)
 step(D_CBUTTON, 0, 0, 'C-DOWN', 'light Bombette (she walks west)')
 for f in range(200):
-    if 26 <= f < 66: step(0, 56, -56, 'DOWN-RIGHT', 'walk off the void edge 26 frames after C-down')
-    elif f < 26: step(0, 0, 0, '', 'wait')
-    else: step(0, 0, 0, '', 'Mario falls, respawns on the strip; Bombette keeps falling below')
-for g in range(60): step(0, -80 if g < 40 else 0, 0, 'LEFT' if g < 40 else '', 'Mario is free; partner still "in use"')
+    if W <= f < W + 40:
+        st = stick_world(e, OFF) if GENERIC else (56, -56)
+        step(0, *st, 'WALK OFF', 'walk off the void edge %d frames after C-down' % W)
+    elif f < W: step(0, 0, 0, '', 'wait')
+    else: step(0, 0, 0, '', 'Mario falls, respawns at his last safe spot; Bombette keeps falling below')
+for g in range(60): step(0, *((stick_world(e, FACE) if GENERIC else (-80, 0)) if g < 40 else (0, 0)), 'MOVE' if g < 40 else '', 'Mario is free; partner still "in use"')
 for g in range(30): step(A if g < 8 else 0, 0, 0, 'A' if g < 8 else '', 'jump')
 step(START, 0, 0, 'START', 'pause menu does not open')
 for g in range(30): step(0, 0, 0, '', 'pause menu does not open')
 step(R_CBUTTON, 0, 0, 'C-RIGHT', 'partner menu does not open')
 for g in range(30): step(0, 0, 0, '', 'partner menu does not open')
 e.step(0, 0, 0, 4000)                                   # skip 2000 game frames
-for g in range(60): step(0, 80 if g < 30 else 0, 0, 'RIGHT' if g < 30 else '', '2000 game frames (67 s) later: still BOMBETTE_3')
+for g in range(60): step(0, *((stick_world(e, FACE + 90) if GENERIC else (80, 0)) if g < 30 else (0, 0)), 'MOVE' if g < 30 else '', '2000 game frames (67 s) later: still BOMBETTE_3')
 tmp = '/dev/shm/pmbot/binfvid_frames'; os.makedirs(tmp, exist_ok=True)
 for fn in os.listdir(tmp): os.remove(os.path.join(tmp, fn))
 for i, (path, label, note, s, by, p) in enumerate(frames):
     im = Image.new('RGB', (593, 470), (20, 20, 20))
     im.paste(Image.open(path).crop((103, 96, 696, 460)).convert('RGB'), (0, 0))
     dr = ImageDraw.Draw(im)
-    dr.text((6, 4), 'kmr_11: Bombette stuck falling forever (infinite post-blast window)', fill=(255, 220, 120), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
+    dr.text((6, 4), TITLE, fill=(255, 220, 120), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
     if label: dr.text((10, 300), label, fill=(255, 255, 120), font=big, stroke_width=3, stroke_fill=(0, 0, 0))
     col = (120, 255, 120) if s == 3 else (255, 255, 255)
     dr.text((8, 368), 'partner action state: %d %s' % (s, STATES.get(s, '')), fill=col, font=font)

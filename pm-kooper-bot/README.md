@@ -1901,3 +1901,27 @@ Nothing crashed in any test.
 Video: `bombette_infinite.mp4` (`bombette_infinite_video.py`). It shows the setup, the walk-off, the respawn, Mario moving
 while the state stays BOMBETTE_3, START and C-right doing nothing, and the same state 2000 game frames later
 (Bombette at y -42,000).
+
+### Same glitch in Toad Town (mac_01, Rowf's badge shop room)
+
+The grass ring around Rowf's shop is out of bounds: the street-side wall at z 378 and the shop's octagon walls are
+100 units tall. Its south-west edge has no wall, so walking off it drops into the void. Mario was teleported onto it on
+the west side (the only poke besides the state builder's warp and partner choice; battles are not disabled).
+
+**Setup:**
+1. Teleport Mario to (-480, 20, 368).
+2. Wait 180 game frames.
+3. Face north-east (world yaw 45), wait 120 frames so Bombette is grounded.
+4. C-down.
+5. Walk south (world yaw 180) off the edge starting **22 or 23 game frames** after the C-down.
+
+Scans: `bombette_inf_scan2.py` and `bombette_inf_scan3.py`, which also scan the start distance. `nav.py` steers by world
+direction, because the plaza camera rotates.
+
+**Result:** Mario is 993 or 1,023 units down at Bombette's liftoff (game frame 86), and respawns at frame 108-109.
+Bombette ends up more than 500 below his respawn spot over the void, and BOMBETTE_3 never ends. Still active 2,000+
+frames later with Bombette at y -42,000; START and C-right do nothing.
+
+Start z 364 and walk 22 also works. Other start distances (z 340-360) never line up.
+
+Video: `bombette_infinite_mac01.mp4` (`bombette_infinite_video.py OUT STATE X Y Z FACE OFF W TITLE`).
