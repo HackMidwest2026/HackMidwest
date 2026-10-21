@@ -1655,3 +1655,28 @@ movement once Mario is above about y 300.
 - In the corner (45.8, 250, 86): 205 of 262 runs upwarped, all to 284.6, with a peak of 293.7.
   - The plank top above that corner is at y ~335, about 30 units west of where Mario can be.
   - So the swap rays never reach it.
+
+## Goomba King's castle grounds (kmr_11), right-side bush corner: no clip found
+
+**State.** `make_state_room.py` with `PRA_MAP=kmr_11 PRA_AREA=0 PRA_ENTRY=0 GB_SET="0x0=0x90" PARTNER=1 BOOTS=0
+NOBADGES=1`. That gives story `DEFEATED_GOOMBA_KING`, Goombario, normal boots, no badges (normal spin).
+Collision: `data/kmr11_collision.json`. Map: `figures/kmr11_right_map.png`. The spot: `figures/kmr11_bush_fence.png`.
+
+**The fence.** The front fence by the right-side bush (Bush3, search collider 13 at (373..457, z -210)) is a chain of
+one-sided walls, colliders 13 + 29:
+- polyline (290,-225) (373,-210) (457,-210) (509,-200) (587,-218), all facing north;
+- behind it, walls facing the other way;
+- the floor (collider 27) sticks out past the fence;
+- there is a hole with no floor behind the bush (Mario dropped at (420, -180) falls to y -1011).
+
+The joints at x 373 and 457 are nearly straight (about 170 degrees).
+
+**Searches** (goal: Mario anywhere south of the fence, or falling):
+- `kmr11_fence_scan.py`: 40 start points along the fence (20 and 40 units north of it), every 4 degrees of stick from
+  120 to 240, walk / spin / jump / spin then A after 1..6 frames. 11,160 runs, 0 hits. Mario never got closer than
+  13.0 units to the fence, which is his radius.
+- `spin_land_sweep.py` (ROOM=kmr11fence, the spin jump land method) at the six fence points w_end, bush_w, bush_mid,
+  bush_e, kink and e_end:
+  - phase 1: 8,100 spin-jump setups gave 747 distinct pre-landing states within 22 units of a target point;
+  - phase 2: every landing-frame stick angle (2-degree steps, magnitudes 80/50/25) from each state, 403,380 tries;
+  - **0 hits**; the biggest one-frame landing move was 11.2 units.

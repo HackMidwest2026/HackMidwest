@@ -4,6 +4,30 @@ pick one with the ROOM environment variable (default nok14)."""
 import os
 
 ROOMS = {
+    # Goomba King's castle grounds (kmr_11) after the Goomba King: the fence of one-sided walls by the right-side bush
+    # (colliders 13 + 29, polyline (290,-225) (373,-210) (457,-210) (509,-200) (587,-218)). Goal: south of it.
+    'kmr11fence': {
+        'collision': 'kmr11_collision.json',
+        'start': 'states/kmr11_e0_kingdone.st',
+        'start_pos': {'x': 420.0, 'y': 0.0, 'z': -250.0, 'action': 0, 'floor': 31},
+        'map': (0, 9),
+        'goal_floors': [],
+        'goal_maps': [],
+        'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: _kmr11_south(x, z),
+        'focus_min_x': -1e9,
+        'focus_box': (270.0, 600.0, -330.0, -190.0),
+        'corners': {
+            'w_end': {'p': (290.0, -225.0), 'wedge': (190.0, 350.0)},
+            'bush_w': {'p': (373.0, -210.0), 'wedge': (190.0, 350.0)},
+            'bush_mid': {'p': (415.0, -210.0), 'wedge': (190.0, 350.0)},
+            'bush_e': {'p': (457.0, -210.0), 'wedge': (190.0, 350.0)},
+            'kink': {'p': (509.0, -200.0), 'wedge': (190.0, 350.0)},
+            'e_end': {'p': (587.0, -218.0), 'wedge': (190.0, 350.0)},
+        },
+        'floor_y': lambda x, z: 0.0,
+        'disable_enemy_contact': True,
+    },
     # Pleasant Path, Kooper skip room: get past the bridge wall at x = -100
     'nok14': {
         'collision': 'nok14_collision.json',
@@ -138,6 +162,14 @@ ROOMS = {
 }
 
 FRONT_WALL = [(-870.0, 0.0), (-848.0, 18.0), (-743.0, 59.0), (-695.0, 48.0)]
+
+
+_KMR11_FENCE = [(290, -225), (373, -210), (457, -210), (509, -200), (587, -218)]
+def _kmr11_south(x, z):
+    for (x0, z0), (x1, z1) in zip(_KMR11_FENCE, _KMR11_FENCE[1:]):
+        if x0 <= x <= x1:
+            return z > z0 + (z1 - z0) * (x - x0) / (x1 - x0) + 1.0
+    return False
 
 
 def _past_front_wall(x, z):
