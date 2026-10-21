@@ -2137,3 +2137,49 @@ counter written back to 0 as a control.
 
 Scripts: `clippy_natural.py`, `clippy_video.py`, `clippy_clip_video.py`, `clippy_wallcross.py`; `clippy_verify.py`
 and `clippy_flee.py` updated.
+
+### Goombario tests (JP)
+
+Tattle timeline (`SelectTattleMsg`, goombario.c). Frame order is scripts, then encounters, then player.
+
+| Frame | What happens |
+|---|---|
+| C-down frame | The tattle disables input. |
+| next 3 frames | Waits. |
+| next frame | Commits only if nothing else raised `inputDisabledCount` meanwhile. |
+| frame after | Sets `TIME_FREEZE_PARTIAL`, which blocks new contacts, and shows the text. |
+
+**Hold B + C-down: Goombario swaps sides.**
+- Mechanism:
+  - With B held, each tattle closes as soon as it opens.
+  - After every tattle, the follow code's side-step (`partner_walking_follow_player` state 5, `D_8010CFCA` = 2) walks
+    him at 2 units/frame to `tetherDistance - 10` units beside Mario, perpendicular to the camera.
+  - The side flips with Mario's sprite facing, so he alternates sides.
+- That walk checks only for spikes and lava, never for a missing floor.
+- Repeated every 100 frames at the mac_01 west out-of-bounds edge (`goomb_ledge.py`, Mario placed ~2 units inside
+  the edge), he walks straight off it.
+
+**C-down while Goombario is in the air off that edge** (`goomb_ledge_scan.py`, presses on every other frame of the
+fall, 0 to 40):
+- The JP build of `SelectTattleMsg` returns early when he isn't grounded, without setting LVar0. Script variables
+  start at 0 (`start_script`), so LVar0 is MSG_NONE and the script runs `TattleEnd`.
+- No text opens and input is never disabled. `TattleEnd` sets time freeze to NONE and clears `actingPartner`.
+- He falls until he is more than 1,000 units below Mario, then the follow code puts him back on Mario
+  (~44 frames after leaving the edge).
+- Nothing else changed in any of the runs. This early exit only matters if something else has frozen time at that
+  moment.
+
+**Goombario's text during a battle start: reproduced** (`goomb_battle_text2.py`, `figures/goombario_text_into_battle.png`).
+- Setup: nok_13, Mario walks at the Koopa, which notices him and charges (contact on game frame 145 with no
+  C-down).
+- With C-down on frame 140 (5 frames before contact) the tattle's check passes on frame 145, before the contact runs
+  that same frame. The battle starts and the tattle still opens its text box.
+- One frame earlier and the tattle's freeze blocks the contact (no battle). Any later and the contact makes the
+  tattle cancel itself.
+- The map tattle shows next to the "First Strike!" banner and stays through the battle star-wipe.
+- Goombario's `pre_battle` (partner action state ≠ NONE) closes it with `cancel_current_message`, turns the freeze
+  off and re-enables input, so the text doesn't stay in the battle scene itself.
+
+**Tattle at a loading zone** (`goomb_lz_tattle.py`, nok_13 west exit):
+- Any C-down before the trigger frame stops Mario (the input lock zeroes the stick), so he never reaches the exit.
+- On the trigger frame, the map change wins. No overlap was found.
