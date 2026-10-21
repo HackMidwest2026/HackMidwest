@@ -1925,3 +1925,34 @@ frames later with Bombette at y -42,000; START and C-right do nothing.
 Start z 364 and walk 22 also works. Other start distances (z 340-360) never line up.
 
 Video: `bombette_infinite_mac01.mp4` (`bombette_infinite_video.py OUT STATE X Y Z FACE OFF W TITLE`).
+
+### Can the stuck state push NPCs, and what else does it change?
+
+**No infinite NPC push.** In `npc_do_other_npc_collision` an NPC only shoves itself off the partner when
+`partnerActionState == NONE`. While stuck, the state is BOMBETTE_3 forever, so NPCs ignore her. Her ignore-collision
+flag is clear, but that only matters together with NONE. She's also thousands of units below the room. The push still
+only happens on the single landing frame of a normal blast (0-2.4 units per blast).
+
+**What the stuck state changes in that room**, until a loading zone (`can_trigger_loading_zone` ignores Bombette, so
+doors and exits still work) or a battle resets it:
+
+| Engine check | Effect while stuck |
+|---|---|
+| `phys_can_player_interact` | Press-A triggers (doors, signs, inspect) work from any action. In practice that means step-down (walking down small steps) and spin started from standing. |
+| `check_conversation_trigger` (encounter.c) | **Can't talk to NPCs.** It returns early when a partner is acting. |
+| `can_open_world_menu` / `can_open_menus` | No pause menu, no item or partner menu, no partner swap, no saving. |
+| `partner_use_ability` | C-down does nothing (it only sets her early-detonation flag). |
+| Bombette first strike | Unaffected: it only applies during the 3 blast frames. Touching an enemy starts a normal battle, which resets the state. |
+| `GetPartnerInUse` scripts | Return Bombette, so these refuse: pipes, beds, Super Blocks, statue/clock pushes, star ship, bean patch. |
+| Scripts that loop until the partner is free | They would wait forever: trd_05 trap (Koopa Bros fortress), the kzn SpinyTromp scenes (Mt. Lavalava), and the kpa_81 toad dialog. That's a softlock if triggered while stuck. |
+| `InterruptUsePartner` cutscenes | The interrupt is a no-op, so they run with her "in use". Mostly cosmetic. |
+
+**Applications elsewhere.** It needs a ledge with open void, in a room that also has whatever you want to use while
+stuck, because a loading zone ends it.
+- The only new ability it grants is the step-down / spin interactions, which the normal 2.2 s window already gives.
+- What it takes away (menus, talking, pipes, Super Blocks) is mostly harmful, and a few looping scripts can softlock.
+- I didn't find a route use. The most interesting side effect is the softlock potential and cutscenes running with
+  the partner flagged in use.
+
+A stuck-state test of talking to NPCs in mac_01 was inconclusive: from the out-of-bounds grass, Mario can't reach any
+NPC.
