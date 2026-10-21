@@ -1680,3 +1680,7 @@ The joints at x 373 and 457 are nearly straight (about 170 degrees).
   - phase 1: 8,100 spin-jump setups gave 747 distinct pre-landing states within 22 units of a target point;
   - phase 2: every landing-frame stick angle (2-degree steps, magnitudes 80/50/25) from each state, 403,380 tries;
   - **0 hits**; the biggest one-frame landing move was 11.2 units.
+
+Video: `kmr11_spinland.mp4` (`kmr11_spinland_video.py`) shows the closest spin-jump landing at each bush joint
+(bush_w, bush_mid, bush_e), each followed by a 1/4-speed replay of the landing. Mario lands with spin speed 8
+but stops 13.0 units from the fence, his radius.
