@@ -1718,3 +1718,19 @@ wall_end at (-213, 37.5).
   **0 clips**. The biggest landing-frame move was 10.3 units.
 
 The closest landing at the corner is in `kmr11_bush2_corner.mp4`, made with `kmr11_corner_video.py`.
+
+**Stick-wiggle search, run to close the corner** (`kmr11_wiggle.py`, 4 cores, 110 minutes). Start states: Mario pinned
+in the acute corner after walking in from 12 different approaches, plus 6 pinned against the bush's west tip on the
+fortress side.
+
+1. **Systematic:** alternate two stick angles every 1 or 2 game frames for 40 frames. Every angle pair at 6-degree
+   steps, with and without a spin first. 127,440 runs.
+2. **Random:** per-frame random stick angle and strength, with random spin / jump / hammer presses, 20-60 frames each.
+   219,802 runs.
+
+A hit would be: behind the bush, over the void, below the floor, or crossing a wall.
+
+**Result: 347,242 runs, 0 hits.** Mario never got east of x -248.35.
+
+Together with the corner sweep and both spin-jump-land sweeps, this corner can't be clipped with Goombario, normal
+boots and normal spin.
