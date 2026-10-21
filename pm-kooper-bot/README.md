@@ -2183,3 +2183,21 @@ fall, 0 to 40):
 **Tattle at a loading zone** (`goomb_lz_tattle.py`, nok_13 west exit):
 - Any C-down before the trigger frame stops Mario (the input lock zeroes the stick), so he never reaches the exit.
 - On the trigger frame, the map change wins. No overlap was found.
+
+#### Retest with Goombario's battle tutorial already done
+
+**Making the state.** One real battle with Goombario out (nok_13 Koopa): the tutorial text pages through, Goombario
+"does nothing", and Mario runs away (Strategies has only "do nothing" and "run away" when Goombario is the only other
+partner).
+- That sets save byte `+0x1090` bit 1 (`GF_Tutorial_SwapTurnOrder`). The next battle opens straight on Mario's menu.
+- New base states (local): `nok13_goomb_tutdone.st`, and `mac01_goomb_tutdone.st` (the mac_01 Goombario state with the
+  same bit set).
+- Scripts take `GSTATE=` to use them.
+
+| Test | Result |
+|---|---|
+| Text during a battle start | Same rule: C-down exactly 5 frames before the contact (C-down frame 109, contact 114). The map tattle shows next to "First Strike!" and through the star-wipe. The battle opens on Mario's menu with no text. Running away leaves the same state as a battle without the tattle (input 0, freeze 0, `actingPartner` 1 either way). |
+| Hold B + C-down at the mac_01 edge | Same: Goombario side-steps off on frame 107. |
+| C-down while he falls | Same: nothing opens, nothing changes, he is put back on Mario. |
+| C-down + A same frame | Same: Mario hops in place, speed 4.00 stored, text opens mid-air. |
+| Loading zone | Same: any earlier C-down stops Mario. In one run the chasing Koopa touched him exactly 5 frames after C-down, so it was the text-during-battle-start case again, not a loading-zone effect. |

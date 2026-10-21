@@ -1,14 +1,14 @@
 """Goombario tattle timed against a loading zone (nok_13 west exit). Mario walks west from the entry; C-down on game
 frame C. Logs when the map change starts, the partner / input / freeze state after arriving in the next map, and
 whether Mario can move there (walk 30 frames east, distance moved). usage: goomb_lz_tattle.py C0 C1"""
-import sys, math
+import os, sys, math
 from emu import *
 from pm import *
 from nav import stick_world
 ENC, PSTAT, FREEZE = 0x8009A5E0, 0x8010ED70, 0x8009A5B8
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/glz')
-e.load('states/nok13_e0_goomb.st'); e.step(0, 0, 0, 20)
-s0 = stick_world(e, 90); e.step(0, s0[0], s0[1], 40); e.step(0, 0, 0, 80)   # walk 20 game frames east first
+e.load(os.environ.get('GSTATE', 'states/nok13_e0_goomb.st')); e.step(0, 0, 0, 20)
+s0 = stick_world(e, 90); e.step(0, s0[0], s0[1], int(os.environ.get('PRE', '40'))); e.step(0, 0, 0, 80)   # walk east first (PRE VIs)
 base = '/dev/shm/pmbot/glz.st'; e.save(base)
 def run(C):
     e.load(base); ch = None

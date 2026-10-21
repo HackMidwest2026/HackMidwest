@@ -2,13 +2,13 @@
 off the edge). Saves a state on the frame he leaves the ground, then for K = 0..40 releases B and presses C-down K
 game frames into his fall (Mario idle). Logs whether a tattle opened, the partner/input/freeze state, where Goombario
 ends up and whether he comes back, plus anything odd 300 frames later. usage: goomb_ledge_scan.py"""
-import math
+import math, os
 from emu import *
 from pm import *
 from nav import stick_world
 EX = -470; ez = EX + 884; OUT = -2
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/gls')
-e.load('states/mac01_e0_goomb.st'); e.step(0, 0, 0, 2)
+e.load(os.environ.get('GSTATE', 'states/mac01_e0_goomb.st')); e.step(0, 0, 0, 2)
 mx, mz = EX - OUT / math.sqrt(2), ez + OUT / math.sqrt(2)
 e.wf32(PLAYER + PS_POS, mx); e.wf32(PLAYER + PS_POS + 4, 20.0); e.wf32(PLAYER + PS_POS + 8, mz)
 gk = [n for n in npcs(e) if n['id'] == -4][0]['addr']

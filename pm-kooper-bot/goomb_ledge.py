@@ -3,14 +3,14 @@ from the edge (negative = inside), faces inland; then B is held and C-down tappe
 opens and B closes it; Goombario re-faces Mario and walks to the other side). The first frame Goombario is not
 grounded, C-down is pressed (JP: SelectTattleMsg returns without a message when he is airborne -> TattleEnd).
 Logs Goombario / Mario / partner state. usage: goomb_ledge.py OUT [EX [PER]] (PER: game frames between C-down taps)"""
-import math, sys
+import math, os, sys
 from emu import *
 from pm import *
 from nav import stick_world
 OUT = float(sys.argv[1]); EX = float(sys.argv[2]) if len(sys.argv) > 2 else -470; PER = int(sys.argv[3]) if len(sys.argv) > 3 else 40
 ez = EX + 884
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/gbl')
-e.load('states/mac01_e0_goomb.st'); e.step(0, 0, 0, 2)
+e.load(os.environ.get('GSTATE', 'states/mac01_e0_goomb.st')); e.step(0, 0, 0, 2)
 mx, mz = EX - OUT / math.sqrt(2), ez + OUT / math.sqrt(2)
 e.wf32(PLAYER + PS_POS, mx); e.wf32(PLAYER + PS_POS + 4, 20.0); e.wf32(PLAYER + PS_POS + 8, mz)
 gk = [n for n in npcs(e) if n['id'] == -4][0]['addr']
