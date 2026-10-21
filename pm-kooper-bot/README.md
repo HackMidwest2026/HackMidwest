@@ -2292,3 +2292,13 @@ Test spot: isk_11 west −520 floor, holding right the whole time, no RAM edits 
   falls by about a quarter each frame after: 19.4, 14.5, 10.9, …
 - **Spin + jump (B):** the best results all keep the C-down on the same frame. Later jumps give more speed, up to
   jumping 8 frames after the spin.
+
+With **Speedy Spin** equipped (RAM, item 287; `SPEEDY=1`), same spot and inputs:
+
+| Method | Speedy Spin | Speed the mount reads |
+|---|---|---|
+| A (plain remount) | not used | 25.82 |
+| B (spin + 1-frame jump, same frames) | yes | **37.20** |
+
+- B vs A with Speedy Spin: **+11.38**.
+- B with vs without Speedy Spin: **+5.58** (31.62 → 37.20).

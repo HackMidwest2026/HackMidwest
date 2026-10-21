@@ -15,6 +15,9 @@ DIR = float(sys.argv[5]) if len(sys.argv) > 5 else 0.0
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/lrv')
 laki = lambda: [q for q in npcs(e) if q['id'] == -4][0]
 e.load('states/isk11_laki_ready.st'); e.step(0, 0, 0, 2)
+import os
+if os.environ.get('SPEEDY'):                                  # Speedy Spin badge (item 287) owned + equipped (RAM)
+    e.w16(PLAYER_DATA + 0xB4, 287); e.w16(PLAYER_DATA + 0x208, 287)
 go_to(e, -300, 560, maxf=300); e.step(0, 0, 0, 30)
 e.step(D_CBUTTON, 0, 0, 2)
 for i in range(60):
@@ -63,7 +66,7 @@ for i, (path, label, title, p, spd, mark) in enumerate(frames):
     if label: dr.text((10, 300), label, fill=(255, 255, 120), font=big, stroke_width=3, stroke_fill=(0, 0, 0))
     dr.text((8, 370), ('mount reads Laki speed %.2f' % mount_read.get(i, 0.0)) if mark else ('Laki speed %.2f' % spd), fill=(120, 255, 120) if mark else (255, 255, 255), font=big if mark else font)
     dr.text((8, 400), 'Mario (%.0f, %.0f, %.0f) %s' % (p['x'], p['y'], p['z'], AN.get(p['action'], p['action'])), fill=(200, 200, 200), font=font)
-    dr.text((8, 422), 'holding right the whole time; isk_11 west floor, no RAM edits', fill=(160, 160, 160), font=font)
+    dr.text((8, 422), ('Speedy Spin equipped (RAM); ' if os.environ.get('SPEEDY') else '') + 'holding right the whole time; isk_11 west floor', fill=(160, 160, 160), font=font)
     put(im)
     if mark:
         for r in range(30): put(im)

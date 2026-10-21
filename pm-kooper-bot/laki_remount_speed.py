@@ -4,7 +4,7 @@ Reports the speed the mount reads (Laki's moveSpeed on the C-down frame).
   A: hold DIR only, scan k.
   B: hold DIR, Z (spin) on the frame Mario lands from the dismount, A for 1 frame J frames after the spin press,
      C-down K frames after the jump press; scan J and K.
-usage: laki_remount_speed.py [DIR] [SX SZ]"""
+usage: laki_remount_speed.py [DIR] [SX SZ]   env SPEEDY=1 equips Speedy Spin (RAM)"""
 import math, sys
 from emu import *
 from pm import *
@@ -15,6 +15,9 @@ SX, SZ = (float(a) for a in sys.argv[2:4]) if len(sys.argv) > 3 else (-300.0, 56
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/lrs')
 laki = lambda: [q for q in npcs(e) if q['id'] == -4][0]
 e.load('states/isk11_laki_ready.st'); e.step(0, 0, 0, 2)
+import os
+if os.environ.get('SPEEDY'):                                  # Speedy Spin badge (item 287) owned + equipped (RAM)
+    e.w16(PLAYER_DATA + 0xB4, 287); e.w16(PLAYER_DATA + 0x208, 287)
 go_to(e, SX, SZ, maxf=300); e.step(0, 0, 0, 30)
 e.step(D_CBUTTON, 0, 0, 2)
 for i in range(60):
@@ -51,8 +54,8 @@ print('A: hold only; mount speed by C-down frame k:', rowA)
 print('A best: %.2f on k=%s' % best)
 # B
 bestB = (0, None); tab = {}
-for J in range(1, 13):
-    for K in range(1, 30):
+for J in range(1, 21):
+    for K in range(1, 36):
         e.load(base); e.step(D_CBUTTON, st[0], st[1], 2); f = 1
         while f < land: e.step(0, st[0], st[1], 2); f += 1
         e.step(Z, st[0], st[1], 2)                          # spin on landing
