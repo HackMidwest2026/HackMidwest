@@ -1,14 +1,15 @@
 """Run away from the clippy-setup battle (exploration). Loads a battle state saved by clippy_verify.py, pages the
 first-strike tutorial (6 x A), opens Strategies (stick up x2, A), picks Run Away (stick down x2, A), mashes A until
 the field returns, then logs the encounter/freeze/partner/input/collision-counter state for 1200 more frames.
-usage: clippy_flee.py BATTLE.st [FIELD_OUT.st]"""
+usage: clippy_flee.py BATTLE.st [FIELD_OUT.st] (env TUT = number of tutorial A presses, default 6)"""
 import sys
 from emu import *
 from pm import *
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/clfl')
 e.load(sys.argv[1])
 e.step(0, 0, 0, 120)
-for i in range(6): e.step(A, 0, 0, 4); e.step(0, 0, 0, 50)
+import os
+for i in range(int(os.environ.get("TUT", "6"))): e.step(A, 0, 0, 4); e.step(0, 0, 0, 50)
 for i in range(2): e.step(0, 0, 70, 4); e.step(0, 0, 0, 20)
 e.step(A, 0, 0, 4); e.step(0, 0, 0, 30)
 for i in range(2): e.step(0, 0, -70, 4); e.step(0, 0, 0, 16)

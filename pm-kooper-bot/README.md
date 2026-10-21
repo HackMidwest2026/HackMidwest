@@ -2095,3 +2095,45 @@ Files:
 - **Data and figures:** `data/nok13_collision.json`, `figures/nok13_floor_map.png`.
 - **Local states (not committed):** the nok_13 states come from `make_state_room.py`
   (`PRA_MAP=nok_13 PRA_AREA=6 PARTNER=8`), then a real partner-menu swap to Lakilester.
+
+### Update: clippy with no position edits, by running away (and why my first attempt softlocked)
+
+The working method: **hold the partner menu open through the battle.**
+
+1. Ride Lakilester into an enemy so that Mario touches it (no first strike).
+2. Press C-right on the contact frame. Laki's input is copied into `gPartnerStatus` before the contact locks input,
+   so the menu opens during the battle wind-up. Leave it open.
+3. When the battle starts, Laki's `pre_battle` runs: counter 1 → 0. It keeps `MountState` and
+   `PlayerCollisionDisabled` set.
+4. The battle saves the world's time-freeze mode on entry and restores it on exit (`state_battle.c`,
+   `SavedWorldFreezeMode`), so the popup menu comes back with the field. Run Away (or win).
+5. On the field the partner menu is still open. Pick Goombario or Bombette.
+6. Laki's PutAway still sees him mounted, takes the dismount path, and `FINISH_1` re-enables collision because
+   `PlayerCollisionDisabled` is still set: counter 0 → **-1**, flag clear.
+7. No time freeze or input lock is left over, so Mario walks normally with the counter at -1.
+
+Only C-right on the contact frame is timed. The partner can be picked whenever you like after the battle.
+
+`clippy_natural.py` / `clippy_video.py` do this on nok_13 from the south approach to the Koopa. The only RAM writes
+are the Lucky Star flag (`PlayerData.hasActionCommands`, +0x0A) and an equipped Spike Shield (item 229). In that run
+the Koopa touches Mario again during the swap; running from that second battle leaves the counter at -1.
+
+**Why the earlier attempts softlocked.** They picked the partner *before* the battle took over (A on C+16..C+25).
+The swap worker had then set `TIME_FREEZE_PARTIAL` (put-away / take-out). The battle saved that mode at entry and
+restored it on exit. The swap never finished, because `partner_handle_after_battle` kills the running partner script
+and resets the command. So the freeze stayed on and suspended the enemy's defeat script, which the
+fled/won post-battle code waits for: softlock.
+
+**What clippy does here.** `clippy_wallcross.py` walks to 112 grid points on the nok_13 plateau and stumps with no
+teleports. From each it holds 24 directions for 90 frames, with or without spins. Each run is repeated with the
+counter written back to 0 as a control.
+- Result: 1 wall crossing in 3,552 clippy runs, 0 in 3,408 control runs.
+- The hit: from (-520, 50) on the y 35 stump, hold world yaw 285 with a spin every 30 frames.
+  - The control is pinned against the y 50 stump's side at (-597.1, 50.6) and stays there.
+  - In clippy the skipped push-out lets Mario sit about 13 units further in, at (-603.6, 37.9).
+  - The next spin pushes him into the stump, the game starts a step-up, and he falls through the floor (y -2,091 by
+    frame 49) until the void respawn.
+- Video: `clippy_clip_video.py`.
+
+Scripts: `clippy_natural.py`, `clippy_video.py`, `clippy_clip_video.py`, `clippy_wallcross.py`; `clippy_verify.py`
+and `clippy_flee.py` updated.

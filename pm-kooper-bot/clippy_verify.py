@@ -10,7 +10,10 @@ from nav import stick_world
 ENC, PSTAT = 0x8009A5E0, 0x8010ED70
 X, Z, KX, KZ = (float(a) for a in sys.argv[1:5]); D, MOVE = int(sys.argv[5]), int(sys.argv[6])
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/clv')
-e.load('states/nok13_e0_laki2.st'); e.step(0, 0, 0, 2); e.step(D_CBUTTON, 0, 0, 2); e.step(0, 0, 0, 60)
+e.load('states/nok13_e0_laki2.st'); e.step(0, 0, 0, 2)
+e.w8(PLAYER_DATA + 0x0A, 1)                              # hasActionCommands (Lucky Star)
+e.w16(PLAYER_DATA + 0xB4, 229); e.w16(PLAYER_DATA + 0x208, 229)   # Spike Shield owned + equipped
+e.step(D_CBUTTON, 0, 0, 2); e.step(0, 0, 0, 60)
 lk = [n for n in npcs(e) if n['id'] == -4][0]['addr']
 for a in (lk + 0x38, PLAYER + PS_POS): e.wf32(a, X); e.wf32(a + 8, Z)
 e.wf32(lk + 0x3C, 80.0); e.wf32(PLAYER + PS_POS + 4, 90.0)
