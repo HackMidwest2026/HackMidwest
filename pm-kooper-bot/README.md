@@ -2249,3 +2249,29 @@ directly below Mario is collider 13, even in mid-air.
 
 Files: `isk11_mount_map.py`, `isk11_push.py`, `isk11_greedy_push.py`, `isk11_release.py`, `data/isk11_collision.json`,
 `figures/isk11_map.png`.
+
+### isk_11 clip map: where, at which mount speed
+
+**Method** (`isk11_clip_map.py`, figure `figures/isk11_clip_map.png`, data `data/isk11_clip_map*.jsonl`):
+- Every standable spot on an 8-unit grid (1,408 spots).
+- Laki mount speeds 4–160 in steps of 4 (RAM-forced).
+- Mount landing points over void or a much lower floor were replayed with Mario steering toward the exit floor. A hit
+  means isk_19 loaded.
+- 110 spots clip, all on the right side: the −550 / −575 steps and the −600 floor by the E2 exit.
+- The bands below were then refined in steps of 1 at the key columns.
+
+| Spot | Floor | Speeds that clip |
+|---|---|---|
+| x 316, z 498–562 (the RTA spot, 2nd step from the bottom) | −575 | 92–122 |
+| x 324 | −575 | 99–123 |
+| x 360–364, z 458–530 | −600 | 57–61 only |
+| x 334 | −600 | 99–115 |
+| x 342–358 | −600 | 105–109/114 |
+| **x 370, z 458–538** | **−600** | **104–164 (widest band)** |
+| x 376 | −600 | 110–136 |
+| x 388 | −600 | 140–148 |
+| x 406 | −600 | 116–118 and 132–164 |
+| x 268–284 | −550 step | 108/116/124–160 |
+
+The −575 step band is about 30 speeds wide. Standing at x ≈ 370 on the −600 floor gives a band about 60 wide
+(104–164), so a speed ramp passing through it would stay inside for more frames.
