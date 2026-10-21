@@ -2275,3 +2275,20 @@ Files: `isk11_mount_map.py`, `isk11_push.py`, `isk11_greedy_push.py`, `isk11_rel
 
 The −575 step band is about 30 speeds wide. Standing at x ≈ 370 on the −600 floor gives a band about 60 wide
 (104–164), so a speed ramp passing through it would stay inside for more frames.
+
+### Lakilester remount speed: plain vs spin + 1-frame jump
+
+Test spot: isk_11 west −520 floor, holding right the whole time, no RAM edits (`laki_remount_speed.py`, video
+`laki_remount_video.py`). The C-down frame is counted from the dismount press, which is frame 1.
+
+| Method | Inputs | Speed the mount reads |
+|---|---|---|
+| A | dismount, keep holding, C-down on frame 35 | **25.82** |
+| B | dismount, spin (Z) on the landing frame 17, 1-frame A on frame 25, C-down on frame 35 | **31.62** |
+
+**Delta: +5.80 (about +22%).**
+
+- **Plain remount (A):** Laki's speed is about 1 until he starts chasing. It then peaks on that single frame and
+  falls by about a quarter each frame after: 19.4, 14.5, 10.9, …
+- **Spin + jump (B):** the best results all keep the C-down on the same frame. Later jumps give more speed, up to
+  jumping 8 frames after the spin.
