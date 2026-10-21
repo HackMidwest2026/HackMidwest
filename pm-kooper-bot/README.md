@@ -2302,3 +2302,26 @@ With **Speedy Spin** equipped (RAM, item 287; `SPEEDY=1`), same spot and inputs:
 
 - B vs A with Speedy Spin: **+11.38**.
 - B with vs without Speedy Spin: **+5.58** (31.62 → 37.20).
+
+### Detailed clip map (right side) and the speed-60 gap
+
+**Detailed map** (`figures/isk11_clip_map_detail.png`, data `data/isk11_clip_map_detail.jsonl`):
+- Coverage: x 240–440, z 370–600 on a 4-unit grid, mount speeds 2–200 in steps of 2. Mario could stand at 1,026
+  of those spots, and 541 of them clip.
+- **No spot clips below speed 57.** The only low band is the x ≈ 360–364 column on the −600 floor (57–61; this
+  step-2 grid only sees 60). The same spots clip again at 106.
+- **The most forgiving spots** are the x ≈ 368 column on the −600 floor: anything from 94 to 200 clips.
+- The RTA spot (x 316, −575 step) needs about 92 up to the low 120s. Spots further left on that step need about
+  150 or more.
+
+**Speed-60 gap** (`isk11_gap.py`, Mario at x 364, z 490):
+
+| Mount speed | Where the mount lands Mario | Result |
+|---|---|---|
+| 30–59 | back on the −600 floor, 7–14 units from where he stood (about (358, 520) at 37) | no clip |
+| 60–61 | about (365, 588), off the floor | falls, isk_19 loads |
+| 62–63 | off the floor, but Mario never drops below the floor | no clip |
+| 64 | back on the floor | no clip |
+
+There's no gradual gap to close. One of the mount's four test moves only gets past a wall corner once the speed
+reaches 60, so a remount speed of 37 (spin + 1-frame jump with Speedy Spin) doesn't come close.
