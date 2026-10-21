@@ -1897,3 +1897,7 @@ because timeInAir passes 100 again, before standing.
 - in principle, landing on ground under her drop point.
 
 Nothing crashed in any test.
+
+Video: `bombette_infinite.mp4` (`bombette_infinite_video.py`). It shows the setup, the walk-off, the respawn, Mario moving
+while the state stays BOMBETTE_3, START and C-right doing nothing, and the same state 2000 game frames later
+(Bombette at y -42,000).
