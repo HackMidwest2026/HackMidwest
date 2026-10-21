@@ -1684,3 +1684,37 @@ The joints at x 373 and 457 are nearly straight (about 170 degrees).
 Video: `kmr11_spinland.mp4` (`kmr11_spinland_video.py`) shows the closest spin-jump landing at each bush joint
 (bush_w, bush_mid, bush_e), each followed by a 1/4-speed replay of the landing. Mario lands with spin speed 8
 but stops 13.0 units from the fence, his radius.
+
+### The actual spot: the trapped arena on the left, Bush2 corner (`ROOM=kmr11bush2`)
+
+Right after the fight Mario is in the arena in front of the fortress. Its east end is a low pocket (y -8) bounded by:
+- Bush2's tall wall (collider 12, facing south) on the north;
+- the arena's south-east wall (22).
+
+**The corner.** The two walls cross at about **(-227.1, 48.5)** in a sharp ~55 degree corner. Mario pins there at
+(-248.4, -8, 53).
+
+**What's behind the bush.**
+- A thin strip of the pocket.
+- Then an 8-unit step (wall 16) up onto a y-0 strip along the fortress's south face.
+- That strip's east edge (-213,38)-(-181,-40) has no wall. Walking off it drops Mario into the void, so it's out of
+  bounds. It also touches the fortress's east strip at the corner (-181, -40).
+
+**Why the strip is closed from the west.** At the bush's west tip (-309, 19) the gap between the bush and the
+fortress face is about 1.4 units too narrow for Mario's radius. That's the "trap". Map: `figures/kmr11_left_map.png`.
+
+Goal for the searches: anywhere behind the bush east of its tip, or over the void.
+
+**Corner sweep** (`corner_sweep.py`, ACT_STEP 4, MAGS 80/40/20): the corner, the gap at the bush tip, and the
+wall_end at (-213, 37.5).
+- 65 start states, 96,120 tries.
+- All 7,200 reported hits came from 10 invalid start points. 8 were teleported inside the fortress (gap), and 2 landed
+  on the strip behind the bush (wall_end, settled at (-221, 0, 30.5)).
+- From the 57 valid starts: 87,480 tries, **0 clips**. Mario never got east of x -248.35.
+
+**Spin jump land** (`spin_land_sweep.py`):
+- At the bush points, the gap and the wall end: 344 pre-landing states, 185,760 tries, **0 clips**.
+- At the acute corner, keeping landings within 40 units: 5,000 setups gave 157 states, 84,780 landing tries,
+  **0 clips**. The biggest landing-frame move was 10.3 units.
+
+The closest landing at the corner is in `kmr11_bush2_corner.mp4`, made with `kmr11_corner_video.py`.

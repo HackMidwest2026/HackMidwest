@@ -4,6 +4,33 @@ pick one with the ROOM environment variable (default nok14)."""
 import os
 
 ROOMS = {
+    # kmr_11 right after the Goomba King, the trapped arena on the left: its low pocket (y -8) has an acute corner at
+    # about (-227, 48.5) where the Bush2 wall (collider 12) meets the arena's south-east wall (22). Behind the bush
+    # wall (north of the bush, east of its west tip (-309, 19); the corridor there is 1.4 units too narrow for Mario) is a strip along the fortress whose east edge is open void.
+    'kmr11bush2': {
+        'collision': 'kmr11_collision.json',
+        'start': 'states/kmr11_e0_kingdone.st',
+        'start_pos': {'x': -300.0, 'y': -8.0, 'z': 100.0, 'action': 0, 'floor': 17},
+        'map': (0, 9),
+        'goal_floors': [],
+        'goal_maps': [],
+        'goal_box': (1e9, -1e9, 1e9, -1e9),
+        'goal_fn': lambda x, z: _kmr11_behind_bush2(x, z),
+        'focus_min_x': -1e9,
+        'focus_box': (-420.0, -150.0, -60.0, 210.0),
+        'corners': {
+            'corner': {'p': (-227.1, 48.5), 'wedge': (141.0, 196.0)},
+            # bush points, approached from the arena side (south, +z): angle = atan2(dz, dx) from the point
+            'bush_e': {'p': (-246.0, 43.0), 'wedge': (17.0, 163.0)},
+            'bush_m': {'p': (-272.0, 36.0), 'wedge': (20.0, 160.0)},
+            'bush_w': {'p': (-309.0, 19.0), 'wedge': (25.0, 200.0)},
+            'wall_end': {'p': (-213.0, 37.5), 'wedge': (141.0, 191.0)},
+            # the 1.4-unit-too-narrow gap between the fortress south face and the bush's west tip
+            'gap': {'p': (-309.0, 7.0), 'wedge': (90.0, 225.0)},
+        },
+        'floor_y': lambda x, z: -8.0 if z > 25 else 0.0,
+        'disable_enemy_contact': True,
+    },
     # Goomba King's castle grounds (kmr_11) after the Goomba King: the fence of one-sided walls by the right-side bush
     # (colliders 13 + 29, polyline (290,-225) (373,-210) (457,-210) (509,-200) (587,-218)). Goal: south of it.
     'kmr11fence': {
@@ -169,6 +196,15 @@ def _kmr11_south(x, z):
     for (x0, z0), (x1, z1) in zip(_KMR11_FENCE, _KMR11_FENCE[1:]):
         if x0 <= x <= x1:
             return z > z0 + (z1 - z0) * (x - x0) / (x1 - x0) + 1.0
+    return False
+
+
+_KMR11_BUSH2 = [(-309, 19), (-272, 36), (-246, 43), (-222, 50)]
+def _kmr11_behind_bush2(x, z):
+    if x > -205 and z > -45: return True               # over the open void east of the strip
+    for (x0, z0), (x1, z1) in zip(_KMR11_BUSH2, _KMR11_BUSH2[1:]):
+        if x0 <= x <= x1:
+            return z < z0 + (z1 - z0) * (x - x0) / (x1 - x0) - 1.0 and z > -45
     return False
 
 
