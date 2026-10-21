@@ -1734,3 +1734,94 @@ A hit would be: behind the bush, over the void, below the floor, or crossing a w
 
 Together with the corner sweep and both spin-jump-land sweeps, this corner can't be clipped with Goombario, normal
 boots and normal spin.
+
+## Bombette's post-blast quirks: why they happen (decomp + emulator, `bombette_probe.py`)
+
+State: `states/mac02_e0_bombette.st` (`make_state_room.py PRA_MAP=mac_02 PRA_AREA=1 PRA_ENTRY=0 PARTNER=3`).
+
+### The window
+
+Bombette's ability (`src/world/partner/bombette.c`, `UseAbility`) runs through these states:
+
+| state | what happens | `partnerActionState` |
+|---|---|---|
+| BEGIN | | USE (1) |
+| LIFT | | USE (1) |
+| DEPLOY | she walks; Mario's input comes back after 10 frames | USE (1) |
+| EXPLODE | | BOMBETTE_2 for 3 frames |
+| LIFTOFF | | BOMBETTE_3 |
+| FLY | she rises about 430 units | BOMBETTE_3 |
+| FALL | she falls at up to 8/frame | BOMBETTE_3 |
+| FINISH | she lands | NONE |
+
+FALL ends when `bombette.y + 10 < mario.y + colliderHeight`, so she "lands on Mario". FINISH then teleports her to
+Mario's position plus 6.5 units to his side.
+
+Measured in mac_02: BOMBETTE_3 lasts **67 game frames (~2.2 s)**, from frame 87 to 154 after C-down. Mario has full
+control the whole time. The fall ends relative to Mario's current height, so jumping or standing higher ends it
+sooner, and being lower makes it last longer. If Mario is more than 500 units below, she snaps to the ground instead.
+
+### 1. Opening doors / reading signs "in the air"
+
+`phys_can_player_interact()` (7BB60.c) is the gate for every press-A trigger. It's used by:
+- `TRIGGER_WALL_PRESS_A` in trigger.c (doors, signs);
+- `should_collider_allow_interact`;
+- the entity and inspect checks in 77480.c.
+
+Normally it requires Mario's action to be idle, walk or run. But when a partner is acting it has a special case:
+
+```c
+if (partnerActionState != NONE) {
+    if (actingPartner == BOMBETTE) { if (partnerActionState <= BOMBETTE_2) ret = false; }  // BOMBETTE_3 -> stays true
+    else ret = false;
+} else if (!(idle || walk || run)) ret = false;
+```
+
+During BOMBETTE_3 it returns true **without checking Mario's action at all**.
+
+The A-press wall test (`phys_update_interact_collider`) still only runs inside these action updates: idle, walk, run,
+**spin started from idle**, and **step-down**. Step-down is the airborne state after walking off a ledge without
+jumping. So the window adds two new ways to interact:
+- **Step-down:** interact while dropping off a ledge. That's the door "in the air".
+- **Spin from standing:** interact during the spin.
+
+Jump and fall actions never run the test, so pressing A mid-jump does nothing even in the window. Tested in mac_02.
+
+**Tested in mac_02 on the street sign.** The sign is a box (x -98..-86, z -190..-174, y 20..94) on a 20-unit ledge.
+Standing on the ledge touching the sign, then spin + A:
+- with the window open, the sign script starts (input gets disabled 4 frames after the spin);
+- with no blast, the same inputs do nothing.
+
+Pressing A during a normal jump or fall against the sign did nothing in either case.
+
+### 2. Pushing NPCs
+
+At LIFT the ability clears Bombette's `NPC_FLAG_IGNORE_PLAYER_COLLISION` (0x100), the flag that makes NPCs ignore
+partners. The flag is only set again by `partner_walking_enable`, one frame after FINISH (measured: off from frame 13
+to 155).
+
+`npc_do_other_npc_collision()` (npc.c) moves each NPC out of anything it overlaps, by 10% of the overlap per frame.
+For a partner it counts only when `partnerActionState == NONE`. So during the ability NPCs ignore her, and the push
+happens only on the **one frame after she lands**: state is NONE but the flag is still clear. Any NPC her landing
+spot overlaps shoves itself away.
+
+That push has **no world-collision check**. It's a raw `pos += 10% of overlap`.
+
+Measured on the stationary Toad at (-26, 0, -220): jumping over it during the window at 22 timings moved it by
+0 to 1.05 units per blast. The theoretical maximum is about 2.4 units per blast (10% of a full 24-unit overlap).
+
+### Exploit ideas, ranked by how much they could matter (not tested here)
+
+1. **Step-down interaction.** Doors, signs and A-triggers that sit above a ledge or whose collider starts high can be
+   used while dropping off the ledge, without climbing or standing still. Same for chests/blocks that go through the
+   entity check. Anything usable "only from a spot you can't stand on" is a candidate.
+2. **Interacting out of a spin.** Spin moves Mario at up to 8/frame. A during a spin from standing fires wall
+   triggers, so you can buffer a door or sign mid-spin, or trigger one while sliding past.
+3. **NPC push without wall checks.** Repeated blasts (about 5 s each) can walk an NPC 1-2 units per blast, and nothing
+   stops it at walls. Slow, but it could move a blocking NPC, or push one into or through geometry.
+4. **Side effects of "partner in use".** During the whole ability:
+   - menus and partner swaps are blocked (`can_open_menus`);
+   - `GetPartnerInUse` returns Bombette, so map scripts that branch on it act differently (jan_*, pra_22, mim_07,
+     flo_*);
+   - `WaitForPlayerToLand` and `SuperBlock_WaitForPlayerToLand` treat her as acting;
+   - napping Clubbas wake on BOMBETTE_2.
