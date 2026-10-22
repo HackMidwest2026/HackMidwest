@@ -28,6 +28,7 @@ def do(d, t, h, w):
     else:
         for i in range(h): e.step(0, *stick_for(d % 360, t), 2)
     for i in range(w): e.step(0, 0, 0, 2)
+ACTLOG = []
 cur = '/dev/shm/pmbot/igp_cur%d.st' % os.getpid(); e.save(cur); best_s = score(laki()); stall = 0
 for c in range(CYC):
     cand = None
@@ -41,7 +42,7 @@ for c in range(CYC):
     d, t, h, w = cand[1]
     e.load(cur)
     do(d, t, h, w)
-    e.save(cur)
+    e.save(cur); ACTLOG.append([d, t, h, w])
     p, l = player(e), laki()
     stall = stall + 1 if cand[0] <= best_s + 0.05 else 0
     best_s = max(best_s, cand[0])
@@ -50,3 +51,4 @@ for c in range(CYC):
 p, l = player(e), laki()
 print('end: M (%.1f %.1f %.1f) L (%.1f %.1f %.1f) d %.1f target (%.1f %.1f)' % (p['x'], p['y'], p['z'], l['x'], l['y'], l['z'], math.hypot(l['x'] - tx, l['z'] - tz), tx, tz))
 e.step(0, 0, 0, 2); e.save(outp)
+import json; json.dump(ACTLOG, open(outp + '.json', 'w'))
