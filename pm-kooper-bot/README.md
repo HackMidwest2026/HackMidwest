@@ -2325,3 +2325,53 @@ With **Speedy Spin** equipped (RAM, item 287; `SPEEDY=1`), same spot and inputs:
 
 There's no gradual gap to close. One of the mount's four test moves only gets past a wall corner once the speed
 reaches 60, so a remount speed of 37 (spin + 1-frame jump with Speedy Spin) doesn't come close.
+
+### The RTA ending, brute-forced (`isk11_return_brute.py`, data `data/isk11_return/`)
+
+**What the RTA video does** (frame by frame):
+1. Push Laki across the back wall and up to the lock ledge (y −470).
+2. Mario drops to the bottom floor (−600), which runs under the ledge. Laki waits up top while Mario stays within
+   40 units horizontally. `dist2D` ignores height, so the tether still holds.
+3. Mario steps away and Laki leaves: he flies and hops west, back to his frozen target at the push start. On the way
+   he can hit a wall and drop into hop states 1/2, but those still follow the stale history, so he keeps going.
+4. At the frozen target he turns around. He then comes back in low from the bottom left over the void under the
+   stairs.
+5. Mario C-downs on the frame Laki's speed is in the clip band. Laki can still be far away: the mount only reads his
+   speed.
+
+**Laki's return speed.** It peaks on the turnaround frame at about distance/4 + distance/16. After that it drops
+about 30% per frame: for example 124.7 → 85.4 → 59.1 → 41.3. So the input window is however many frames of that
+sequence land inside the spot's clip band.
+
+**Method** (exploration):
+- The post-push spot is a RAM placement: Laki at (410, −549, 445), Mario at (390, 475) on −600. Everything after
+  that is inputs.
+- The frozen target is set by where the push starts (`isk11_make_ring.py`, env SX).
+- C-down was tried on every frame around the return, then Mario steers toward the isk_19 exit floor.
+
+| Frozen target x (push start) | Spot | Speeds read on consecutive frames (✔ = isk_19) | Frames that clip |
+|---|---|---|---|
+| −104 (−110) | step −575, (320, 520) | 118.7 ✔, 81.0 | 1 |
+| −104 (−110) | step −575, (314, 530) | 117.4, 79.6 | 0 |
+| −145 (−150) | step −575, (315, 530) | 124.3 ✔, 89.2 | 1 |
+| −145 (−150) | step −575, (320, 521) | 126.1, 90.7 | 0 |
+| −186 (−190) | step −575, (315, 530) | 134.6, 96.0 ✔ | 1 |
+| −186 (−190) | step −575, (320, 521) | 137.9, 103.4 ✔ | 1 |
+| −145 (−150) | floor −600, (367, 520) | 134.1 ✔, 93.7 ✔, 64.5 | **2** |
+| −186 (−190) | floor −600, (368, 521) | 144.9 ✔, 102.9 ✔, 70.8 | **2** |
+| −104 (−110) | floor −600, (365, 545) | 124.7, 85.4 | 0 (x ≈ 365 is in the narrow x 364 column) |
+| −145 (−150) | floor −600, (366, 546) | 131.1 ✔, 91.6 | 1 |
+
+**Conclusions:**
+- **The RTA step is a 1-frame trick at best.** Its band is about 92–122, so its top is only about 1.33× its bottom,
+  while Laki's speed drops about 1.43× per frame. At most one frame can land in the band, and with a bad turnaround
+  distance none does.
+- **A 2-frame window exists on the bottom floor at x ≈ 367–368, z ≈ 520.** There, anything from 94 to 200 clips. Two
+  consecutive frames both clip once the turnaround peak is about 134 or more: 134 → 94 or 145 → 103. That needs the
+  frozen target about 40+ units further left than a push starting at x −110, so start the push about 40–80 units
+  further left.
+- **The column is narrow.** x 364 only clips at 60 and 106, and x 372 needs 132+. So the 2-frame spot is a
+  ~4-unit-wide strip.
+- **The release is fragile.** If Laki's hop lands close to Mario, he switches to catch-up (state 15) and loses the
+  frozen target, and nothing reaches clip speed. That happened in the runs at (368, 500) and at (368, 520) with the
+  −110 target.
