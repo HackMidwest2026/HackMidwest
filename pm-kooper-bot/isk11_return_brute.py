@@ -16,17 +16,31 @@ JF = [int(v) for v in os.environ.get('JUMPF', '-1,-1').split(',')]
 MINSPD = float(os.environ.get('MINSPD', '40')); N = int(os.environ.get('N', '110'))
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/irb%d' % os.getpid())
 laki = lambda: [q for q in npcs(e) if q['id'] == -4][0]
+NOPLACE = os.environ.get('NOPLACE') == '1'
+WAIT = int(os.environ.get('WAIT', '0'))
+PATH = [tuple(float(a) for a in p.split(',')) for p in os.environ['PATH_PTS'].split(';')] + [S] if os.environ.get('PATH_PTS') else [S]
 def start():
     e.load(sys.argv[1]); a = laki()['addr']
+    if NOPLACE:
+        return e.u32(STATE) >> 16
     e.wf32(PLAYER + PS_POS, M0[0]); e.wf32(PLAYER + PS_POS + 4, -598); e.wf32(PLAYER + PS_POS + 8, M0[1])
     e.wf32(a + 0x38, LK[0]); e.wf32(a + 0x3C, LK[1]); e.wf32(a + 0x40, LK[2])
     for i in range(20): e.step(0, 0, 0, 2)
     return e.u32(STATE) >> 16
-hist = []
+hist = []; wp = [0]; jhold = [0]
 def walk_frame(f, btn=0):
-    q = player(e); dd = math.hypot(S[0] - q['x'], S[1] - q['z'])
-    st = stick_for(math.degrees(math.atan2(S[1] - q['z'], S[0] - q['x'])) % 360, 80 if dd > 12 else 25) if dd > 2 else (0, 0)
-    jump = JF[0] <= f < JF[1] or JF[0] < 0 and dd > 2 and len(hist) >= 3 and q['action'] in (1, 2) and math.hypot(hist[-3][0] - q['x'], hist[-3][1] - q['z']) < 1.0
+    if f == 0: wp[0] = 0; jhold[0] = 0
+    if f < WAIT: e.step(btn, 0, 0, 2); return
+    q = player(e)
+    while wp[0] < len(PATH) - 1 and math.hypot(PATH[wp[0]][0] - q['x'], PATH[wp[0]][1] - q['z']) < 10: wp[0] += 1
+    T = PATH[wp[0]]; last = wp[0] == len(PATH) - 1
+    dd = math.hypot(T[0] - q['x'], T[1] - q['z'])
+    st = stick_for(math.degrees(math.atan2(T[1] - q['z'], T[0] - q['x'])) % 360, 80 if dd > 12 or not last else 25) if dd > 2 else (0, 0)
+    if jhold[0] > 0:
+        jhold[0] -= 1; e.step(btn | A, st[0], st[1], 2); return
+    if dd > 2 and len(hist) >= 3 and q['action'] in (1, 2) and math.hypot(hist[-3][0] - q['x'], hist[-3][1] - q['z']) < 1.0:
+        jhold[0] = 9; e.step(btn | A, st[0], st[1], 2); return
+    jump = JF[0] <= f < JF[1]
     e.step(btn | (A if jump else 0), st[0], st[1], 2)
 st0 = start(); log = []
 for f in range(N):

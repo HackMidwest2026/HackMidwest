@@ -2375,3 +2375,30 @@ sequence land inside the spot's clip band.
 - **The release is fragile.** If Laki's hop lands close to Mario, he switches to catch-up (state 15) and loses the
   frozen target, and nothing reaches clip speed. That happened in the runs at (368, 500) and at (368, 520) with the
   −110 target.
+
+### Building the 2-frame setup with real inputs (work in progress)
+
+**Push (works, no RAM edits).** Start the push 40 units further left: Mario idles at (−150, 508) until the history is
+full (`SX=-150 isk11_make_ring.py`), so Laki's target freezes at (−145, 523). Then:
+- `isk11_greedy_push.py` pushes Laki to (266, 452), 417 units from the target.
+- With jump actions added (`JUMPS=1 GOAL=330,400`), it pushes him up onto the lock ledge, (330, −457, 421), 486
+  units from the target. That is further than the 472 units the fake placement test had.
+
+**Release (not solved yet).** Every real release so far loses the frozen target (`data/isk11_release2/`, max Laki
+speed 42–50):
+1. **Mario's direction.** When Mario leaves the 40-unit tether, follow state 5 skips every history entry whose
+   direction is more than 90° from Mario's direction. If Mario leaves to the south-east, the far-west target gets
+   skipped and Laki just follows Mario. He has to leave roughly south or south-west of Laki (runs `L1–L4` vs `S1–S4`).
+2. **The hop.** Leaving south works for the direction, but Laki's dash west clips the back wall corner around x 265.
+   He drops into a hop toward the next stale history entry, whose height is −520. From −457 that hop lasts only a
+   frame or two, and it ends less than 40 units from where it started. A hop that ends that close switches him to
+   catch-up (follow state 15), which clears the history.
+3. **Why the fake test worked.** There Laki started low, (410, −549, 445) over the −600 floor east of the lock ledge.
+   His hops climbed toward −520, so each lasted about 14 frames (70 units). He kept hopping west until he reached the
+   target.
+
+A ledge scan (`isk11_ledge_scan.py`, `data/isk11_release2/ledge_scan.jsonl`, partial) found clean flights only from
+the far back corner, around (294–302, 392–400).
+
+Still needed: a real way to put Laki either low on the east side of the lock, or somewhere on the ledge with a clear
+straight line west.
