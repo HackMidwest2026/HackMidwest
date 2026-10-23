@@ -2499,3 +2499,31 @@ left (he had followed Mario leftwards), so he gets shoved right while still faci
   auto-dismounts Mario, and Laki's catch-up state (15) clears his history. No glitch.
 - **Not found yet:** an inputs-only way in this room for Mario to fall while Laki is *following*. That is what the
   glitch needs.
+
+### mac_01 reproduction: flicker, snaps and the mount (`mac01_flicker.py`, `mac01_mount_scan.py`, `mac01_record.py`)
+
+**Setup.**
+- Mario is teleported once (RAM) onto the out-of-bounds grass by Rowf's shop, at (−480, 20, 368).
+- Everything after that is inputs: walk south off the wall-less edge and stand still after the respawn.
+
+**What happens** (game frames counted from the start of the walk):
+
+| Frame | Event |
+|---|---|
+| 0–110 | Mario falls to y −1073, then the uncapped fall integrator throws him up to y 18,970. Every frame goes into the full history ring. Laki follows him up. |
+| 111 | Respawn at (−480, 20, 408). Laki is still about 19,000 units up. |
+| 112 | **Snap:** more than 1000 apart, so Laki is placed on Mario. |
+| 113–163 | His target is an old entry at y −857, below Mario, so his speed is capped at 4–6. He dives through the ground to y −207 and flies around under the floor (invisible). |
+| 164–165 | The next entries are at y 6,298 and 10,047, so he rises about 740 units in one frame. |
+| 166 | **Snap** again. |
+| 167+ | The ring reaches Mario's spot, and he gets stuck jittering 14–15 units from Mario at speed 1.5–2.25. This is the "stuck and drifting" state above, the "stuck inside Mario" look. |
+
+**Mount, C-down on every frame after the respawn:**
+- Most frames read 4–6 (target below Mario), or about 2 (stuck jitter). The mount then moves Mario 2 units.
+- **Frame 166 (the second snap) reads 77.96.** That is 0.25 × the 312-unit horizontal gap, because on that frame
+  Laki is above Mario and far away.
+- That mount teleports Mario 40.6 units and drops him through the floor, to (−520, −231, 406) and still falling.
+- So the high speed lasts exactly one frame, the snap frame. The sustained 3 + D/16 case only happens when every
+  entry is far above Mario.
+
+Video: `mac01_oob_laki_flicker.mp4` (part 1: the flicker; part 2: the snap-frame C-down).

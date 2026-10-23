@@ -4,10 +4,10 @@ import json, math, os, subprocess, sys
 from PIL import Image, ImageDraw, ImageFont
 d, title, outp = sys.argv[1], sys.argv[2], sys.argv[3]
 log = json.load(open(os.path.join(d, 'log.json')))
-col = json.load(open('isk11_collision.json'))
+col = json.load(open(os.environ.get('COLL', 'isk11_collision.json')))
 F = '/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf'
 font, small, big = ImageFont.truetype(F % '', 14), ImageFont.truetype(F % '', 12), ImageFont.truetype(F % '-Bold', 16)
-X0, X1, Z0, Z1, SC = -350, 450, 360, 680, 0.9
+X0, X1, Z0, Z1, SC = [float(v) for v in os.environ.get('BOUNDS', '-350,450,360,680,0.9').split(',')]
 W = int((X1 - X0) * SC); H = int((Z1 - Z0) * SC)
 tp = lambda x, z: ((x - X0) * SC, (z - Z0) * SC)
 base = Image.new('RGB', (W, H), (25, 25, 30)); bd = ImageDraw.Draw(base)
@@ -43,8 +43,8 @@ for r in log:
     dt = math.hypot(r['l'][0] - r['t'][0], r['l'][2] - r['t'][1])
     peak = max(peak, r['ls'])
     dr.text((8, y0), r['tag'], fill=(255, 255, 120), font=big)
-    dr.text((8, y0 + 24), 'Laki: %s   speed %.1f   distance to target %.0f' % (SN.get(r['st'], 'state %d' % r['st']), r['ls'], dt), fill=(255, 255, 255), font=font)
-    dr.text((8, y0 + 46), 'history: write slot %d, Laki\'s slot %d%s   map %s' % (r['idx'], r['ptr'], '  (FULL: recording stopped)' if (r['ptr'] - 1) % 40 == r['idx'] else '', {10: 'isk_11', 16: 'isk_19'}.get(r['map'], r['map'])), fill=(200, 200, 200), font=font)
+    dr.text((8, y0 + 24), 'Laki: %s   speed %.1f   Laki y %.0f   Mario y %.0f   target y %s' % (SN.get(r['st'], 'state %d' % r['st']), r['ls'], r['l'][1], r['m'][1], ('%.0f' % r['ty']) if 'ty' in r else '-'), fill=(255, 255, 255), font=font)
+    dr.text((8, y0 + 46), 'history: write slot %d, Laki\'s slot %d%s   map %s' % (r['idx'], r['ptr'], '  (FULL: recording stopped)' if (r['ptr'] - 1) % 40 == r['idx'] else '', os.environ.get('MAPNAME') or {10: 'isk_11', 16: 'isk_19'}.get(r['map'], r['map'])), fill=(200, 200, 200), font=font)
     im.save(os.path.join(tmp, 'c%05d.png' % n)); n += 1
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', os.environ.get('FPS', '30'), '-i', os.path.join(tmp, 'c%05d.png'), '-pix_fmt', 'yuv420p',
                 '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', '-c:v', 'libx264', '-crf', '23', outp], check=True)
