@@ -2468,3 +2468,34 @@ left (he had followed Mario leftwards), so he gets shoved right while still faci
   closes in again.
 - The 2-unit camera part points slightly right in this room (camera yaw about 13°), so a push always drifts him into
   the back wall and a little to the right.
+
+### Out-of-bounds partner flicker / "stuck inside Mario"
+
+**Mechanism** (`partners.c`, `partner_flying_update_motion` and `partner_flying_follow_player`):
+- In follow state 0, Laki moves 1/8 of the way each frame toward his history target's height (`y += (histY + 20 - y)
+  * 0.125`).
+- After that, if he is more than 1000 units above or below Mario, he is placed exactly on Mario. His target and his
+  follow state are not reset.
+- An out-of-bounds fall writes extreme heights into the history. After the respawn his target is one of those
+  entries, at a height gap H from Mario:
+  - **H < 1000:** normal following.
+  - **1000 < H < 8000: flicker.** He leaves Mario for n − 1 frames and snaps back on frame n, where n is the first
+    integer with (7/8)^n < 1 − 1000/H. That gives n = 9 at H 1500, 6 at 2000 and 3 at 4000.
+  - **H > 8000: stuck inside Mario.** H/8 is already more than 1000, so he snaps every frame. This is the "glued"
+    state above.
+- If a snap lands during a hop, it zeroes the hop's gravity. The hop never lands, and he drifts instead (the stuck
+  hop above).
+
+**Mount effect:**
+- With the target above Mario, his speed is 3 + D/16 on every frame, where D is the horizontal distance from Mario to
+  the stale entry (`glue_speed.py`). So the C-down has no timing window, and the mount teleport uses that speed.
+- With the target below Mario, his speed is capped near 6.
+
+**isk_11, inputs only (`isk11_oob_explore.py`, `isk11_oob_scan.py`):**
+- **The hidden y −910 floor under the room**, reached by riding Laki after the 2-frame mount and steering to
+  (100, 560): Laki follows normally in all 8 directions, walking and jumping. It is real floor, so the history never
+  holds extreme heights.
+- **Riding into the void**, steering south after the mount: they fall to y −1740, the game respawns them and
+  auto-dismounts Mario, and Laki's catch-up state (15) clears his history. No glitch.
+- **Not found yet:** an inputs-only way in this room for Mario to fall while Laki is *following*. That is what the
+  glitch needs.
