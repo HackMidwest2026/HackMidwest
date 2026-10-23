@@ -2416,3 +2416,22 @@ Replay (`isk11_explain_record.py full580`):
 **Window:** 1 frame. The speeds are 134 on frame 10 and then 92.6 on frame 11. The x ≈ 368 column needs at least 94, so
 frame 11 misses by about 1.5. A frozen target slightly further west should lift both frames over 94 (in progress).
 Grid of exits, stops and frames: `data/isk11_inputs_only/cdown_grid.jsonl`.
+
+### 2-frame window, inputs only
+
+Same route as the 1-frame clip, with the history filled 30 units further west:
+1. Walk to (−180, 580) and wiggle until the history is full. Laki's target freezes at (−167, 572).
+2. Push: `data/isk11_inputs_only/push_w180.st.json`.
+3. Lock ledge: `ledgeA_w180.st.json`.
+4. Ledge edge: replay `ledgeB_s580.st.json` (`isk11_replay_actions.py`). This ends exactly like the 1-frame setup: Mario
+   on the bottom floor at (370, 470), Laki on the ledge at (333, −470, 455). Laki is now 513 units from his target
+   instead of 487.
+5. Step to (358, 484), then walk toward (366, 498).
+6. C-down on release frame **10** (mount speed 140.1) or **11** (96.5). Both load isk_19 (verified with full replays,
+   `isk11_explain_record.py full` with SX=-180 PUSH=… LA=… S=366,498 CF=10/11).
+
+**Why it works:** Mario stays in the x ≈ 368 column, which clips at 94–200, on both frames. The frame after the
+turnaround always reads about 0.69× the peak, so the peak has to be at least about 137. That's what the extra 26
+units of distance buy: with the target at x −150 the peak was 134 → 92.6, which is 1 frame.
+
+Also: stopping at (365, 502) gives 2 frames. Grid: `data/isk11_inputs_only/twoframe_grid_w180.jsonl`.

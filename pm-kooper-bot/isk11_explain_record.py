@@ -74,14 +74,14 @@ elif SCEN in ('release_se', 'release_s'):
         release([(355, 455)], (368, 520), 'walk SOUTH-EAST off the ledge: Mario leaves the 40 tether on the wrong side')
     else:
         release([(330, 480), (345, 505)], (368, 520), 'walk SOUTH off the ledge first, then over to (368, 520)')
-elif SCEN == 'full580':
+elif SCEN in ('full580', 'full'):
     import nav
     e.load('states/isk11_laki_ready.st'); e.step(0, 0, 0, 2)
-    _orig = e.step; tag = ['walk to the history-fill spot (x -150, z 580)']; ev = [2]
+    _orig = e.step; tag = ['walk to the history-fill spot (z 580)']; ev = [2]
     def hooked(b=0, x=0, y=0, n=1):
         _orig(b, x, y, n); rec(tag[0], ev[0])
     e.step = hooked
-    nav.go_to(e, -100, 590, maxf=300); nav.go_to(e, -150, 580, maxf=200, tol=3)
+    FSX = float(os.environ.get('SX', '-150')); nav.go_to(e, FSX + 50, 590, maxf=300); nav.go_to(e, FSX, 580, maxf=200, tol=3)
     tag[0] = 'stand still: Laki stops next to Mario'
     for i in range(60): e.step(0, 0, 0, 2)
     tag[0] = 'wiggle up/down: fills the 40-slot history'; ev[0] = 1
@@ -91,14 +91,14 @@ elif SCEN == 'full580':
     tag[0] = "history full: Laki's target (yellow X) is frozen here"
     for i in range(10): e.step(0, 0, 0, 2)
     e.step = _orig
-    for (d, t, hh, w) in json.load(open('states/push_s580.st.json')):
+    for (d, t, hh, w) in json.load(open(os.environ.get('PUSH', 'states/push_s580.st.json'))):
         do(d, t, hh, w, 'stop-and-go push across the room (target stays frozen)', 3)
-    for (d, t, hh, w) in json.load(open('states/ledgeA_s580.st.json')):
+    for (d, t, hh, w) in json.load(open(os.environ.get('LA', 'states/ledgeA_s580.st.json'))):
         do(d, t, hh, w, 'push with jumps up onto the lock ledge', 2)
     for (d, t, hh, w) in json.load(open('states/ledgeB_s580.st.json')):
         do(d, t, hh, w, 'push Laki to the ledge edge, Mario drops to the bottom floor', 2)
     for i in range(20): step(0, 0, 0, 'Laki waits on the ledge (Mario within 40 units horizontally)')
-    PRE, S, CF = (358.0, 484.0), (368.0, 505.0), int(os.environ.get('CF', '10'))
+    PRE, S, CF = (358.0, 484.0), tuple(float(v) for v in os.environ.get('S', '368,505').split(',')), int(os.environ.get('CF', '10'))
     ph = 0; hh = []; hold = 0
     for f in range(CF + 1):
         q = player(e)
