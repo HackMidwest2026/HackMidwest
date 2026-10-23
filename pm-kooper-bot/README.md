@@ -2435,3 +2435,36 @@ turnaround always reads about 0.69× the peak, so the peak has to be at least ab
 units of distance buy: with the target at x −150 the peak was 134 → 92.6, which is 1 frame.
 
 Also: stopping at (365, 502) gives 2 frames. Grid: `data/isk11_inputs_only/twoframe_grid_w180.jsonl`.
+
+### Why Laki can be pushed "backwards" (facing the opposite way)
+
+**Where the push comes from.** Partners skip the normal NPC push-out (`npc_do_player_collision` returns early for
+`NPC_FLAG_PARTNER`). The only thing that moves Laki when Mario touches him is `partner_do_player_collision`
+(`partners.c`), which `partner_flying_update_motion` calls every frame:
+- It projects Mario and Laki to the screen and checks that they overlap there: horizontally, vertically, and within 4
+  units of depth.
+- If they do, it moves Laki 1 unit straight away from Mario (`npc_move_heading`), then 2 more units along the camera
+  yaw (`add_vec2D_polar`).
+- It sets his position directly. There's no wall test, his AI isn't involved, and his `yaw` / `renderYaw` aren't
+  touched.
+
+**Why his facing never changes.** In follow state 5 (idle next to Mario) the follow code only adjusts his height. It
+never changes his yaw, unless the reposition flag `D_8010CFCA` is set (it stays 0 during the push). So Laki keeps the
+facing he had when he came to a stop, and the push slides him without turning him. In the RTA clip he stopped facing
+left (he had followed Mario leftwards), so he gets shoved right while still facing left.
+
+**Measured** (`isk11_facing_probe.py` and a 12-direction test, inputs only):
+- Laki was brought to a stop from 12 directions, so he idled with yaw 9–278° and both sprite facings (renderYaw 165
+  and 345).
+- Mario then stood down-left of him and did five up-right taps.
+- Every case pushed him 24–38 units at about 31–45°, with no dependence on his facing.
+- His yaw was identical before and after.
+- `D_8010CFCA` stayed 0, so the side-follow mode isn't involved.
+
+**Practical consequences:**
+- The push only happens on frames where the two overlap on screen at the same depth. At the back wall Mario sits about
+  7 units nearer the camera than Laki (Laki is wider), so walking along the wall never touches him.
+- A tap that stops next to him gives 2–3 push frames of about 2.4 units each. Then he's out of overlap until Mario
+  closes in again.
+- The 2-unit camera part points slightly right in this room (camera yaw about 13°), so a push always drifts him into
+  the back wall and a little to the right.
