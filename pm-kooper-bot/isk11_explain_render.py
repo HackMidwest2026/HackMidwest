@@ -12,7 +12,7 @@ while True:
     for sp in ss:
         try:
             k = int(os.path.basename(sp)[1:6]); time.sleep(0.05)
-            e.load(sp); e.step(0, 0, 0, 2)
+            e.load(sp); e.step(0, 0, 0, 2); e.step(0, 0, 0, 2)  # the video plugin shows the pre-load picture for one frame after a load
             subprocess.run(['import', '-window', 'root', os.path.join(d, 'f%05d.png' % k)], check=True)
             os.remove(sp)
         except Exception as ex:
