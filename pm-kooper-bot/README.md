@@ -2527,3 +2527,32 @@ left (he had followed Mario leftwards), so he gets shoved right while still faci
   entry is far above Mario.
 
 Video: `mac01_oob_laki_flicker.mp4` (part 1: the flicker; part 2: the snap-frame C-down).
+
+## Super Block with only Goompa (omo_11): uninitialized partner menu
+
+**The bug** (`world/common/entity/SuperBlock.inc.c`):
+- `SuperBlock_CountEligiblePartners` loops over partner slots 1–11, so Goompa (5) counts as eligible.
+- `SuperBlock_ShowSelectPartnerMenu` builds entries only from the 8 upgradeable partners.
+- With only Goompa, `numEntries = 0`, and the 0x330-byte `heap_malloc`'d PopupMenu keeps whatever was in that
+  memory before.
+
+**How the menu reads it** (`8a860_len_3f30.c`):
+- The cursor starts at `numEntries − 1 = −1`. Pressing down moves it to 0, and up wraps back to −1.
+- Pressing A needs `enabled[cursor]` to be nonzero, and the result is `cursor + 1`:
+  - **Cursor −1** checks +0x188. Its result is 0, which the script treats as "still choosing": the softlock.
+  - **Cursor 0** checks `enabled[0]` (+0x18C). The partner is `userIndex[0]` (+0x108).
+- `SwitchToPartner` runs before the "Upgrade?" yes/no prompt.
+
+**Measured** (`make_state_omo.py`: omo_11 entry 0 with Goompa only; `omo11_superblock_probe.py`: Mario teleported
+onto platform 22 under the block, then inputs):
+- **Baseline:** the block is at 0x80318D60, with +0x108 = 0x00020000, +0x18C = 0x000F0000 and +0x188 = 0x01000000.
+- **World C-left / C-right menus can't seed it.** They use a static PopupMenu at 0x8010CB88, not the heap. Seven
+  items left a correct `userIndex[0] = 3, enabled[0] = 1` there, but not in the heap.
+- **Just before the malloc**, only two free blocks are at least 0x340 bytes: 0x80318D50 (0x4390) and the tail.
+  Best-fit takes the first.
+- **Dust-action search** (`omo11_dust_search.py`, 316 runs, `data/omo11/dust_search.jsonl`):
+  - Hammer swings, jumps, spin jumps and runs before the hit move the block across 19 addresses
+    (0x80318BE0–0x8031C160).
+  - 14 distinct values appeared at +0x108, mostly 0. **No 3 yet.**
+- **Caveat:** this state enters through a warp from nok_14, so its leftover memory is not what a real run brings in
+  from omo_10 or omo_12.
