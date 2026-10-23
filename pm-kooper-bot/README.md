@@ -2402,3 +2402,17 @@ the far back corner, around (294–302, 392–400).
 
 Still needed: a real way to put Laki either low on the east side of the lock, or somewhere on the ledge with a clear
 straight line west.
+
+### Inputs-only clip (no RAM edits after `isk11_laki_ready.st`)
+
+Replay (`isk11_explain_record.py full580`):
+1. Walk to (−150, 580) and wiggle until the history is full, which freezes Laki's target at about (−139, 576).
+2. Stop-and-go push: `data/isk11_inputs_only/push_s580.st.json`.
+3. Jump push onto the lock ledge (`ledgeA_s580.st.json`), then to its front edge (`ledgeB_s580.st.json`). Mario ends
+   on the bottom floor at (370, 470) with Laki still on the ledge.
+4. Step to (358, 484), still inside the tether, then walk toward (368, 505). Laki flies back west.
+5. C-down on release frame 10: the mount reads 134.5, and holding toward the exit floor loads isk_19.
+
+**Window:** 1 frame. The speeds are 134 on frame 10 and then 92.6 on frame 11. The x ≈ 368 column needs at least 94, so
+frame 11 misses by about 1.5. A frozen target slightly further west should lift both frames over 94 (in progress).
+Grid of exits, stops and frames: `data/isk11_inputs_only/cdown_grid.jsonl`.

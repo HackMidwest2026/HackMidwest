@@ -6,7 +6,7 @@ from pm import *
 from corner_sweep import stick_for
 from nav import go_to
 IDX, PTR, STATE, HIST = 0x8010D178, 0x8010D17C, 0x8010D188, 0x8010CEF8
-SX, SZ = float(os.environ.get("SX", "-110")), 508.0
+SX, SZ = float(os.environ.get("SX", "-110")), float(os.environ.get("SZ", "508"))
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/imr')
 e.load('states/isk11_laki_ready.st'); e.step(0, 0, 0, 2)
 go_to(e, SX + 50, SZ + 10, maxf=300); go_to(e, SX, SZ, maxf=200, tol=3)

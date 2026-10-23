@@ -74,6 +74,52 @@ elif SCEN in ('release_se', 'release_s'):
         release([(355, 455)], (368, 520), 'walk SOUTH-EAST off the ledge: Mario leaves the 40 tether on the wrong side')
     else:
         release([(330, 480), (345, 505)], (368, 520), 'walk SOUTH off the ledge first, then over to (368, 520)')
+elif SCEN == 'full580':
+    import nav
+    e.load('states/isk11_laki_ready.st'); e.step(0, 0, 0, 2)
+    _orig = e.step; tag = ['walk to the history-fill spot (x -150, z 580)']; ev = [2]
+    def hooked(b=0, x=0, y=0, n=1):
+        _orig(b, x, y, n); rec(tag[0], ev[0])
+    e.step = hooked
+    nav.go_to(e, -100, 590, maxf=300); nav.go_to(e, -150, 580, maxf=200, tol=3)
+    tag[0] = 'stand still: Laki stops next to Mario'
+    for i in range(60): e.step(0, 0, 0, 2)
+    tag[0] = 'wiggle up/down: fills the 40-slot history'; ev[0] = 1
+    for j in range(400):
+        e.step(0, *stick_for(-90 if j % 2 == 0 else 90, 25), 2)
+        if e.u32(IDX) == (e.u32(PTR) - 1) % 40: break
+    tag[0] = "history full: Laki's target (yellow X) is frozen here"
+    for i in range(10): e.step(0, 0, 0, 2)
+    e.step = _orig
+    for (d, t, hh, w) in json.load(open('states/push_s580.st.json')):
+        do(d, t, hh, w, 'stop-and-go push across the room (target stays frozen)', 3)
+    for (d, t, hh, w) in json.load(open('states/ledgeA_s580.st.json')):
+        do(d, t, hh, w, 'push with jumps up onto the lock ledge', 2)
+    for (d, t, hh, w) in json.load(open('states/ledgeB_s580.st.json')):
+        do(d, t, hh, w, 'push Laki to the ledge edge, Mario drops to the bottom floor', 2)
+    for i in range(20): step(0, 0, 0, 'Laki waits on the ledge (Mario within 40 units horizontally)')
+    PRE, S, CF = (358.0, 484.0), (368.0, 505.0), int(os.environ.get('CF', '10'))
+    ph = 0; hh = []; hold = 0
+    for f in range(CF + 1):
+        q = player(e)
+        if ph == 0 and math.hypot(PRE[0] - q['x'], PRE[1] - q['z']) < 2: ph = 1
+        tx, tz = PRE if ph == 0 else S
+        dd = math.hypot(tx - q['x'], tz - q['z'])
+        stk = stick_for(math.degrees(math.atan2(tz - q['z'], tx - q['x'])) % 360, (80 if dd > 12 else 25) if ph else (80 if dd > 8 else 20)) if dd > (2 if ph else 1) else (0, 0)
+        b = 0
+        if hold: hold -= 1; b = A
+        elif dd > 2 and len(hh) > 3 and q['action'] in (1, 2) and math.hypot(hh[-3][0] - q['x'], hh[-3][1] - q['z']) < 1: hold = 9; b = A
+        if f == CF: b |= D_CBUTTON
+        step(b, stk[0], stk[1], 'C-DOWN (release frame %d)' % f if f == CF else ('step to (358, 484), then walk toward (368, 505): Laki flies back west' if f < 6 else 'Laki turns around at the frozen target and races back'))
+        q = player(e); hh.append((q['x'], q['z']))
+    for i in range(20):
+        if e.u8(PLAYER + PS_ACTION) == 33: break
+        step(0, 0, 0, "the mount reads Laki's speed")
+    for i in range(160):
+        p = player(e); st = stick_for(math.degrees(math.atan2(532 - p['z'], 220 - p['x'])) % 360, 80)
+        step(0, st[0], st[1], 'hold toward the isk_19 exit floor while falling')
+        if where(e)[1] == 16: break
+    for i in range(40): step(0, 0, 0, 'isk_19' if where(e)[1] == 16 else 'loading isk_19')
 elif SCEN == 'fake':
     e.load('states/isk_ring_-150.st'); a = laki()['addr']
     e.wf32(PLAYER + PS_POS, 390); e.wf32(PLAYER + PS_POS + 4, -598); e.wf32(PLAYER + PS_POS + 8, 475)

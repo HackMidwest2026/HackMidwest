@@ -43,6 +43,7 @@ for c in range(CYC):
     e.load(cur)
     do(d, t, h, w)
     e.save(cur); ACTLOG.append([d, t, h, w])
+    if os.environ.get('SNAP') and c % int(os.environ['SNAP']) == 0: e.save('%s_c%03d.st' % (outp, c))
     p, l = player(e), laki()
     stall = stall + 1 if cand[0] <= best_s + 0.05 else 0
     best_s = max(best_s, cand[0])
