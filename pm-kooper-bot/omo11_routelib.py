@@ -25,6 +25,10 @@ def stage(name, y=None):
     if y is not None and abs(p['y'] - y) > 4: print('WRONG HEIGHT at', name, p); sys.exit(1)
     p = player(e); print('%-22s M (%.0f %.0f %.0f) act %d' % (name, p['x'], p['y'], p['z'], p['action']), flush=True)
     if SD: e.save(os.path.join(SD, name + '.st'))
+    if os.environ.get('HAMMER_AT') == name:               # heap shaping: N hammer swings standing here
+        for k in range(int(os.environ.get('HAMMER_N', '1'))):
+            for i in range(2): e.step(B, 0, 0, 2)
+            for i in range(22): e.step(0, 0, 0, 2); chk('hammer')
 def walk(x, z, tag, tol=3, maxf=400):
     r = go_to(e, x, z, maxf=maxf, tol=tol); chk(tag); return r
 def jump_to(x, z, hold=12, tag='', track=None, expect_y=None):

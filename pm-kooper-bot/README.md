@@ -2662,3 +2662,31 @@ The spin-in mode isn't in the table: the spin dash went off the platform in all 
 - 9,004 menus. Enabled was nonzero in 2,389 of them.
 - An id from 1 to 11 appeared 251 times, always 7 and always with enabled 0.
 - No switch to any partner yet.
+
+### First working switch: Goombario (inputs only)
+
+`apg_hammer_variant.sh STAGE N` reruns the second half of the idle-210 rush with N hammer swings at one checkpoint,
+then runs an 80-attempt approach grid. Results are in `data/omo11/hammer_variants.jsonl`.
+
+**Two swings on top of block 22 work** (checkpoint `u_top22`, right after hopping off platform 63 at x ≈ −216):
+- The menu lands at **0x80318C30**.
+- The id word **0x80318D38 = 1 (Goombario)**.
+- The enabled word **0x80318DBC = 0xBEFAE13F**, nonzero.
+- This happens when Mario jumps into the block within 0–2 steps (0–4 frames) of arriving under it, walking
+  straight there from block 22's west end.
+- Selecting with down, A switched `curPartner` 5 → 1. The game kept running with Goombario out
+  (`data/omo11/goombario_switch_verify.txt`). No RAM was written.
+
+**Full sequence:**
+1. Load the file at the omo_10 save block and idle 210 steps.
+2. Go to omo_10's west exit and do the omo_11 platform route. The Shy Guy dodge left after 80 steps.
+3. Hop onto block 22, swing the hammer twice, and walk to (−115, −112).
+4. Jump into the Super Block right away.
+5. When the menu opens: down, A.
+
+**The other variants** (1–3 swings at step 27, on 60, on top of 30, on 63, under the block): 0 switches. They
+either kept the Sushie spot (7, disabled) or moved the menu elsewhere.
+
+**Not yet known:**
+- What leaves the 1 at 0x80318D38.
+- How much the timing of the two swings can vary.
