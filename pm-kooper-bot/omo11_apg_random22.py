@@ -15,8 +15,10 @@ fo = open(out, 'a')
 def popup():
     p = e.u32(POP)
     return p if 0x80000000 < p < 0x80800000 and e.s32(p + 0x318) == 4 and e.s32(p + 0x324) == 0 else None
+MAXA = int(os.environ.get('MAXA', '5'))
 def act():
     k = R.random()
+    if os.environ.get('JUMPY') and k < 0.35: return R.choice([('jump', 0), ('hop', 3), ('spin', 0), ('walkjump', R.choice(range(-205, -95, 10)))])
     if k < 0.3: return ('walk', R.choice(range(-205, -95, 10)), R.choice([-140, -125, -112, -100, -88]))
     if k < 0.55: return ('hammer', R.choice(['back', 'front', 'left', 'right', 'none']))
     if k < 0.7: return ('hop', R.choice([1, 2, 3]))
@@ -37,11 +39,18 @@ def do(a):
     elif a[0] == 'jump':
         for i in range(8): e.step(A, 0, 0, 2)
         for i in range(25): e.step(0, 0, 0, 2)
+    elif a[0] == 'spin':
+        for i in range(2): e.step(Z, 0, 0, 2)
+        for i in range(20): e.step(0, 0, 0, 2)
+    elif a[0] == 'walkjump':                       # full jump while walking along the middle lane (landing dust)
+        p = player(e)
+        for i in range(8): e.step(A, *stick_world(e, world_yaw_to(p, a[1], -112), 50), 2)
+        for i in range(25): e.step(0, 0, 0, 2)
     elif a[0] == 'wait':
         for i in range(a[1]): e.step(0, 0, 0, 2)
 for n in range(N):
-    seq = [act() for i in range(R.randint(1, 5))]; W = R.choice([0, 1, 2, 3])
-    e.load('states/omo11_apg_top22.st')
+    seq = [act() for i in range(R.randint(1, MAXA))]; W = R.choice([0, 1, 2, 3])
+    e.load(os.environ.get('START22', 'states/omo11_apg_top22.st'))
     for a in seq: do(a)
     go_to(e, TX, TZ, maxf=150, tol=1.5)
     r = {'seq': seq, 'W': W}

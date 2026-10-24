@@ -2764,3 +2764,12 @@ displays, but the description 0x31FFF still freezes the game on the down press.
 - **Wall swings** (`omo11_apg_bomb.py`, 840 runs, `data/omo11/wall_hammer.jsonl`): swinging into the back wall makes
   a 3-part effect (index 6, 3 parts), but it never landed 0x100 after the menu.
 - **Random block-22 search:** no id 3 at all.
+
+**More Bombette searching** (`data/omo11/random_block22_more.jsonl`):
+- **Jump-heavy and longer sequences** from the idle-210 rush: 3,497 menus, no id 3. Sushie, Goombario and Kooper
+  came up again. Kooper sometimes had a clean icon, but always the description 0x31FFF.
+- **The same random actions from all 30 rush states** (`START22=…/save_w*/ub.st`): 3,420 menus, no id 3.
+- **Total from block 22: about 8,500 menus.**
+  - The id was 0 in about 77% of them and junk in about 22%.
+  - The valid ids were only 7, 2 and 1.
+  - A 3-part effect (landing dust or a wall swing) never ended up 0x100 bytes after the menu.
