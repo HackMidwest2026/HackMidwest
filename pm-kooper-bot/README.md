@@ -2690,3 +2690,44 @@ either kept the Sushie spot (7, disabled) or moved the menu elsewhere.
 **Not yet known:**
 - What leaves the 1 at 0x80318D38.
 - How much the timing of the two swings can vary.
+
+### Why Goombario, and the search for other partners
+
+**Where the Goombario id comes from:**
+- The id word (menu +0x108) landed on offset +0x8 of an **effect instance**, which is the effect's **part count**.
+  Here the effect was Mario's walking dust (effect 7, 1 part), so the id read 1.
+- The enabled word (+0x18C) landed on a float inside that dust's data.
+- So **partner N needs an effect with N parts** 0x100 bytes after the menu:
+
+| Effect Mario makes | Parts | Partner |
+|---|---|---|
+| Walking/running dust | 1 | Goombario |
+| Landing dust (≥10 frames in the air) | 3 | Bombette |
+| Hammer hitting a collider | 3 | Bombette |
+| Hammer hitting nothing | 6 | Watt |
+| Spin particles / sparkle | 5 | Goompa |
+
+**Two more fields must be valid** (found with diagnostic writes that cleared one field at a time):
+
+| Offset | Field | When it matters |
+|---|---|---|
+| +0x0 | Icon pointer of entry 0 | Read as soon as the menu draws. Junk freezes the game before any input. |
+| +0x294 | Description of entry 0 | Read when the cursor moves onto entry 0. Junk freezes the game after pressing down. |
+
+The name (+0x84) doesn't matter. The Goombario menu happened to have 0 and 0x2A there.
+
+**Variants from right after the two swings on block 22** (`omo11_apg_variant.py`,
+`states/omo11_apg_after_hammers22.st` from the logged inputs; 1,225 menus, `data/omo11/after_hammers_variants.jsonl`):
+
+| What Mario does on the walk to the block | Result |
+|---|---|
+| Short hop (A held 2–3 steps) at walk step 16–21 | Menu at 0x80318E50 with id 2 (Kooper) and enabled = 6 in 22 timings |
+| Hammer at walk step 1, then a wait of 3–4 | Menu at 0x8031A170, id 1 |
+
+Neither of those is selectable:
+- **Kooper:** every time it came with icon 0xFC0C2823 (a display-list command) and description 0x31FFF, and the
+  game froze while the menu was displayed. With those two fields cleared by a diagnostic write, selecting it switched
+  to Kooper normally.
+- **Hammer id 1:** it had the same junk icon (description 0x123455). I didn't run a selection on it, but the junk
+  icon alone freezes the menu.
+- **Landing dust (3 parts):** never lined up with the menu, so no Bombette yet.
