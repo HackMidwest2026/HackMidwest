@@ -10,12 +10,12 @@ def act():
     if c < 0.25: return 'hammerq:%d' % R.choice([5, 10, 15, 20, 30, 45])
     if c < 0.45: return 'jumpq:%d' % R.choice([1, 2, 4, 8])
     if c < 0.60: return 'spinjump:%d' % R.choice([2, 5, 8, 12])
-    if c < 0.75: return 'run:%d:%d' % (R.choice([0, 90, 180, 270]), R.choice([3, 6, 10]))
+    if c < 0.75: return 'run:%d:%d' % (R.choice([0, 90, 180, 270]), R.choice([2, 3, 4]))
     if c < 0.85: return 'spin'
     return 'wait:%d' % R.choice([1, 2, 3, 5, 8, 13, 21, 34, 55])
 for k in range(n):
     pre = ';'.join(act() for j in range(R.randint(2, 10)))
     P.setup(); P.pre(pre); p, f = P.hit()
-    r = {'pre': pre, 'ok': bool(p)}
+    r = {'pre': pre, 'ok': bool(p), 'y': P.player(P.e)['y']}
     if p: r.update(P.dump(p))
     fo.write(json.dumps(r) + '\n'); fo.flush()

@@ -2556,3 +2556,57 @@ onto platform 22 under the block, then inputs):
   - 14 distinct values appeared at +0x108, mostly 0. **No 3 yet.**
 - **Caveat:** this state enters through a warp from nok_14, so its leftover memory is not what a real run brings in
   from omo_10 or omo_12.
+
+### APG from the real route (omo_10 → omo_11 east entrance, inputs only)
+
+**Route** (`omo10_to_omo11.py` → `omo11_route2.py` → `omo11_route3.py`; collider heights are read only to time
+hops):
+- omo_10: hold toward the west loading zone.
+- omo_11, east half: ledge 14 → bobbing platform 54 → ledge 15 → wheel → ledge 20 → bobbing 57 down → floor.
+- **The back lane can't reach the Super Block.**
+  - Block 30 (x −430…−360, y 140) spans the whole depth, and block 22 is 210 high.
+  - Mario's jump gains only about 38 units.
+- **Front lane** instead: step 27 (y 35) → bobbing 60 (58→140) → top of block 30 → bobbing 63 (140→210) → hop
+  onto block 22 → under the block.
+- **Shy Guy:** it wanders right next to step 27 and chases at speed 5. `omo11_route3.py` leaves when its position
+  lets Mario go behind block 22 and come at step 27 from the west. It tries departures 20 steps apart, the way a
+  runner would watch it.
+- `apg_pipeline.sh` runs the whole thing and prints the menu fields.
+
+**Which option swaps** (one labeled diagnostic with the two fields written by hand):
+- With `userIndex[0] = 3, enabled[0] = 1`, pressing **down, A** switched `curPartner` to 3 (Bombette).
+- A at the starting cursor (−1) returns result 0 and hangs.
+- So the target is +0x108 = 3 and +0x18C ≠ 0. Nothing in the searches below writes RAM.
+
+**Where the menu lands, and what decides the two words:**
+
+| Menu address | What the two words come from | Partner id read |
+|---|---|---|
+| 0x80318BE0 (most common) | A 0x3270-byte image buffer of 4-bit pixels (pointer at 0x800A1E4C), allocated around the hit and freed just before the menu (`omo11_lastwriter.py`, `data/omo11/route_lastwriter_8be0.jsonl`) | 0 every time |
+| 0x80318E40 (hit right on arrival) | +0x108 is the Super Block sparkle (`stars_shimmer`, 5 parts) part 4 counter. The hit lets the current sparkle finish, so it always ends on 7. +0x18C is Mario's walking-dust data, unused bytes, 0 | 7 (Sushie), disabled |
+| 0x80318F70 | A 0x170 block made by a hammer swing, whose +0x28 counts 1…12 and is freed at 12 | 0, or 12 at most |
+| Others (…8D60, …8DB0, …9FA0, …A080, …) | Allocation headers or float fields | No small ids |
+
+**Searches from the real state, all inputs only:**
+- **Approach grid** (`omo11_apg_grid.py`, 468 runs): walk 0–19 steps east or west, come back, wait 0–11 frames,
+  jump.
+- **Fixed waits** (`omo11_apg_scan.py`, 160 runs): wait, or jump / hammer / spin first.
+- **Random in-room sequences** (`omo11_dust_search.py`, 309 runs).
+- **Frame-by-frame hole watch** (`omo11_apg_watch.py`, 100 sequences): checks every frame whether any free hole
+  ≥ 0x330 has 3 at +0x108.
+- **Every hole the menu could have taken** at allocation time (`omo11_apg_holes.py`, `data/omo11/route_holes.jsonl`).
+
+None produced a 3.
+
+**Why in-room dust can't do it:**
+- Every effect spawned in the room runs to completion, so it is freed holding its *final* counter: sparkle 7,
+  hammer block 12, walking dust −1 with index 15/17.
+- Values that are still mid-animation only get left behind when the effects are cut off, which happens at a room
+  transition.
+
+**omo_10 leftovers:**
+- Diagnostic: omo_10's free heap was filled with an address marker on its last frame, then the route was run.
+- The marker survives only in the untouched heap tail (≥ 0x8032161C) and a few small spots. Nothing survives in
+  0x80318B00–0x8031A300, where the menu lands.
+- The tail is reachable only if every other hole ≥ 0x330 is gone at the hit. In 900+ runs the tail was never the
+  best fit.

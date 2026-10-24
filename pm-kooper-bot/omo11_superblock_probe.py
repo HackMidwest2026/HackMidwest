@@ -16,6 +16,8 @@ def popup():
     if e.s32(p + 0x318) == 4 and e.s32(p + 0x324) == 0: return p
     return None
 def setup():
+    if os.environ.get('START'):                                   # real state reached by inputs (omo11_route2/3.py)
+        e.load(os.environ['START']); e.step(0, 0, 0, 2); return
     e.load('states/omo11_e0_goompa.st'); e.step(0, 0, 0, 2)
     for a in (PLAYER + PS_POS, ): pass
     e.wf32(PLAYER + PS_POS, BX); e.wf32(PLAYER + PS_POS + 4, 212); e.wf32(PLAYER + PS_POS + 8, -110)
