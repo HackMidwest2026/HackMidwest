@@ -2610,3 +2610,19 @@ None produced a 3.
   0x80318B00–0x8031A300, where the menu lands.
 - The tail is reachable only if every other hole ≥ 0x330 is gone at the hit. In 900+ runs the tail was never the
   best fit.
+
+**Which ids switch** (`omo11_apg_idtest.py`; diagnostic only: id written into the open menu with enabled = 1,
+then down, A, then A through the prompts):
+
+| Id written to +0x108 | Result |
+|---|---|
+| 1–11 | Switch works and the game keeps running. This includes Goombaria (10) and Twink (11). |
+| 0 | Hang |
+| 12 | Divide by zero, which kills mupen64plus. This is the case the Wii VC is said to tolerate. |
+| 13, 255, −1 | Hang |
+
+- **Enabled** (+0x18C): any nonzero value works.
+- **The selected entry's other fields** (name, icon, description) are drawn when the cursor moves onto it. With junk
+  there, the game froze on the down press (`omo11_apg_select.py`, menu at 0x80318DB0).
+- **Reported switches:** Kooper (2) and Sushie (7) both fall in the 0–7 range of the sparkle counter that sits at
+  +0x108 when the menu is at 0x80318E40. That makes the sparkle counter the likely source.
