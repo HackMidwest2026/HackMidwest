@@ -2731,3 +2731,36 @@ Neither of those is selectable:
 - **Hammer id 1:** it had the same junk icon (description 0x123455). I didn't run a selection on it, but the junk
   icon alone freezes the menu.
 - **Landing dust (3 parts):** never lined up with the menu, so no Bombette yet.
+
+### Sushie switch, and the Bombette search
+
+`omo11_apg_random22.py` runs random runner-style actions on top of block 22: walks, hammer swings facing each side,
+hops, jumps and waits. It starts right after hopping onto the block in the save-block rush
+(`states/omo11_apg_top22.st`, before the Goombario swings). 1,542 menus are in `data/omo11/random_block22.jsonl`.
+`omo11_apg_r22_select.py` replays one sequence and actually selects it.
+
+**Sushie (id 7), verified with no RAM writes:**
+1. On block 22, walk to the back wall (−115, −140). No hammer.
+2. Walk under the Super Block and jump within 0–1 steps of arriving.
+3. In the menu, press down, then A.
+
+| Address | Value |
+|---|---|
+| Menu | 0x80318F00 |
+| Id | 7 |
+| Enabled | 0xB |
+| Icon | 0 |
+| Description | 0x070F3FFF (displays fine) |
+
+`curPartner` went 5 → 7 and the game kept running.
+
+**A second Goombario setup:** walk to (−125, −112), then (−165, −140), hop twice, go under the block, and jump
+after 1 step. The menu is at 0x8031BEB0, and selecting gives `curPartner` 5 → 1.
+
+**Kooper:** with a 5-step wait and a walk to (−115, −125), the icon is a real pointer (0x800A1E30). The menu now
+displays, but the description 0x31FFF still freezes the game on the down press.
+
+**Bombette (3): not found yet.**
+- **Wall swings** (`omo11_apg_bomb.py`, 840 runs, `data/omo11/wall_hammer.jsonl`): swinging into the back wall makes
+  a 3-part effect (index 6, 3 parts), but it never landed 0x100 after the menu.
+- **Random block-22 search:** no id 3 at all.
