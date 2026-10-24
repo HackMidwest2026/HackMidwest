@@ -2626,3 +2626,39 @@ then down, A, then A through the prompts):
   there, the game froze on the down press (`omo11_apg_select.py`, menu at 0x80318DB0).
 - **Reported switches:** Kooper (2) and Sushie (7) both fall in the 0–7 range of the sparkle counter that sits at
   +0x108 when the menu is at 0x80318E40. That makes the sparkle counter the likely source.
+
+### APG after saving at the omo_10 save block (power-on → load the file → rush)
+
+**Setup:**
+- `omo10_save.py` saves at the omo_10 save block (150, 60, 55).
+- `boot_load.py` powers on with that save file and mashes A through the title and file select. Mario is back at
+  the save block about 600 frames after power-on, on a fresh heap.
+- `apg_save_brute.sh W…` rushes to the Super Block after idling W steps (2 frames each) and runs an approach grid
+  (`data/omo11/save_rush_grid.jsonl`).
+
+**Results** (30 rushes, 4,980 menus):
+- **Not consistent across idle times.** Where the sparkle effect ends up depends on timing: its data was seen at
+  0x80318CA0, 0x80318DB0, 0x80318DE0, 0x80318E70 and 0x803205E0 (`omo11_find_sparkle.py`).
+- **The Sushie spot:** the menu reads 7 exactly when the sparkle data is at 0x80318E70 and the menu lands at
+  0x80318E40 (id address 0x80318F48 = the counter of the sparkle's last part). That happened at idle times 130,
+  140, 170, 200 and 210.
+- **The counter always ends on 7.** It cycles 0–7, restarts when the block is hit, and the effect is freed on 7.
+  So this source can only give Sushie.
+- **Enabled (0x80318FCC) was 0 in every Sushie-spot menu.**
+
+**Arrival modes from the idle-210 rush** (`omo11_apg_arrive.py`, `data/omo11/save_rush_arrive.jsonl`):
+
+| Arrival | Runs | Menus at 0x80318E40 | Enabled ≠ 0 | Switches |
+|---|---|---|---|---|
+| Run (walking dust) | 358 | 16, all id 7 with enabled 0 | 65 | 0 |
+| Walk slowly (no dust) | 360 | 0 | 72 | 0 |
+| Jump in (landing dust) | 360 | 0 | 120 | 0 |
+| Spin away, walk back | 240 | 0 | 9 | 0 |
+| Stand still, wait 0–79 | 80 | 0 | 22 | 0 |
+
+The spin-in mode isn't in the table: the spin dash went off the platform in all 360 runs.
+
+**Totals across every search:**
+- 9,004 menus. Enabled was nonzero in 2,389 of them.
+- An id from 1 to 11 appeared 251 times, always 7 and always with enabled 0.
+- No switch to any partner yet.

@@ -8,6 +8,8 @@ e = Emu('pm-jp.z64', '/dev/shm/pmbot/id%d' % os.getpid())
 e.load(os.environ.get('POPUP', '/tmp/claude-0/pm/pipe/base/popup.st')); e.step(0, 0, 0, 2)
 p = e.u32(0x8010D85C)
 e.w32(p + 0x108, ID & 0xFFFFFFFF); e.w32(p + 0x18C, EN)
+for kv in filter(None, os.environ.get("EXTRA", "").split(",")):   # extra fields: off=value
+    o, v = kv.split("="); e.w32(p + int(o, 16), int(v, 16))
 for i in range(40): e.step(0, 0, 0, 2)
 for i in range(2): e.step(0, 0, -80, 1)
 for i in range(10): e.step(0, 0, 0, 2)
