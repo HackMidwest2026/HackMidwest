@@ -2977,3 +2977,29 @@ Checked in the emulator (`kpa62_runner.py`, Laki placed beside Mario as setup on
 | At +6 steps, 30 steps long | 2,416 bytes |
 | At +0 / +6 / +10 steps, 10 steps long | about 6 KB |
 | **At +10 steps, 30 steps long** | **60,448 bytes (60 × 704 + 60 × 192)** — all 12 buffers lost per hit; the cache never receives them |
+
+### Bombette: landing dust and planner what-ifs
+
+**Neutral jumps** (`omo11_apg_neutraljump.py`, `data/omo11/bombette_landing_dust.jsonl`):
+- Landing dust (3 parts, 0xCC data) only appears when Mario lands with the stick neutral. Earlier hops never made
+  it, because the stick was held on landing.
+- From right after the two block-22 swings: walk J steps, jump straight up, then walk under the block and hit.
+- 230 of 315 runs made landing dust. In single frames (243 runs), the 3-part offsets from the menu were only 0,
+  +0x90, +0x140 and −0x290. No id 3.
+- The +0x90 case (`data/omo11/heaplog_neutraljump.json`): 6 steps of walking, then the jump. A 0x80 walking-dust
+  data block sits between the menu start (0x80318BE0) and the jump's landing dust (0x80318C70).
+
+**Planner** (`heapplan.py`):
+- Moving any single event of the +0x90 log never gives Bombette.
+- On the Goombario log, inserting one extra landing dust (created around step 34, freed about 13 steps later,
+  matching its normal lifetime) keeps the menu at 0x80318C30 and puts the 3-part instance at +0x100.
+  Realistic creation steps found: 14, 17 and 34.
+
+**Checking that in the emulator:**
+- **Jumping into the block 3+ steps later moves the menu** (0x80319060 and later). By then the 0x80 hole at
+  0x80318BE0 is free, and best fit puts the landing dust there instead of 0x80318D30.
+- **Jogging in place for 0–30 steps before the hit**, to keep that hole filled (`omo11_apg_variant.py jog`, 155 runs):
+  the menu moved to 0x80318D60 / 0x80318EB0, and no id 3.
+- **What it needs:** the landing has to happen while 0x80318D30 is free and 0x80318BE0 is still occupied, without
+  disturbing the blocks that put the menu at 0x80318C30. Getting there needs the planned action library (each input
+  modelled as the heap events it causes), not more random scans.

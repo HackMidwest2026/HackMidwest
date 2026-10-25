@@ -2,11 +2,11 @@
 walk to (-115,-112) like the route, doing one extra action at walk step J (jump: A held H steps; hammer: B), then
 wait W and jump into the Super Block. Logs the menu, the effect instance at menu+0x100 (its part count is the
 partner id). Selecting is done separately (omo11_apg_variant_select.py) since a junk id can hang the core.
-usage: omo11_apg_variant.py MODE J0 J1 OUT.jsonl   MODE: none | jump | hammer"""
+usage: omo11_apg_variant.py MODE J0 J1 OUT.jsonl   MODE: none | jump | jump2 | hammer | jog (J = jog steps under the block)"""
 import json, os, sys
 from emu import *
 from pm import *
-from nav import stick_world, world_yaw_to
+from nav import go_to, stick_world, world_yaw_to
 mode, j0, j1, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/var%d' % os.getpid())
 POP = 0x8010D85C; TX, TZ = -115, -112
@@ -20,7 +20,7 @@ def run(J, H, W):
     """go_to-style walk (full stick, stop within 1.5) with the extra action at step J, then 1 + W idle steps and
     the jump, exactly like omo11_route3.py + omo11_apg_finish.py"""
     e.load('states/omo11_apg_after_hammers22.st')
-    n = 0 if mode == 'none' else (H if mode in ('jump', 'jump2') else 2)
+    n = 0 if mode in ('none', 'jog') else (H if mode in ('jump', 'jump2') else 2)
     if mode == 'jump2': n = H + J2OFF + 2
     for k in range(300):
         p = player(e)
@@ -29,6 +29,11 @@ def run(J, H, W):
         if mode == 'jump2' and J + H + J2OFF <= k < J + H + J2OFF + 2: b = A
         e.step(b, *stick_world(e, world_yaw_to(p, TX, TZ)), 2)
         if player(e)['y'] < 200: return {'fell': True}
+    if mode == 'jog':                        # keep running in place (left/right along x) for J steps, end under the block
+        for k in range(J):
+            tx = TX + (12 if (k // 3) % 2 == 0 else -12)
+            p = player(e); e.step(0, *stick_world(e, world_yaw_to(p, tx, TZ)), 2)
+        go_to(e, TX, TZ, maxf=40, tol=1.5)
     for i in range(1 + W): e.step(0, 0, 0, 2)
     for i in range(6): e.step(A, 0, 0, 2)
     p = None
