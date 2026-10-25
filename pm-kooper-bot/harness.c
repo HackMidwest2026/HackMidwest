@@ -58,6 +58,8 @@ static void dbg_update_cb(unsigned int pc){
         /* the general_heap_* wrappers save their return address at 0x10(sp) before calling _heap_* */
         unsigned *ram = pDebugMemGetPointer(M64P_DBG_PTR_RDRAM);
         ev->caller = ram ? ram[((ev->sp + 0x10) & 0x7FFFFF) >> 2] : 0;
+        if(getenv("M64P_DBG_PRINT")) fprintf(stderr, "bp %08x a0 %08x a1 %08x ra %08x caller %08x frame %u\n",
+                                             pc, ev->a0, ev->a1, ev->ra, ev->caller, frame_no);
         (void)bp;
     }
     pDebugSetRunState(M64P_DBG_RUNSTATE_RUNNING);
@@ -185,7 +187,8 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
         v = 1; /* r4300 emulator: 2 = dynarec */
         v = use_dbg;
         pConfigSetParameter(sec, "EnableDebugger", M64TYPE_BOOL, &v);
-        v = use_dbg ? 1 : 2;   /* breakpoints need the cached interpreter */
+        v = use_dbg ? 1 : 2;   /* breakpoints need an interpreter (1 cached, 0 pure) */
+        if(getenv("M64P_R4300")) v = atoi(getenv("M64P_R4300"));
         pConfigSetParameter(sec, "R4300Emulator", M64TYPE_INT, &v);
     }
 

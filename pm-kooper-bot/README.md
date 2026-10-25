@@ -2843,3 +2843,57 @@ the 1-part walking-dust instance created at step 17 (0x80318D30).
   word read 3 (Bombette). Changing any other effect moves the menu or misses.
 - Real hammer swings make an effect with a 0x16C data block, not a 3-part one. In these runs the 3-part effects
   came from landings (step ~30, and the landing after the hit).
+
+## Hammer-block memory leak (kmr_03 and other rooms)
+
+**Setup:** kmr_03 has a Super Hammer stone block (`Entity_Hammer2Block`) at (230, 0, 310). It exists until broken
+(flag `GF_KMR03_Hammer1Block`). The tests use `states/kmr03_e0_hammer.st` (a warp to kmr_03 with the basic hammer,
+setup only), then `states/kmr03_hammer2_left.st` and `states/kmr03_hammer2_right.st` (Mario at (190, 308) or
+(270, 313)). All tests after that use inputs only.
+
+**Hitting it:**
+- The hammer checks along Mario's *side angle* (`action_hammer_test_swing_collision`), meaning the left/right
+  direction his sprite faces on screen. So the block must be hit from its left or right side. From the front Mario
+  touches it but the swing misses.
+- An unbreakable hit sets `PA_FLAG_SHIVERING` (`hammer.c`). This also happens for Ultra Hammer blocks without the
+  Ultra Hammer, and for wooden crates and bombable rocks with any hammer.
+
+**Why it leaks** (`77480.c` player render, `imgfx.c`):
+- The shiver is an imgfx animation. `IMGFX_SET_ANIM` allocates 2 vertex buffers (704 bytes each) and 2 display-list
+  buffers (184 bytes each) with `heap_malloc` (the general heap in the world).
+- The hit is detected twice per swing, so the animation restarts. One hit allocates 12 buffers.
+- `IMGFX_CLEAR` (22 frames later) hands buffers to `imgfx_add_to_cache`, which frees them later. It has only
+  8 slots, and when it is full the pointer is simply dropped.
+- **Result:** 4 buffers leak per hit, 2 × 704 + 2 × 184 + 4 headers = **1,872 bytes**
+  (`kmr03_hammer_leak.py`, debugger core with the pure interpreter: `M64P_DBG=1 M64P_R4300=0`).
+
+**Pausing during the shiver:**
+- Opening and closing the pause menu calls `spr_init_sprites` (`state_pause.c`), which calls `imgfx_init()`. That
+  resets every imgfx instance and the 8-slot cache without freeing anything.
+- So pausing 8–16 steps after a hit leaks **all 12 buffers: about 5.6–6.6 KB per hit** (13 blocks), instead of
+  ~1.9 KB.
+- Pausing after the shiver ends adds nothing.
+
+**Rates and limits** (warp state; the free memory at the start depends on the room and the situation):
+
+| | Hits only | Hit + pause mid-shiver |
+|---|---|---|
+| Leak per hit | 1.9–2.4 KB (1.4 KB per press when mashing, ~7 KB/s) | 5.6–6.6 KB |
+| Hits until the heap is full | ~108 (`data/kmr03/fill_rows.json`) | about 35, estimated from the rate |
+
+- **When the heap is full**, the hammer's own impact effect gets a null data pointer and the game halts on its
+  assert.
+- **Room changes reset it:** `load_map_by_IDs` recreates the general heap. After 50 hits kmr_03 had 215,888 bytes
+  used; the next room was back to 109,552. The leaked buffers' contents stay in RAM as stale data until reused.
+- **Determinism:** the total leaked is exactly the same for the same number of hits and paused hits, even with
+  timing jittered by 1–2 frames. Exact block placement shifts slightly with timing for hits only (highest block
+  0x80322C40 in 5 of 6 runs), and much more with pauses (0x80334BC0–0x80339170).
+
+**Rooms with objects that cause the shiver:**
+
+| Object | Rooms |
+|---|---|
+| Super Hammer block, basic hammer only | kmr_03, tik_01/06/23, isk_05/07/09/12/13/14 |
+| Ultra Hammer block, without the Ultra Hammer | kmr_20, kzn_03/17, tik_12/24 |
+| Bombable rock, any hammer | mac_03, kmr_20, flo_13/15 |
+| Wooden crate, any hammer | dgb_07, obk_03–06, kpa_17 |
