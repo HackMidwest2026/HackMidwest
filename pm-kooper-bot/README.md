@@ -2936,3 +2936,44 @@ Checked in the emulator (`kpa62_runner.py`, Laki placed beside Mario as setup on
   the up-left part freely holdable.
 - **Video: not made yet.** With the video plugin, the emulator stops right after loading a state in this container.
   `isk11_explain_render.py` now runs a few frames before its first load, but that alone didn't fix it.
+
+## Hammer-block leak (kmr_03 Super Hammer block, basic hammer)
+
+**Setup:**
+- Room: kmr_03, the room you fall into from Goomba Village.
+- The stone block at (230, 0, 310) is `Entity_Hammer2Block`. It exists until `GF_KMR03_Hammer1Block` is set.
+- A state warped into the room (setup only); everything after that is inputs.
+- **Hit it from the side.** `action_hammer_test_swing_collision` steps along `player_get_side_angle()`, the
+  direction Mario's sprite faces on screen, so a swing from in front of the block (+z) misses even when he touches
+  it. It connects from (190, 308) or (270, 313).
+
+**What leaks** (`hammer.c`, `77480.c`, `imgfx.c`):
+- An unbreakable hit sets `PA_FLAG_SHIVERING`. The player renderer then starts the shiver imgfx animation
+  (`IMGFX_SET_ANIM` / `IMGFX_ANIM_SHIVER`).
+- Each start allocates 4 buffers per sprite part with `heap_malloc`: 2 × 0x2C0 vertex and 2 × 0xB8 display-list.
+- The swing test flags the hit twice, so one hit allocates 12 buffers.
+- When the shiver ends (`IMGFX_CLEAR` after 22 frames), the buffers go to `imgfx_add_to_cache`, an 8-slot cache
+  that frees entries 4 frames later. When all slots are taken, extra pointers are silently dropped.
+- Result without pausing: 4 buffers (2 × 704 + 2 × 192 bytes) stay allocated per hit, about 1.9 KB.
+  Scripts: `kmr03_hammer_leak.py` (debugger capture), `kmr03_leak_scan.py`.
+
+**Rate and limits:**
+
+| Measurement | Result |
+|---|---|
+| Leak per press, by spacing between presses | 1.4–2.4 KB |
+| Fastest leak (mashing) | about 7 KB per second |
+| Hits until the heap runs out, from this save (`kmr03_leak_fill.py`) | about 108 |
+| What fails | The hammer impact effect's data allocation gets null on hit 109, and the effect code's assert halts the game |
+| Room change | `load_map_by_IDs` recreates the general heap on every map load, so the leak is gone in the next room (215,888 → 109,552 bytes used after 50 hits) |
+
+**Pausing** (`kmr03_pause_leak.py`; 10 hits, each followed by a pause at +D steps for P steps):
+- `imgfx_update_cache()` only runs in `state_drawUI_world`, so the cache is not emptied while paused. The shiver
+  countdown keeps running in the player renderer drawn behind the menu.
+
+| Pause after each hit | Leaked over 10 hits |
+|---|---|
+| None | 18,560 bytes (20 × 704 + 20 × 192) |
+| At +6 steps, 30 steps long | 2,416 bytes |
+| At +0 / +6 / +10 steps, 10 steps long | about 6 KB |
+| **At +10 steps, 30 steps long** | **60,448 bytes (60 × 704 + 60 × 192)** — all 12 buffers lost per hit; the cache never receives them |
