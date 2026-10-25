@@ -2897,3 +2897,19 @@ setup only), then `states/kmr03_hammer2_left.st` and `states/kmr03_hammer2_right
 | Ultra Hammer block, without the Ultra Hammer | kmr_20, kzn_03/17, tik_12/24 |
 | Bombable rock, any hammer | mac_03, kmr_20, flo_13/15 |
 | Wooden crate, any hammer | dgb_07, obk_03–06, kpa_17 |
+
+### Runner's setup from the video (2026-10-24_08-20-08.mp4)
+
+Transcribed from the video's input display and position readout:
+1. On the y-35 ledge at (−514.11, −5.25): hold screen-right and jump onto the y-60 platform. Keep running until about
+   (−422.7, −57.8), then release.
+2. Make small nudges and two jumps in place. Mario ends at (−424.6815, −65.7261).
+3. Hammer, then hold screen-left (world −x/+z) for **5 game frames**. Mario stands at (−440.7437, −49.6390), on the
+   clip line.
+4. C-down to mount, C-down to dismount and hold down, then C-down **34 frames after the dismount**. Mario ends up
+   inside the tower.
+
+Checked in the emulator (`kpa62_runner.py`, Laki placed beside Mario as setup only):
+- From (−424.6815, −65.7261), 5 frames of left clips, with or without the hammer.
+- 4 or 6 frames miss.
+- The open question is how repeatable the stop spot in step 2 is.
