@@ -2913,3 +2913,26 @@ Checked in the emulator (`kpa62_runner.py`, Laki placed beside Mario as setup on
 - From (−424.6815, −65.7261), 5 frames of left clips, with or without the hammer.
 - 4 or 6 frames miss.
 - The open question is how repeatable the stop spot in step 2 is.
+
+### Corner setup (full jump, hold right, up-left, down 12)
+
+- **Why the runner's spot is tight:** Mario stops against the tower's west face (x −409 at z −55 to x −414 at z −75),
+  so his x follows his z. A 5-frame left walk only reaches the line from z −65.84 to −65.04 on that face.
+- **A fixed starting point:** from the y-35 ledge, do a full jump holding screen-right (A held 6+ frames), then keep
+  holding right (40+ frames). Mario always stops at **(−429.263, −90.233)**. That held for A holds of 6–20 frames,
+  every wait tried and every hold tried. A 3-frame A hold gives (−429.020, −90.477), and 2 frames stays on the ledge.
+- **Search** (`kpa62_corner.py`, two-leg walks, 8 notches × 1–25 frames, `data/kpa62_corner_search.jsonl`), with
+  these clips:
+
+| Up-left frames | Down frames | Stands at |
+|---|---|---|
+| 21 | 12 | (−440.669, −58.284) |
+| 25 | 12 | (−441.469, −60.684) |
+
+- **The full sequence** (`kpa62_corner_setup.py`): jump holding right, hold right, up-left 21, down exactly 12, mount,
+  C-down dismount and hold down, C-down on frame 34. Mario ends inside the tower at (−327.5, 0, −33.0).
+- **Exact inputs:** the 12-frame down hold and the frame-34 C-down.
+- **Not yet tested:** up-left 22–24 frames (they didn't pass the search filter) and longer up-left holds. Those may make
+  the up-left part freely holdable.
+- **Video: not made yet.** With the video plugin, the emulator stops right after loading a state in this container.
+  `isk11_explain_render.py` now runs a few frames before its first load, but that alone didn't fix it.

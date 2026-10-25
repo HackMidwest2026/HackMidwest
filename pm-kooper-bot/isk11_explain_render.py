@@ -4,6 +4,7 @@ import glob, os, subprocess, sys, time
 from emu import Emu
 d = sys.argv[1]
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/ierr%d' % os.getpid())
+for i in range(3): e.step(0, 0, 0, 2)          # run a few frames first: loading right after start-up stops the core
 while True:
     ss = sorted(glob.glob(os.path.join(d, 's*.st')))
     if not ss:
