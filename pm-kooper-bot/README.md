@@ -2806,3 +2806,40 @@ displays, but the description 0x31FFF still freezes the game on the down press.
 - **No +0x100 yet.**
 - **The closest is +0xF0** (1-step hop, wait 20, jump 3 steps after arriving). The 0xE0 sparkle data sits in front of
   the instance, but sparkle data alone can only give +0xF0.
+
+## Heap simulator (general heap, exact)
+
+**Files:**
+- `heapsim.py`: a line-by-line Python port of the allocator in `43F0.c` (`_heap_malloc`, `_heap_malloc_tail`,
+  `_heap_free`, `_heap_realloc`). It works on the same linked list of 0x10-byte `HeapNode` headers and keeps the
+  malloc ids.
+  - Best-fit: the smallest free block that is big enough, the earliest one on a tie.
+  - A block is split only if at least size + 0x10 is left over.
+  - Freeing merges with the next block, and with the previous one when the list walk finds it.
+- `heaplog.py STATE INPUTS.json K0 K1 OUT.json` captures the exact ordered list of heap calls while replaying
+  inputs (from `steplog.py`), and checks the simulator against the live heap after every step.
+- `heapplan.py`: offline what-ifs on a capture. It edits the event list, replays it, and reports where the APG menu
+  (malloc 0x330) lands and which allocation last covered its id word (menu + 0x108).
+  - Edited allocations keep their identity, so later frees follow them.
+  - Effects are labelled by the data block that follows each 0x14 instance malloc: walking dust 0x78 = 1 part,
+    landing dust 0xCC = 3, sparkle 0xDC = 5.
+- `pmsyms.py` names caller addresses from the decomp's JP symbol file.
+
+**How the capture works:**
+- A debugger build of the core: `make all DEBUGGER=1 DEBUGGER_NO_DISASM=1 OSD=0` in a copy of
+  `mupen64plus-core`, loaded by `emu.py` when `M64P_DBG=1`.
+- `harness.c` turns on `EnableDebugger`, uses the cached interpreter, and sets the debugger callbacks.
+- Execution breakpoints on `_heap_malloc` 0x8002902C, `_heap_malloc_tail` 0x80029124, `_heap_free` 0x800291DC and
+  `_heap_realloc` 0x80029284 log pc, a0–a2, ra, sp, the frame, and the wrapper's caller (the word at sp+0x10), then
+  resume immediately.
+- It runs at almost full speed.
+
+**Check:** on the Goombario run (244 steps, 599 general-heap calls, `data/omo11/heaplog_goombario.json`), the
+simulated heap matched the live heap after every step. It puts the menu at 0x80318C30, and its id word on +0x8 of
+the 1-part walking-dust instance created at step 17 (0x80318D30).
+
+**First what-if:**
+- Turning that one step-17 effect into a 3-part effect (0xCC data) keeps the menu at 0x80318C30 and makes the id
+  word read 3 (Bombette). Changing any other effect moves the menu or misses.
+- Real hammer swings make an effect with a 0x16C data block, not a 3-part one. In these runs the 3-part effects
+  came from landings (step ~30, and the landing after the hit).

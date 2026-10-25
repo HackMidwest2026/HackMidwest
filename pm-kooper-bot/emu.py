@@ -5,6 +5,8 @@ import struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORE = os.path.join(HERE, '..', 'mupen64plus-core', 'projects', 'unix', 'libmupen64plus.so.2')
+# M64P_DBG=1: debugger-enabled core build (execution breakpoints, cached interpreter; slower)
+CORE_DBG = os.path.join(HERE, '..', 'mupen64plus-core-dbg', 'projects', 'unix', 'libmupen64plus.so.2')
 RSP = '/usr/lib/x86_64-linux-gnu/mupen64plus/mupen64plus-rsp-hle.so'
 
 # n64 controller bits as the input plugin expects them (BUTTONS.Value)
@@ -20,7 +22,7 @@ class Emu:
         self.lib = ctypes.CDLL(os.path.join(HERE, 'harness.so'))
         self.lib.h_rdram.restype = ctypes.c_void_p
         self.lib.h_frame.restype = ctypes.c_uint
-        r = self.lib.h_init(os.path.abspath(CORE).encode(), RSP.encode(), rom.encode(),
+        r = self.lib.h_init(os.path.abspath(CORE_DBG if os.environ.get('M64P_DBG') == '1' else CORE).encode(), RSP.encode(), rom.encode(),
                             datadir.encode(), int(verbose))
         if r != 0:
             raise RuntimeError('h_init failed: %d' % r)
@@ -84,6 +86,20 @@ class Emu:
             if r == -1:
                 raise RuntimeError('emulator stopped')
         raise RuntimeError('savestate load failed (%d): %s' % (r, path))
+
+    # ---- debugger mode (M64P_DBG=1) ----
+    def bp_add(self, addr):
+        return self.lib.h_bp_add(ctypes.c_uint(addr))
+
+    def dbg_log(self, on):
+        self.lib.h_dbg_log(int(on))
+
+    def dbg_events(self):
+        """logged breakpoint hits since the last call: dicts with pc, a0, a1, a2, ra, frame, sp, caller
+        (caller = word at sp+0x10, the general_heap_* wrapper's saved return address)"""
+        buf = (ctypes.c_uint * (8 * 65536))()
+        n = self.lib.h_dbg_events(buf, 65536)
+        return [dict(zip(('pc', 'a0', 'a1', 'a2', 'ra', 'frame', 'sp', 'caller'), buf[8 * i:8 * i + 8])) for i in range(n)]
 
     @property
     def frame(self):

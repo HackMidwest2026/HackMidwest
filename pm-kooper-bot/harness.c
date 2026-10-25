@@ -32,12 +32,43 @@ static ptr_DebugMemGetPointer pDebugMemGetPointer;
 static ptr_ConfigOpenSection pConfigOpenSection;
 static ptr_ConfigSetParameter pConfigSetParameter;
 
+/* ---- optional debugger mode (env M64P_DBG=1, needs a core built with DEBUGGER=1) ----
+ * execution breakpoints log (pc, a0, a1, a2, ra, frame) for every hit and resume at once */
+static ptr_DebugSetCallbacks pDebugSetCallbacks;
+static ptr_DebugSetRunState pDebugSetRunState;
+static ptr_DebugStep pDebugStep;
+static ptr_DebugGetCPUDataPtr pDebugGetCPUDataPtr;
+static ptr_DebugBreakpointCommand pDebugBreakpointCommand;
+static unsigned frame_no;
+#define DBG_MAX 65536
+typedef struct { unsigned pc, a0, a1, a2, ra, frame, sp, caller; } dbg_event;
+static dbg_event dbg_events[DBG_MAX];
+static int dbg_count, dbg_on;
+static void dbg_init_cb(void){}
+static void dbg_vi_cb(void){}
+static void dbg_update_cb(unsigned int pc){
+    long long *r = pDebugGetCPUDataPtr(M64P_CPU_REG_REG);
+    if(r && dbg_count < DBG_MAX && dbg_on) {
+        /* only log real breakpoint hits (the core also calls this once at start-up while paused) */
+        m64p_breakpoint *bp = NULL;
+        dbg_event *ev = &dbg_events[dbg_count++];
+        ev->pc = pc; ev->a0 = (unsigned)r[4]; ev->a1 = (unsigned)r[5]; ev->a2 = (unsigned)r[6]; ev->ra = (unsigned)r[31];
+        ev->frame = frame_no;
+        ev->sp = (unsigned)r[29];
+        /* the general_heap_* wrappers save their return address at 0x10(sp) before calling _heap_* */
+        unsigned *ram = pDebugMemGetPointer(M64P_DBG_PTR_RDRAM);
+        ev->caller = ram ? ram[((ev->sp + 0x10) & 0x7FFFFF) >> 2] : 0;
+        (void)bp;
+    }
+    pDebugSetRunState(M64P_DBG_RUNSTATE_RUNNING);
+    pDebugStep();
+}
+
 static pthread_t emu_thread;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  cv  = PTHREAD_COND_INITIALIZER;
 /* emu_blocked: emulator is waiting at a blocking point.  go: controller released it */
 static int emu_blocked, go, emu_done, verbose;
-static unsigned frame_no;
 static BUTTONS cur_input;
 static int poll_count;
 
@@ -135,6 +166,12 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
     pDebugMemGetPointer = dlsym(core, "DebugMemGetPointer");
     pConfigOpenSection = dlsym(core, "ConfigOpenSection");
     pConfigSetParameter = dlsym(core, "ConfigSetParameter");
+    pDebugSetCallbacks = dlsym(core, "DebugSetCallbacks");
+    pDebugSetRunState = dlsym(core, "DebugSetRunState");
+    pDebugStep = dlsym(core, "DebugStep");
+    pDebugGetCPUDataPtr = dlsym(core, "DebugGetCPUDataPtr");
+    pDebugBreakpointCommand = dlsym(core, "DebugBreakpointCommand");
+    int use_dbg = getenv("M64P_DBG") && *getenv("M64P_DBG") == '1';
     const char *datapath = getenv("M64P_DATA") ? getenv("M64P_DATA") : datadir;
     if(pCoreStartup(0x020001, datadir, datapath, NULL, debug_cb, NULL, state_cb) != M64ERR_SUCCESS) return -2;
 
@@ -146,7 +183,9 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
         pConfigSetParameter(sec, "SaveStatePath", M64TYPE_STRING, datadir);
         pConfigSetParameter(sec, "SaveSRAMPath", M64TYPE_STRING, datadir);
         v = 1; /* r4300 emulator: 2 = dynarec */
-        v = 2;
+        v = use_dbg;
+        pConfigSetParameter(sec, "EnableDebugger", M64TYPE_BOOL, &v);
+        v = use_dbg ? 1 : 2;   /* breakpoints need the cached interpreter */
         pConfigSetParameter(sec, "R4300Emulator", M64TYPE_INT, &v);
     }
 
@@ -190,6 +229,7 @@ int h_init(const char *corelib, const char *rsplib, const char *rom, const char 
     int zero = 0;
     pCoreDoCommand(M64CMD_CORE_STATE_SET, M64CORE_SPEED_LIMITER, &zero);
 
+    if(use_dbg) pDebugSetCallbacks(dbg_init_cb, dbg_update_cb, dbg_vi_cb);
     pthread_create(&emu_thread, NULL, emu_main, NULL);
     wait_blocked();
     return emu_done ? -8 : 0;
@@ -237,4 +277,23 @@ int h_load(const char *path, unsigned frame){
     if(emu_done) return -1;
     if(last_state_event != M64CORE_STATE_LOADCOMPLETE) return -3;
     return last_state_ok ? 0 : -4;
+}
+
+/* debugger mode: add an execution breakpoint; returns its index or -1 */
+int h_bp_add(unsigned addr){
+    m64p_breakpoint bp;
+    memset(&bp, 0, sizeof bp);
+    bp.address = addr; bp.endaddr = addr;
+    bp.flags = M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_EXEC;
+    return pDebugBreakpointCommand(M64P_BKP_CMD_ADD_STRUCT, 0, &bp);
+}
+/* start/stop logging and fetch logged events (8 u32 each: pc a0 a1 a2 ra frame sp caller); returns the count and clears the log */
+void h_dbg_log(int on){ dbg_on = on; }
+int h_dbg_events(unsigned *out, int max){
+    pthread_mutex_lock(&mtx);
+    int n = dbg_count < max ? dbg_count : max;
+    memcpy(out, dbg_events, n * sizeof(dbg_event));
+    dbg_count = 0;
+    pthread_mutex_unlock(&mtx);
+    return n;
 }
