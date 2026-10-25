@@ -1,0 +1,15 @@
+step    1 btn 00 act  2 x -207: free  80318be0 len 1290 id 1911
+step   10 btn 00 act  2 x -166: ALLOC 80318be0 len   80 id 1924 [1 0 3278198083]; ALLOC 80318c70 len   20 id 1925 [9 7 1]; ALLOC 80318ca0 len   80 id 1926 [1 0 3274441557]
+step   17 btn 00 act  2 x -135: ALLOC 80318d30 len   20 id 1929 [9 7 1]; ALLOC 80318d60 len   80 id 1930 [1 0 3278198083]
+step   24 btn 00 act  2 x -113: free  80318be0 len   80 id 1924; free  80318c70 len   20 id 1925; free  80318ca0 len   80 id 1926
+step   25 btn 00 act  2 x -118: ALLOC 80318be0 len   80 id 1934 [1 0 3269492798]
+step   26 btn 00 act  2 x -113: ALLOC 80318c70 len   20 id 1936 [1 34 5]; ALLOC 80318df0 len   e0 id 1937 [3 3269853184 1133379584]
+step   30 btn 00 act  2 x -115: ALLOC 80318ca0 len   80 id 1942 [1 0 3269200871]; ALLOC 80318ee0 len   d0 id 1940 [0 3278241792 0]
+step   31 btn 00 act  0 x -115: free  80318d30 len   20 id 1929; free  80318d60 len   80 id 1930
+step   39 btn 00 act  8 x -115: free  80318be0 len   80 id 1934
+step   41 btn 00 act  8 x -115: ALLOC 80318fc0 len  170 id 1943 [553648138 4009820159 2149851144]
+step   42 btn 00 act  8 x -115: ALLOC 80318be0 len   40 id 1946 [0 3269853184 1133330432]
+step   44 btn 00 act  0 x -115: free  80318ca0 len   80 id 1942; free  80318ee0 len   d0 id 1940
+step   47 btn 00 act  0 x -115: free  80318c70 len   20 id 1936; free  80318df0 len   e0 id 1937
+step  124 btn 00 act  0 x -115: ALLOC 80318c30 len  330 id 1950 [0 0 1051372203]
+MENU at 80318c30

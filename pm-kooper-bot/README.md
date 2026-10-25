@@ -2773,3 +2773,36 @@ displays, but the description 0x31FFF still freezes the game on the down press.
   - The id was 0 in about 77% of them and junk in about 22%.
   - The valid ids were only 7, 2 and 1.
   - A 3-part effect (landing dust or a wall swing) never ended up 0x100 bytes after the menu.
+
+### Bombette: where the 3 would come from, and the search so far
+
+**Heap traces** (`omo11_heaptrace.py`, `data/omo11/heaptrace_goombario.txt`):
+- **Effect instances (0x20) fill three exact-size slots first:** 0x80316050, 0x80317710 and 0x80317740. They only spill
+  into the menu's area when all three are taken.
+- **In the Goombario run**, the second walking-dust instance went to 0x80318D30 at step 17. A 0x40 block stayed at
+  0x80318BE0, so the menu later started at 0x80318C30 = 0x80318D30 − 0x100.
+- **A 3-part effect (`[9 6 3]`, effect index 6) appears after the jump into the Super Block, and after a hammer
+  swing into a wall.** Its data block is 0xD0 bytes. Bombette needs one of those instances freed at exactly
+  menu + 0x100.
+
+**What decides the offset:**
+- The instance goes to the start of the smallest free gap (when the three exact slots are full).
+- The menu later takes the start of a gap ≥ 0x330.
+- So the offset equals the total size (with 0x10 headers) of short-lived blocks that sit in front of the instance
+  and are freed before the menu.
+- Pieces seen: walking-dust data 0x80 (+0x10), sparkle instance 0x20 (+0x10), sparkle data 0xE0 (+0x10), dust data
+  0xD0 (+0x10), a 0x40 block (+0x10), and the 0x3270 image buffer.
+
+**Offset searches** (`random22` with offset tracking, `omo11_apg_scan22.py` template scans;
+`data/omo11/bombette_offset_search.jsonl`):
+
+| Search | Runs | Offsets after the menu | Id 3 |
+|---|---|---|---|
+| Random, idle-210 rush | 7,013 | +0x90, +0xA0, +0xC0, +0xE0, **+0xF0** | 0 |
+| Templates (wait / hop or hammer / wait / jump delay) | 4,200 | +0x70, +0x90, +0xC0, +0xE0, +0xF0, +0x1D0 | 0 |
+| Fine scan around the +0x70 setup | 2,925 | +0x40, +0x70, +0x90, +0xC0, +0x1D0 | 0 |
+| Random, all 30 rush states | 4,314 | none (all at or before the menu) | 0 |
+
+- **No +0x100 yet.**
+- **The closest is +0xF0** (1-step hop, wait 20, jump 3 steps after arriving). The 0xE0 sparkle data sits in front of
+  the instance, but sparkle data alone can only give +0xF0.

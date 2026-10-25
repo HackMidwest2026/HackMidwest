@@ -49,7 +49,7 @@ def do(a):
     elif a[0] == 'wait':
         for i in range(a[1]): e.step(0, 0, 0, 2)
 for n in range(N):
-    seq = [act() for i in range(R.randint(1, MAXA))]; W = R.choice([0, 1, 2, 3])
+    seq = [act() for i in range(R.randint(1, MAXA))]; W = R.choice([0, 1, 2, 3, 4, 6, 8, 12])
     e.load(os.environ.get('START22', 'states/omo11_apg_top22.st'))
     for a in seq: do(a)
     go_to(e, TX, TZ, maxf=150, tol=1.5)
@@ -58,13 +58,18 @@ for n in range(N):
     else:
         for i in range(1 + W): e.step(0, 0, 0, 2)
         for i in range(6): e.step(A, 0, 0, 2)
-        p = None
+        p = None; LD = []
+        from omo11_heapwalk import walk as hwalk
         for f in range(900):
             p = popup()
             if p: break
+            if f < 60:                                   # landing dust from the hit (effect 6, 3 parts) instances
+                for nd, bk, ln, al, mid in hwalk(e):
+                    if al and ln == 0x20 and e.u32(bk + 4) == 6 and e.u32(bk + 8) == 3 and bk not in LD: LD.append(bk)
             e.step(A if f % 8 == 0 else 0, 0, 0, 2)
         if p:
             inst = p + 0x100
+            r.update(ld=[hex(x) for x in LD], ld_off=[hex(x - p) for x in LD])
             r.update(ok=True, addr=hex(p), id=e.u32(p + 0x108), en=e.u32(p + 0x18C), icon0=hex(e.u32(p)), desc0=hex(e.u32(p + 0x294)),
                      inst=[e.u32(inst), e.u32(inst + 4), e.u32(inst + 8)])
     fo.write(json.dumps(r) + '\n'); fo.flush()
