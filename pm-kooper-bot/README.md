@@ -3382,3 +3382,51 @@ doesn't do that. He stands at the same position as part 1, so the expected resul
 
 **Video:** `jrtroopa8_jump_cancel.mp4` (`btl_record_variant.py`, `compose_jump_video.py`). Three panels: normal (129),
 quick jump (123), run cancel (120), aligned on the target confirm, ending 2 s after the partner menu.
+
+## Crystal Palace Bridge Mirror Hall (pra_18): map and Lakilester mirror-clip speeds
+
+Map: `figures/pra18_map.png`, from `pra18_collision.json`. State: `make_state_room.py` warp to entry 2, with
+Lakilester and Ultra Boots.
+
+**Layout:**
+- **Room:** x 0–750, z −150…150.
+- **Mirror:** collider 19, a **two-sided** plane at z = 0, covering x 0–250 and x 500–750. The middle (x 250–500) is two
+  bridges with no floor between them: north z −100…−50, south z 50…100.
+- **Statues:** north side, 100 tall. Statue 1 (o1176) at x 234–300, statue 2 (o1175) at x 434–500, statue 3 (o1174)
+  at x 684–750.
+- **Statue 3** stands in front of the NE door (`deilittne`, to pra_33), which is only bound once
+  `STORY_CH7_DEFEATED_CLUBBAS` is set.
+- **Clubbas:** south side at (268, 70), (490, 70) and (717, 70). Each starts its fight when Mario is within 80 units
+  (`IsPlayerWithin 80`). From the north walkway (z ≈ −75) they are 145 away, so they never trigger there.
+- **What beating each one does** (`EVS_NpcDefeat_Clubba_*`):
+  - Clubba 1 removes statue 1.
+  - Clubba 2 removes statue 2.
+  - **Clubba 3 removes statue 3, binds the pra_33 door and sets the story flag.**
+  - So beating only Clubba 3 is enough to leave through the NE door.
+- **Mirror pillars:** octagons straddling the mirror at x 134–166 and **584–616**. Their slanted faces let long mount
+  steps slide past the mirror plane.
+
+**Lakilester mount clip through the mirror** (`pra18_mount_map.py`, `pra18_mount_fine.py`; DIAGNOSTIC: Mario placed,
+Lakilester's speed forced to S until the mount). Only the east pillar (x 584–616) gives crossings. The east wall
+corner (x 700–749) gives none, and the west pillar was not tested.
+
+*North → south (to reach Clubba 3):*
+- From z −13…−23 just west of the pillar, the needed speed is very nearly **S ≈ 616 − x**, i.e. the distance to
+  the pillar's east tip. The window is only one or two even speeds wide.
+
+| x | 556 | 558 | 560 | 562 | 564 | 566 | 568 | 570 | 572 | 574 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| S | 58–60 | 56–58 | 54–56 | 54 | 52 | 50 | 48 | 46 | 44 | **42** |
+
+- Lowest speed found: **42** (x 574).
+- Landing spot: about (624–629, 12–16). That is 108 units from Clubba 3 and 146 from Clubba 2, so neither wakes.
+- The coarse map also found S = 300 crossings from x 586. Those land at (541, 37), which is within 80 of Clubba 2.
+
+*South → north (back to the NE door after Clubba 3):*
+- From x 613–616 (the pillar's east tip) and z 15–39, **every speed from 22 to 40 crosses**.
+- From x 584, speeds 50–300 cross.
+- Landing spot: about (625, −25), on the north side between statue 2 and the door. With statue 3 gone, the door is
+  reachable.
+
+Not done yet: how to reach those speeds in this room (the pra_01/pra_02 setups reached 22–122 with stop-and-go
+pushes against a pillar), and the statue-top / statue-2 part of the route.
