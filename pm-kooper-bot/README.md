@@ -3034,3 +3034,40 @@ FLOORY=-420`; 2,383 menus, `data/omo11/dgb04_random.jsonl`):
 - **Kooper does not work yet.** A full jump on the spot, then jumping into the block 3–4 steps after arriving,
   gives id 2 with "enabled" set reliably. The menu draws, but the game freezes on the down press, from the
   description value 0x31FFF (same as omo_11).
+
+## 33rd key item dupe (trd_03), and whether it works without 32 key items
+
+Script: `trd03_keydupe_known.py CHOICE` (env `INV` = the 10 consumable slots). It is a DIAGNOSTIC setup: it writes
+32 key items and the consumables, places Mario by Fortress Key A, then uses inputs for the pickup and the menu.
+
+**How the dupe works** (`item_entity.c`, `ITEM_PICKUP_STATE_AWAIT_THROW_AWAY`):
+- The throw-away menu lists the new item first, then every *non-empty* consumable slot in order.
+- Picking menu entry `n` (n ≥ 2) spawns `menu->userIndex[n-1]` on the floor, which is the right item. But it clears
+  `invItems[n-2]`, which is a raw slot index and assumes the consumables start at slot 0.
+- `sort_items` packs consumables at the *back* of the array: 3 items sit in slots 7–9 and slots 0–6 are empty.
+  So the cleared slot is an empty one. The item you picked is thrown on the floor *and* stays in your bag.
+- `add_item(newItem)` then puts the new item (a key) into the consumable bag. `add_item` does not check the type.
+
+**Results:**
+
+| bag before (slots 0–9) | choice | bag after | floor |
+|---|---|---|---|
+| `0,0,0,0,0,0,0,Mush,Mush,Mush` | 1 (Mushroom) | `…,0,Key,Mush,Mush,Mush` | Mushroom thrown, all 3 still in the bag |
+| same | 0 (new key) | unchanged | the key is thrown; it is a TOSS_SPAWN_ALWAYS entity and vanishes after about 400–600 frames |
+| `0,…,0,Mush,Mush,Key` | 3 (the Key already in the bag) | `…,Key,Mush,Mush,Key` | a Key copy is thrown, and the bag copy stays |
+
+The last row is a real key dupe: +1 key per pickup.
+
+**Without 32 key items: not possible with this bug.**
+- The menu only opens from `ITEM_PICKUP_STATE_SHOW_TOO_MANY`, which is reached in only three ways:
+  - a consumable is picked up with all 10 consumable slots full
+  - a key is picked up with all 32 `keyItems` slots non-zero
+  - a badge is picked up with all 128 `badges` slots full
+- No other code opens `POPUP_MENU_THROW_AWAY_ITEM`.
+- The wrong-slot clear only dupes when the bag has an empty slot. With a full consumable bag there are no gaps, so the
+  index is correct and nothing dupes.
+- A full badge list (128) is not reachable in a real game.
+- So the requirement is really "32 non-zero `keyItems` entries". Any key items count, duplicates included.
+- Keys that only end up in the consumable bag don't help with doors: `ShowKeyChoicePopup` only reads `keyItems`. To
+  turn a bag key back into a usable key, throw it out of a later throw-away menu and pick it up again while a
+  `keyItems` slot is free.
