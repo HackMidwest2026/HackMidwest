@@ -10,7 +10,7 @@ from nav import go_to, stick_world, world_yaw_to
 seed, N, out = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
 R = random.Random(seed)
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/r22_%d' % os.getpid())
-POP = 0x8010D85C; TX, TZ = -115, -112
+POP = 0x8010D85C; TX, TZ = float(os.environ.get('TX', '-115')), float(os.environ.get('TZ', '-112'))
 fo = open(out, 'a')
 def popup():
     p = e.u32(POP)
@@ -18,8 +18,12 @@ def popup():
 MAXA = int(os.environ.get('MAXA', '5'))
 def act():
     k = R.random()
-    if os.environ.get('JUMPY') and k < 0.35: return R.choice([('jump', 0), ('hop', 3), ('spin', 0), ('walkjump', R.choice(range(-205, -95, 10)))])
-    if k < 0.3: return ('walk', R.choice(range(-205, -95, 10)), R.choice([-140, -125, -112, -100, -88]))
+    if os.environ.get('JUMPY') and k < 0.35: return R.choice([('jump', 0), ('hop', 3), ('spin', 0), ('njump', 0)])
+    if k < 0.3:
+        if os.environ.get('WALKBOX'):                      # x0,x1,z0,z1 area to wander in (default: block 22 top)
+            x0, x1, z0, z1 = map(int, os.environ['WALKBOX'].split(','))
+            return ('walk', R.randint(x0, x1), R.randint(z0, z1))
+        return ('walk', R.choice(range(-205, -95, 10)), R.choice([-140, -125, -112, -100, -88]))
     if k < 0.55: return ('hammer', R.choice(['back', 'front', 'left', 'right', 'none']))
     if k < 0.7: return ('hop', R.choice([1, 2, 3]))
     if k < 0.8: return ('jump', 0)
@@ -42,6 +46,9 @@ def do(a):
     elif a[0] == 'spin':
         for i in range(2): e.step(Z, 0, 0, 2)
         for i in range(20): e.step(0, 0, 0, 2)
+    elif a[0] == 'njump':                          # straight-up jump, stick neutral on landing (landing dust)
+        for i in range(5): e.step(A, 0, 0, 2)
+        for i in range(30): e.step(0, 0, 0, 2)
     elif a[0] == 'walkjump':                       # full jump while walking along the middle lane (landing dust)
         p = player(e)
         for i in range(8): e.step(A, *stick_world(e, world_yaw_to(p, a[1], -112), 50), 2)
@@ -54,7 +61,7 @@ for n in range(N):
     for a in seq: do(a)
     go_to(e, TX, TZ, maxf=150, tol=1.5)
     r = {'seq': seq, 'W': W}
-    if player(e)['y'] < 200: r['fell'] = True
+    if player(e)['y'] < float(os.environ.get('FLOORY', '210')) - 10: r['fell'] = True
     else:
         for i in range(1 + W): e.step(0, 0, 0, 2)
         for i in range(6): e.step(A, 0, 0, 2)

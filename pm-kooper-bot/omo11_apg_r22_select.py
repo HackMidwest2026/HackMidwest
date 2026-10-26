@@ -5,7 +5,7 @@ sys.argv = [sys.argv[0], '0', '0', '/dev/null'] + sys.argv[1:]
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'omo11_apg_random22.py')).read()
 exec(src.split('for n in range(N):')[0])
 seq, W = json.loads(sys.argv[4]), int(sys.argv[5])
-e.load('states/omo11_apg_top22.st')
+e.load(os.environ.get('START22', 'states/omo11_apg_top22.st'))
 for a in seq: do(a)
 go_to(e, TX, TZ, maxf=150, tol=1.5)
 for i in range(1 + W): e.step(0, 0, 0, 2)

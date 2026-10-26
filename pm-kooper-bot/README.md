@@ -3003,3 +3003,34 @@ Checked in the emulator (`kpa62_runner.py`, Laki placed beside Mario as setup on
 - **What it needs:** the landing has to happen while 0x80318D30 is free and 0x80318BE0 is still occupied, without
   disturbing the blocks that put the menu at 0x80318C30. Getting there needs the planned action library (each input
   modelled as the heap events it causes), not more random scans.
+
+## APG in Tubba Blubba's castle (dgb_04)
+
+**Setup:**
+- The castle's Super Block is in dgb_04, at (500, −360, 110), above the bottom floor (y −420).
+- Save blocks are in dgb_00 (outside) and dgb_17 (inside).
+- The state was warped to dgb_04 entry 1 (bottom floor) with Goompa as the only partner (`make_state_omo.py`,
+  `PRA_MAP=dgb_04 PRA_ENTRY=1 PRA_AREA=15 PARTNER=5 ONLY=1`). Everything after that is inputs.
+
+**Approach grid** (`dgb04_apg_grid.py`; 480 runs, `data/omo11/dgb04_grid.jsonl`):
+- The menu landed at 0x80314620 (393 runs), 0x803158E0, 0x803159E0, 0x80317A20 or 0x80317920.
+- The only valid id was 1, with icon 0x9 (freezes).
+
+**Random actions** (`omo11_apg_random22.py` with `START22=…dgb04 TX=500 TZ=110 WALKBOX=380,620,40,200
+FLOORY=-420`; 2,383 menus, `data/omo11/dgb04_random.jsonl`):
+
+| Result | Count | Notes |
+|---|---|---|
+| Kooper (2), enabled 6, icon 0 | 31 | Menu at 0x80314890, description 0x31FFF |
+| Goombario (1) with all fields clean | 2 | Menu at 0x80317920 |
+| Bombette (3) | 1 | enabled = 0 |
+
+**Verified with a real selection** (`omo11_apg_r22_select.py`, no RAM writes):
+- **Goombario works.** Two setups:
+  - swing the hammer (not turned), wait 20 steps, walk to (476, 129), go under the block and jump 2 steps after
+    arriving;
+  - neutral jump, hammer swing facing back, full jump, go under the block and jump 4 steps after arriving.
+  - `curPartner` 5 → 1 and the game keeps running.
+- **Kooper does not work yet.** A full jump on the spot, then jumping into the block 3–4 steps after arriving,
+  gives id 2 with "enabled" set reliably. The menu draws, but the game freezes on the down press, from the
+  description value 0x31FFF (same as omo_11).
