@@ -3071,3 +3071,56 @@ The last row is a real key dupe: +1 key per pickup.
 - Keys that only end up in the consumable bag don't help with doors: `ShowKeyChoicePopup` only reads `keyItems`. To
   turn a bag key back into a usable key, throw it out of a later throw-away menu and pick it up again while a
   `keyItems` slot is free.
+
+## Other key dupes (code survey), Happy Flower dupe (flo_09), and 128 badges
+
+**Other ways to dupe keys.** I went through every place that spawns a ch1, ch2 or ch8 key (`trd_*`, `isk_*`,
+`kpa_*`). Each key spawn is one of two kinds:
+- **Spawned on room load** with `ITEM_SPAWN_MODE_KEY` and its pickup flag. `make_item_entity` returns early if the
+  flag is already set.
+- **Spawned by a one-shot script** that sets its own guard flag at the same time:
+  - guard defeat in `trd_01`, `kpa_11`, `kpa_91`, `kpa_95`
+  - the mummy fight in `isk_07`
+
+None of them is like the flo_09 trees, which can run again before the pickup flag is set. So the only key dupe in the
+code is the throw-away menu wrong-slot bug, and that needs 32 key items.
+
+**Happy Flower dupe.**
+- Scripts:
+  - `flo09_happyflower.py STATE ROUNDS OUT.jsonl` (hammer trees 2, 3, 1)
+  - `flo09_hf_pickup.py` (collect the pile)
+  - `flo09_hf_hangprobe.py` (watchdog)
+- Setup: warped into flo_09. DIAGNOSTIC: the two Dayzees and the Bzzap were moved to y −1000 instead of being fought.
+- `EVS_OnShakeTree1` only checks `GF_FLO09_Item_HappyFlowerB`, and that flag is set only when you pick a flower up.
+  So every 2-3-1 makes another `FALL_NEVER_VANISH` Happy Flower at (−250, 100, 0).
+- Picking up 10 of them gave 10 badges.
+- The pile must not be touched (tree 1 is hit from the right). The first pickup sets the flag, and after that the
+  trees stop spawning flowers.
+
+**Limit: 54 flowers here, and the 55th crashes the game.**
+- Each FALL item entity creates a shadow with `create_shadow_type`. The shadow list has `MAX_SHADOWS` = 60 slots.
+  When it is full, `create_shadow_from_data` hits `ASSERT(i < 60)`, which is a crash.
+- In my state, shadow slots 0–5 were used by Mario, the partner and the 4 room NPCs. The 54 flowers used slots 6–59.
+- The game stopped at the hammer hit that spawns flower 55. This reproduced from the round-50 save.
+- On real hardware the limit is 60 minus the other shadows in the room:
+  - Mario + partner = 2
+  - Bzzap_02, which always exists, parked under the floor = 1
+  - plus any Dayzee or Bzzap that is still alive
+- So it is about 54–57 flowers.
+- Because the first pickup ends the dupe, that is also the most Happy Flowers you can get in one go.
+
+**128 badges and keys** (`kpa100_key_badgefull.py BADGES KEYS CHOICE`, ch8 Castle Key in kpa_100, DIAGNOSTIC
+badge/key fill):
+
+| badges | keys | result |
+|---|---|---|
+| 128 | 0 | normal pickup, keys 1, no menu |
+| 128 | 31 | normal pickup, keys 32, no menu |
+| 128 | 32 | throw-away menu, same as without badges (key goes into the consumable bag, a Mushroom is duped) |
+
+A key pickup only looks at `keyItems`. A full badge list matters only when you pick up a badge. With 128 badges, picking
+up another Happy Flower opens the throw-away menu `[Happy Flower, Mush, Mush, Mush]`:
+- Choosing a Mushroom keeps all 3 Mushrooms, throws one on the floor, and puts the Happy Flower into the consumable bag.
+- Choosing the flower throws it away.
+
+So 128 badges gives a *consumable* dupe, not a key dupe.
