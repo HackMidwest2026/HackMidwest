@@ -3124,3 +3124,55 @@ up another Happy Flower opens the throw-away menu `[Happy Flower, Mush, Mush, Mu
 - Choosing the flower throws it away.
 
 So 128 badges gives a *consumable* dupe, not a key dupe.
+
+## Toad Town Tunnels blocks before the Ultra Boots (tik_23 Super Hammer block, tik_24 Ultra Hammer block)
+
+Setup: rooms warped in with `make_state_room.py` (Lakilester or Parakarry, Super Boots, basic hammer).
+DIAGNOSTIC: Spinies and Dark Troopas parked at y −1000 (`tik_clear_enemies.py`, or `CLEARNPC=1` for tik_24, where
+they touch Mario on entry). Collision dumps: `tik23_collision.json`, `tik24_collision.json`.
+
+**What actually blocks the path is not the block, it's an invisible wall.**
+- **tik_23:** the west tunnel (to tik_24) is x −390…−290, z −50…10, floor −20. Its arch is 50 high at the sides and
+  70 in the middle.
+  - Collider 9 (`o102`) is a one-sided plane at x = −280 facing east. It covers the opening up to **40 at the sides
+    and 60 in the middle**, so it leaves a **10-unit slit** under the arch.
+  - The Super Hammer block (50³ at (−280, −20, −20), top y 30) straddles that plane.
+  - Smashing the block runs `ModifyColliderFlags(o102)` to turn the wall off.
+- **tik_24:** collider 11 (`o44`) at x = −240 fills the tunnel opening **exactly**, up to the arch (sides 50, top 70).
+  There is **no slit**. That is why the metal block doesn't work like the stone one.
+
+**Which rays can miss `o102`** (`77480.c`):
+- Walking tests two rays, at feet + 10.6 and feet + 27.75. They are 17 apart, so both can never fit in a 10-unit slit.
+- In the air (jumping/falling) there is **one ray at feet + 1**. It passes if the feet are at y 39–49 near the sides or
+  59–69 in the middle, i.e. **59–89 above the floor**.
+- That height is only reachable by jumping from on top of the stone block, which is 50 above the floor.
+
+**Getting on the stone block (needs 50 above the floor): not reachable.**
+
+| method | highest feet height above floor |
+|---|---|
+| normal / spin jump | 38 |
+| Lakilester dismount hop (ride height +12, rise 18) | 30.7 |
+| Parakarry lift (≈16.4) then jump off with A (`start_bounce_b`, fixed, holding A doesn't add) | **44.4** |
+| Parakarry C-down mid-jump | no lift (partner abilities need the ground) |
+
+- Lakilester's dismount picks a landing spot under Mario (16-unit raycast down), so it can't target the block top.
+- Lakilester himself stops 16 units from the block face.
+- The yellow and hidden blocks in the room (y 40–65) are too high to stand on, and not next to the stone block.
+
+**Lakilester speed clip: no speed works in either room.**
+- Every step of the mount (RIDE_STATE_MOUNT_1) is tested by `npc_test_move_simple_with_slipping` with a ray at
+  **y + 10.01**. That is far below the wall's top in both rooms.
+- The steps are axis-aligned (−z, +x, +z, −x) against an axis-aligned wall, so slipping adds no sideways offset.
+- Riding tests rays at +10, +15, +20 and height − 1, which are all below the wall's top too.
+- `tik23_mount_map.py` checked this: forced speeds 10…400 from 55 spots next to the block and wall gave **0 crossings
+  in 330 tries**. Mario never got west of x −272.
+
+**Loading zone / out of bounds.**
+- The exits are `FLOOR_ABOVE` triggers on the tunnel floors (tik_23 collider 6 at x ≤ −290, tik_24 collider 8 at
+  x ≤ −250).
+- Mario's center can't pass x −267 (tik_23) or −227 (tik_24), so his floor probes never reach those floors.
+- The room walls above the arches go up to y 340 with no gaps.
+
+So, apart from the hammers or Clippy, I found no way through. The only theoretical opening is tik_23's 10-unit slit,
+and it needs Mario standing on the stone block.

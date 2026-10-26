@@ -43,11 +43,19 @@ e.w8(PLAYER_DATA + 0x12, PARTNER)
 if os.environ.get('BOOTS'): e.w8(PLAYER_DATA, int(os.environ['BOOTS']))
 if os.environ.get('NOBADGES'):
     for i in range(64): e.w16(PLAYER_DATA + 0x208 + 2 * i, 0)
+def clear_npcs():
+    # DIAGNOSTIC (env CLEARNPC=1): park every enemy NPC at y -1000 as soon as it exists (stands in for defeating them)
+    if os.environ.get('CLEARNPC'):
+        for n in npcs(e):
+            if n['id'] >= 0 and n['y'] > -900:
+                e.wf32(n['addr'] + 0x38, 0.0); e.wf32(n['addr'] + 0x3C, -1000.0); e.wf32(n['addr'] + 0x40, 0.0)
 for i in range(300):
+    clear_npcs()
     e.step(0, -80, 0, 2)
     if where(e)[0] == int(os.environ.get('PRA_AREA', '21')) and e.s16(GAME_MODE) == GM_WORLD:
         break
 for i in range(200):
+    clear_npcs()
     e.step(0, 0, 0, 2)
 print('now in', where(e), player(e), 'partner', e.s8(PLAYER_DATA + 0x12))
 print('npcs', [(n['id'], round(n['x']), round(n['y']), round(n['z']), n['diam'], n['height'], hex(n['flags'])) for n in npcs(e)])
