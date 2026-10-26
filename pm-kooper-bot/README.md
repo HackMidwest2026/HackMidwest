@@ -3207,3 +3207,39 @@ Known: standing on the stone block and jumping up-left clips through the slit, s
   block.
 - Plain C-down dismount (`tik23_laki_ontop.py`): it lands with Mario's own 7.3 probes after the same push-out, so it
   can never reach the top.
+
+### Dismounting at the peak of Lakilester's bob; hammering the stone block many times
+
+**Bob peak** (`tik23_bounce_phase.py`, `data/tik23_bounce.json`):
+- While riding, Mario's y is `laki.y + 10 + |PlayerBounceOffset| × 0.34`. The offset counts −8 … 9 and advances once
+  per game frame, so it repeats every 18 frames and the peak is +3.06.
+- I dismounted at all 20 phases from three spots next to the block (north side at an angle, pressed into the east
+  face, the east corner).
+
+| Dismount | Ride y at press | Result |
+|---|---|---|
+| C-down | −10.0 … −6.94 | hop apex 8.0 … 11.06, exactly +3.06 at the peak; always lands on the floor |
+| Partner swap (north spot) | −10.0 … −6.94 | snaps to y 29.63 at every phase; still pushed ~12 out, still falls |
+
+The extra 3 units don't remove the first-frame push-out. That needs feet + 10.6 > 30 on that frame, i.e. feet > 19.4,
+and they are about −1.
+
+**Hammering the block** (`tik23_hammer_many.py`, `data/tik23_hm.jsonl`; basic hammer, facing west against the east
+face, one hit per 30 steps):
+- Every 10 hits I logged the `o102` collider flags, whether the block entity was still there, and the general-heap
+  numbers.
+- Every 20 hits I ran a walk test: walk west along z = 8, the 5-unit strip between the block and the arch frame,
+  where only `o102` stops Mario.
+
+| Hits | `o102` flags | Block | Heap used | Largest free | Walk test min x |
+|---|---|---|---|---|---|
+| 0 | 0x0 | there | 127,584 | 214,336 | −267.0 (stopped by the wall at −280) |
+| 40 | 0x0 | there | 188,704 | 151,616 | −267.0 |
+| 100 | 0x0 | there | 300,064 | 38,384 | −267.0 |
+| 110 | 0x0 | there | 318,624 | 19,216 | (not run) |
+| ~111+ | — | — | — | — | game stops advancing frames (heap exhausted) |
+
+- Each hit leaks ~1.86 KB. It is the same imgfx shiver leak as in kmr_03.
+- The leak lives in the general heap. The wall's collider data and the block entity are not affected.
+- The wall stays solid until the heap runs out and the game halts, at about the same hit count as kmr_03.
+- So hammering never removes the wall.

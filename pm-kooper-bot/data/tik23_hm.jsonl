@@ -1,0 +1,14 @@
+{"hit": 1, "o102": "0x0", "block": true, "heap_used": 116320, "largest_free": 212176, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 2, "o102": "0x0", "block": true, "heap_used": 118176, "largest_free": 212176, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 3, "o102": "0x0", "block": true, "heap_used": 120032, "largest_free": 212176, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 10, "o102": "0x0", "block": true, "heap_used": 133024, "largest_free": 208256, "pos": [-242.0, -20.1], "mode": 4}
+{"hit": 20, "o102": "0x0", "block": true, "heap_used": 151584, "largest_free": 189520, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 30, "o102": "0x0", "block": true, "heap_used": 170144, "largest_free": 170480, "pos": [-242.0, -20.1], "mode": 4}
+{"hit": 40, "o102": "0x0", "block": true, "heap_used": 188704, "largest_free": 151616, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 50, "o102": "0x0", "block": true, "heap_used": 207264, "largest_free": 132752, "pos": [-242.0, -20.1], "mode": 4}
+{"hit": 60, "o102": "0x0", "block": true, "heap_used": 225824, "largest_free": 113584, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 70, "o102": "0x0", "block": true, "heap_used": 244384, "largest_free": 95024, "pos": [-242.0, -20.1], "mode": 4}
+{"hit": 80, "o102": "0x0", "block": true, "heap_used": 262944, "largest_free": 76288, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 90, "o102": "0x0", "block": true, "heap_used": 281504, "largest_free": 57248, "pos": [-242.0, -20.1], "mode": 4}
+{"hit": 100, "o102": "0x0", "block": true, "heap_used": 300064, "largest_free": 38384, "pos": [-242.0, -20.1], "mode": 4, "walk_min_x": -267.0, "area": [2, 19, 1]}
+{"hit": 110, "o102": "0x0", "block": true, "heap_used": 318624, "largest_free": 19216, "pos": [-242.0, -20.1], "mode": 4}
