@@ -3265,3 +3265,62 @@ Method:
 
 Hammering only allocates memory: about 1.86 KB per hit stays in the general heap. It writes nothing to flags, map
 variables, collision or the save file. Nothing in the world changes until the heap runs out and the game halts.
+
+## Input shortcuts built into the game (decomp survey)
+
+All of these are deliberate: a script or action waits for a fixed time, but stops waiting early when it sees a specific
+input.
+
+### Battle: Jump approach run cancel (`CancelablePlayerRunToGoal`, `battle/dmg_player.c`)
+
+- **Who uses it:** every jump move goes through `EVS_JumpSupport_Approach` or Earthquake Jump's own copy of it. That
+  covers Jump, Power/Super/Mega Jump, Multibounce, Power Bounce, Sleep/Dizzy/Shrink Stomp, D-Down Jump and the auto
+  versions. Jump Charge uses the non-cancelable `PlayerRunToGoal`.
+- **The run:** speed 5 from x −95 to `min(first target − 40, target − 70)`.
+- **The cancel:** after 12 run frames, A must be seen *not held* once, then pressed. The run stops where Mario is.
+  The earliest stop is run frame 15.
+- **The jump afterwards:** the script ignores the "cancelled" result and jumps from wherever Mario is. Jump frames =
+  `int((|target x − Mario x| − 20) / 10.588 + 15)`, so each unit not run costs only 1/10.588 frame of extra jump,
+  against 1/5 frame of running.
+- **Action command:** the jump's command only punishes A presses after `action_command_jump_start`, so neither the
+  cancel press nor the quick-jump press can fail it.
+
+Saved frames (run + jump only; slot x from `StandardActorHomePositions`; targets assumed at slot x):
+
+| Target | Enemy in front | Normal | Cancelled | Saved |
+|---|---|---|---|---|
+| slot A or B | any | — | can't (run ≤ 14 frames) | 0 |
+| slot C (x 85) | none | 41 | 38 | 3 |
+| slot C | slot B alive | 40 | 38 | 2 |
+| slot D (x 125) | none | 49 | 41 | **8** |
+| slot D | slot B alive | 44 | 41 | 3 |
+| center / boss (x 105) | none | 45 | 39 | 6 |
+| anything | slot A alive | — | can't (run 12 frames) | 0 |
+
+### Battle: other early-start waits
+
+| Move | Code | Shortcut |
+|---|---|---|
+| Jump crouch | `EVS_CheckForAPress`, `Loop(5)` | press A: up to 5 frames sooner |
+| Hammer (basic/super/ultra) | `EVS_HammerSupport_*RaiseDelay`: `Loop(10)` on stick-left, then extra `Wait` 4/3/2/1/0 by how long it waited | hold left already: 4 frames instead of 10 |
+| Kooper Shell Toss / Power Shell, Sushie | `Loop(30)` waiting for stick-left | hold left already: up to 30 frames sooner |
+| Bombette / Watt body slam | `Loop(60)` waiting for A held | keep holding A from the menu: up to 60 frames sooner |
+
+### Overworld (`world/action/*.c`)
+
+| Shortcut | Code | Effect |
+|---|---|---|
+| Hammer cancel | `hammer.c`: `animNotifyValue == 1 && timer >= 7 && B` | ends the swing (normally at timer > 10) |
+| Spin cancel | `spin.c`: `check_input_hammer() || check_input_jump()` | jump or hammer out of a spin at any point after its first frame |
+| Spin buffer | `spin.c`: Z while `spinCountdown < 11` | queues the next spin |
+| Landing jump | `land.c` calls `check_input_jump()` | jump on the landing frame; no landing lag |
+
+### Text boxes (`msg.c`)
+
+| Input | Effect |
+|---|---|
+| Hold A while printing (after releasing the A that opened the box) | 6 characters per frame |
+| Press A, or hold B, while printing | `PRINT_QUICKLY`: 12 characters per frame |
+| Hold B while a box waits | advances to the next box, no press needed |
+| A or B while scrolling | scrolls quickly |
+| **Z while a box waits** | **rewinds one line (text backlog)**. Z again goes further back, A goes forward, B jumps back to the current line. |
