@@ -42,10 +42,12 @@ ax.scatter([k[0] for k in spotS], [k[1] for k in spotS], c=[min(v) for v in spot
 hiS = {(x, z) for x, z, S, _, ex, ez in cs if x <= 590}
 ax.scatter([k[0] for k in hiS], [k[1] for k in hiS], marker='x', c='red', s=50, zorder=5, label='south side x 584-586: speeds 50-300 also cross')
 ax.scatter([586] * 4, [-20, -25, -30, -40], marker='x', c='purple', s=50, zorder=5, label='north side x 586: only speed 300 (lands near Clubba 2)')
+ft = json.load(open(P + 'foot_S.json'))
+ax.scatter([r[0] + .4 for r in ft], [r[1] + .4 for r in ft], marker='v', s=60, c='white', edgecolors='red', linewidths=1.2, zorder=7, label='south side: STANDING C-down mount (speed 0) also clips north')
 ax.plot(626, 13.5, marker='*', ms=20, color='gold', mec='k', zorder=6); ax.text(629, 9, 'north->south\nlanding (~625, 14)', fontsize=10, va='bottom')
 ax.plot(625, -25.5, marker='*', ms=20, color='gold', mec='k', zorder=6); ax.text(629, -31, 'south->north\nlanding (~625, -25)', fontsize=10)
 ax.text(543, -44, 'NORTH -> SOUTH (squares): speed ~= 616 - x,\nonly a 1-2 speed window per spot', fontsize=11, va='top')
-ax.text(543, 46, 'SOUTH -> NORTH (circles): x 613-616, z 15-39,\nany speed 22-40', fontsize=11, va='bottom')
+ax.text(543, 46, 'SOUTH -> NORTH: x 612-616, z 16-39 hugging the pillar tip.\nNo speed needed: a standing C-down mount (triangles) clips;\nriding at speed 22-40 (circles) works too', fontsize=11, va='bottom')
 ax.text(600, 1.8, 'east pillar', ha='center', fontsize=9)
 ax.set_xlim(540, 650); ax.set_ylim(48, -48); ax.set_aspect('equal'); ax.grid(alpha=.3)
 ax.set_xlabel('x'); ax.set_ylabel('z'); ax.legend(loc='lower right', fontsize=9)
