@@ -3176,3 +3176,34 @@ they touch Mario on entry). Collision dumps: `tik23_collision.json`, `tik24_coll
 
 So, apart from the hammers or Clippy, I found no way through. The only theoretical opening is tik_23's 10-unit slit,
 and it needs Mario standing on the stone block.
+
+### Getting on the stone block: Lakilester put-away (partner swap while riding), closest so far
+
+Known: standing on the stone block and jumping up-left clips through the slit, so the goal is the block top (y 30).
+
+**The put-away snap.**
+- The partner menu can be opened while riding Lakilester (`world/menus.c` allows ACTION_STATE_RIDE).
+  Inputs: C-right, a 2-frame stick press to move the cursor, then A.
+- Lakilester's `PutAway` dismount hop casts three rays down from Mario's **head** (feet + 37), each 37 long, using
+  `npc_raycast_down_around`. They start 14.4 units out (Lakilester's diameter 36 ÷ 2.5), at his yaw and ±120°.
+- If any ray hits a floor, it sets **Mario's y to that floor**. NPC rays include entities, so the block top counts.
+- The yaw comes from `can_dismount`: Mario + 2 units in the camera direction (−z here; the camera yaw is exactly 0).
+- `tik23_swap_ontop.py`: riding into the block's north face at an angle (stick −60, 60 for 10 steps, Mario at
+  (−262.7, 13.6)), then swapping, **snaps Mario to y 29.6**, the block top.
+
+**Why he still falls.**
+- On the first hop frame, before the snap, `func_800E4AD8` → `collision_check_player_intersecting_world` pushes Mario
+  out of the block with 4 axis rays, to ≈ 12 from the face (z 17).
+- He then falls, with input still locked by the swap. His own landing probes (`player_raycast_below`) only reach
+  0.28 × diameter ≈ 7.3 out, so they miss by ≈ 4.7 and he drops to the floor.
+- Figure: `figures/tik23_putaway_nearmiss.png`.
+
+**Corners don't help.**
+- Diagonally off a corner, the axis push-out misses, but so do all of Mario's axis landing probes. The camera yaw is
+  exactly 0, so everything is axis-aligned.
+
+**Searches.**
+- 168 grid runs (`tik23_swap_ontop.py`) and 1,140 random ride + swap runs (`tik23_swap_random.py`): 0 ended on the
+  block.
+- Plain C-down dismount (`tik23_laki_ontop.py`): it lands with Mario's own 7.3 probes after the same push-out, so it
+  can never reach the top.
