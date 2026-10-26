@@ -3243,3 +3243,25 @@ face, one hit per 30 steps):
 - The leak lives in the general heap. The wall's collider data and the block entity are not affected.
 - The wall stays solid until the heap runs out and the game halts, at about the same hit count as kmr_03.
 - So hammering never removes the wall.
+
+### What hammering the stone block changes in RAM (`tik23_hammer_ramdiff.py`, `data/tik23_ramdiff.json`)
+
+Method:
+- From the same state, branch A hits the block 60 times. Branch B stands still for the same 1,800 steps.
+- All 8 MB of RDRAM is diffed (A vs B, and A vs the start). Each changed range is labelled with the nearest JP symbol.
+- This is well before the heap runs out (about 110 hits).
+
+| Region | Changed? | What it is |
+|---|---|---|
+| Save file (`gCurrentSaveFile`, 0x800DACA0: global flags, global bytes, area flags/bytes) | **no** | — |
+| Map flags / map vars (`gWorldMapFlags` 0x802DBC70, `gWorldMapVars` 0x802DBCA8) | **no** | — |
+| Collision heap (0x80268000–0x80280000: vertices, colliders, triangles, collider flags) | **no** | the wall `o102` and every floor stay identical |
+| General heap (0x802FB800–0x8034F800) | yes, ~32k words | the leaked shiver buffers, effect instances |
+| 0x802B6480–0x802B6EA8 | yes | the player action code overlay: the hammer action's code is loaded there instead of idle's |
+| 0x802B80A0… (after `pulse_stone_icon_gfx`) | yes | effect/graphics buffers holding heap pointers |
+| Script counters (`UniqueScriptCounter`, one extra script slot) | yes | the block's hit script |
+| `gPlayerData+0x2B8` | yes | `idleFrameCounter` (frames without input) |
+| 0x80164000+ and the sprite heap | yes | frame and display-list buffers, sprite animation |
+
+Hammering only allocates memory: about 1.86 KB per hit stays in the general heap. It writes nothing to flags, map
+variables, collision or the save file. Nothing in the world changes until the heap runs out and the game halts.
