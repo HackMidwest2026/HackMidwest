@@ -3324,3 +3324,61 @@ Saved frames (run + jump only; slot x from `StandardActorHomePositions`; targets
 | Hold B while a box waits | advances to the next box, no press needed |
 | A or B while scrolling | scrolls quickly |
 | **Z while a box waits** | **rewinds one line (text backlog)**. Z again goes further back, A goes forward, B jumps back to the current line. |
+
+### Jump run cancel and quick jump vs bosses, measured (`btl_jump_timing.py`, `data/jump_timing/`)
+
+**Method:**
+- **What is timed:** game frames from the target-confirm A press until the partner's menu opens (`gBattleState` 14, JP
+  0x800DC048). This includes the run, jump, hang time, action command hits, rebound and the run home.
+- **Variants:** for each target, the search finds the best run-cancel press (K), the best quick-jump press (Q) and a
+  press that succeeds the action command (P).
+- **Getting into each fight:** DIAGNOSTIC SETUP. The nok_13 Koopa encounter's battle ID is swapped for the boss
+  (`boss_battle_start.py`). Action commands are on after the prologue, and Mario gets 50 HP where a boss would
+  otherwise kill him before his turn.
+- **Later phases:** reached with real turns (`btl_autopilot.py`). Tutankoopa without the Chomp is Mario's first turn
+  with the encounter's first strike forced to none.
+- **Lava Piranha without buds:** the buds/Petit Piranhas couldn't be killed with Jump or Lakilester, so they were moved
+  off-stage instead. This is an approximation.
+- **Boots:** the approach is the same script for Jump, Super Jump and Ultra Jump, so the savings are the same with
+  any boots. Checked: Tubba's heart with Super Boots 143/137/134 (−6, −3 more); Jr. Troopa with Ultra Boots
+  130/124/121 (−6, −3 more).
+
+Frames to the partner menu (Jump with a successful action command; basic boots):
+
+| Boss | Normal | Quick jump | Run cancel + quick | Cancel adds |
+|---|---|---|---|---|
+| Trojan Bowser | 122 | 117 | 117 | 0 |
+| Tutankoopa (Chomp out) | 126 | 121 | 121 | 0 |
+| Tutankoopa (no Chomp yet) | 131 | 125 | **121** | 4 |
+| Tubba's heart | 130 | 124 | **121** | 3 |
+| Tubba Blubba | 124 | 118 | 118 | 0 |
+| General Guy: Shy Squad | 123 | 117 | 117 | 0 |
+| General Guy (tank phase) | 129 | 123 | **121** | 2 |
+| General Guy's light bulb | 135 | 129 | **123** | 6 |
+| Lava Piranha ph. 2, with buds | 121* | 115 | 115 | 0 |
+| Lava Piranha ph. 2, without buds | 121* | 115 | 115 | 0 |
+| Huff N. Puff | 126 | 120 | **119** | 1 |
+| Crystal King | 126 | 120 | **119** | 1 |
+| Jr. Troopa (ch. 8) | 129 | 123 | **120** | 3 |
+| Hallway Bowser (`0x2302`) | 125 | 119 | 119 | 0 |
+| Final Bowser part 1 (`0x2303`) | 122 | 117 | 117 | 0 |
+
+\* Mario is burned on contact, so the action command changes nothing.
+
+**Not measured:** final Bowser part 2 (`0x2304`). He can't be targeted until the Peach Beam, and the setup
+doesn't do that. He stands at the same position as part 1, so the expected result is the same: no cancel gain.
+
+**Why it often adds nothing:**
+- Mario runs to 70 units short of the target's *target point*, or 40 short of the first target if that is nearer.
+- The cancel only works from run frame 15, so if the run is 15 frames or less there is nothing to cut.
+- Then the press just acts as the quick jump.
+- It only helps when the target point is far right and nothing stands in front.
+
+**The input:**
+- Confirm the target with A and release it, then **one** A press on frame 16 (about 0.53 s later).
+- That one press both stops the run and starts the jump early.
+- Frame 15 or earlier is ignored. Each frame after 16 loses one frame of the gain.
+- The quick jump alone is an A press during the crouch (about 0.66 s after confirming, frame 20 for Jr. Troopa).
+
+**Video:** `jrtroopa8_jump_cancel.mp4` (`btl_record_variant.py`, `compose_jump_video.py`). Three panels: normal (129),
+quick jump (123), run cancel (120), aligned on the target confirm, ending 2 s after the partner menu.

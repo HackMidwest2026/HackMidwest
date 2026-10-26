@@ -1,0 +1,1 @@
+{"hp_before": [[0, 169, 10, 84], [1, 170, 30, 85], [2, 171, 8, 116]], "hp_after_base": [[0, 169, 10, 84], [1, 170, 30, 85], [2, 171, 8, 116]], "base_noAC": [103, false, 32], "run_steps_to_jump": 32, "base_AC": [129, 48], "quick_noAC": [97, 20, 24], "cancel_noAC": [95, 16, 20], "cancel_quick_noAC": [95, 16, 17, 20], "quick_AC": [123, 42], "cancel_quick_AC": [121, 40]}
