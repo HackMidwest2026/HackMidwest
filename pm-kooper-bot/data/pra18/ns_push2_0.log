@@ -1,0 +1,61 @@
+core: No version number in 'Core' config section. Setting defaults.
+core: No version number in 'CoreEvents' config section. Setting defaults.
+core: Unable to open rom database file '(null)'.
+core: Input plugin does not contain VRU support.
+core: No version number in 'Rsp-HLE' config section. Setting defaults.
+core: No video plugin attached.  There will be no video output.
+core: No audio plugin attached.  There will be no sound output.
+A 180 C 40 gap 4 W 0: after push mario (680,-64) laki (676,-65); top laki speed at clip spot 4.4
+A 180 C 60 gap 4 W 0: after push mario (670,-90) laki (665,-93); top laki speed at clip spot 4.5
+A 180 C 80 gap 4 W 0: after push mario (659,-118) laki (654,-121); top laki speed at clip spot 4.9
+A 180 C 100 gap 4 W 0: after push mario (641,-137) laki (631,-137); top laki speed at clip spot 4.9
+A 180 C 120 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 140 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 160 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 180 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 200 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 220 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 240 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 260 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 280 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 180 C 300 gap 4 W 0: after push mario (632,-136) laki (628,-136); top laki speed at clip spot 4.9
+A 190 C 40 gap 4 W 0: after push mario (686,-51) laki (682,-52); top laki speed at clip spot 6.0
+A 190 C 60 gap 4 W 0: after push mario (678,-63) laki (673,-66); top laki speed at clip spot 6.0
+A 190 C 80 gap 4 W 0: after push mario (668,-92) laki (663,-96); top laki speed at clip spot 6.0
+A 190 C 100 gap 4 W 0: after push mario (659,-121) laki (653,-127); top laki speed at clip spot 6.0
+A 190 C 120 gap 4 W 0: after push mario (648,-136) laki (644,-137); top laki speed at clip spot 6.0
+A 190 C 140 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 160 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 180 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 200 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 220 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 240 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 260 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 280 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 190 C 300 gap 4 W 0: after push mario (632,-135) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 40 gap 4 W 0: after push mario (680,-61) laki (676,-62); top laki speed at clip spot 6.0
+A 200 C 60 gap 4 W 0: after push mario (672,-73) laki (669,-75); top laki speed at clip spot 6.0
+A 200 C 80 gap 4 W 0: after push mario (669,-88) laki (664,-93); top laki speed at clip spot 6.0
+A 200 C 100 gap 4 W 0: after push mario (663,-110) laki (658,-114); top laki speed at clip spot 6.0
+A 200 C 120 gap 4 W 0: after push mario (657,-127) laki (654,-127); top laki speed at clip spot 6.0
+A 200 C 140 gap 4 W 0: after push mario (643,-136) laki (644,-137); top laki speed at clip spot 6.0
+A 200 C 160 gap 4 W 0: after push mario (632,-131) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 180 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 200 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 220 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 240 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 260 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 280 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 200 C 300 gap 4 W 0: after push mario (632,-134) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 40 gap 4 W 0: after push mario (682,-58) laki (678,-61); top laki speed at clip spot 6.0
+A 215 C 60 gap 4 W 0: after push mario (674,-73) laki (669,-78); top laki speed at clip spot 6.0
+A 215 C 80 gap 4 W 0: after push mario (668,-94) laki (664,-97); top laki speed at clip spot 6.0
+A 215 C 100 gap 4 W 0: after push mario (664,-109) laki (660,-113); top laki speed at clip spot 6.0
+A 215 C 120 gap 4 W 0: after push mario (653,-134) laki (644,-137); top laki speed at clip spot 6.0
+A 215 C 140 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 160 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 180 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 200 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 220 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 240 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0
+A 215 C 260 gap 4 W 0: after push mario (632,-133) laki (628,-136); top laki speed at clip spot 6.0

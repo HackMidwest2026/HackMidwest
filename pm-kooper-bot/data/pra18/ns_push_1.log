@@ -1,0 +1,14 @@
+core: No version number in 'Core' config section. Setting defaults.
+core: No version number in 'CoreEvents' config section. Setting defaults.
+core: Unable to open rom database file '(null)'.
+core: Input plugin does not contain VRU support.
+core: No version number in 'Rsp-HLE' config section. Setting defaults.
+core: No video plugin attached.  There will be no video output.
+core: No audio plugin attached.  There will be no sound output.
+corner start mario (733.0, -17.5) laki [702.8, -25.7, 0.0]
+A 200 C 10 pat (55, 2, 2): after push mario (687,-32) laki (697,-37); top laki speed at the clip spot so far 6.0
+A 200 C 20 pat (35, 2, 2): after push mario (647,-41) laki (691,-29); top laki speed at the clip spot so far 6.0
+A 200 C 40 pat (80, 1, 2): after push mario (560,-74) laki (603,-60); top laki speed at the clip spot so far 6.0
+A 200 C 50 pat (55, 2, 2): after push mario (513,-88) laki (549,-75); top laki speed at the clip spot so far 6.0
+A 200 C 60 pat (35, 2, 2): after push mario (513,-86) laki (548,-68); top laki speed at the clip spot so far 12.6
+A 200 C 80 pat (80, 1, 2): after push mario (513,-113) laki (537,-81); top laki speed at the clip spot so far 12.6
