@@ -17,3 +17,13 @@ S->N 22-40 at x 613-616), which force the speed directly and say nothing about h
 
 Real-play speed sources measured so far: a 90k-try search over normal movement in pra_01 (laki_maxspeed.py) peaked at
 17.3. Speeds of 42+ need Lakilester ~170+ units from Mario at C-down, e.g. left behind an obstacle.
+
+## South -> north with real speed (later results)
+- Clip needs Mario's x within ~612..616 (line south of the pillar's east corner); min speed ~20.5 at x 616, 27 at 615,
+  34 at 614, 48 at 612; every higher speed up to 100 also clips (data/pra18/sn_minspeed.json).
+- Holding the stick up-and-slightly-left (~(-21..-27, 47..71)) from just south of the corner parks Mario on the pillar's
+  south face at x 612..615.5, z ~25, where speed >= 24..48 clips (data/pra18/sn_cornerpin.json). This fixes x without aiming.
+- Real speed source: after a dismount Lakilester hovers ~32 frames, then his speed jumps to ~0.25 * distance to Mario and
+  drops by a quarter per frame. C-down only works grounded and not spinning. Running gives ~80 units by then -> ~21-26.
+- Best real-speed setup found: dismount at (644.6, 108.7) holding (-22, 56/57), keep holding, C-down on frame 33 after the
+  dismount press (speed ~21-22). 1-frame window and only 2/245 nearby dismount spots/stick variants clip -> not RTA-viable.
