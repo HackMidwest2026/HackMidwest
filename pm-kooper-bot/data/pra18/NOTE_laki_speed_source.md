@@ -28,3 +28,11 @@ Real-play speed sources measured so far: a 90k-try search over normal movement i
 - Best real-speed setup found: dismount at (644.6, 109.7) holding (-22, 57), keep holding 33 frames, C-down on frame 34 after the
   dismount press (speed ~21-22). 1-frame window and only 2/245 nearby dismount spots/stick variants clip -> not RTA-viable.
 - Video: videos/pra18_south_to_north_real_speed.mp4 (Laki speed not edited; C-down on frame 34; frame 33 or 35 fails).
+
+## South -> north, pure-LEFT setup (east wall reference)
+1. Ride Lakilester diagonally into the east wall (right + a bit up or down) so he slides along it; let go with z ~25..45.
+2. Wait ~20 frames: Laki settles at x 732.007 (right after letting go he is at ~732.6, after 5 frames ~732.2).
+3. Hold full left exactly 4 frames (riding = 6 units/frame -> x 708.01; working get-off window x 707.55..708.35, any z 18..42).
+4. C-down to get off still holding left; keep holding left 33 frames; C-down on the 34th frame after getting off.
+Laki speed 25.82 at that frame; Mario at ~(615.6, z) and clips north. 3 or 5 left frames miss; only that C-down frame works.
+Video: videos/pra18_south_to_north_left_setup.mp4. Data: data/pra18/left_setup.json.
