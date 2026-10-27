@@ -13,7 +13,7 @@ part, nparts, out = int(ARGV[1]), int(ARGV[2]), ARGV[3]
 e.load(b0)
 slots = [e.u16(PLAYER_DATA + 0x208 + 2 * i) for i in range(64)]
 if 0x11F not in slots: e.w16(PLAYER_DATA + 0x208 + 2 * slots.index(0), 0x11F)            # DIAGNOSTIC: equip Speedy Spin
-e.step(0, 0, 0, 2); PUSHT = push(180, int(os.environ.get('PUSHC', 110)), 4)
+e.step(0, 0, 0, 2); PUSHT = sum(push(pa, pc, pg) for pa, pc, pg in eval(os.environ.get('PUSHSEQ', '[(180, %s, 4)]' % os.environ.get('PUSHC', 110))))
 pushed = '/dev/shm/pmbot/jr%d_p.st' % os.getpid(); e.save(pushed)
 T = eval(os.environ.get('T', '(572, -15)'))
 STARTS = eval(os.environ.get('STARTS', '[(638, -98), (642, -104), (646, -104), (650, -108)]'))
@@ -45,13 +45,18 @@ for S, a, k, w, h in jobs:
             if landed is None and f > j0 + 1 and q['action'] in (0, 1, 2): landed = f
             if landed is None: s = st(toT, 80)
             else: s = st(toT, 80 if dd > 6 else 25) if dd > 1.0 else (0, 0)
+        pre = '/dev/shm/pmbot/jr%d_pre.st' % os.getpid(); e.save(pre)
         e.step(b, *s, 2)
         q = player(e); sp = L()[2]
-        if 568 <= q['x'] <= 576 and -20 <= q['z'] <= -12 and q['action'] in (0, 1, 2):
+        if 566 <= q['x'] <= 578 and -20 <= q['z'] <= -12 and sp > 20:
             if sp > best[0]: best = (round(sp, 2), (round(q['x'], 2), round(q['z'], 2), f))
-            if sp > 20:
-                ok, s2 = try_clip()
-                if ok: hits.append((f, round(q['x'], 2), round(q['z'], 2), round(s2, 2)))
+            post = '/dev/shm/pmbot/jr%d_post.st' % os.getpid(); e.save(post)
+            for cs in (s, (0, 0)):                 # C-down ON this frame (the follow speed spikes this frame)
+                e.load(pre); e.step(D_CBUTTON | b, *cs, 2); q2 = player(e); s2 = L()[2]
+                for j in range(30): e.step(0, 0, 0, 2)
+                r = player(e)
+                if r['action'] == 33 and r['z'] > 0: hits.append((f, cs, round(q2['x'], 2), round(q2['z'], 2), round(s2, 2)))
+            e.load(post)
     rec = {'pushc': int(os.environ.get('PUSHC', 110)), 'touched': PUSHT, 'S': S, 'a': a, 'k': k, 'w': w, 'h': h, 'landed': landed, 'end': [round(q['x'], 2), round(q['z'], 2)], 'best_on_spot': best, 'clips': hits}
     if hits: fo.write(json.dumps(rec) + '\n'); fo.flush(); print('CLIP', json.dumps(rec), flush=True)
     print(json.dumps(rec), flush=True)
