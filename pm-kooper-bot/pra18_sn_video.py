@@ -37,9 +37,9 @@ def step(b, sx, sy, title, k=None, mark=False):
     subprocess.run(['import', '-window', 'root', path], check=True)
     Ln = laki(); p = player(e)
     frames.append((path, b, sx, sy, title, k, p, e.f32(Ln['addr'] + 0x18), math.hypot(e.f32(Ln['addr'] + 0x38) - p['x'], e.f32(Ln['addr'] + 0x40) - p['z']), mark))
-for b, sx, sy in log: step(b, sx, sy, 'ride Lakilester to the dismount spot (644.6, 109.7)')
+for b, sx, sy in log: e.step(b, sx, sy, 2)          # ride to the spot off camera (navigation, not part of the trick)
 
-step(D_CBUTTON, *V, 'C-down: get off, holding the stick at (-22, 57)', k=0)
+step(D_CBUTTON, *V, 'riding Laki at (644.6, 109.7): C-down to get off, holding (-22, 57)', k=0)
 for k in range(1, KC): step(0, *V, 'keep holding (-22, 57): Mario parks on the pillar\'s south face', k=k)
 step(D_CBUTTON, 0, 0, 'C-down on frame 34 after getting off (Laki\'s speed spike)', k=KC, mark=True)
 for k in range(KC + 1, KC + 60): step(0, 0, 0, 'mount pushes Mario + Lakilester through the mirror', k=k)
@@ -60,6 +60,8 @@ for path, b, sx, sy, title, k, p, spd, dist, mark in frames:
     dr.text((8, 420), 'Mario (%.2f, %.1f, %.2f) %s - %s of mirror' % (p['x'], p['y'], p['z'], AN.get(p['action'], p['action']), side), fill=(200, 200, 200), font=font)
     dr.text((8, 444), 'pra_18; start spot placed in RAM (setup), Laki speed NOT edited; all inputs real', fill=(160, 160, 160), font=font)
     put(im)
+    if k == 0:
+        for r in range(30): put(im)
     if mark:
         for r in range(45): put(im)
 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', '30', '-i', os.path.join(tmp, 'c%05d.png'), '-pix_fmt', 'yuv420p',
