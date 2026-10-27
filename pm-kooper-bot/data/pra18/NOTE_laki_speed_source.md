@@ -25,5 +25,6 @@ Real-play speed sources measured so far: a 90k-try search over normal movement i
   south face at x 612..615.5, z ~25, where speed >= 24..48 clips (data/pra18/sn_cornerpin.json). This fixes x without aiming.
 - Real speed source: after a dismount Lakilester hovers ~32 frames, then his speed jumps to ~0.25 * distance to Mario and
   drops by a quarter per frame. C-down only works grounded and not spinning. Running gives ~80 units by then -> ~21-26.
-- Best real-speed setup found: dismount at (644.6, 108.7) holding (-22, 56/57), keep holding, C-down on frame 33 after the
+- Best real-speed setup found: dismount at (644.6, 109.7) holding (-22, 57), keep holding 33 frames, C-down on frame 34 after the
   dismount press (speed ~21-22). 1-frame window and only 2/245 nearby dismount spots/stick variants clip -> not RTA-viable.
+- Video: videos/pra18_south_to_north_real_speed.mp4 (Laki speed not edited; C-down on frame 34; frame 33 or 35 fails).
