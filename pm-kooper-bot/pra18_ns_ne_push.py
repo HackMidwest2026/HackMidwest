@@ -16,11 +16,12 @@ st = lambda deg, mag: (int(round(mag * math.cos(math.radians(deg)))), -int(round
 def L(): l = laki(); return (e.f32(l['addr'] + 0x38), e.f32(l['addr'] + 0x40), e.f32(l['addr'] + 0x18))
 fstate = lambda: e.u32(STATE) >> 16
 e.load('states/pra18_e2.st'); e.step(0, 0, 0, 2)
-e.wf32(PLAYER + PS_POS, 715.0); e.wf32(PLAYER + PS_POS + 8, -125.0)                     # DIAGNOSTIC
+SE = os.environ.get('SE') == '1'                         # freeze in the bottom-right (SE) corner instead
+e.wf32(PLAYER + PS_POS, 700.0 if SE else 715.0); e.wf32(PLAYER + PS_POS + 8, -25.0 if SE else -125.0)   # DIAGNOSTIC
 for i in range(20): e.step(0, 0, 0, 2)
 e.step(D_CBUTTON, 0, 0, 2)
 for i in range(40): e.step(0, 0, 0, 2)
-for i in range(20): e.step(0, 80, -40, 2)
+for i in range(20): e.step(0, 80, 40 if SE else -40, 2)
 e.step(D_CBUTTON, 80, 0, 2)
 for i in range(60): e.step(0, 0, 0, 2)
 if os.environ.get('CORNER') == '1':                       # lead Laki into the NE corner along the north wall
