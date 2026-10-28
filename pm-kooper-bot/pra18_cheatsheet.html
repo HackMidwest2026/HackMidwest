@@ -1,0 +1,239 @@
+<title>pra_18 Setup Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of setup "cards" (one per trick), each with a status chip, a numbered input list, a windows table and HUD checkpoints. Palette: Crystal Palace ice + star gold. */
+:root {
+  --bg: #eef3f7;
+  --panel: #ffffff;
+  --ink: #17222e;
+  --muted: #566577;
+  --line: #d4dee8;
+  --ice: #1f6fa8;
+  --ice-soft: #dcebf6;
+  --gold: #a8740c;
+  --gold-soft: #f6ead0;
+  --ok: #1d7a4a;
+  --ok-soft: #dcf1e5;
+  --warn: #9a5a00;
+  --warn-soft: #fbe9cc;
+  --bad: #9b2c3b;
+  --bad-soft: #f6dde1;
+  --key: #e7edf3;
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1720; --panel: #16212d; --ink: #e3ebf3; --muted: #9aabbd; --line: #2a3a4b;
+  --ice: #7dbbe8; --ice-soft: #1c3346; --gold: #e5b552; --gold-soft: #3a2f17;
+  --ok: #6fd39c; --ok-soft: #173326; --warn: #f0b660; --warn-soft: #3b2c14; --bad: #f08a98; --bad-soft: #3d1d23; --key: #223143;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1720; --panel: #16212d; --ink: #e3ebf3; --muted: #9aabbd; --line: #2a3a4b;
+  --ice: #7dbbe8; --ice-soft: #1c3346; --gold: #e5b552; --gold-soft: #3a2f17;
+  --ok: #6fd39c; --ok-soft: #173326; --warn: #f0b660; --warn-soft: #3b2c14; --bad: #f08a98; --bad-soft: #3d1d23; --key: #223143;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+h1 { font: 700 clamp(30px, 6vw, 44px)/1.05 var(--display); margin: 0; text-wrap: balance; letter-spacing: .01em; }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend b { color: var(--ink); font-weight: 700; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.toc a { font: 600 14px/1 var(--display); text-decoration: none; color: var(--ice); background: var(--ice-soft); padding: 9px 12px; border-radius: 6px; }
+nav.toc a:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+section.setup { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px clamp(16px, 4vw, 28px); display: grid; gap: 16px; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h2 { font: 700 24px/1.15 var(--display); margin: 0; text-wrap: balance; }
+.chip { font: 600 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 7px 10px; border-radius: 999px; white-space: nowrap; }
+.chip.ok { color: var(--ok); background: var(--ok-soft); }
+.chip.warn { color: var(--warn); background: var(--warn-soft); }
+.chip.bad { color: var(--bad); background: var(--bad-soft); }
+.start { margin: 0; color: var(--muted); }
+.start b { color: var(--ink); }
+h3 { font: 600 13px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
+
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 10px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; min-width: 0; }
+ol.steps li::before { content: counter(s); font: 700 15px/30px var(--display); text-align: center; width: 30px; height: 30px; border-radius: 50%; background: var(--ice-soft); color: var(--ice); }
+ol.steps li > div { min-width: 0; padding-top: 3px; }
+ol.steps li.key > div { font-weight: 700; }
+ol.steps li.key::before { background: var(--gold-soft); color: var(--gold); }
+
+kbd { font: 600 13px/1 var(--mono); background: var(--key); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 3px 6px; white-space: nowrap; }
+code, .num { font-family: var(--mono); font-size: .92em; font-variant-numeric: tabular-nums; }
+
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.w { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.tight { color: var(--bad); font-weight: 700; }
+
+ul.hud { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+ul.hud li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 7px 10px; background: var(--bg); border-radius: 6px; font-size: 15px; }
+ul.hud li span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ice); }
+@media (max-width: 520px) { ul.hud li { grid-template-columns: 1fr; gap: 2px; } }
+
+.note { margin: 0; font-size: 15px; color: var(--muted); }
+.note b { color: var(--ink); }
+.files { font: 13px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; margin: 0; }
+footer { font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Paper Mario (JP) · Crystal Palace · room pra_18</div>
+  <h1>pra_18 Setup Sheet</h1>
+  <p class="lede">Practice inputs for the two Clubba statue climbs and the two Lakilester mirror clips, with the timing windows and the HUD numbers to check at each step. Everything here was found and verified frame by frame in an emulator.</p>
+  <div class="legend">
+    <span><b>x</b> grows to the right (east)</span>
+    <span><b>z</b> grows downward on the stick (south); the mirror is z&nbsp;0</span>
+    <span><b>frame</b> = one game frame (30 per second)</span>
+  </div>
+  <nav class="toc" aria-label="Setups">
+    <a href="#statue-1">Statue 1</a><a href="#statue-2">Statue 2</a><a href="#south-north">S→N mirror clip</a><a href="#north-south">N→S mirror clip</a>
+  </nav>
+</header>
+
+<section class="setup" id="statue-1">
+  <div class="head"><h2>Statue 1 climb</h2><span class="chip warn">Works · 1-frame tornado</span></div>
+  <p class="start"><b>Start:</b> entering pra_18 from the west door (53,&nbsp;−70) with Ultra Boots. No partner tricks; Lakilester just follows.</p>
+  <h3>Inputs</h3>
+  <ol class="steps">
+    <li><div>Hold <kbd>→</kbd> until Mario stops against the statue's face.</div></li>
+    <li><div>Hold <kbd>↑</kbd> until he stops in the corner with the north wall.</div></li>
+    <li><div>Hold <kbd>↓</kbd> and run south along the face.</div></li>
+    <li><div>Press <kbd>A</kbd> on run frame 7 or 8 and hold it 6–7 frames. Keep holding <kbd>↓</kbd>.</div></li>
+    <li class="key"><div>Tornado: press <kbd>A</kbd> again exactly 8 frames after the first <kbd>A</kbd>, and switch the stick to <kbd>→</kbd> (or let go) on that press.</div></li>
+    <li><div>Mario lands on the club and stays there. Take your time.</div></li>
+    <li><div><kbd>A</kbd> + <kbd>→</kbd>: he jumps over the statue top and runs down the corridor to statue 2.</div></li>
+  </ol>
+  <h3>Timing windows</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Input</th><th>Window</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>First A</td><td class="w">run frame 7–8</td><td>2 frames. Walking (stick 50–55 down) widens it to frames 14–17 but is harder to hold.</td></tr>
+      <tr><td>A hold</td><td class="w">6–7 frames</td><td>3–5 and 8–10 miss.</td></tr>
+      <tr><td>Tornado</td><td class="w tight">+8 exactly</td><td>Counted from the first A. +7 and +9 miss.</td></tr>
+      <tr><td>Stick on the tornado</td><td class="w">→ or neutral</td><td>Keeping ↓ or ↑ only works if the final A comes on the landing frame.</td></tr>
+      <tr><td>Final A + →</td><td class="w">any time</td><td>Tested up to 15 frames after landing.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>HUD checkpoints</h3>
+  <ul class="hud">
+    <li><span>Stopped at the statue face</span><span>(237.00, −70.00)</span></li>
+    <li><span>Corner with the north wall</span><span>(237.00, −137.00)</span></li>
+    <li><span>3 frames after the first A, the club shoves Mario back north</span><span>x 236.02, z −89.74</span></li>
+    <li><span>Tornado frame (z on the press)</span><span>z −77.62, y 36.5</span></li>
+    <li><span>Standing on the club</span><span>(237.00, 76.14, −77.62)</span></li>
+  </ul>
+  <p class="note"><b>Why the tornado is 1 frame:</b> at jump height the club's north face shoves Mario back to z −89.7. From there he moves 4 units south per frame, and only the frame at z −77.62 lands. Stick angles, hammer first, walking and standing jumps were all tested and none widen it.</p>
+  <p class="files">pra18_statue1_climb.py · videos/pra18_statue1_climb.mp4</p>
+</section>
+
+<section class="setup" id="statue-2">
+  <div class="head"><h2>Statue 2 climb</h2><span class="chip ok">Easy</span></div>
+  <p class="start"><b>Start:</b> in the corridor after statue 1, Mario running into statue 2's face at (437,&nbsp;−77.6).</p>
+  <h3>Inputs</h3>
+  <ol class="steps">
+    <li><div>Hold <kbd>↓</kbd> into the corridor's bottom-right corner.</div></li>
+    <li><div>Hold <kbd>↗</kbd>. Mario runs north and pins on the corridor's north wall.</div></li>
+    <li><div>Press <kbd>A</kbd> any time from frame 7 on and hold it 5–9 frames.</div></li>
+    <li class="key"><div>Tornado: <kbd>A</kbd> 6–10 frames after the first <kbd>A</kbd>, with <kbd>↗</kbd> or <kbd>→</kbd> still held. A zeroed stick fails.</div></li>
+    <li><div>Mario lands on the club.</div></li>
+    <li><div><kbd>A</kbd> + <kbd>→</kbd>: over statue 2 and into the east section.</div></li>
+  </ol>
+  <h3>Timing windows</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Input</th><th>Window</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>First A</td><td class="w">frame 7 or later</td><td>Once pinned on the north wall, any frame works (tested to frame 39).</td></tr>
+      <tr><td>A hold</td><td class="w">5–9 frames</td><td></td></tr>
+      <tr><td>Tornado</td><td class="w">+6 to +10</td><td>Must be after the A release; up to 4 frames wide depending on the hold.</td></tr>
+      <tr><td>Stick on the tornado</td><td class="w">↗ or →</td><td>Neutral never lands.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>HUD checkpoints</h3>
+  <ul class="hud">
+    <li><span>Bottom-right corner</span><span>(437.00, −63.00)</span></li>
+    <li><span>Pinned while rising</span><span>x 437.00, z −85.52</span></li>
+    <li><span>Standing on the club</span><span>(437.00, 69.75, −85.52)</span></li>
+    <li><span>Past both statues</span><span>x ≈ 668–687, z ≈ −86</span></li>
+  </ul>
+  <p class="files">pra18_statues_route.py · videos/pra18_statues_route.mp4 (door → statue 1 → statue 2)</p>
+</section>
+
+<section class="setup" id="south-north">
+  <div class="head"><h2>South → north mirror clip</h2><span class="chip warn">Works · 1-frame C-down</span></div>
+  <p class="start"><b>Start:</b> south side of the mirror (z&nbsp;&gt;&nbsp;0) in the east section, riding Lakilester. Tested with the east Clubba at (717,&nbsp;70) already gone; it blocks the ride otherwise.</p>
+  <h3>Inputs</h3>
+  <ol class="steps">
+    <li><div>Ride diagonally into the east wall and let go. Laki settles at x 732.0.</div></li>
+    <li><div>Hold <kbd>←</kbd> exactly 4 frames (x 708).</div></li>
+    <li><div>Hold <kbd>↑</kbd> into the mirror for 45–80 frames (about 1.5–2.7 s). Laki slides west slowly.</div></li>
+    <li><div>Tap <kbd>↓</kbd> for 1–4 frames.</div></li>
+    <li><div><kbd>C▼</kbd> to get off with the stick neutral.</div></li>
+    <li><div>Start holding <kbd>←</kbd> any time during the dismount (frames 1–15 after the get-off press).</div></li>
+    <li class="key"><div><kbd>C▼</kbd> on frame 34 after the get-off press, with <kbd>←</kbd> still held.</div></li>
+  </ol>
+  <h3>Timing windows</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Input</th><th>Window</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Left before the up-hold</td><td class="w">4 frames exactly</td><td>The HUD check after step 3 catches a miss.</td></tr>
+      <tr><td>Up-hold into the mirror</td><td class="w">45–80 frames</td><td>35–40 and 85+ miss.</td></tr>
+      <tr><td>Down tap</td><td class="w">1–4 frames</td><td>Riding z 20–38.</td></tr>
+      <tr><td>Start of left after getting off</td><td class="w">frames 1–15</td><td>The stick is ignored during the dismount.</td></tr>
+      <tr><td>Mounting C▼</td><td class="w tight">frame 34 exactly</td><td>The frame Laki's follow speed spikes to 25.82.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>HUD checkpoints</h3>
+  <ul class="hud">
+    <li><span>Settled at the east wall</span><span>x 732.00</span></li>
+    <li><span>After 4 frames of left</span><span>x 708.00</span></li>
+    <li><span>After the up-hold (check before getting off)</span><span>x 706.08–706.88</span></li>
+    <li><span>Mario on the C▼ frame</span><span>x 615.6 (611 = late, 620 = early)</span></li>
+    <li><span>Clipped: riding on the north side</span><span>(625.09, −25.61)</span></li>
+  </ul>
+  <p class="note"><b>Why the up-hold:</b> Laki's speed spike always lands on frame 34, and with left held Mario's walk is off by about 1.5 units unless Laki gets off at x 706.1–706.9. Holding up drifts Laki west 0.023 units per frame because the camera is slightly rotated. No wall in the room gives that x with a fixed stop.</p>
+  <p class="files">pra18_sn_mirror_slide.py · videos/pra18_sn_mirror_slide.mp4</p>
+</section>
+
+<section class="setup" id="north-south">
+  <div class="head"><h2>North → south mirror clip (right side)</h2><span class="chip bad">Research only</span></div>
+  <p class="start"><b>Start:</b> north side, NE pocket north of statue 3, with Speedy Spin equipped. Not yet runner-viable: the setup freezes Laki's 40-entry follow history and then pushes him along the north wall with a steered, touching push that uses analog angles every frame.</p>
+  <h3>Setup outline</h3>
+  <ol class="steps">
+    <li><div>Mount, ride into the NE corner, get off; walk out west and back along the north wall into the corner.</div></li>
+    <li><div>Small up/down taps beside Laki until his history fills and freezes (trail ends near (733,&nbsp;−120)).</div></li>
+    <li><div>Touching push west along the north wall, around the bump: about 180°×250, 240°×120, 180°×250 frames. Leaves Laki stuck near (517.5,&nbsp;−132.6).</div></li>
+    <li><div>Hold <kbd>←</kbd> along the wall: Mario stops at x 513.00.</div></li>
+  </ol>
+  <h3>Two endings</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Ending</th><th>Inputs</th><th>Laki speed</th></tr></thead>
+    <tbody>
+      <tr><td>Speedy Spin</td><td><kbd>↘</kbd> exactly 6 frames, let go ≥2 frames; <kbd>Z</kbd> holding <kbd>↘</kbd>; <kbd>A</kbd> exactly 5 frames after Z, holding <kbd>↓</kbd>; <kbd>C▼</kbd> 3 frames after landing.</td><td class="w">44.87</td></tr>
+      <tr><td>No spin</td><td><kbd>→</kbd> exactly 12 frames (x 567.56), <kbd>↓</kbd> exactly 6; full jump holding <kbd>↓</kbd>; re-jump on landing with A held exactly 5; <kbd>C▼</kbd> 1 frame after landing.</td><td class="w">48.01</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Clip windows at the mirror (Mario z −13)</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Mario x</th><th>561</th><th>565</th><th>567</th><th>569</th><th>571</th><th>573</th><th>575</th></tr></thead>
+    <tbody><tr><td>Laki speed</td><td class="w">53.1–55.0</td><td class="w">49.6–51.0</td><td class="w">47.9–49.0</td><td class="w">46.1–47.0</td><td class="w">44.4–45.0</td><td class="w">42.7–43.0</td><td class="w">41.0</td></tr></tbody>
+  </table></div>
+  <p class="files">pra18_ns_ne_push.py · pra18_ns_rta.py · videos/pra18_ns_right_rta_aligned.mp4 · videos/pra18_ns_right_nospin.mp4</p>
+</section>
+
+<footer>
+  <span>Verified in mupen64plus (JP ROM) with a frame-stepping bot. The statue routes use only real inputs from the west door; the mirror-clip tests place Mario's starting spot in RAM and use real inputs after that.</span>
+  <span>Scripts and videos: pm-kooper-bot on branch claude/festive-ptolemy-egnjza.</span>
+</footer>
+</div>
