@@ -15,6 +15,9 @@ if 0x11F not in slots: e.w16(PLAYER_DATA + 0x208 + 2 * slots.index(0), 0x11F)   
 e.step(0, 0, 0, 2)
 for pa, pc, pg in [(180, 250, 4), (240, 120, 6), (180, 250, 4)]: push(pa, pc, pg)
 for i in range(10): e.step(0, 0, 0, 2)
+if os.environ.get('ALIGN'):                                   # hold LEFT along the north wall: Mario stops at x 513.00
+    for i in range(30): e.step(0, *st(180, 80), 2)
+    for i in range(3): e.step(0, 0, 0, 2)
 base = '/dev/shm/pmbot/rt%d_b.st' % os.getpid(); e.save(base)
 p = player(e); lx, lz, _ = L(); print('after push: mario (%.1f,%.1f) laki (%.1f,%.1f) state %d' % (p['x'], p['z'], lx, lz, fstate()), flush=True)
 D = (0, 45, 90, 135)
@@ -26,6 +29,7 @@ def run(n0, d0, d1, k, h, d2, m, d3, cdf=None, log=None):
     for i in range(k - 1): seq.append((0, d1))
     for i in range(h): seq.append((A, d2))
     return seq
+D0 = int(os.environ.get('D0', 90))
 fo = open(out, 'a')
 JOBS = os.environ.get('JOBS')
 jobs = eval(JOBS) if JOBS else list(itertools.product((1, 2, 3, 4), (0, 3), (45, 90), range(2, 7), (6,), (45, 90), (0, 1, 2, 3, 5), (90, 45, 0, 180)))
@@ -35,7 +39,7 @@ def inputs(n0, w, d1, k, h, d2, m, d3, landed_at=None):
     pass
 def play(n0, w, d1, k, h, d2, m, d3, cd=None):
     e.load(base); f = 0; log = []; landed = None
-    for i in range(n0): e.step(0, *st(90, 80), 2); f += 1
+    for i in range(n0): e.step(0, *st(D0, 80), 2); f += 1
     for i in range(w): e.step(0, 0, 0, 2); f += 1
     for i in range(k):
         b = Z if i == 0 else 0
@@ -60,7 +64,7 @@ for job in jobs:
         if 616 - x - 1.5 <= sp <= 616 - x + 0.6:
             lg, _ = play(*job, cd=f)
             if player(e)['action'] == 33 and player(e)['z'] > 0: hits.append((f, x, z, sp))
-    rec = {'job': job, 'landed': landed, 'near': near, 'end': log[-1][1:3], 'clips': hits}
+    rec = {'d0': D0, 'job': job, 'landed': landed, 'near': near, 'end': log[-1][1:3], 'clips': hits}
     print(('CLIP ' if hits else '') + json.dumps(rec), flush=True)
     if hits: fo.write(json.dumps(rec) + '\n'); fo.flush()
 print('done')
