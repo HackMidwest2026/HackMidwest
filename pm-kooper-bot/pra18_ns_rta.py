@@ -13,7 +13,7 @@ e.load(b0)
 slots = [e.u16(PLAYER_DATA + 0x208 + 2 * i) for i in range(64)]
 if 0x11F not in slots: e.w16(PLAYER_DATA + 0x208 + 2 * slots.index(0), 0x11F)            # DIAGNOSTIC: equip Speedy Spin
 e.step(0, 0, 0, 2)
-for pa, pc, pg in [(180, 250, 4), (240, 120, 6), (180, 250, 4)]: push(pa, pc, pg)
+for pa, pc, pg in eval(os.environ.get('PUSHSEQ2', '[(180, 250, 4), (240, 120, 6), (180, 250, 4)]')): push(pa, pc, pg)
 for i in range(10): e.step(0, 0, 0, 2)
 if os.environ.get('ALIGN'):                                   # hold LEFT along the north wall: Mario stops at x 513.00
     for i in range(30): e.step(0, *st(180, 80), 2)
