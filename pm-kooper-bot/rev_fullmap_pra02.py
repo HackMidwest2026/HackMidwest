@@ -1,11 +1,11 @@
 """pra_02 (palace first room, red/blue switches) back side: for Mario standing at every (x, z) on a 5-unit grid
-(x 0..1000, z -215..-15), which forced Lakilester speeds S (20..300 step 10) make the C-down mount put Mario on the
+(x 0..1000, z -215..-15), which forced Lakilester speeds S (20..320 step 10, held every frame until the mount) make the C-down mount put Mario on the
 front side of the mirror (z > 1, same map)? Appends one JSON line per x (resumable). usage: rev_fullmap_pra02.py <out.jsonl>"""
 import os, sys, json, multiprocessing as mp
 os.environ.setdefault('PM_ROM', 'pm-jp.z64')
 from pm import *
 CD = 0x0400
-SPEEDS = list(range(20, 301, 10))
+SPEEDS = list(range(20, 321, 10))
 W = {}
 def init():
     from emu import Emu
@@ -17,7 +17,7 @@ def laki(e):
 def run(x):
     e = W['e']; out = {}
     for z in range(-215, -14, 5):
-        e.load('states/pra02_start.st')
+        e.load('states/pra02_back_left.st')
         e.wf32(PLAYER + PS_POS, float(x)); e.wf32(PLAYER + PS_POS + 4, 10.0); e.wf32(PLAYER + PS_POS + 8, float(z))
         for i in range(20): e.step(0, 0, 0, 2)
         p0 = player(e)
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     done = set()
     if os.path.exists(path):
         for line in open(path): done.add(json.loads(line)['x'])
-    xs = [x for x in range(0, 1001, 5) if x not in done]
+    xs = [x for x in range(1000, -1, -5) if x not in done]
     pool = mp.get_context('spawn').Pool(4, initializer=init)
     with open(path, 'a') as f:
         for x, out in pool.imap_unordered(run, xs):

@@ -1,0 +1,129 @@
+<title>pra_02 Reverse Clip Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one wide top-down room plan with a control strip above it and short findings below. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1b2230; --muted: #5b6577; --line: #d5dae3;
+  --wall: #1b2230; --floor: #e9ecf1; --none: #c9cfd9; --hit: #e2621b;
+  --b1: #9ec5f4; --b2: #6da7ec; --b3: #3987e5; --b4: #256abf; --b5: #184f95; --b6: #0d366b;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161d; --panel: #1a2029; --fg: #e6e9ef; --muted: #9aa4b5; --line: #2c3442;
+  --wall: #e6e9ef; --floor: #20262f; --none: #3a4352; --hit: #f08a4b;
+  --b1: #104281; --b2: #1c5cab; --b3: #2a78d6; --b4: #5598e7; --b5: #86b6ef; --b6: #cde2fb; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161d; --panel: #1a2029; --fg: #e6e9ef; --muted: #9aa4b5; --line: #2c3442;
+  --wall: #e6e9ef; --floor: #20262f; --none: #3a4352; --hit: #f08a4b;
+  --b1: #104281; --b2: #1c5cab; --b3: #2a78d6; --b4: #5598e7; --b5: #86b6ef; --b6: #cde2fb; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-size: 1.6rem; font-weight: 600; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 0.85rem var(--sans); padding: 6px 12px; border: 0; background: var(--panel); color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hit); outline-offset: 2px; }
+.sp { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+.sp input { width: 200px; accent-color: var(--hit); }
+.sp output { font: 500 0.95rem var(--mono); min-width: 3ch; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.plan { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; position: relative; }
+svg { display: block; min-width: 760px; width: 100%; height: auto; }
+.axis { font: 10px var(--mono); fill: var(--muted); }
+.lbl { font: 500 11px var(--sans); fill: var(--muted); }
+#tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font: 12px var(--mono); padding: 6px 8px; border-radius: 5px; white-space: nowrap; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.facts div { min-width: 0; }
+.facts h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 4px; font-weight: 600; }
+.facts p { margin: 0; font-size: 0.92rem; }
+code { font-family: var(--mono); font-size: 0.88em; }
+</style>
+<main>
+  <header>
+    <h1>pra_02 reverse mirror clip: speeds that work</h1>
+    <p class="sub">Top-down view of the back side of the first palace room, mirror at the bottom. Each 5×5 cell is a spot where Mario stood. The game was told Laki's speed was stuck at S, then C-down was pressed. A cell is coloured if Mario ended up on the front side of the mirror.</p>
+  </header>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="View">
+      <button id="v-min" aria-pressed="true">Lowest speed that clips</button>
+      <button id="v-at" aria-pressed="false">Clips at one speed</button>
+    </div>
+    <label class="sp" id="sp-wrap" hidden>Laki speed <input id="sp" type="range" min="20" max="320" step="10" value="200"><output id="spv">200</output></label>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="plan" id="plan"><svg id="map" role="img" aria-label="Clip map of the pra_02 back side"></svg><div id="tip" hidden></div></div>
+  <section class="facts">
+    <div><h2>Thin strip</h2><p>Against the right wall at x ≈ 980, z −15 to −95, the clip works from <b>170</b>. That's the cheapest spot on the map.</p></div>
+    <div><h2>Right side</h2><p>Everywhere else from x 930 to the right wall, including the top-right corner, the clip works from <b>220</b>. None of these spots stops clipping at higher speeds, up to 320.</p></div>
+    <div><h2>Left side</h2><p>From x 15 to 70, no speed from 20 to 320 clips. The middle of the room is still being mapped.</p></div>
+    <div><h2>Speed must stay put</h2><p>The test holds Laki's speed at S on every frame until Mario mounts, like the frozen speed when Laki is stuck. Setting it once gets overwritten and never clips.</p></div>
+    <div><h2>Coverage</h2><p id="cov"></p></div>
+  </section>
+</main>
+<script>
+const D = /*DATA*/;
+const BINS = [[20,60],[70,110],[120,160],[170,210],[220,260],[270,320]];
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('map'), tip = document.getElementById('tip'), plan = document.getElementById('plan');
+const X0 = -40, X1 = 1060, Z0 = -262, Z1 = 30;
+svg.setAttribute('viewBox', `${X0} ${Z0} ${X1 - X0} ${Z1 - Z0}`);
+const el = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+el('rect', { x: 0, y: -225, width: 1000, height: 225, fill: 'var(--floor)' });
+const cells = el('g', {});
+const bin = s => BINS.findIndex(b => s >= b[0] && s <= b[1]);
+const ranges = S => { const o = []; for (const s of S) { const l = o[o.length - 1]; if (l && s - l[1] === 10) l[1] = s; else o.push([s, s]); } return o.map(r => r[0] === r[1] ? r[0] : r[0] + '–' + r[1]).join(', '); };
+const rects = D.rows.map(r => {
+  const e = el('rect', { x: r[0] - 2.5, y: r[1] - 2.5, width: 5, height: 5 }, cells);
+  e.dataset.i = 0; return [e, r];
+});
+// block, walls, mirror, labels
+el('rect', { x: 830, y: -95, width: 40, height: 40, fill: 'none', stroke: 'var(--wall)', 'stroke-width': 1.2, 'stroke-dasharray': '3 2' });
+el('text', { x: 850, y: -101, class: 'lbl', 'text-anchor': 'middle' }).textContent = 'switch block';
+for (const w of D.walls) el('line', { x1: w[0], y1: w[1], x2: w[2], y2: w[3], stroke: 'var(--wall)', 'stroke-width': 2.5, 'stroke-linecap': 'round' });
+el('line', { x1: 0, y1: 0, x2: 1000, y2: 0, stroke: 'var(--hit)', 'stroke-width': 3 });
+el('text', { x: 500, y: 16, class: 'lbl', 'text-anchor': 'middle' }).textContent = 'mirror (z = 0) — front side of the room is below';
+el('text', { x: 1006, y: -82, class: 'lbl' }).textContent = 'padlock';
+el('text', { x: 1006, y: -70, class: 'lbl' }).textContent = 'door';
+el('text', { x: 250, y: -234, class: 'lbl', 'text-anchor': 'middle' }).textContent = 'pillar';
+el('text', { x: 750, y: -234, class: 'lbl', 'text-anchor': 'middle' }).textContent = 'pillar';
+for (let x = 0; x <= 1000; x += 100) el('text', { x, y: -246, class: 'axis', 'text-anchor': 'middle' }).textContent = x;
+for (const z of [-200, -150, -100, -50, 0]) el('text', { x: -8, y: z + 3, class: 'axis', 'text-anchor': 'end' }).textContent = z;
+el('text', { x: 1060, y: -246, class: 'axis', 'text-anchor': 'end' }).textContent = 'x →';
+
+let mode = 'min', S = 200;
+function paint() {
+  for (const [e, r] of rects) {
+    let f;
+    if (mode === 'min') f = r[3].length ? `var(--b${bin(r[3][0]) + 1})` : 'var(--none)';
+    else f = r[3].includes(S) ? 'var(--hit)' : 'var(--none)';
+    e.setAttribute('fill', f);
+  }
+  const L = document.getElementById('legend');
+  L.innerHTML = mode === 'min'
+    ? BINS.map((b, i) => `<span><i style="background:var(--b${i + 1})"></i>${b[0]}–${b[1]}</span>`).join('') + '<span><i style="background:var(--none)"></i>no clip at 20–320</span>'
+    : `<span><i style="background:var(--hit)"></i>clips at ${S}</span><span><i style="background:var(--none)"></i>does not clip at ${S}</span>`;
+}
+const vmin = document.getElementById('v-min'), vat = document.getElementById('v-at'), spw = document.getElementById('sp-wrap'), sp = document.getElementById('sp'), spv = document.getElementById('spv');
+vmin.onclick = () => { mode = 'min'; vmin.setAttribute('aria-pressed', 'true'); vat.setAttribute('aria-pressed', 'false'); spw.hidden = true; paint(); };
+vat.onclick = () => { mode = 'at'; vat.setAttribute('aria-pressed', 'true'); vmin.setAttribute('aria-pressed', 'false'); spw.hidden = false; paint(); };
+sp.oninput = () => { S = +sp.value; spv.textContent = S; paint(); };
+cells.addEventListener('mousemove', ev => {
+  const t = ev.target; if (t.tagName !== 'rect') return;
+  const r = rects.find(q => q[0] === t)[1];
+  tip.textContent = `x ${r[0]}  z ${r[1]}  y ${r[2]}   ` + (r[3].length ? 'clips at ' + ranges(r[3]) : 'no clip');
+  const b = plan.getBoundingClientRect();
+  tip.style.left = Math.min(ev.clientX - b.left + plan.scrollLeft + 12, plan.scrollWidth - 330) + 'px';
+  tip.style.top = (ev.clientY - b.top + 14) + 'px'; tip.hidden = false;
+});
+cells.addEventListener('mouseleave', () => tip.hidden = true);
+const xs = D.rows.map(r => r[0]);
+document.getElementById('cov').textContent = `${D.rows.length} spots tested, x ${Math.min(...xs)}–${Math.max(...xs)}, every 5 units, speeds 20–320 in steps of 10. Blank floor hasn't been tested yet.`;
+paint();
+</script>
