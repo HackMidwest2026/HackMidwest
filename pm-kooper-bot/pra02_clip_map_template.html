@@ -60,12 +60,13 @@ code { font-family: var(--mono); font-size: 0.88em; }
   <div class="legend" id="legend"></div>
   <div class="plan" id="plan"><svg id="map" role="img" aria-label="Clip map of the pra_02 back side"></svg><div id="tip" hidden></div></div>
   <section class="facts">
-    <div><h2>Thin strip</h2><p>Against the right wall at x ≈ 980, z −15 to −95, the clip works from <b>170</b>. That's the cheapest spot on the map.</p></div>
-    <div><h2>Right side</h2><p>Everywhere else from x 930 to the right wall, including the top-right corner, the clip works from <b>220</b>. None of these spots stops clipping at higher speeds, up to 320.</p></div>
-    <div><h2>Left side</h2><p>From x 15 to 70, no speed from 20 to 320 clips. The middle of the room is still being mapped.</p></div>
+    <div><h2>Thin strip</h2><p>Against the right wall at x ≈ 980, z −15 to −65, the clip works from <b>170</b>. That's the cheapest spot on the map.</p></div>
+    <div><h2>Right of the second pillar</h2><p>From x 750 to the right wall, the clip works from <b>220</b> almost everywhere: the top-right corner, the open floor and the top of the switch block. None of these spots stops clipping at higher speeds, up to 320.</p></div>
+    <div><h2>Under the second pillar</h2><p>From x 660 to 740, the speed needed climbs by about 10 for every 10 units you move left, from 250 to 320. At x 740 it only works at exactly 290.</p></div>
+    <div><h2>Left of x 660</h2><p>No speed from 20 to 320 clips anywhere on the left two-thirds of the room.</p></div>
     <div><h2>Speed must stay put</h2><p>The test holds Laki's speed at S on every frame until Mario mounts, like the frozen speed when Laki is stuck. Setting it once gets overwritten and never clips.</p></div>
-    <div><h2>Coverage</h2><p id="cov"></p></div>
   </section>
+  <p class="sub" id="cov"></p>
 </main>
 <script>
 const D = /*DATA*/;
@@ -124,6 +125,6 @@ cells.addEventListener('mousemove', ev => {
 });
 cells.addEventListener('mouseleave', () => tip.hidden = true);
 const xs = D.rows.map(r => r[0]);
-document.getElementById('cov').textContent = `${D.rows.length} spots tested, x ${Math.min(...xs)}–${Math.max(...xs)}, every 5 units, speeds 20–320 in steps of 10. Blank floor hasn't been tested yet.`;
+document.getElementById('cov').textContent = `${D.rows.length} spots tested, x ${Math.min(...xs)}–${Math.max(...xs)}, every 5 units, speeds 20–320 in steps of 10. Blank floor along the edges is where Mario couldn't be placed (inside a wall or off the floor).`;
 paint();
 </script>
