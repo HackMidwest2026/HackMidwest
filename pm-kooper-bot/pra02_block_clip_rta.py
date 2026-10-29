@@ -13,7 +13,7 @@ From states/pra02_back_left.st:
      frame (the block top needs 220) and the mount carries Mario through the mirror.
 Why it works: Laki only races back along Mario's trail on frames where Mario is lower than him (on the floor); while
 Mario is in the air above him his speed is capped at 6. The total floor time after he leaves hover has to be exact,
-which is why the 4-frame floor pause is fixed while a first jump made before he leaves hover (frame ~8) is free.
+which is why the 4 floor frames are fixed while a first jump made before he leaves hover (frame ~8) is free.
 usage: pra02_block_clip_rta.py [first_jump_frame] [push_stop_x] [stick_angle]"""
 import sys, math
 from emu import *
@@ -21,7 +21,7 @@ from pm import *
 import pra02_block_clip as BC
 e = None
 def go(*a, **k): return BC.go(*a, **k)
-def route(first=3, stop=930, ang=55, pause=4, log=print):
+def route(first=3, stop=930, ang=55, floor_frames=4, log=print):
     BC.e = e
     e.load('states/pra02_back_left.st'); e.step(0, 0, 0, 2)
     go(130, -80)
@@ -42,7 +42,7 @@ def route(first=3, stop=930, ang=55, pause=4, log=print):
             e.step(D_CBUTTON, *stick, 2); log('f%d C-down: Laki speed %.1f' % (f, BC.spd())); break
         if grounded and hops == 1 and land is None and jt is None: land = f; log('f%d landed on the floor' % f)
         b = 0
-        start = (hops == 0 and f >= first) or (hops == 1 and land is not None and f >= land + pause)
+        start = (hops == 0 and f >= first) or (hops == 1 and land is not None and f >= land + floor_frames)
         if jt is None and grounded and start: jt = 0; hops += 1; log('f%d %s' % (f, 'full jump' if hops == 1 else 'short hop (A held 5)'))
         if jt is not None:
             b = A if jt < (5 if hops == 2 else 8) else 0; jt += 1
