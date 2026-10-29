@@ -1,12 +1,15 @@
 """Video of pra02_block_clip.py (the real-input reverse mirror clip). Run on Xvfb with a video plugin, e.g.
 Xvfb :99 -screen 0 800x600x24 & DISPLAY=:99 M64P_GFX=/usr/lib/x86_64-linux-gnu/mupen64plus/mupen64plus-video-glide64mk2.so
-usage: pra02_block_clip_video.py OUT.mp4 (also writes OUT_slow.mp4: the jumps onto the block and the clip at 1/4 speed)"""
+usage: pra02_block_clip_video.py OUT.mp4 [rta] (also writes OUT_slow.mp4: the jumps onto the block and the clip at 1/4 speed)
+"rta" records pra02_block_clip_rta.py (fixed stick angle, full jump, 4 frames on the floor, short hop) instead."""
 import os, sys, subprocess
 from emu import *
 from pm import *
 from PIL import Image, ImageDraw, ImageFont
 import pra02_block_clip as B
 outp = sys.argv[1]
+RTA = len(sys.argv) > 2 and sys.argv[2] == 'rta'
+if RTA: import pra02_block_clip_rta as R
 raw = '/dev/shm/pmbot/bcv_raw'; os.makedirs(raw, exist_ok=True)
 for fn in os.listdir(raw): os.remove(os.path.join(raw, fn))
 F = '/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf'
@@ -25,10 +28,12 @@ class Rec:
 e = Rec(Emu('pm-jp.z64', '/dev/shm/pmbot/bcv'))
 for i in range(150): e.e.step(0, 0, 0, 2)
 B.e = e
+if RTA: R.e = e
+HOPS = '3. stick held at 55 deg: full jump, 4 frames on the floor, short hop (A held 5)' if RTA else '3. run 10 frames, then short hops (A held 5) onto the switch block'
 def log(s):
     print(s, flush=True)
-    if s.startswith('push end'): e.label, e.every, e.slow = '3. run 10 frames, then short hops (A held 5) onto the switch block', 1, True
-    elif ' on the switch block' in s: e.label = '4. C-down on the landing frame (f37)'
+    if s.startswith('push end'): e.label, e.every, e.slow = HOPS, 1, True
+    elif ' on the switch block' in s: e.label = '4. C-down on the first frame standing on the block'
     elif 'C-down' in s: e.label = '5. the mount carries Mario through the mirror'
 orig_go = B.go
 def go(*a, **k):
@@ -36,7 +41,8 @@ def go(*a, **k):
     elif e.label.startswith('1'): e.label, e.every = '2. push him east past both pillars (every 8th frame)', 8
     return orig_go(*a, **k)
 B.go = go
-ok = B.route(log=log)
+if RTA: R.go = go
+ok = R.route(first=4, log=log) if RTA else B.route(log=log)
 tmp = '/dev/shm/pmbot/bcv_frames'; os.makedirs(tmp, exist_ok=True)
 def render(sel, out, fps):
     for fn in os.listdir(tmp): os.remove(os.path.join(tmp, fn))
