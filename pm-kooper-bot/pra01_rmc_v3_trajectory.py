@@ -28,10 +28,13 @@ for f in range(60):
     if f > 3 and player(e)['action'] not in AIR: break
 S = '/dev/shm/pmbot/trj_c.st'; e.save(S); e.step(0, 0, 0, 2); e.load(S)
 step(0, 0, 0, 'on the ledge (sliding)'); step(0, 0, 0, 'on the ledge (sliding)')
-for f in range(45):
+for f in range(120):
     if f < 8: s, t = (-56, -56), 'jump 3 + DOWN-LEFT'
-    else: s, t = (0, -80), 'DOWN: over the cave wall'
+    else: s, t = (0, -80), 'DOWN: over the cave wall, fall under the room'
     step(A if f < 8 else 0, *s, t)
-    if player(e)['y'] < -120: break
+    if log[-1]['m'] != [21, 0]: break
+    if log[-1]['a'] in (1, 2) and log[-1]['z'] > 0.5: 
+        for k in range(3): step(0, 0, 0, 'landed on the SOUTH side')
+        break
 json.dump(log, open('/tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/traj.json', 'w'))
 print(len(log), 'frames; y range', min(l['y'] for l in log), max(l['y'] for l in log), 'actions', sorted(set(l['a'] for l in log)))
