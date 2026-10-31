@@ -51,17 +51,17 @@ for f in range(110):
         break
 tmp = '/dev/shm/pmbot/cpv_frames'; os.makedirs(tmp, exist_ok=True)
 for fn in os.listdir(tmp): os.remove(os.path.join(tmp, fn))
-W, H, PX = 790, 470, 593
+W, H, PX = 790, 500, 593
 for n, (path, title, b, sx, sy, p, m) in enumerate(frames):
     im = Image.new('RGB', (W, H), (20, 20, 20))
-    im.paste(Image.open(path).crop((103, 96, 696, 460)).convert('RGB'), (0, 0))
+    im.paste(Image.open(path).crop((104, 100, 696, 500)).convert('RGB'), (0, 0))
     dr = ImageDraw.Draw(im)
-    dr.text((6, 4), title, fill=(255, 220, 120), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
+    dr.text((6, 404), title, fill=(255, 220, 120), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
     if m == (21, 0):
-        dr.text((8, 376), 'x %.1f  z %.1f  y %.1f' % (p['x'], p['z'], p['y']), fill=(255, 255, 255), font=big)
-        dr.text((8, 408), 'NORTH of mirror' if p['z'] < 0 else 'SOUTH of mirror', fill=(255, 160, 160) if p['z'] < 0 else (120, 255, 120), font=mid)
-    else: dr.text((8, 376), 'loading sam_10', fill=(255, 255, 255), font=big)
-    dr.text((8, 444), 'pra_01 RMC v3, cliff models HIDDEN (visual only), JP, CountPerOp 1, real inputs, 30 fps', fill=(160, 160, 160), font=font)
+        dr.text((8, 428), 'x %.1f  z %.1f  y %.1f' % (p['x'], p['z'], p['y']), fill=(255, 255, 255), font=big)
+        dr.text((330, 430), 'NORTH of mirror' if p['z'] < 0 else 'SOUTH of mirror', fill=(255, 160, 160) if p['z'] < 0 else (120, 255, 120), font=mid)
+    else: dr.text((8, 428), 'loading sam_10', fill=(255, 255, 255), font=big)
+    dr.text((8, 470), 'pra_01 RMC v3, cliff models HIDDEN (visual only), JP, CountPerOp 1, real inputs, 30 fps', fill=(160, 160, 160), font=font)
     cx, cy, rad = PX + 98, 110, 70
     dr.text((PX + 14, 14), 'INPUT  frame %d' % n, fill=(200, 200, 200), font=mid)
     dr.ellipse((cx - rad, cy - rad, cx + rad, cy + rad), outline=(150, 150, 150), width=2)
