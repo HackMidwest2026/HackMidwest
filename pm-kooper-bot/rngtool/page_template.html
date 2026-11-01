@@ -152,7 +152,7 @@ details[open] summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel">
-    <h2>Coin spins this segment</h2>
+    <h2>Coin spins this segment <span id="spins-count"></span></h2>
     <div class="spins" id="spins">–</div>
     <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
   </section>
@@ -252,13 +252,28 @@ const JR = [
   { t: 'Jr T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'Jr T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'Jr T5', label: 'Super Charge', cat: 'M' }, { t: 'Jr T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
   { t: 'Jr T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'Jr T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K', optional: true } ];
-const ROUTES = {
-  jr: JR,
-  endgame: [
-    { t: 'Dupli T1', label: 'Bombette: do nothing → all 4 copy (3+ either side)', cat: 'S', prof: 'dup3' },
-    ...JR,
-    { t: 'Hallway T1', label: 'Super Jump Charge (hand on Mario)', cat: 'M' }, { t: 'Hallway T1', label: 'Lakilester: Spiny Flip (hand on Bowser)', cat: 'B' },
-    { t: 'Hallway T2', label: 'Time Out → STOP', cat: 'B', prof: 'timeout' } ] };
+// The endgame route as played (headers and plain lines are shown but not tracked; steps with cat are target screens).
+const ENDGAME = [
+  { h: 'Duplighosts' },
+  { info: 'T1 Mario: Strategies → do nothing' },
+  { t: 'T1', label: 'Bombette: Strategies → do nothing → all 4 copy (3+ either side)', cat: 'S', prof: 'dup3' },
+  { info: 'T2 Bombette: Power Bomb' },
+  { h: 'Jr. Troopa' },
+  { t: 'T1', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T1', label: 'Bombette: Bomb', cat: 'K' },
+  { t: 'T2', label: 'Bombette (Z, goes first): Bomb', cat: 'K' }, { t: 'T2', label: 'Mario: Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
+  { t: 'T3', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
+  { t: 'T4', label: 'Bombette (Z, goes first): Bomb', cat: 'K' }, { t: 'T4', label: 'Mario: Maple Syrup [Down 1] → Close Call', cat: 'M', prof: 'jrcc_syrup' },
+  { t: 'T5', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
+  { t: 'T6', label: 'Mario: Power Bounce ×6 → 6 bounces (5+ either side)', cat: 'K', prof: 'jrpb5' },
+  { t: 'T6', label: 'Bombette: Bomb, only if 5 bounces', cat: 'K', optional: true },
+  { info: 'T7 only if 4 bounces: Star Storm / Shooting Star [Down 5]' },
+  { h: 'Hallway Bowser' },
+  { t: 'T1', label: 'Mario: Super Jump Charge', cat: 'M' }, { t: 'T1', label: 'Lakilester: Spiny Flip', cat: 'B' },
+  { t: 'T2', label: 'Mario: Time Out → STOP', cat: 'B', prof: 'timeout' },
+  { h: 'Final Bowser (not planned yet: needs the lightning-aware tracking)' },
+  { info: 'Phase 1: T1 Charge; Do Nothing · T2 Bounce ×3; Do Nothing · T3 Star Beam' },
+  { info: 'Phase 2: T1 Charge; Cloud Nine · T2 Charge · T3 Jammin\' Jelly · T4 Charge · T5 Peach Beam; Do Nothing · T6 Charge; Do Nothing → Close Call · T7 Bounce ×7' } ];
+const ROUTES = { jr: JR, endgame: ENDGAME.filter(s => s.cat) };
 const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge, an item on Mario)', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
   B: { screen: 'a target screen with the hand on Bowser (Spiny Flip or Time Out)', box: 'the クッパ name box in the top-left' },
@@ -485,7 +500,7 @@ function render() {
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
   else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
-  else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan Time Out once the hand is on Bowser.');
+  else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), st.tier ? 'Searching further ahead: the game used a lot of random numbers during the gap (an attack, charge or room load). This needs a few more shines; the seed is kept.' : 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
@@ -493,6 +508,11 @@ function render() {
   else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
     nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
   // spins
+  {   // shines seen this segment / about how many it needs (bits of evidence: 38 for a first lock, log2(window)+7 to resync)
+    const BITS_PER_SHINE = 2.9, need = st.need || (st.segs.length === 1 || !st.prevLock ? 38 : Math.log2(1300) + 7), have = P.pattern ? bits(P.pattern) : 0;
+    const total = st.lock ? nSh : nSh + Math.max(1, Math.ceil(Math.max(0, need - have) / BITS_PER_SHINE));
+    $('spins-count').textContent = '(' + nSh + '/' + total + ')' + (st.lock ? ' locked' : '');
+  }
   $('spins').innerHTML = P.pattern ? P.pattern.split('').map(c => c === 'S' ? '<b>S</b>' : '·').join('') : '–';
   $('count').hidden = !st.plan;
   drawStrip();
@@ -802,7 +822,13 @@ function applyProfile() {
     routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
     $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
-    $('route-list').innerHTML = RT().map((s, i) => '<li data-i="' + i + '" style="cursor:pointer' + (i === routeStep ? ';font-weight:700;color:var(--ink)' : '') + '">' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>').join('');
+    let k = 0;
+    $('route-list').innerHTML = ENDGAME.map(s => {
+      if (s.h) return '<li style="list-style:none; margin:8px 0 2px -1.4em; font-weight:600; color:var(--ink)">' + s.h + '</li>';
+      if (s.info) return '<li style="list-style:none; margin-left:-1.4em; opacity:.75">· ' + s.info + '</li>';
+      const i = k++;
+      return '<li data-i="' + i + '" style="list-style:none; margin-left:-1.4em; cursor:pointer' + (i === routeStep ? ';font-weight:700;color:var(--ink)' : '') + '">' + (i + 1) + '. ' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>';
+    }).join('');
   } else {
     $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
     $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
