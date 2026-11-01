@@ -94,3 +94,18 @@ draws, and how many frames after the confirm the saved target-screen box changes
 - Jr. Troopa T6: the route step uses `jrpb5` (5+ hits: first three cap rolls pass) and aims at a 6+ frame whose
   neighbours both give 5+ (`aimTop`). 5 hits leave him at 4 HP for Bombette's Bomb. e2e_jr.py jrpb5 with
   SHIFT=0/-1/+1 (4 seeds each): exact = 6+ hits (Jr. Troopa at 0 HP) 4/4; one frame off = 5 or 6+ hits 8/8.
+
+## First lock across gaps (coin hidden by room loads)
+
+Before a lock, every stretch of visible coin (3+ shines) is kept instead of thrown away when the coin disappears.
+Measured in Bowser's Castle (`kpa_100 -> kpa_03`, `kpa_133 -> kpa_49`, emulator, frame by frame): through a room
+transition the RNG keeps stepping once per game frame and the coin keeps drawing on its 24/48-frame schedule; a load
+only runs ~5 extra fast frames. So a hidden stretch is the same coin process continuing, and only the exact frame count
+is open: the page searches E-30..E+60 frames (E from the tap times), about 2 bits per gap. `searchChain` scans the
+strongest stretch over all seeds and checks the others across their gaps (backwards through the coin's branching
+history, forwards by simulation); `extendCands` carries candidates into the next stretch. Lock needs 38 bits + the gap
+costs. Rooms with their own RNG users (the jail `kpa_17` adds ~25%) break the chain, as they break a single stretch;
+the page then drops the older stretches. Tests: `test_chain_core.js` (core, `full` = all 2^32 seeds, ~18 s single
+thread), `test_chain_page.js` (page, 15 s on / 10 s off: locks the true seed in the 4th-5th stretch).
+
+The endgame route shows one step per turn: the turn's last input, or the starred press when it comes first.

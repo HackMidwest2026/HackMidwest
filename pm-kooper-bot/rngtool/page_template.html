@@ -252,26 +252,28 @@ const JR = [
   { t: 'Jr T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'Jr T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'Jr T5', label: 'Super Charge', cat: 'M' }, { t: 'Jr T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
   { t: 'Jr T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'Jr T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K', optional: true } ];
-// The endgame route exactly as the runner wrote it. Each turn's text is shown as written; its steps are the target
-// screens the page watches (cat), with the planned presses (prof) starred. optional = may not happen.
+// The endgame route exactly as the runner wrote it. One step per turn: the input that matters, which is the turn's
+// last action, or the starred press when that comes first (Time Out, Bounce). The page only watches the next step's
+// target screen, so the turn's other inputs on a different screen are ignored by themselves. After Time Out every
+// Hallway input is on the same Bowser screen and nothing more is timed, so those turns have no step.
 const ENDGAME = [
   { h: 'Duplighosts', turns: [
-    { text: 'T1: Do Nothing; Do Nothing - 4 Transform', steps: [{ label: 'Do Nothing (Bombette) → all 4 copy, 3+ either side', cat: 'S', prof: 'dup3' }] },
+    { text: 'T1: Do Nothing; Do Nothing - 4 Transform', steps: [{ label: 'Do Nothing (Bombette) → all 4, 3+ either side', cat: 'S', prof: 'dup3' }] },
     { text: 'T2: Power Bomb', steps: [] } ] },
   { h: 'Jr. Troopa', turns: [
-    { text: 'T1: Charge; Bomb', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Bomb', cat: 'K' }] },
-    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Bomb', cat: 'K' }, { label: 'Whacka', cat: 'M' }] },
-    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' }] },
-    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Bomb', cat: 'K' }, { label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' }] },
-    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' }] },
-    { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }, { label: 'Bomb if 5 capped', cat: 'K', optional: true }] },
+    { text: 'T1: Charge; Bomb', steps: [{ label: 'Bomb', cat: 'K' }] },
+    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka', cat: 'M' }] },
+    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' }] },
+    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' }] },
+    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' }] },
+    { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }] },
     { text: 'T7: Star Storm if 4 capped / Shooting Star [Down 5] if 4 capped', steps: [] } ] },
   { h: 'Hallway Bowser', turns: [
-    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Spiny Flip', cat: 'B' }] },
-    { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }, { label: 'Spiny Flip', cat: 'B' }] },
-    { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [{ label: 'Bounce', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] },
-    { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [{ label: 'Bounce', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] },
-    { text: 'T5: Jump x2; Spiny Flip [3, 0] [0]', steps: [{ label: 'Jump', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] } ] } ];
+    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }] },
+    { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [] },
+    { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [] },
+    { text: 'T5: Jump x2; Spiny Flip [3, 0] [0]', steps: [] } ] } ];
 const ENDGAME_STEPS = [];
 for (const f of ENDGAME) for (const tu of f.turns) for (const s of tu.steps) ENDGAME_STEPS.push(Object.assign({ t: f.h + ' ' + tu.text.split(':')[0] }, s));
 const ROUTES = { jr: JR, endgame: ENDGAME_STEPS };
@@ -290,7 +292,7 @@ SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); 
 
 /* ---------- state ---------- */
 // segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
-const st = { segs: [{ taps: [] }], cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
+const st = { segs: [{ taps: [] }], chain: [], carry: null, cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
 const seg = () => st.segs[st.segs.length - 1];
 
 /* ---------- audio ---------- */
@@ -310,13 +312,13 @@ function cancelBeeps() { beeps.forEach(o => { try { o.stop(); } catch (e) {} });
 /* ---------- seed search in workers ---------- */
 let workers = [];
 function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
-function searchAll(pattern) {
+function searchAll(pattern, chain) {
   stopWorkers(); st.searching = true;
   const n = Math.max(1, Math.min(Math.floor((navigator.hardwareConcurrency || 4) / 2), Math.round(num('cpu')) || 2));   // leave cores for OBS
   const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
   const src = coreText + `
-  self.onmessage = e => { const { pattern, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
-    for (let a = lo; a < hi; a += CH) { out.push(...R.searchShineStart(pattern, a, Math.min(hi, a + CH), 64)); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
+  self.onmessage = e => { const { pattern, chain, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
+    for (let a = lo; a < hi; a += CH) { out.push(...(chain ? R.searchChain(chain.segs, chain.anchor, a, Math.min(hi, a + CH), 64) : R.searchShineStart(pattern, a, Math.min(hi, a + CH), 64))); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
     self.postMessage({ done: out }); };`;
   const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
   const prog = new Array(n).fill(0), total = 4294967296 - lo; let done = 0; const seeds = []; const t0 = performance.now();
@@ -325,10 +327,10 @@ function searchAll(pattern) {
       const w = new Worker(url); workers.push(w);
       const a = lo + i * span, b = Math.min(4294967296, lo + (i + 1) * span);
       w.onmessage = e => {
-        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText('Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
+        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText(chain ? 'Searching all 4.3 billion seeds across ' + chain.segs.length + ' stretches…' : 'Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
         if (e.data.done) { seeds.push(...e.data.done); if (++done === n) { stopWorkers(); URL.revokeObjectURL(url); st.searching = false; res(seeds); } }
       };
-      w.postMessage({ pattern, lo: a, hi: b });
+      w.postMessage({ pattern, chain, lo: a, hi: b });
     }
   });
 }
@@ -337,6 +339,14 @@ function searchAll(pattern) {
 const BITS_S = -Math.log2(310 / 1010), BITS_N = -Math.log2(700 / 1010);
 function bits(pattern) { let b = 0; for (const c of pattern) b += c === 'S' ? BITS_S : BITS_N; return b; }
 function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '' }; }
+/* First lock across gaps: before a lock, each stretch of visible coin is kept (st.chain) instead of thrown away. The
+ * coin keeps drawing while it is hidden (measured through Castle room loads), so a gap only leaves the exact frame
+ * count open: E (from the tap times) -30..+60 frames, worth about 2 bits. Lock needs 38 bits plus that per gap. */
+const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 3;
+function gapWin(tPrev, tNext) { const E = Math.round((tNext - tPrev) / FRAME); return [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+const gapCost = () => Math.log2((GAP_LO + GAP_HI) / 24 + 1);
+function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
+function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
 // draw frames of each tapped shine, relative to the first tapped draw of the pattern
 function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
 function lastLockedState() {
@@ -349,11 +359,17 @@ function evaluate() {
   const s = seg(), P = pat(s.taps); st.msg = null;   // a running plan stays unless the new lock contradicts it (checked below)
   if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
   if (st.segs.length === 1 || !st.prevLock) {
-    // first segment: filter existing candidates as taps come in
+    // first segment: filter existing candidates as taps come in (carried across a gap from the previous stretch)
+    if (!st.cands && st.carry && s.taps.length) {
+      const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0]);
+      const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
+      if (c && c.length) st.cands = c; else if (c) st.chain = [];        // the gap did not fit: start the chain over here
+    }
     if (st.cands) {
       st.cands = st.cands.filter(x => R.matches(x, P.pattern));
-      st.need = 32 + 6; st.have = bits(P.pattern);
+      st.need = 32 + 6 + st.chain.length * gapCost(); st.have = bits(P.pattern) + chainBits();
       if (st.cands.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
+      else if (st.cands.length === 0 && st.chain.length) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
     }
@@ -387,7 +403,7 @@ function evaluate() {
 // old trajectory and search all seeds again from this segment's shines. The measured frame rate is kept.
 function lostTrack() {
   const taps = seg().taps.slice();
-  Object.assign(st, { segs: [{ taps, auto: true }], cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
+  Object.assign(st, { segs: [{ taps, auto: true }], chain: [], carry: null, cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
     note: 'Lost track of the RNG (a savestate, reset or long menu moves it). Finding the seed again from the next shines.' });
   cancelBeeps(); render(); autoAfterShine();
 }
@@ -468,8 +484,22 @@ function newSegment() {
   if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
   st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; render();   // a running plan stays
 }
+async function findChain() {
+  const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
+  const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0]); return g; });
+  let anchor = 0; segs.forEach((g, i) => { if (bits(g.pattern) > bits(segs[anchor].pattern)) anchor = i; });
+  const token = cur.taps, nChain = st.chain.length;
+  const r = await searchAll(null, { segs, anchor });
+  if (seg().taps === token) {                                           // same stretch still on screen
+    if (r.length) st.cands = r; else { st.chain.shift(); st.note = 'The stretches did not connect; dropping the oldest one.'; }
+  } else if (st.chain.length && st.chain[st.chain.length - 1].taps[0] === token[0] && r.length) {
+    const last = st.chain[st.chain.length - 1].taps; st.carry = { cands: r, pattern: pat(last).pattern, lastTap: last[last.length - 1] };
+  } else if (!r.length && st.chain.length >= nChain) st.chain.shift();
+  evaluate();
+}
 async function find() {
   if (st.searching) return;
+  if (!st.prevLock && st.chain.length && seg().taps.length >= 2) { findChain(); return; }
   const P = pat(seg().taps);
   if (st.segs.length > 1 && st.prevLock) { evaluate(); return; }
   if (P.error || seg().taps.length < 4) { st.msg = P.error || 'Tap at least 4 shines first (about 13 for a unique seed).'; render(); return; }
@@ -478,7 +508,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -505,14 +535,18 @@ function render() {
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), st.tier ? 'Searching further ahead: the game used a lot of random numbers during the gap (an attack, charge or room load). This needs a few more shines; the seed is kept.' : 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
+  else if (st.chain.length && !st.prevLock) setText('Collecting shines across rooms: ' + (chainShines() + nSh) + ' so far',
+    'The coin has been hidden ' + st.chain.length + ' time' + (st.chain.length > 1 ? 's' : '') + '; the shines from before are kept (a gap costs less than one shine). It searches by itself once there are enough. Avoid rooms with enemies on screen while it is collecting.' + (st.note ? ' ' + st.note : ''));
   else if (st.note) setText(nSh ? 'Re-finding the seed: ' + nSh + ' shine' + (nSh > 1 ? 's' : '') : 'Lost track, watching again', st.note);
   else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
     nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
   // spins
   {   // shines seen this segment / about how many it needs (bits of evidence: 38 for a first lock, log2(window)+7 to resync)
-    const BITS_PER_SHINE = 2.9, need = st.need || (st.segs.length === 1 || !st.prevLock ? 38 : Math.log2(1300) + 7), have = P.pattern ? bits(P.pattern) : 0;
-    const total = st.lock ? nSh : nSh + Math.max(1, Math.ceil(Math.max(0, need - have) / BITS_PER_SHINE));
-    $('spins-count').textContent = '(' + nSh + '/' + total + ')' + (st.lock ? ' locked' : '');
+    const BITS_PER_SHINE = 2.9, first = st.segs.length === 1 || !st.prevLock, ch = first && !st.lock ? st.chain : [];
+    const need = (first ? 38 + ch.length * gapCost() : st.need || Math.log2(1300) + 7), have = (P.pattern ? bits(P.pattern) : 0) + (first && !st.lock ? chainBits() : 0);
+    const n = nSh + (first && !st.lock ? chainShines() : 0);
+    const total = st.lock ? n : n + Math.max(1, Math.ceil(Math.max(0, need - have) / BITS_PER_SHINE));
+    $('spins-count').textContent = '(' + n + '/' + total + ')' + (st.lock ? ' locked' : ch.length ? ' over ' + (ch.length + 1) + ' stretches' : '');
   }
   $('spins').innerHTML = P.pattern ? P.pattern.split('').map(c => c === 'S' ? '<b>S</b>' : '·').join('') : '–';
   $('count').hidden = !st.plan;
@@ -852,11 +886,18 @@ $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
 function coinBack() {
   if (!seg().taps.length) return;
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
-  // not locked: this segment's shines can't continue across the gap; start it over
-  seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = null; render();
+  // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
+  const s = seg(), P = pat(s.taps);
+  if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
+    st.chain.push({ taps: s.taps.slice() }); if (st.chain.length > 8) st.chain.shift();
+    if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1] };
+  } else if (st.carry && s.taps.length) st.carry = null;                // a stretch too short to carry through: drop the carry
+  s.taps = []; s.auto = true; st.cands = null; st.msg = null; render();
 }
 function autoAfterShine() {
-  if (st.segs.length === 1 && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
+  if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
+      chainBits() + bits(pat(seg().taps).pattern) - st.chain.length * gapCost() >= 33) findChain();
+  else if (st.segs.length === 1 && !st.chain.length && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
   if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
 }
 /* which frame did the confirm land on? The name box disappears from the video 2 game frames after the confirm

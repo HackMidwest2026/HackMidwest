@@ -236,7 +236,74 @@
     return null;
   }
 
+  /* ---- first lock across gaps (coin hidden for a while: room loads, menus that cover it) ----
+   * Measured in Bowser's Castle (emulator): through a room transition the RNG keeps stepping once per game frame and the
+   * coin keeps drawing on its 24/48-frame schedule; the transition only runs a few extra fast frames. So a hidden
+   * stretch is the same coin process continuing, and the only unknown is how many game frames passed. A gap is the
+   * window [lo, hi] of frames from the previous segment's last tapped shine draw to the next segment's first. Rooms
+   * with their own RNG users (enemies, effects) break this, just as they break a single segment. */
+  function patSteps(p) { let L = 0; for (let i = 0; i < p.length; i++) { L++; if (i < p.length - 1) L += p.charCodeAt(i) === 83 ? 48 : 24; } return L; }
+  function inv32(a) { let x = a; for (let i = 0; i < 5; i++) x = Math.imul(x, (2 - Math.imul(a, x)) >>> 0) >>> 0; return x; }
+  function affInv(n) { const [A, C] = affine(n); return [A, C, inv32(A)]; }
+  const applyF = (f, s) => (Math.imul(s, f[0]) + f[1]) >>> 0, applyB = (f, s) => Math.imul((s - f[1]) >>> 0, f[2]) >>> 0;
+  const F24 = affInv(24), F48 = affInv(48);
+  /* forward across a gap: prevPattern starts from seed c; returns seeds before nextPattern's first draw */
+  function gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap) {
+    let s = afterPattern(c, prevPattern).seedAfterLastDraw, f = 48;   // segments end on a shine: next draw 48 later
+    s = step48(s);
+    while (f <= hi) {
+      const d = adv(s), sh = d >= SHINE_MIN;
+      if (sh && f >= lo && matches(s, nextPattern)) { out.push(s); if (out.length > cap) return false; }
+      s = sh ? step48(d) : step24(d); f += sh ? 48 : 24;
+    }
+    return true;
+  }
+  /* seeds before the last segment's first draw that fit every segment. segs: [{pattern, lo, hi}], lo/hi = the gap
+   * before that segment in frames (ignored for the first). The scan runs over the anchor segment's first draw value
+   * t in [tlo, thi). */
+  function searchChain(segs, anchor, tlo, thi, cap) {
+    const P = segs.map(g => ({ p: g.pattern, lo: g.lo, hi: g.hi, Lm1: affInv(patSteps(g.pattern) - 1) })), pa = P[anchor].p, out = [];
+    tlo = Math.max(tlo, SHINE_MIN); thi = Math.min(thi, 4294967296);
+    for (let t = tlo; t < thi; t++) {
+      let s = step48(t >>> 0), ok = true;
+      for (let i = 1; i < pa.length; i++) {
+        s = adv(s); const sh = s >= SHINE_MIN;
+        if (sh !== (pa.charCodeAt(i) === 83)) { ok = false; break; }
+        s = sh ? step48(s) : step24(s);
+      }
+      if (!ok) continue;
+      const sa = back(t >>> 0);
+      let back_ = [sa];
+      for (let i = anchor; i > 0 && back_.length; i--) { const r = []; for (const x of back_) { gapBackAll(x, P[i - 1], P[i].lo, P[i].hi, r, 256); if (r.length >= 256) break; } back_ = r; }
+      if (!back_.length) continue;
+      let set = [sa];
+      for (let i = anchor + 1; i < P.length && set.length; i++) { const nx = []; for (const c of set) gapFwd(c, P[i - 1].p, P[i].p, P[i].lo, P[i].hi, nx, 4096); set = nx; }
+      for (const v of set) { out.push(v); if (out.length >= cap) return out; }
+    }
+    return out;
+  }
+  /* all start seeds of the previous segment that fit (used when the chain continues further back) */
+  function gapBackAll(s, P, lo, hi, out, cap) {
+    const st = [s, 0]; let n = 20000;
+    while (st.length && n-- > 0) {
+      const f = st.pop(), x = st.pop();
+      const y48 = applyB(F48, x);
+      if (y48 >= SHINE_MIN && f + 48 <= hi) {
+        if (f + 48 >= lo) { const c = applyB(P.Lm1, back(y48)); if (matches(c, P.p)) { out.push(c); if (out.length >= cap) return; } }
+        st.push(back(y48), f + 48);
+      }
+      const y24 = applyB(F24, x);
+      if (y24 < SHINE_MIN && f + 24 <= hi) st.push(back(y24), f + 24);
+    }
+  }
+  /* carry candidates (seeds before prevPattern's first draw) across one gap; null if too many */
+  function extendCands(cands, prevPattern, nextPattern, lo, hi, cap) {
+    const out = [];
+    for (const c of cands) if (!gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap)) return null;
+    return out;
+  }
+
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);
