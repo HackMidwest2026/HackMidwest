@@ -129,7 +129,7 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
-      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option><option value="dup3">Duplighosts: 3+ copy Bombette</option><option value="jr">Jr. Troopa route (Close Calls + Power Bounce)</option></select></label>
+      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option><option value="dup3">Duplighosts: 3+ copy Bombette</option><option value="endgame">Whole endgame: Duplighosts → Jr. Troopa → Hallway Bowser</option><option value="jr">Jr. Troopa route (Close Calls + Power Bounce)</option></select></label>
       <div id="route" hidden style="display:grid; gap:6px"><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
@@ -241,21 +241,33 @@ function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k
 const num = k => parseFloat($('s-' + k).value) || 0;
 // Jr. Troopa route: every target screen of the route in order. cat: which saved screen it looks like (M = target on
 // Mario, K = target on Jr. Troopa, S = Bombette's Strategies menu). prof: the table for the presses that decide a roll.
-const ROUTE = [
-  { t: 'T1', label: 'Super Charge (hand on Mario)', cat: 'M' }, { t: 'T1', label: 'Bombette: Bomb (hand on Jr.)', cat: 'K' },
-  { t: 'T2', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T2', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
-  { t: 'T3', label: 'Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
-  { t: 'T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
-  { t: 'T5', label: 'Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
-  { t: 'T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K' } ];
-const CAT = { M: { screen: 'a target screen with the hand on Mario', box: 'the マリオ name box in the top-left' },
+// Routes: every target screen in order. cat = which saved screen it looks like (shared by all routes):
+// M = target on Mario, K = target on Jr. Troopa, B = target on Bowser, S = Bombette's Strategies menu.
+// prof = the table for presses that decide a roll; optional = may not happen (then the next step's screen skips it).
+const JR = [
+  { t: 'Jr T1', label: 'Super Charge (hand on Mario)', cat: 'M' }, { t: 'Jr T1', label: 'Bombette: Bomb (hand on Jr.)', cat: 'K' },
+  { t: 'Jr T2', label: 'Bombette: Bomb', cat: 'K' }, { t: 'Jr T2', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
+  { t: 'Jr T3', label: 'Super Charge', cat: 'M' }, { t: 'Jr T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
+  { t: 'Jr T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'Jr T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
+  { t: 'Jr T5', label: 'Super Charge', cat: 'M' }, { t: 'Jr T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
+  { t: 'Jr T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'Jr T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K', optional: true } ];
+const ROUTES = {
+  jr: JR,
+  endgame: [
+    { t: 'Dupli T1', label: 'Bombette: do nothing → all 4 copy (3+ either side)', cat: 'S', prof: 'dup3' },
+    ...JR,
+    { t: 'Hallway T1', label: 'Super Jump Charge (hand on Mario)', cat: 'M' }, { t: 'Hallway T1', label: 'Lakilester: Spiny Flip (hand on Bowser)', cat: 'B' },
+    { t: 'Hallway T2', label: 'Time Out → STOP', cat: 'B', prof: 'timeout' } ] };
+const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge, an item on Mario)', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
+  B: { screen: 'a target screen with the hand on Bowser (Spiny Flip or Time Out)', box: 'the クッパ name box in the top-left' },
   S: { screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' } };
 const NOPLAN = { id: 'none', name: 'no roll on this step', short: 'nothing to plan', effects: {}, rolls: [], vanish: 2, minRun: 2 };
-let routeStep = 0; try { routeStep = Math.max(0, Math.min(ROUTE.length - 1, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0)); } catch (e) {}
-const isRoute = () => $('s-prof').value === 'jr';
-const PROF = () => isRoute() ? (ROUTE[routeStep].prof ? R.PROFILES[ROUTE[routeStep].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
-const TKEY = () => isRoute() ? 'jr_' + ROUTE[routeStep].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
+const isRoute = () => !!ROUTES[$('s-prof').value];
+const RT = () => ROUTES[$('s-prof').value] || JR;
+let routeStep = 0; try { routeStep = Math.max(0, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0); } catch (e) {}
+const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof ? R.PROFILES[RT()[Math.min(routeStep, RT().length - 1)].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
+const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
 loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
 
 /* ---------- state ---------- */
@@ -728,6 +740,15 @@ function onFrame(t) {
     // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
     const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
     if (V.wasOn && !on && V.onFor > 200) checkPress(t);   // the target screen just closed (after being up for a moment)
+    // an optional step that does not happen: if the next step's screen shows up instead, skip to it
+    if (isRoute() && RT()[routeStep] && RT()[routeStep].optional && routeStep + 1 < RT().length && !on) {
+      const N = targets['jr_' + RT()[routeStep + 1].cat];
+      if (N && N.ref && N.box) {
+        const g2 = sample(N.box, 24, 16); let d2 = 0;
+        for (let i = 0, j = 0; i < g2.length; i += 4, j++) d2 += Math.abs((g2[i] + g2[i + 1] + g2[i + 2]) / 3 - N.ref[j]);
+        if (1 - d2 / (24 * 16 * 255) >= num('tmatch')) { V.skipSince = V.skipSince || t; if (t - V.skipSince > 300) { V.skipSince = 0; setStep(routeStep + 1); } } else V.skipSince = 0;
+      }
+    }
     V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
     V.wasOn = on;
     if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
@@ -774,17 +795,17 @@ function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
   $('route').hidden = !isRoute(); $('legend4').hidden = !R.TOP[PROF().id]; $('legend4-text').textContent = PROF().id === 'jrpb5' ? 'top band: 6+ bounces' : 'top band: all 4 copy';
   if (isRoute()) {
-    const S = ROUTE[routeStep], C = CAT[S.cat];
-    $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', S: 'Bombette\'s Strategies' }[S.cat];
-    $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. The route has three screens to save once (on Mario, on Jr. Troopa, Strategies); after each confirm it moves to the next step by itself.';
-    $('route-list').innerHTML = ROUTE.map((s, i) => '<li' + (i === routeStep ? ' style="font-weight:700;color:var(--ink)"' : '') + '>' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + '</li>').join('');
+    routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
+    $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
+    $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
+    $('route-list').innerHTML = RT().map((s, i) => '<li' + (i === routeStep ? ' style="font-weight:700;color:var(--ink)"' : '') + '>' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>').join('');
   } else {
     $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
     $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
   }
   render();
 }
-function setStep(i) { routeStep = Math.max(0, Math.min(ROUTE.length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
 $('s-prof').addEventListener('change', () => { saveSettings(); applyProfile(); });
