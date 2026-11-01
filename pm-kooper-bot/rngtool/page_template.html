@@ -171,6 +171,7 @@ details[open] summary { margin-bottom: 10px; }
       <span><i style="background:var(--run3)"></i>3</span>
       <span><i style="background:var(--run4)"></i>4</span>
       <span><i style="background:var(--run5)"></i>5+</span>
+      <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i>top band: all 4 copy</span>
       <span><i style="background:var(--bad)"></i>fails</span>
       <span><i style="background:var(--gold)"></i>chosen window</span>
       <span><i style="background:var(--cursor)"></i>now</span>
@@ -403,7 +404,7 @@ function makePlan() {
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()) };
+  st.plan = { w, target, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, first, last, R.PROFILES.dup4) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -480,12 +481,12 @@ function render() {
 /* strip: the next ~12 s of confirm frames */
 const EXAMPLE = { seed: 0x12345678 };
 function stripData() {
-  if (st.plan) return { tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, rate: st.plan.rate, w: st.plan.w };
+  if (st.plan) return { tab4: st.plan.tab4, tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, rate: st.plan.rate, w: st.plan.w };
   if (st.clock && (st.lock || !st.note)) {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
     const nowF = Math.floor((performance.now() - tLast) / C.rate);
     const key = PROF().id + ':' + seedBL + ':' + Math.floor(nowF / 120);
-    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
+    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, f0, nowF + 479, R.PROFILES.dup4) : null, first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
     return Object.assign({}, stripData.cache, { tLast, rate: C.rate, stale: !st.lock });
   }
   if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()) };
@@ -536,6 +537,7 @@ function drawStrip() {
   for (let f = fa; f <= fa + span + 1; f++) {
     const i = f - d.first; if (i < 0 || i >= d.tab.length) continue;
     ctx.fillStyle = d.tab[i] ? RUN[Math.min(5, d.runs[i])] : bad; ctx.fillRect((f - v0) * cw, 20, Math.max(1, cw - gap), 56);
+    if (d.tab4 && d.tab4[i]) { ctx.fillStyle = ink; ctx.fillRect((f - v0) * cw, 20, Math.max(1, cw - gap), 12); }   // all 4 copy on this frame
   }
   // run length printed on each run when there is room
   ctx.font = '600 12px ' + css('--mono'); ctx.textAlign = 'center';
@@ -764,7 +766,7 @@ function drawIdlePreview() {
 }
 function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
-  $('route').hidden = !isRoute();
+  $('route').hidden = !isRoute(); $('legend4').hidden = PROF().id !== 'dup3';
   if (isRoute()) {
     const S = ROUTE[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', S: 'Bombette\'s Strategies' }[S.cat];
