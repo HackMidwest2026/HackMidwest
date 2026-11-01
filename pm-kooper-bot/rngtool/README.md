@@ -137,3 +137,11 @@ after the lock; SHINES=1: menu shines accepted), `test_carry_guard.js`.
 Clean: kpa_82 (quiz), kpa_33 (stair hall, Save Block), kpa_52 entrance side, kpa_08, kpa_100 (key), kpa_40/41 (maze).
 Not clean: kpa_61 (room script), kpa_52 near its enemies, kpa_102 (fire room), kpa_53 (torches: 12 draws every 50
 frames). The Duplighost battle load itself is clean (22 frames, no extra draws).
+
+## Keeping the lock through screens with other random numbers
+
+After a lock, shines that fit nowhere near the expected position (level-up confetti, kpa_61's Magikoopas, the fire room,
+the Duplighost torches, a stray C-up) no longer drop the lock: the page keeps only the newest shines of that stretch and
+waits for ones that fit. Only after 12+ shines in a row that never fit does it search all seeds with them in the
+background: one clean fit means the RNG really was replaced (savestate, reset, retried fight) and the page follows it;
+none means the stretch is ignored. Tests: `test_dirty.js`, `test_lost.js`.
