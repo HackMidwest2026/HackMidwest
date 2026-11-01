@@ -170,6 +170,6 @@ too. Rooms measured clean before the quiz room: kpa_133 (flood), kpa_134, kpa_13
 
 Early castle (`kpa_roomride.py`, Lakilester ridden over the lava): kpa_12 and kpa_14 (the two lava rides) and kpa_13
 between them are clean, about a minute of coin in one block: the place for the first lock. kpa_111 (Dry Bones) is not.
-kpa_11 (the lava room next to the jail, Save Block + island Life Shroom; the route rides it on Lakilester) is not clean:
-its Koopatrol's wander AI draws random numbers every few seconds. The first lock on the route comes from the flood
-rooms + cannon room.
+kpa_11 (the lava room next to the jail, Save Block + island Life Shroom; the route rides it on Lakilester) is clean
+once its Koopatrol is defeated (GF_KPA11_Defeated_Guard, as in the route); while it is there its wander AI draws random
+numbers every few seconds. The ride is the first-lock spot; the flood rooms + cannon room are the backup.
