@@ -39,3 +39,13 @@ keeps the OBS Virtual Camera open (never a capture card OBS is using); the defau
 projector captured with getDisplayMedia; frames are read from the track (MediaStreamTrackProcessor) when Chrome stops
 video callbacks for a hidden window; the preview keeps the video's aspect ratio. `test_cam3.js` (MODE=vfc and
 MODE=bg, emulator footage): both locked the true seed after 16-17 shines with the 2-thread search.
+
+## Press readout and frame-rate fit
+- After each confirm the page measures the frame the press landed on: the クッパ name box (top-left of the target
+  screen) disappears from the video 2 game frames after the confirm frame (emulator). The same video path carries the
+  shines, so capture lag cancels. It shows early/late per press and suggests a Fine offset after 3 presses.
+- The console's frame length is fitted from the shine times (least squares over the longest locked segment) instead
+  of assuming 59.94 Hz: a real N64 in 240p runs near 59.83 Hz, worth 1-2 frames by the press.
+- `test_press_sim.js` feeds the recorded frames (`rec_video_confirm.py`) to the page with exact timestamps:
+  at 33.430 and 33.367 ms per frame the fitted rate matches to 4 decimals and the measured confirm frame is exact (54).
+- The strip view no longer jitters: "now" stays fixed while scrolling, and ticks are relative to now (or the press).
