@@ -116,7 +116,8 @@ Measured with `jr_turnlog.py` (6 runs from the T3 Bomb target screen to T6, rand
 seed writes before each starred press force the Close Call): from each confirm, the turn's draws land on the same frames
 with the same ranges every time (`turns_jr.json`, built by `jr_turnsched.py`): T3 Bomb (8 x rand(359) + rand(360) after
 the coin at +73, Close Call roll +179), T4 Bomb (same explosion), T4 Maple Syrup (30 at +118, roll +163), T5 Do Nothing
-(roll +26). The Super Charge is two `energy_in_out` sparkle effects (created +13/+16, removed +58/+61): each of 10 parts
+(roll +26), and T2's Whacka's Bump with Jr. Troopa's T2 turn (66 draws at +118, 10 at +190; `jr_t2log.py`, 6 runs with no
+seed writes at all, T2 Bomb -> T3 Bomb target screen). The Super Charge is two `energy_in_out` sparkle effects (created +13/+16, removed +58/+61): each of 10 parts
 gets rand(10) speed and a rand(10) start phase, and redraws rand(359) when its 10-frame counter wraps; `jr_chargefit.py`
 fits this exactly. The coin keeps its 24/48 schedule throughout (a one-frame skip seen in the logs came from the logger's
 own savestate reload). `test_turns.js`: from the seed at the T3 confirm and the confirm frames alone, every frame's seed
@@ -126,7 +127,8 @@ On the page: each planned press (and the turn's other input, seen on its own sav
 on Mario", the Bomb's "target on Jr. Troopa") is an event on the locked segment; plans start from the first coin draw
 after the simulated turns (`R.baseAfter`). New shines are checked against the simulated shines (the coin shines unseen
 during attacks). Guards: a planned press on a failing frame, or an unseen earlier input, stops the carry until shines
-find the seed again. Tests: `test_carry_page.js` (3 seeds x T3/T4/T5: every planned Close Call lands with no shines
+find the seed again; and every confirm the page sees is logged, so a plan never starts from shines older than an input it
+cannot simulate (T1's Bomb and Jr. Troopa's T1 turn, any other fight's inputs). Tests: `test_carry_page.js` (3 seeds x T3/T4/T5: every planned Close Call lands with no shines
 after the lock; SHINES=1: menu shines accepted), `test_carry_guard.js`.
 
 ## Bowser's Castle rooms (route to the Duplighosts)

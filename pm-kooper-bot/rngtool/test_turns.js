@@ -1,9 +1,10 @@
 /* The turn model (TURNS) against the emulator: 6 logged Jr. Troopa runs (T3 Bomb -> T6 confirm, random seeds and
  * confirm timing, Close Calls landing). From the seed at the T3 Bomb confirm and the confirm frames alone, every
  * frame's seed must match the game. The logger rewrote the seed (DIAGNOSTIC) before each starred press to force the
- * Close Call; the simulation picks the game's seed up again there. */
-const R = require('./pmrng_core.js'), runs = require('./fixtures/jr_turns_runs.json');
-const ID = { 'T3 Bomb': 'jr_bomb_cc', 'T4 Bomb': 'jr_bomb', 'T4 Maple': 'jr_syrup_cc', 'T5 Charge': 'jr_charge', 'T5 Nothing': 'jr_nothing_cc' };
+ * Close Call; the simulation picks the game's seed up again there. Plus 6 runs of T2 (Bomb, Whacka's Bump, Jr.'s turn)
+ * and T3's Super Charge, up to the T3 Bomb target screen (no seed writes). */
+const R = require('./pmrng_core.js'), runs = require('./fixtures/jr_turns_runs.json').concat(require('./fixtures/jr_t2_runs.json'));
+const ID = { 'T2 Bomb': 'jr_bomb', 'T2 Whacka': 'jr_whacka', 'T3 Charge': 'jr_charge', 'T3 Bomb': 'jr_bomb_cc', 'T4 Bomb': 'jr_bomb', 'T4 Maple': 'jr_syrup_cc', 'T5 Charge': 'jr_charge', 'T5 Nothing': 'jr_nothing_cc' };
 let pass = 0;
 for (const r of runs) {
   const ev = R.buildEv(r.confirms.filter(c => ID[c[1]]).map(([f, n]) => ({ f, id: ID[n] })));

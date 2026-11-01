@@ -39,7 +39,14 @@ const PAGE = 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f8
         setNow(gT + vanish + 3); T.checkPress(T0 + (gT + vanish + pfix) * FR + vlag);
         return { step: turnId, carried: P.carried, window: P.w.length, roll, landed: roll < 30, carriedNow: T.st.turnEv.length };
       }
-      log.push(await planned('jr_bomb_cc', 'jrcc_bomb', 'jr_charge', 'M', 1650, 1900, 179, 2, 2));
+      // T2 (simulated, nothing planned): Bomb on Jr. Troopa's screen, then Whacka's Bump on Mario's
+      T.setStep(T.RT().findIndex(s => s.turn === 'jr_whacka'));
+      G.ev.push({ f: 1560, id: 'jr_bomb' }); run(1562); setNow(1563); T.preConfirm({ cat: 'K', id: 'jr_bomb' }, T0 + (1560 + 2 + pfix) * FR + vlag);
+      G.ev.push({ f: 1840, id: 'jr_whacka' }); run(1842); setNow(1843); T.checkPress(T0 + (1840 + 2 + pfix) * FR + vlag);
+      log.push({ afterT2: T.st.turnEv.map(e => e.id).join(',') });
+      run(2100);
+      if (SHINES) { const n0 = T.st.segs.length; for (const g of G.shines.filter(g => g > 1900)) T.addShine(tShine(g), true); log.push({ shinesAfterT2: 'segments ' + n0 + ' -> ' + T.st.segs.length + ', lock ' + !!T.st.lock }); }
+      log.push(await planned('jr_bomb_cc', 'jrcc_bomb', 'jr_charge', 'M', 2250, 2500, 179, 2, 2));
       run(G.g + 300);
       if (SHINES) { const n0 = T.st.segs.length; for (const g of G.shines.filter(g => g > G.g - 250)) T.addShine(tShine(g), true); log.push({ shinesAfterT3: 'segments ' + n0 + ' -> ' + T.st.segs.length + ', lock ' + !!T.st.lock }); }
       log.push(await planned('jr_syrup_cc', 'jrcc_syrup', 'jr_bomb', 'K', G.g + 100, G.g + 350, 163, 2, 2));

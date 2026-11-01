@@ -266,7 +266,7 @@ const ENDGAME = [
     { text: 'T2: Power Bomb', steps: [] } ] },
   { h: 'Jr. Troopa', turns: [
     { text: 'T1: Charge; Bomb', steps: [{ label: 'Bomb', cat: 'K' }] },
-    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka', cat: 'M' }] },
+    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka', cat: 'M', turn: 'jr_whacka', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
     { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb', turn: 'jr_bomb_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
     { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup', turn: 'jr_syrup_cc', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
     { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing', turn: 'jr_nothing_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
@@ -372,10 +372,20 @@ function predictedShineNear(f) {
   for (let g = 0; g <= f + 2; g++) { const r = R.frameEv(S, g, ev); if (r && Math.abs(g - f) <= 1.5) return true; }
   return false;
 }
+const VAN = { K: () => R.PROFILES.jrcc_bomb.vanish, M: () => R.PROFILES.jrcc_syrup.vanish, S: () => R.PROFILES.jrcc_nothing.vanish, B: () => R.PROFILES.timeout.vanish };
+// every confirm the page sees, simulated or not: a plan may only start from shines after the last one it cannot simulate
+function logInput(tObs, cat, id, modeled) {
+  st.inputs = st.inputs || []; st.inputs.push({ tc: tObs - num('vlag') - ((VAN[cat] || VAN.M)() + num('pfix')) * (st.clock ? st.clock.rate : FRAME), id, modeled });
+  if (st.inputs.length > 40) st.inputs.shift();
+}
+function unmodeledAfter(tBase) { return (st.inputs || []).find(x => !x.modeled && x.tc > tBase - 0.5 * FRAME); }
 function addTurn(f, id, why) { st.turnEv.push({ f, id }); st.note = null; V.turnNote = why; }
 // an input before the planned one (Charge, Bomb): its target screen closed at tObs
 function preConfirm(pr, tObs) {
-  if (!st.lock || !st.clock || st.needResync) return;
+  { const stp = isRoute() && RT()[routeStep]; V.preDone = V.preDone || {};
+    if (stp && stp.pre) stp.pre.forEach((q, k) => { if (q.cat === pr.cat && q.id === pr.id) V.preDone[routeStep + ':' + k] = true; }); }
+  if (!st.lock || !st.clock || st.needResync || unmodeledAfter(baseState().tLast)) { logInput(tObs, pr.cat, pr.id, false); return; }
+  logInput(tObs, pr.cat, pr.id, true);
   const b = baseState(), vanish = pr.cat === 'K' ? R.PROFILES.jrcc_bomb.vanish : R.PROFILES.jrcc_syrup.vanish;
   const f = b.baseF + Math.round((tObs - b.tLast - num('vlag')) / st.clock.rate - vanish - num('pfix'));
   addTurn(f, pr.id, 'Seen: ' + pr.id.replace('jr_', '') + ' confirmed; its random numbers are simulated.'); render();
@@ -479,6 +489,8 @@ function makePlan() {
     st.msg = 'The seed is being carried, but the page did not see this turn\'s ' + stp0.pre.map(pr => pr.id.replace('jr_', '')).join(' / ') + ' confirm (its target screen is not saved, or was not recognized). Show a few shines to find the seed again.'; render(); return;
   }
   const C = st.clock, B = baseState();
+  const um = unmodeledAfter(B.tLast);
+  if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
   const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
   const rt = C.rate, tLast = B.tLast, nowF = (performance.now() - tLast) / rt;
   const from = Math.ceil(nowF + num('lead') * 1000 / rt + 1), to = from + 1800;
@@ -555,7 +567,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], carryOk: 0, needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -968,7 +980,16 @@ const VANISH_ = () => PROF().vanish;   // frames from the confirm until the targ
 const presses = (function () { try { return JSON.parse(localStorage.getItem('tot-presses') || '[]'); } catch (e) { return []; } })();
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
-function checkPress(tObs) { checkPress_(tObs); if (isRoute()) setStep(routeStep + 1); }
+function checkPress(tObs) {
+  const stp = isRoute() && RT()[routeStep], n0 = st.turnEv.length;
+  if (stp && stp.turn && !PROF().rolls.length && st.lock && st.clock && !st.needResync && !unmodeledAfter(baseState().tLast)) {
+    const B = baseState(), f = B.baseF + Math.round((tObs - B.tLast - num('vlag')) / st.clock.rate - (VAN[stp.cat] || VAN.M)() - num('pfix'));
+    addTurn(f, stp.turn, 'Carrying the seed through this turn.');
+  }
+  checkPress_(tObs);
+  if (stp) logInput(tObs, stp.cat, stp.turn || stp.label, st.turnEv.length > n0);
+  if (isRoute()) setStep(routeStep + 1);
+}
 function checkPress_(tObs) {
   if (!PROF().rolls.length) return;
   if (st.plan && Math.abs(tObs - st.plan.tPress) < (V.measureWin || 3000)) { measurePress(tObs); return; }
@@ -978,7 +999,7 @@ function checkPress_(tObs) {
     const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH_() - num('pfix'));
     const ok = R.works(seedBL, 0, f, 0, PROF());
     const stp = isRoute() && RT()[routeStep];
-    if (stp && stp.turn) { if (ok) addTurn(B.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
+    if (stp && stp.turn && !unmodeledAfter(B.tLast)) { if (ok) addTurn(B.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
     V.pressNote = 'No beep plan was running. You confirmed on a frame where ' + PROF().short + ': ' + (ok ? 'YES' : 'no') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
   } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
   showPresses();
@@ -992,7 +1013,7 @@ function measurePress(tObs) {
   const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
   P.measured = { frame: f, c, err, inWin, works, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
-  if (stp && stp.turn) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
+  if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
 }
 function showPresses() {
