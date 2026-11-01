@@ -588,7 +588,9 @@ function onFrame(t) {
   }
 }
 function drawPreview() {
-  const cv = $('preview'), c = cv.getContext('2d'); c.drawImage(V.src || V.video, 0, 0, cv.width, cv.height);
+  const cv = $('preview'), [vw, vh] = dims();
+  if (vw && vh) { const h = Math.round(640 * vh / vw); if (cv.height !== h) { cv.width = 640; cv.height = h; cv.style.aspectRatio = vw + ' / ' + vh; } }   // match the video's shape
+  const c = cv.getContext('2d'); c.drawImage(V.src || V.video, 0, 0, cv.width, cv.height);
   const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
   box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
 }
