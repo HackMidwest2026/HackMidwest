@@ -105,14 +105,14 @@ details[open] summary { margin-bottom: 10px; }
       </div>
       <div style="display:grid; gap:10px; min-width:0">
         <div class="row">
-          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="">Default camera</option></select></label>
+          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="window">A window (OBS projector, no Virtual Camera)</option><option value="">OBS Virtual Camera</option></select></label>
         </div>
         <div class="row">
           <button class="b primary" id="cam-start">Start watching</button>
           <button class="b" id="cam-stop" disabled>Stop</button>
           <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
         </div>
-        <p class="note" id="cam-msg">Opens the OBS Virtual Camera. Camera access works when this page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
+        <p class="note" id="cam-msg">Reads the game from an OBS projector window (or the OBS Virtual Camera). This works when the page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
         <dl class="read">
           <dt>Coin</dt><dd id="r-coin">–</dd>
           <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
@@ -178,6 +178,7 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Video lag, capture to page (ms)<input id="s-vlag" type="number" step="5" value="50"></label>
         <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
+        <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
@@ -188,10 +189,12 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel">
     <h2>In the run (automatic)</h2>
     <ol class="steps">
-      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome. In OBS, start Virtual Camera. Here, pick it as the video source and press Start watching. Drag the gold box around the status-bar coin. Go to Time Out's target screen (hand on Bowser), drag the blue box over the name label above Bowser, and press Save target screen.</li>
+      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), drag the blue box over the name label above Bowser, and press Save target screen. The boxes and the target screen are remembered.</li>
+      <li><b>Optional: check the timing.</b> Once a seed is locked, tick "Beep on every predicted shine" in Timing settings. The beeps should land on the white flashes; if they come early, raise "Video lag"; if late, lower it.</li>
       <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
       <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
     </ol>
+    <p class="note" style="margin-top:10px">The OBS Virtual Camera also works as a source (start it in OBS first). The page only ever keeps the OBS camera open, never a capture card that OBS is using. The seed search uses 2 threads by default so OBS keeps its CPU; it takes about 20 s.</p>
     <h2 style="margin-top:16px">Without a camera (tapping)</h2>
     <ol class="steps">
       <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
@@ -213,7 +216,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -243,7 +246,7 @@ let workers = [];
 function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
 function searchAll(pattern) {
   stopWorkers(); st.searching = true;
-  const n = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 12));
+  const n = Math.max(1, Math.min(Math.floor((navigator.hardwareConcurrency || 4) / 2), Math.round(num('cpu')) || 2));   // leave cores for OBS
   const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
   const src = coreText + `
   self.onmessage = e => { const { pattern, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
@@ -465,30 +468,72 @@ function camMsg(t) { $('cam-msg').textContent = t; }
 async function listCams() {
   try {
     const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); const sel = $('cam-sel'), cur = sel.value;
-    sel.innerHTML = '<option value="">Default camera</option>' + ds.map(d => '<option value="' + d.deviceId + '">' + (d.label || 'Camera').replace(/</g, '&lt;') + '</option>').join('');
-    const obs = ds.find(d => /obs/i.test(d.label)); sel.value = cur || (obs ? obs.deviceId : '');
+    const obs = ds.filter(d => /obs/i.test(d.label));
+    sel.innerHTML = '<option value="window">A window (OBS projector, no Virtual Camera)</option>' +
+      (obs.length ? obs.map(d => '<option value="' + d.deviceId + '">' + d.label.replace(/</g, '&lt;') + '</option>').join('') : '<option value="">OBS Virtual Camera</option>');
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : (cur === '' && obs.length ? obs[0].deviceId : 'window');
   } catch (e) {}
+}
+const VIDEO = { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 60 } };
+async function openCamera(id) {
+  // only ever keep the OBS Virtual Camera open: a capture card opened here would be taken away from OBS
+  let s = await navigator.mediaDevices.getUserMedia({ video: Object.assign({}, VIDEO, id ? { deviceId: { exact: id } } : {}) });
+  const label = s.getVideoTracks()[0].label || '';
+  if (/obs/i.test(label)) return s;
+  s.getTracks().forEach(t => t.stop());
+  const obs = (await navigator.mediaDevices.enumerateDevices()).find(d => d.kind === 'videoinput' && /obs/i.test(d.label));
+  if (!obs) throw { name: 'NoObsCamera', message: label };
+  s = await navigator.mediaDevices.getUserMedia({ video: Object.assign({}, VIDEO, { deviceId: { exact: obs.deviceId } }) });
+  return s;
 }
 async function startCam() {
   audio();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg('This browser view has no camera access. Use Save for OBS mode, then open the saved file in Chrome.'); return; }
+  const id = $('cam-sel').value, win = id === 'window';
   try {
-    const id = $('cam-sel').value;
-    V.stream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ frameRate: { ideal: 60 } }, id ? { deviceId: { exact: id } } : {}) });
-  } catch (e) { camMsg('Camera blocked (' + (e.name || 'error') + '). Inside claude.ai this is expected: use Save for OBS mode and open the file in Chrome.'); return; }
+    V.stream = win ? await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60 } }, audio: false, selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude' })
+                   : await openCamera(id);
+  } catch (e) {
+    V.stream = null;
+    if (e && e.name === 'NoObsCamera') camMsg('Chrome opened "' + e.message + '", which is not the OBS Virtual Camera, so it was closed again. In OBS press Start Virtual Camera, then try again, or use the window source.');
+    else if (e && e.name === 'NotReadableError') camMsg('The camera is busy or would not start. Start Virtual Camera in OBS first, or use the window source.');
+    else camMsg((win ? 'Window capture' : 'Camera') + ' blocked or cancelled (' + (e && e.name || 'error') + '). Inside claude.ai this is expected: use Save for OBS mode and open the file in Chrome.');
+    return;
+  }
+  const track = V.stream.getVideoTracks()[0];
+  track.addEventListener('ended', stopCam);
   V.video.srcObject = V.stream; await V.video.play().catch(() => {});
   $('cam-start').disabled = true; $('cam-stop').disabled = false; $('cap-target').disabled = false;
-  camMsg('Watching. Drag the boxes on the preview if they are not on the coin and the target name.');
-  listCams(); schedule();
+  const st0 = track.getSettings ? track.getSettings() : {};
+  camMsg('Watching ' + (track.label || (win ? 'a window' : 'the camera')) + (st0.width ? ' (' + st0.width + '×' + st0.height + (st0.frameRate ? ' at ' + Math.round(st0.frameRate) + ' fps' : '') + ')' : '') + '. Drag the boxes on the preview if they are not on the coin and the target name.');
+  if (!win) listCams();
+  V.lastVfc = performance.now(); schedule(); startBackground(track);
 }
-function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); V.stream = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
+// Chrome stops video callbacks when this window is hidden or covered (e.g. behind OBS). Read frames straight from the
+// track as a fallback so detection keeps running there.
+function startBackground(track) {
+  if (typeof MediaStreamTrackProcessor === 'undefined') return;
+  let rd;
+  try { V.bgTrack = track.clone(); rd = new MediaStreamTrackProcessor({ track: V.bgTrack }).readable.getReader(); } catch (e) { return; }
+  (async () => {
+    for (;;) {
+      let r; try { r = await rd.read(); } catch (e) { break; }
+      if (r.done) break;
+      const fr = r.value;
+      try { if (V.force === 'bg' || performance.now() - V.lastVfc > 150) { V.src = fr; onFrame(performance.now()); V.bgFrames = (V.bgFrames || 0) + 1; } }
+      finally { V.src = null; fr.close(); }
+    }
+  })();
+}
+function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); if (V.bgTrack) V.bgTrack.stop(); V.stream = null; V.bgTrack = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
 function schedule() {
   if (!V.stream) return;
-  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { onFrame(meta.captureTime || meta.expectedDisplayTime || now); schedule(); });
-  else requestAnimationFrame(() => { onFrame(performance.now()); schedule(); });
+  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { if (V.force !== 'bg') { V.lastVfc = performance.now(); onFrame(meta.captureTime || meta.expectedDisplayTime || now); } schedule(); });
+  else requestAnimationFrame(() => { V.lastVfc = performance.now(); onFrame(performance.now()); schedule(); });
 }
-function region(b) { const w = V.video.videoWidth, h = V.video.videoHeight; return [b.x * w, b.y * h, Math.max(1, b.w * w), Math.max(1, b.h * h)]; }
-function sample(b, ow, oh) { sctx.drawImage(V.video, ...region(b), 0, 0, ow, oh); return sctx.getImageData(0, 0, ow, oh).data; }
+function dims() { return V.src ? [V.src.displayWidth, V.src.displayHeight] : [V.video.videoWidth, V.video.videoHeight]; }
+function region(b) { const [w, h] = dims(); return [b.x * w, b.y * h, Math.max(1, b.w * w), Math.max(1, b.h * h)]; }
+function sample(b, ow, oh) { sctx.drawImage(V.src || V.video, ...region(b), 0, 0, ow, oh); return sctx.getImageData(0, 0, ow, oh).data; }
 function median(a) { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; }
 function threshold() {
   const manual = num('wthr'); if (manual > 0) return manual;
@@ -497,7 +542,7 @@ function threshold() {
   return Math.max(0.02, normal * 2.5 + 0.005);
 }
 function onFrame(t) {
-  if (!V.video.videoWidth) return;
+  if (!dims()[0]) return;
   V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
   // coin box: gold fraction (is the coin there?) and white fraction (the shine flash)
   const d = sample(V.boxes.coin, 32, 32); let gold = 0, white = 0;
@@ -538,12 +583,12 @@ function onFrame(t) {
     $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';
     $('r-shines').textContent = V.shines;
     $('r-target').textContent = V.ref ? (V.score * 100).toFixed(0) + '% match' + (V.score >= num('tmatch') ? ' (on target screen)' : '') : 'no reference saved';
-    $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + V.video.videoWidth + '×' + V.video.videoHeight;
-    drawPreview();
+    $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + dims().join('×') + (V.src ? ' · background' : '');
+    if (!document.hidden) drawPreview();
   }
 }
 function drawPreview() {
-  const cv = $('preview'), c = cv.getContext('2d'); c.drawImage(V.video, 0, 0, cv.width, cv.height);
+  const cv = $('preview'), c = cv.getContext('2d'); c.drawImage(V.src || V.video, 0, 0, cv.width, cv.height);
   const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
   box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
 }
