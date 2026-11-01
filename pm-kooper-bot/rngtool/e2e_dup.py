@@ -6,7 +6,7 @@ seed is set to a random value to stand in for an unknown run).
     the tool resyncs.
  4. The tool plans the confirm (dup4 profile, first run of >= 2 working frames >= 2 s ahead); the emulator presses A on
     the planned frame. Success = all four RandInt(1000) copy rolls < 600 (debug core).
-usage: M64P_DBG=1 e2e_dup.py SEED"""
+usage: M64P_DBG=1 [PROFILE=dup3] e2e_dup.py SEED"""
 import sys, os, json, random, subprocess
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from emu import *
@@ -61,7 +61,8 @@ while len(rs['matches']) != 1 and extra < 900:
 if len(rs['matches']) != 1: print('FAIL: resync'); sys.exit(1)
 bl = tool('beforelast', {'seed': rs['matches'][0]['seed'], 'pattern': rs['pattern']})['seed']
 L2 = sh2[-1]; now_rel = F[0] - L2
-pl = tool('plan', {'seed': bl, 'from': now_rel + 60, 'to': now_rel + 60 + 1800, 'minRun': 2, 'profile': 'dup4'})
+PROFILE = os.environ.get('PROFILE', 'dup4'); NEED = 3 if PROFILE == 'dup3' else 4
+pl = tool('plan', {'seed': bl, 'from': now_rel + 60, 'to': now_rel + 60 + 1800, 'minRun': 2, 'profile': PROFILE})
 w = pl['window']; print('plan: confirm frames %s (relative to the last shine), now = %d' % (w, now_rel))
 if not w: print('FAIL: no window'); sys.exit(1)
 target = L2 + w['start'] + (w['length'] - 1) // 2 + 1        # model frame t = step number L2 + t (+1: 1-based F)
@@ -74,7 +75,7 @@ for i in range(420):
         mx = x['a0'] if x['a0'] < 0x80000000 else x['a0'] - (1 << 32)
         s, v = rand_int(s, mx)
         if x['ra'] == 0x802D46E0 and mx == 1000: rolls.append(v)
-    if len(rolls) >= 4 or (rolls and rolls[-1] >= 600): break
+    if len(rolls) >= 4: break
     step()
-ok = len(rolls) == 4 and all(v < 600 for v in rolls)
-print('RESULT seed %08x: copy rolls %s -> %s (window %d frames)' % (seed0, rolls, 'ALL 4 COPIED' if ok else 'missed', w['length']))
+copies = sum(1 for v in rolls if v < 600); ok = len(rolls) == 4 and copies >= NEED
+print('RESULT %s seed %08x: copy rolls %s -> %d copied: %s (window %d frames)' % (PROFILE, seed0, rolls, copies, 'WORKED' if ok else 'missed', w['length']))

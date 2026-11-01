@@ -153,10 +153,31 @@
       rolls: [[78, 140], [105, 98], [132, 68], [159, 47]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
       screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
   };
+  // Duplighosts with branching: a copy -> next roll 97 frames later; a failed copy -> tackle (8 x rand(359) on +34)
+  // and the next roll 78 frames later. Measured in the emulator (13 seeds, every roll and effect matched).
+  function dupSim(minCopies) {
+    return function (seed, nextCoin, confirm, t0) {
+      let s = seed >>> 0, nc = nextCoin, nextRoll = confirm + 13, k = 0, fails = 0; const fx = {};
+      for (let t = t0 || 0; k < 4; t++) {
+        if (fx[t]) for (let i = 0; i < fx[t]; i++) s = randInt(s, 359)[0];
+        if (t === nextRoll) {
+          const r = randInt(s, 1000); s = r[0]; k++;
+          if (r[1] < 600) nextRoll = t + 97;
+          else { if (++fails > 4 - minCopies) return false; fx[t + 34] = 8; nextRoll = t + 78; }
+        }
+        if (t === nc) { const r = randInt(s, 100); s = r[0]; nc = t + (r[1] >= 70 ? 48 : 24); }
+        s = adv(s);
+      }
+      return true;
+    };
+  }
+  PROFILES.dup3 = { id: 'dup3', name: 'Duplighosts: 3+ copy Bombette', short: '3+ Duplighosts copy', effects: {}, rolls: [{ at: 13 }], sim: dupSim(3),
+    vanish: 3, minRun: 2, screen: PROFILES.dup4.screen, box: PROFILES.dup4.box };
   /* does confirming on frame `confirm` give the profile's result? seed: value just before frame t0's draws;
    * nextCoin: frame of the next coin draw (>= t0) */
   function works(seed, nextCoin, confirm, t0, prof) {
     prof = prof || PROFILES.timeout;
+    if (prof.sim) return prof.sim(seed, nextCoin, confirm, t0);
     if (!prof.rolls.length) return false;
     let s = seed >>> 0, nc = nextCoin, k = 0; const R_ = prof.rolls, last = R_[R_.length - 1].at;
     for (let t = t0 || 0; t <= confirm + last; t++) {

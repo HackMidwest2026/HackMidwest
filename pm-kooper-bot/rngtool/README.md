@@ -79,3 +79,7 @@ draws, and how many frames after the confirm the saved target-screen box changes
   (Bombette Bomb, then Maple Syrup = `jrcc_syrup`, same model: matched 9 seeds; e2e 3/3 worked).
 - Guarding does not matter: the Close Call roll was identical with no guard, mashing A, and single presses at 7
   different frames before the hit (T2 and T5 states; `jr_cclog.py` with GUARD=...).
+- `dup3` (3+ of 4 Duplighosts copy): branching model (a failed copy = tackle, 8 x rand(359) at +34, next roll +78
+  instead of +97). It reproduced every roll of 11 logged seeds (frames and values, including 1- and 2-fail paths);
+  `PROFILE=dup3 e2e_dup.py`: 4/4 worked (two with exactly 3 copies, one after a failed second ghost).
+  About half of all frames give 3+ copies (vs ~14% for all 4).
