@@ -11,6 +11,6 @@ const { chromium } = require('playwright');
     return out;
   });
   console.log('counter after each shine:', log.join('  '));
-  const panel = await (await p.$('#route')).evaluateHandle(e => e.closest('section')); await panel.asElement().screenshot({ path: 'route2.png' });
+  const panel = await (await p.$('#route')).evaluateHandle(e => e.closest('section, aside')); await panel.asElement().screenshot({ path: 'route2.png' });
   console.log('errors', errs); await b.close();
 })();
