@@ -136,7 +136,6 @@ details[open] summary { margin-bottom: 10px; }
       <p id="headline">Tap Shine each time the status-bar coin flashes white.</p>
       <p id="detail">Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.</p>
       <div class="count" id="count" hidden>0.0<small> s</small></div>
-      <div class="row" id="press-row" hidden><p class="note" id="press-msg" style="margin:0"></p><button class="b" id="press-apply" hidden>Apply</button><button class="b" id="press-clear">Clear</button></div>
       <div class="row">
         <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
         <button class="b" id="gap">New segment<kbd>N</kbd></button>
@@ -174,6 +173,7 @@ details[open] summary { margin-bottom: 10px; }
       <span><i style="background:var(--cursor)"></i>now</span>
     </div>
     <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
+    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Apply</button><button class="b" id="press-clear">Clear</button></div>
   </section>
 
   <section class="panel">
@@ -369,6 +369,7 @@ function makePlan() {
   for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k);
   if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
   const target = w.start + Math.floor((w.length - 1) / 2);
+  if (!(tLast + target * rt - performance.now() > 0 && tLast + target * rt - performance.now() < 120000)) { st.msg = 'Timing clock problem: the planned press is not in the next two minutes. Please report this; press Reset meanwhile.'; render(); return; }
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
@@ -433,7 +434,7 @@ function render() {
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
   else if (st.plan) setText('Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
-  else if (st.lock) setText(segLabel + 'Locked', 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Keep tapping if you can; any mismatch will show here. Press Plan Time Out once the hand is on Bowser.');
+  else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan Time Out once the hand is on Bowser.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), st.tier ? 'Searching further ahead: the game used a lot of random numbers during the gap (an attack, charge or room load). This needs a few more shines; the seed is kept.' : 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
@@ -509,7 +510,8 @@ function drawStrip() {
   if (nowF !== null) {
     const x = (nowF - v0) * cw;
     if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
-    note = st.plan ? 'Gold bars mark the window (' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + '). The dark line is now; it moves toward the window.' : 'Live: green frames would work if you confirmed on them. The dark line is now.';
+    note = st.plan ? 'Beeping: the gold bars mark the window (' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + '); press A on the last, higher beep, at "press".' :
+      'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
   }
   $('stripnote').textContent = note;
   if (st.plan) {
@@ -605,9 +607,15 @@ function startBackground(track) {
   })();
 }
 function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); if (V.bgTrack) V.bgTrack.stop(); V.stream = null; V.bgTrack = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
+// frame timestamp on the performance.now() clock (the beeps are scheduled on it). Some capture sources report
+// captureTime on another clock; anything more than a second away from now is not trusted.
+function frameTime(now, meta) {
+  const pn = performance.now(), ok = x => typeof x === 'number' && x > 0 && Math.abs(x - pn) < 1000;
+  return ok(meta.captureTime) ? meta.captureTime : ok(meta.expectedDisplayTime) ? meta.expectedDisplayTime : now;
+}
 function schedule() {
   if (!V.stream) return;
-  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { if (V.force !== 'bg') { V.lastVfc = performance.now(); onFrame(meta.captureTime || meta.expectedDisplayTime || now); } schedule(); });
+  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { if (V.force !== 'bg') { V.lastVfc = performance.now(); onFrame(frameTime(now, meta)); } schedule(); });
   else requestAnimationFrame(() => { V.lastVfc = performance.now(); onFrame(performance.now()); schedule(); });
 }
 function dims() { return V.src ? [V.src.displayWidth, V.src.displayHeight] : [V.video.videoWidth, V.video.videoHeight]; }
@@ -660,6 +668,7 @@ function onFrame(t) {
     else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
   }
   // readouts and preview (throttled)
+  if (V.frames % 10 === 0 && st.lock && !st.plan && !st.searching) render();   // keep the 'no beeps yet' match % current
   if (V.frames % 2 === 0) {
     $('r-coin').textContent = present ? 'visible' : 'hidden';
     $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';

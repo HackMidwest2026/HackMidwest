@@ -9,6 +9,7 @@ const tgt = 'data:image/png;base64,' + fs.readFileSync('/dev/shm/pmbot/tgt3.png'
   const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   // the 4-core test box: let the search use all cores so the seed locks before the 64 s footage loops
   await p.addInitScript(() => Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 }));
+  await p.addInitScript(() => { window.__beeps = []; const AC = window.AudioContext; const o = AC.prototype.createOscillator; AC.prototype.createOscillator = function () { const ctx = this; const osc = o.call(this); const st = osc.start.bind(osc); osc.start = w => { window.__beeps.push(+(w - ctx.currentTime).toFixed(2)); st(w); }; return osc; }; });
   await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');
   await p.evaluate(async (src) => {
     const V = window.__tot.V; V.boxes.target = { x: 0.135, y: 0.22, w: 0.135, h: 0.09 }; V.measureWin = 1e9;
@@ -37,5 +38,6 @@ const tgt = 'data:image/png;base64,' + fs.readFileSync('/dev/shm/pmbot/tgt3.png'
     const f0 = pre.get(res.plan.seedBL), want = T3.marks.confirm - f0;
     console.log('true confirm frame (rel. to the plan\'s last shine draw):', want, '| measured:', res.plan.measured.c.toFixed(2), '-> frame', res.plan.measured.frame, '| readout:', res.msg);
   } else console.log('no measurement');
+  console.log('beeps scheduled (seconds ahead when scheduled):', JSON.stringify(await p.evaluate(() => window.__beeps)));
   console.log('errors', errs); await b.close();
 })();
