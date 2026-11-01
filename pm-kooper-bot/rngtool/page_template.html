@@ -295,7 +295,7 @@ function lastLockedState() {
   return { seedAfter: a.seedAfterLastDraw, lastTap: st.segs[L.seg].taps[st.segs[L.seg].taps.length - 1] };
 }
 function evaluate() {
-  const s = seg(), P = pat(s.taps); st.msg = null; st.plan = null;
+  const s = seg(), P = pat(s.taps); st.msg = null;   // a running plan stays unless the new lock contradicts it (checked below)
   if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
   if (st.segs.length === 1 || !st.prevLock) {
     // first segment: filter existing candidates as taps come in
@@ -329,6 +329,7 @@ function evaluate() {
     if (m.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
     else { st.lock = null; if (!m.length) st.msg = 'No position in the expected range fits these taps. Undo a mis-tap, or raise the resync range in settings.'; }
   }
+  if (st.plan && st.lock && st.clock && !planOnTrack()) { cancelBeeps(); st.plan = null; }
   render();
 }
 // The RNG is nowhere near where it should be (savestate, console reset, a retried fight, a very long menu): forget the
@@ -338,6 +339,13 @@ function lostTrack() {
   Object.assign(st, { segs: [{ taps, auto: true }], cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
     note: 'Lost track of the RNG (a savestate, reset or long menu moves it). Finding the seed again from the next shines.' });
   cancelBeeps(); render(); autoAfterShine();
+}
+// is the running plan on the same RNG path as the current lock? (the plan's anchor seed must lead to the current
+// last-shine seed within a few thousand draws)
+function planOnTrack() {
+  const cur = R.seedBeforeLastDraw(st.clock.seed, st.clock.pattern) >>> 0; let x = st.plan.seedBL >>> 0;
+  for (let i = 0; i < 60000; i++) { if (x === cur) return true; x = R.adv(x); }
+  return false;
 }
 // game-clock estimate for the locked segment: perf time of frame 0 (first tapped draw)
 // The console's frame length is measured from the shines (least-squares slope of shine time vs game frame) instead of
