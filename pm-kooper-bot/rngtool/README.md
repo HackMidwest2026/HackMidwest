@@ -109,3 +109,29 @@ the page then drops the older stretches. Tests: `test_chain_core.js` (core, `ful
 thread), `test_chain_page.js` (page, 15 s on / 10 s off: locks the true seed in the 4th-5th stretch).
 
 The endgame route shows one step per turn: the turn's last input, or the starred press when it comes first.
+
+## Carrying the seed through Jr. Troopa's turns (no shines between Close Calls)
+
+Measured with `jr_turnlog.py` (6 runs from the T3 Bomb target screen to T6, random seeds and confirm delays; DIAGNOSTIC
+seed writes before each starred press force the Close Call): from each confirm, the turn's draws land on the same frames
+with the same ranges every time (`turns_jr.json`, built by `jr_turnsched.py`): T3 Bomb (8 x rand(359) + rand(360) after
+the coin at +73, Close Call roll +179), T4 Bomb (same explosion), T4 Maple Syrup (30 at +118, roll +163), T5 Do Nothing
+(roll +26). The Super Charge is two `energy_in_out` sparkle effects (created +13/+16, removed +58/+61): each of 10 parts
+gets rand(10) speed and a rand(10) start phase, and redraws rand(359) when its 10-frame counter wraps; `jr_chargefit.py`
+fits this exactly. The coin keeps its 24/48 schedule throughout (a one-frame skip seen in the logs came from the logger's
+own savestate reload). `test_turns.js`: from the seed at the T3 confirm and the confirm frames alone, every frame's seed
+matches the game in all 6 runs.
+
+On the page: each planned press (and the turn's other input, seen on its own saved target screen: the Charge's "target
+on Mario", the Bomb's "target on Jr. Troopa") is an event on the locked segment; plans start from the first coin draw
+after the simulated turns (`R.baseAfter`). New shines are checked against the simulated shines (the coin shines unseen
+during attacks). Guards: a planned press on a failing frame, or an unseen earlier input, stops the carry until shines
+find the seed again. Tests: `test_carry_page.js` (3 seeds x T3/T4/T5: every planned Close Call lands with no shines
+after the lock; SHINES=1: menu shines accepted), `test_carry_guard.js`.
+
+## Bowser's Castle rooms (route to the Duplighosts)
+
+`kpa_roomsteps.py` / `kpa_roomrng.py`: per room, any RNG user besides the frame step and the coin breaks a first lock.
+Clean: kpa_82 (quiz), kpa_33 (stair hall, Save Block), kpa_52 entrance side, kpa_08, kpa_100 (key), kpa_40/41 (maze).
+Not clean: kpa_61 (room script), kpa_52 near its enemies, kpa_102 (fire room), kpa_53 (torches: 12 draws every 50
+frames). The Duplighost battle load itself is clean (22 frames, no extra draws).

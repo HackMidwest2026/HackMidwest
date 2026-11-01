@@ -120,7 +120,7 @@ details[open] summary { margin-bottom: 10px; }
     <div class="status">
       <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
       <h2 style="margin:0">Endgame route <span class="note" style="font-weight:400; text-transform:none; letter-spacing:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</span></h2>
-      <div id="route" hidden style="display:grid; gap:6px"><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Before the Duplighosts:</b> hold C-up as much as you can in the staircase room (the one with the Save Block and no enemies) and in the 7 maze rooms. Those rooms are the only ones on the way that let the page find the seed; shines elsewhere (rooms with enemies, fire or torches) do not count.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
         <span class="chip" id="p-lock">Seed</span>
@@ -265,9 +265,9 @@ const ENDGAME = [
   { h: 'Jr. Troopa', turns: [
     { text: 'T1: Charge; Bomb', steps: [{ label: 'Bomb', cat: 'K' }] },
     { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka', cat: 'M' }] },
-    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' }] },
-    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' }] },
-    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' }] },
+    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb', turn: 'jr_bomb_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
+    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup', turn: 'jr_syrup_cc', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
+    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing', turn: 'jr_nothing_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
     { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }] },
     { text: 'T7: Star Storm if 4 capped / Shooting Star [Down 5] if 4 capped', steps: [] } ] },
   { h: 'Hallway Bowser', turns: [
@@ -294,7 +294,7 @@ SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); 
 
 /* ---------- state ---------- */
 // segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
-const st = { segs: [{ taps: [] }], chain: [], carry: null, cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
+const st = { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], needResync: false, cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
 const seg = () => st.segs[st.segs.length - 1];
 
 /* ---------- audio ---------- */
@@ -349,12 +349,41 @@ function gapWin(tPrev, tNext) { const E = Math.round((tNext - tPrev) / FRAME); r
 const gapCost = () => Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
 function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
+/* Carrying the seed through turns: every modelled confirm (planned presses, and the turn's other inputs seen on their
+ * own target screens) is an event on the locked segment's frames (frame 0 = its first tapped draw). The game's draws for
+ * those turns are simulated (R.TURNS), so the next plan starts right away; later shines only have to agree. */
+let evCache = null;
+function evNow() { const k = st.turnEv.map(e => e.f + e.id).join(); if (!evCache || evCache.k !== k) evCache = { k, ev: R.buildEv(st.turnEv) }; return evCache.ev; }
+let baseCache = null;
+function baseState() {   // plan frame 0: the last tapped shine, or the first coin draw after the carried turns
+  const C = st.clock, lastF = C.frames[C.frames.length - 1];
+  if (st.turnEv.length) {
+    const k = C.seed + ':' + lastF + ':' + evNow().size + ':' + st.turnEv.length;
+    if (!baseCache || baseCache.k !== k) { const b = R.baseAfter(C.seed, evNow(), lastF); baseCache = { k, b }; }
+    const b = baseCache.b;
+    if (b) return { seedBL: b.seed, baseF: b.F, tLast: C.t0 + b.F * C.rate, carried: true };
+  }
+  return { seedBL: R.seedBeforeLastDraw(C.seed, C.pattern), baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
+}
+function predictedShineNear(f) {
+  const ev = evNow(), S = { s: st.lock.seed >>> 0, nc: 0, inst: [] };
+  for (let g = 0; g <= f + 2; g++) { const r = R.frameEv(S, g, ev); if (r && Math.abs(g - f) <= 1.5) return true; }
+  return false;
+}
+function addTurn(f, id, why) { st.turnEv.push({ f, id }); st.note = null; V.turnNote = why; }
+// an input before the planned one (Charge, Bomb): its target screen closed at tObs
+function preConfirm(pr, tObs) {
+  if (!st.lock || !st.clock || st.needResync) return;
+  const b = baseState(), vanish = pr.cat === 'K' ? R.PROFILES.jrcc_bomb.vanish : R.PROFILES.jrcc_syrup.vanish;
+  const f = b.baseF + Math.round((tObs - b.tLast - num('vlag')) / st.clock.rate - vanish - num('pfix'));
+  addTurn(f, pr.id, 'Seen: ' + pr.id.replace('jr_', '') + ' confirmed; its random numbers are simulated.'); render();
+}
 // draw frames of each tapped shine, relative to the first tapped draw of the pattern
 function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
 function lastLockedState() {
   // seed after the last draw of the most recent locked segment, and that draw's time estimate
   const L = st.lock; if (!L) return null;
-  const p = pat(st.segs[L.seg].taps).pattern; const a = R.afterPattern(L.seed, p);
+  const p = pat(st.segs[L.seg].taps).pattern; const a = R.afterPatternEv(L.seed, p, evNow());
   return { seedAfter: a.seedAfterLastDraw, lastTap: st.segs[L.seg].taps[st.segs[L.seg].taps.length - 1] };
 }
 function evaluate() {
@@ -368,13 +397,15 @@ function evaluate() {
       if (c && c.length) st.cands = c; else if (c) st.chain = [];        // the gap did not fit: start the chain over here
     }
     if (st.cands) {
-      st.cands = st.cands.filter(x => R.matches(x, P.pattern));
+      st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
       st.need = 32 + 6 + st.chain.length * gapCost(); st.have = bits(P.pattern) + chainBits();
       if (st.cands.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
       else if (st.cands.length === 0 && st.chain.length) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
     }
+  } else if (st.lock && st.turnEv.length && st.lock.seg === st.segs.length - 1 && R.matchesEv(st.lock.seed, P.pattern, evNow())) {
+    updateClock();                                                  // a shine where the carried turns said it would be
   } else if (s.taps.length >= 1) {
     // later segment: search forward from the previous lock. First near the elapsed time; if nothing fits, widen step
     // by step (a busy turn, charge, an attack or a room load can use thousands of extra random numbers). Locking needs
@@ -405,15 +436,15 @@ function evaluate() {
 // old trajectory and search all seeds again from this segment's shines. The measured frame rate is kept.
 function lostTrack() {
   const taps = seg().taps.slice();
-  Object.assign(st, { segs: [{ taps, auto: true }], chain: [], carry: null, cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
+  Object.assign(st, { segs: [{ taps, auto: true }], chain: [], carry: null, turnEv: [], needResync: false, cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
     note: 'Lost track of the RNG (a savestate, reset or long menu moves it). Finding the seed again from the next shines.' });
   cancelBeeps(); render(); autoAfterShine();
 }
 // is the running plan on the same RNG path as the current lock? (the plan's anchor seed must lead to the current
 // last-shine seed within a few thousand draws)
 function planOnTrack() {
-  const cur = R.seedBeforeLastDraw(st.clock.seed, st.clock.pattern) >>> 0; let x = st.plan.seedBL >>> 0;
-  for (let i = 0; i < 60000; i++) { if (x === cur) return true; x = R.adv(x); }
+  const cur = baseState().seedBL >>> 0; let x = st.plan.seedBL >>> 0, y = cur;
+  for (let i = 0; i < 60000; i++) { if (x === cur || y === st.plan.seedBL >>> 0) return true; x = R.adv(x); y = R.adv(y); }
   return false;
 }
 // game-clock estimate for the locked segment: perf time of frame 0 (first tapped draw)
@@ -440,9 +471,14 @@ function updateClock() {
 }
 function makePlan() {
   if (!st.lock || !PROF().rolls.length) return;
-  const C = st.clock; const lastF = C.frames[C.frames.length - 1];
-  const seedBL = R.seedBeforeLastDraw(C.seed, C.pattern);         // frame 0 of the plan = the last tapped shine's draw
-  const rt = C.rate, tLast = C.t0 + lastF * rt, nowF = (performance.now() - tLast) / rt;
+  if (st.needResync) { st.msg = 'The last Close Call did not go as planned, so the seed has to be found again from a few shines.'; render(); return; }
+  const stp0 = isRoute() && RT()[routeStep];
+  if (st.turnEv.length && stp0 && stp0.pre && stp0.pre.some((pr, k) => !(V.preDone && V.preDone[routeStep + ':' + k]))) {
+    st.msg = 'The seed is being carried, but the page did not see this turn\'s ' + stp0.pre.map(pr => pr.id.replace('jr_', '')).join(' / ') + ' confirm (its target screen is not saved, or was not recognized). Show a few shines to find the seed again.'; render(); return;
+  }
+  const C = st.clock, B = baseState();
+  const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
+  const rt = C.rate, tLast = B.tLast, nowF = (performance.now() - tLast) / rt;
   const from = Math.ceil(nowF + num('lead') * 1000 / rt + 1), to = from + 1800;
   let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
   for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k, PROF());
@@ -458,7 +494,7 @@ function makePlan() {
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
+  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -471,7 +507,14 @@ function addShine(t, auto) {
     const g = (t - s.taps[s.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
     if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(6, 0.045 * g)) { V.rejected = (V.rejected || 0) + 1; return; }
   }
-  if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matches(st.lock.seed, pat(s.taps.concat([t])).pattern)) {
+  // seed carried through turns: the coin was hidden during the attacks and shined unseen, so check the new shine against
+  // the simulated shines directly (within 1.5 frames) instead of as a continuation of the tapped pattern
+  if (auto && st.lock && st.turnEv.length && st.clock && st.lock.seg === st.segs.length - 1) {
+    const C = st.clock, f = (t - C.t0 - 6 * C.rate - num('vlag')) / C.rate;
+    if (predictedShineNear(f)) { st.carryOk = (st.carryOk || 0) + 1; render(); return; }
+    newSegment(); seg().taps.push(t); seg().auto = true; evaluate(); return;      // the carried turns went differently
+  }
+  if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matchesEv(st.lock.seed, pat(s.taps.concat([t])).pattern, evNow())) {
     newSegment(); seg().taps.push(t); seg().auto = true; evaluate(); return;      // unseen gap (an action drew numbers)
   }
   s.taps.push(t); s.auto = !!auto; st.example = false; evaluate();
@@ -484,7 +527,7 @@ function tap() {
 function undo() { seg().taps.pop(); evaluate(); }
 function newSegment() {
   if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
-  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; render();   // a running plan stays
+  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.turnEv = []; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
 }
 async function findChain() {
   const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
@@ -510,7 +553,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], carryOk: 0, needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -552,6 +595,10 @@ function render() {
   }
   $('spins').innerHTML = P.pattern ? P.pattern.split('').map(c => c === 'S' ? '<b>S</b>' : '·').join('') : '–';
   $('count').hidden = !st.plan;
+  { const cn = $('carry-note'), n = st.turnEv.length;
+    cn.hidden = !(n || st.needResync);
+    cn.textContent = st.needResync ? 'The last Close Call did not land as planned: the page needs a few shines to find the seed again.'
+      : 'Seed carried through ' + n + ' input' + (n > 1 ? 's' : '') + ' since the last shines (' + st.turnEv.map(e => e.id.replace('jr_', '').replace('_cc', '★')).join(', ') + '). The next plan is ready without new shines; any shine you show is checked against it' + (st.carryOk ? ' (' + st.carryOk + ' checked so far, all where expected).' : '.'); }
   drawStrip();
 }
 
@@ -560,7 +607,7 @@ const EXAMPLE = { seed: 0x12345678 };
 function stripData() {
   if (st.plan) return { tab4: st.plan.tab4, tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, rate: st.plan.rate, w: st.plan.w };
   if (st.clock && (st.lock || !st.note)) {
-    const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
+    const C = st.clock, B = baseState(), lastF = B.baseF, seedBL = B.seedBL, tLast = B.tLast;
     const nowF = Math.floor((performance.now() - tLast) / C.rate);
     const key = PROF().id + ':' + seedBL + ':' + Math.floor(nowF / 120);
     if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, f0, nowF + 479, R.PROFILES[R.TOP[PROF().id]]) : null, first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
@@ -810,6 +857,17 @@ function onFrame(t) {
         if (1 - d2 / (24 * 16 * 255) >= num('tmatch')) { V.skipSince = V.skipSince || t; if (t - V.skipSince > 300) { V.skipSince = 0; setStep(routeStep + 1); } } else V.skipSince = 0;
       }
     }
+    const stp = isRoute() && RT()[routeStep];
+    if (stp && stp.pre && st.lock) stp.pre.forEach((pr, k) => {
+      const key = routeStep + ':' + k, T = targets['jr_' + pr.cat]; V.pre = V.pre || {}; V.preDone = V.preDone || {};
+      if (V.preDone[key] || pr.cat === stp.cat || !T || !T.ref || !T.box) return;
+      const g3 = sample(T.box, 24, 16); let d3 = 0;
+      for (let i = 0, j = 0; i < g3.length; i += 4, j++) d3 += Math.abs((g3[i] + g3[i + 1] + g3[i + 2]) / 3 - T.ref[j]);
+      const sc = 1 - d3 / (24 * 16 * 255), P = V.pre[key] = V.pre[key] || { on: false, onFor: 0, lastT: t };
+      const pon = P.on ? sc >= num('tmatch') - 0.04 : sc >= num('tmatch');
+      if (P.on && !pon && P.onFor > 200) { V.preDone[key] = true; preConfirm(pr, t); }
+      P.onFor = pon ? P.onFor + (t - P.lastT) : 0; P.lastT = t; P.on = pon;
+    });
     V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
     V.wasOn = on;
     if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
@@ -870,7 +928,7 @@ function applyProfile() {
   }
   render();
 }
-function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
@@ -914,9 +972,11 @@ function checkPress_(tObs) {
   if (st.plan && Math.abs(tObs - st.plan.tPress) < (V.measureWin || 3000)) { measurePress(tObs); return; }
   if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
   if (st.lock && st.clock) {
-    const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
+    const C = st.clock, B = baseState(), seedBL = B.seedBL, tLast = B.tLast;
     const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH_() - num('pfix'));
     const ok = R.works(seedBL, 0, f, 0, PROF());
+    const stp = isRoute() && RT()[routeStep];
+    if (stp && stp.turn) { if (ok) addTurn(B.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
     V.pressNote = 'No beep plan was running. You confirmed on a frame where ' + PROF().short + ': ' + (ok ? 'YES' : 'no') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
   } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
   showPresses();
@@ -929,6 +989,8 @@ function measurePress(tObs) {
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
   const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
   P.measured = { frame: f, c, err, inWin, works, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  const stp = isRoute() && RT()[routeStep];
+  if (stp && stp.turn) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
 }
 function showPresses() {
@@ -980,6 +1042,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack };   // for testing
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, step: () => routeStep };   // for testing
 })();
 </script>

@@ -138,7 +138,7 @@
     // rand_int(100) < 30 when his attack hits (he only attacks Mario; in base form always Leap, no attack-choice roll).
     // Each model matched the emulator on 8-9 seeds (every roll value). The Bomb mash meter does not matter (tested).
     jrcc_bomb: { id: 'jrcc_bomb', name: 'Jr. Troopa: Close Call after Bombette\'s Bomb', short: 'Close Call', group: 'jr',
-      effects: { 73: Array(8).fill(359).concat([360]) }, rolls: [{ at: 179, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2,
+      effects: { 73: Array(8).fill(359) }, post: { 73: [360] }, rolls: [{ at: 179, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2,
       screen: 'Bombette\'s Bomb target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
     jrcc_syrup: { id: 'jrcc_syrup', name: 'Jr. Troopa: Close Call after Maple Syrup', short: 'Close Call', group: 'jr',
       effects: { 118: [].concat(...Array(10).fill([359, 10, 10])) }, rolls: [{ at: 163, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2,
@@ -215,6 +215,8 @@
       if (fx) for (const mx of fx) s = randInt(s, mx)[0];
       while (k < R_.length && R_[k].at === rel) { const r = randInt(s, R_[k].max); s = r[0]; if (!R_[k].ok(r[1])) return false; k++; }
       if (t === nc) { const r = randInt(s, 100); s = r[0]; nc = t + (r[1] >= 70 ? 48 : 24); }
+      const px = prof.post && prof.post[rel];                      // effect draws after the coin on that frame
+      if (px) for (const mx of px) s = randInt(s, mx)[0];
       s = adv(s);
     }
     return true;
@@ -303,7 +305,76 @@
     return out;
   }
 
+  /* ---- carrying the seed through whole turns (no shines needed between planned presses) ----
+   * Measured in the emulator (Jr. Troopa T3 -> T6, 6 runs, random seeds and confirm timing): from each confirm, the
+   * turn's random draws land on the same frames with the same ranges every time, for the route's outcome (Close Call
+   * lands). TURNS[id]: pre/post = draws before/after the frame's coin draw, keyed by frames after the confirm; eio = the
+   * Super Charge sparkles (energy_in_out: created on +c, 10 parts each with rand(10) speed and rand(10) start phase,
+   * every part redraws rand(359) each time its 10-frame counter wraps, from the frame it is created until +r). The coin
+   * keeps its 24/48-frame schedule through all of it. */
+  const TURNS = {"jr_bomb_cc":{"pre":{"73":[359,359,359,359,359,359,359,359],"179":[100]},"post":{"73":[360]}},"jr_bomb":{"pre":{"73":[359,359,359,359,359,359,359,359]},"post":{"73":[360]}},"jr_syrup_cc":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"163":[100]},"post":{}},"jr_nothing_cc":{"pre":{"26":[100]},"post":{}},"jr_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]}};
+  /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
+  function buildEv(list) {
+    const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };
+    for (const { f, id } of list || []) {
+      const T = TURNS[id]; if (!T) continue;
+      for (const o in T.pre) get(f + +o).pre.push(...T.pre[o]);
+      for (const o in T.post) get(f + +o).post.push(...T.post[o]);
+      for (const [c, r] of T.eio || []) get(f + c).eio.push(f + r);
+    }
+    return m;
+  }
+  /* one game frame: battle-script draws, effect creation, the coin (if due), effect updates, the frame step.
+   * S = {s, nc, inst}; returns null, or whether the coin drew a shine */
+  function frameEv(S, f, ev) {
+    const e = ev && ev.get(f); let r = null;
+    if (e) {
+      for (const mx of e.pre) S.s = randInt(S.s, mx)[0];
+      for (const rm of e.eio) {
+        S.s = randInt(S.s, 360)[0]; const p = [];
+        for (let i = 0; i < 10; i++) { S.s = randInt(S.s, 10)[0]; const q = randInt(S.s, 10); S.s = q[0]; p.push(-q[1]); }
+        S.inst.push({ rm, p });
+      }
+    }
+    if (f === S.nc) { const q = randInt(S.s, 100); S.s = q[0]; r = q[1] >= 70; S.nc = f + (r ? 48 : 24); }
+    if (e) for (const mx of e.post) S.s = randInt(S.s, mx)[0];
+    if (S.inst.length) {
+      for (const I of S.inst) if (f < I.rm) for (let i = 0; i < 10; i++) { if (++I.p[i] >= 10) { I.p[i] = 0; S.s = randInt(S.s, 359)[0]; } }
+      S.inst = S.inst.filter(I => f + 1 < I.rm);
+    }
+    S.s = adv(S.s);
+    return r;
+  }
+  /* pattern check / positions with turn events (frame 0 = the pattern's first draw; seed = value before frame 0) */
+  function walkEv(seed, pattern, ev, stopAtLast) {
+    const S = { s: seed >>> 0, nc: 0, inst: [] }; let i = 0;
+    for (let f = 0; f < 200000; f++) {
+      if (stopAtLast && f === S.nc && i === pattern.length - 1) return { ok: true, seedBeforeLast: S.s, f };
+      const before = S.s, r = frameEv(S, f, ev);
+      if (r !== null) {
+        if (r !== (pattern.charCodeAt(i) === 83)) return { ok: false };
+        if (++i === pattern.length) return { ok: true, S, f, before };
+      }
+    }
+    return { ok: false };
+  }
+  function afterPatternEv(seed, pattern, ev) { if (!(ev && ev.size)) return afterPattern(seed, pattern); const w = walkEv(seed, pattern, ev); return { seedAfterLastDraw: w.ok ? w.S.s : afterPattern(seed, pattern).seedAfterLastDraw }; }
+  function matchesEv(seed, pattern, ev) { return ev && ev.size ? walkEv(seed, pattern, ev).ok : matches(seed, pattern); }
+  function seedBeforeLastDrawEv(seed, pattern, ev) { return ev && ev.size ? walkEv(seed, pattern, ev, true).seedBeforeLast : seedBeforeLastDraw(seed, pattern); }
+  /* plan base after the turns: the first coin-draw frame F >= minF with every event done and no sparkles alive; returns
+   * the seed before frame F (a coin draw, so plans can start there exactly as from a tapped shine) */
+  function baseAfter(seed, ev, minF) {
+    const S = { s: seed >>> 0, nc: 0, inst: [] }; let last = 0;
+    for (const f of ev.keys()) last = Math.max(last, f);
+    for (const e of ev.values()) for (const rm of e.eio) last = Math.max(last, rm);
+    for (let f = 0; f < 400000; f++) {
+      if (f >= minF && f > last && f === S.nc && !S.inst.length) return { seed: S.s, F: f };
+      frameEv(S, f, ev);
+    }
+    return null;
+  }
+
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);
