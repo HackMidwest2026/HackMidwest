@@ -571,7 +571,20 @@ function makePlan() {
   const rt = C.rate, tLast = B.tLast, nowF = (performance.now() - tLast) / rt;
   const from = Math.ceil(nowF + num('lead') * 1000 / rt + 1), to = from + 1800;
   let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
-  for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k, PROF());
+  // prefer a wider window when it costs only a little more waiting (a 2-frame window first was always taken before):
+  // 5+ within ~8 s of the earliest usable window, else 4 within ~6 s, else 3 within ~4 s, else the earliest
+  { const tab = R.timeOutTable(seedBL, from, to, PROF()), runs = [];
+    for (let i = 0, s = -1; i <= tab.length; i++) {
+      if (i < tab.length && tab[i]) { if (s < 0) s = i; }
+      else if (s >= 0) { runs.push({ start: from + s, end: from + i - 1, length: i - s }); s = -1; }
+    }
+    for (let k = minRun; k >= 1 && !w; k--) w = runs.find(r => r.length >= k) || null;
+    if (w) for (const [k, extra] of [[5, 240], [4, 180], [3, 120]]) {
+      if (w.length >= k) break;
+      const better = runs.find(r => r.length >= k && r.start <= w.start + extra);
+      if (better) { w = better; break; }
+    }
+  }
   if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
   let target = w.start + Math.floor((w.length - 1) / 2), aim4 = false;
   // Duplighosts 3+: aim at a frame where all 4 copy whose neighbours both give 3+ (another all-4 frame or a 3), so a
