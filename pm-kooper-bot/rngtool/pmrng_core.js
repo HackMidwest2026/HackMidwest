@@ -299,6 +299,16 @@
       if (y24 < SHINE_MIN && f + 24 <= hi) st.push(back(y24), f + 24);
     }
   }
+  /* carry candidates across a long gap (the coin hidden for minutes: a cutscene, C-up closed through rooms with other
+   * random numbers): the next stretch starts lo..hi steps after each candidate's last draw */
+  function extendWide(cands, prevPattern, nextPattern, lo, hi, cap) {
+    const out = [];
+    for (const c of cands) {
+      const r = resync(afterPattern(c, prevPattern).seedAfterLastDraw, nextPattern, hi, cap, lo);
+      for (const x of r) { out.push(x.seed); if (out.length > cap) return null; }
+    }
+    return out;
+  }
   /* carry candidates (seeds before prevPattern's first draw) across one gap; null if too many */
   function extendCands(cands, prevPattern, nextPattern, lo, hi, cap) {
     const out = [];
@@ -431,6 +441,6 @@
   }
 
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, extendWide, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

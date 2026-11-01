@@ -368,8 +368,8 @@ function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '
  * count open: E (from the tap times) -30..+60 frames, worth about 2 bits. Lock needs 38 bits plus that per gap. */
 const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 1, FLICKER = 1200;
 // hid = how long the coin was hidden: a short dropout (detection flicker, no room load) leaves the frame count exact
-function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= FLICKER ? [Math.max(24, E - 3), E + 6] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
-const gapCost = hid => hid != null && hid <= FLICKER ? Math.log2(9 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
+function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= FLICKER ? [Math.max(24, E - 2), E + 2] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+const gapCost = hid => hid != null && hid <= FLICKER ? Math.log2(4 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 const chainCost = () => st.chain.slice(1).reduce((a, c) => a + gapCost(c.hid), 0) + (st.chain.length ? gapCost(seg().hid) : 0);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
 function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
@@ -455,6 +455,13 @@ function evaluate() {
   if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
   if (st.segs.length === 1 || !st.prevLock) {
     // first segment: filter existing candidates as taps come in (carried across a gap from the previous stretch)
+    if (!st.cands && st.wcarry && s.taps.length) {
+      const E = Math.floor((s.taps[0] - st.wcarry.lastTap) / FRAME), lo = Math.max(0, E - 300), hi = E + num('range');
+      const c = R.extendWide(st.wcarry.cands, st.wcarry.pattern, P.pattern, lo, hi, 20000);
+      slog('wideExtend', { from: st.wcarry.cands.length, to: c ? c.length : null });
+      if (c && c.length) { st.cands = c; st.wbase = { have: st.wcarry.have, need: st.wcarry.need + Math.log2(hi - lo + 1) }; }
+      st.wcarry = null;
+    }
     if (!st.cands && st.carry && s.taps.length) {
       const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0], s.hid);
       st.carry_n = st.carry.short ? 0 : st.carry.cands.length; const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
@@ -462,10 +469,10 @@ function evaluate() {
     }
     if (st.cands) {
       st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
-      st.need = 32 + 6 + chainCost(); st.have = bits(P.pattern) + chainBits();
+      st.need = (st.wbase ? st.wbase.need : 38) + chainCost(); st.have = bits(P.pattern) + chainBits() + (st.wbase ? st.wbase.have : 0);
       const ownOk = !st.carryC0 || bits(P.pattern) - Math.log2(st.carryC0) - gapCost(s.hid) >= 7;   // carried across a gap: this stretch must back it up alone
-      if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; st.carryC0 = 0; updateClock(); }
-      else if (st.cands.length === 0 && st.chain.length) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
+      if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; st.carryC0 = 0; st.wbase = null; updateClock(); }
+      else if (st.cands.length === 0 && (st.chain.length || st.wbase)) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.wbase = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
     }
@@ -642,7 +649,7 @@ function addShine(t, auto) {
   }
   // seed carried through turns: the coin was hidden during the attacks and shined unseen, so check the new shine against
   // the simulated shines directly (within 1.5 frames) instead of as a continuation of the tapped pattern
-  if (auto && st.lock && st.turnEv.length && st.clock && st.lock.seg === st.segs.length - 1) {
+  if (auto && st.lock && (st.turnEv.length || st.lock.flick) && st.clock && st.lock.seg === st.segs.length - 1) {
     const C = st.clock, f = (t - C.t0 - 6 * C.rate - num('vlag')) / C.rate;
     const keep = hypsAlive().filter(imp => predictedShineNear(f, evFor(imp)));
     if (keep.length) { if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1; render(); return; }
@@ -677,6 +684,11 @@ async function findChain() {
   let anchor = 0; segs.forEach((g, i) => { if (bits(g.pattern) > bits(segs[anchor].pattern)) anchor = i; });
   const token = cur.taps, nChain = st.chain.length;
   const r = await searchAll(null, { segs, anchor });
+  if (st.wcarryPending && st.wcarryPending.token === token) {          // the stretch ended in a long gap while this search ran
+    const W = st.wcarryPending; st.wcarryPending = null;
+    if (r.length && r.length <= 5000) st.wcarry = { cands: r, pattern: W.pattern, lastTap: W.lastTap, have: W.have, need: W.need };
+    slog('wideCarry', { cands: r.length, late: true }); evaluate(); return;
+  }
   if (seg().taps === token) {                                           // same stretch still on screen
     slog('chainSearch', { stretches: segs.length, found: r.length });
     if (r.length) st.cands = r; else { st.chain.shift(); st.note = 'The stretches did not connect; dropping the oldest one.'; }
@@ -717,7 +729,7 @@ function maybeSwitchPlan() {
 }
 setInterval(maybeSwitchPlan, 250);
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -1124,11 +1136,20 @@ const SHORT_GAP = 4000;
 function coinBack(hiddenMs) {
   if (!seg().taps.length) return;
   slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
+  // locked, and the coin was only gone for a moment (no room load): keep the lock; the next shines are checked against
+  // where the locked seed puts its shines (some may have been missed during the dropout)
+  if (st.lock && st.lock.seg === st.segs.length - 1 && !st.lock.torch && hiddenMs != null && hiddenMs <= FLICKER) { st.lock.flick = true; return; }
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
   if (!st.prevLock && hiddenMs != null && hiddenMs > SHORT_GAP) {
-    st.chain = []; st.carry = null;                                  // C-up was closed (enemies, a battle): earlier stretches cannot connect
+    // C-up was closed (a cutscene, enemies, a battle): the coin-continuation chain cannot connect, but a near-lock's few
+    // candidates can be carried across with the same wide search a lock uses after a gap
+    if (st.cands && st.cands.length && st.cands.length <= 5000 && !P.error)
+      st.wcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 38 };
+    else if (st.searching && !P.error) st.wcarryPending = { token: s.taps, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: chainBits() + bits(P.pattern), need: 38 + chainCost() };
+    slog('wideCarry', { cands: st.wcarry ? st.wcarry.cands.length : null, pending: !!st.wcarryPending });
+    st.chain = []; st.carry = null;
   } else if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
     st.chain.push({ taps: s.taps.slice(), hid: s.hid }); if (st.chain.length > 24) st.chain.shift();
     if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], short: hiddenMs != null && hiddenMs <= SHORT_GAP };
@@ -1141,7 +1162,7 @@ function coinBack(hiddenMs) {
 }
 function autoAfterShine() {
   if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
-      chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= 33 && bits(pat(seg().taps).pattern) < 38) findChain();
+      chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= 26 && bits(pat(seg().taps).pattern) < 38) findChain();
   else if (!st.prevLock && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12 && bits(pat(seg().taps).pattern) >= 38) { st.chain = []; st.carry = null; find(); }   // this stretch alone is enough
   else if (st.segs.length === 1 && !st.chain.length && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
   if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }

@@ -187,3 +187,9 @@ finds nothing, before old shines are dropped; a lock there keeps every phase tha
 a gap is trusted only when the coin was hidden for at most 4 s (a room load with C-up held); after a longer gap (C-up
 closed through enemies, a battle) the new stretch must rule out a wrong carried candidate on its own (7 bits).
 `test_torch_page.js`: re-locks in the torch room on the true seed (8-11 shines) and after a battle (3/3, no wrong lock).
+
+Long C-up-closed gaps (the ~2-minute quiz cutscene): a lock carries across them with the usual wide re-sync; a near-lock
+(a chain that found a few candidates but not yet enough evidence) is carried across too (`R.extendWide`, E-300..+range
+steps) instead of being dropped. Dropouts under 1.2 s cost little (+-2 frames) and, while locked, no longer start a
+re-sync: the next shines just have to land where the locked seed puts its shines. `test_wide.js` (lava ride with
+dropouts, 2-minute quiz, short stretches after): locks during the ride in 4/4 and re-finds the true seed after the quiz.
