@@ -470,10 +470,11 @@ function drawStrip() {
   const d = stripData(), span = Math.max(30, Math.round((num('zoom') || 12) * 30)), cw = W / span;
   const nowF = d.tLast !== null ? (performance.now() - d.tLast) / d.rate : null;
   // view: centred on the chosen window once planned, otherwise scrolling with "now" near the left edge
-  // v0 may be fractional: while scrolling, "now" stays fixed at 10% and the frames glide past it (no jitter)
+  // v0 may be fractional: "now" stays fixed near the left and the frames glide toward it (no jitter), also while a
+  // plan is counting down, so the window can be watched arriving at the line
   let v0;
-  if (d.w && (st.plan || nowF === null)) v0 = Math.round((d.w.start + d.w.end) / 2 - span / 2);
-  else if (nowF !== null) v0 = nowF - span * 0.1;
+  if (nowF !== null) v0 = nowF - span * (st.plan ? 0.25 : 0.1);
+  else if (d.w) v0 = Math.round((d.w.start + d.w.end) / 2 - span / 2);
   else v0 = d.first;
   const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
   const gap = cw >= 5 ? Math.min(2, cw * 0.15) : 0.2;                       // visible gaps between frames when zoomed
@@ -498,6 +499,9 @@ function drawStrip() {
   }
   ctx.textAlign = 'left';
   if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
+  if (st.plan) {   // the aimed press moment: where the dark "now" line must be when you press
+    const xp = (st.plan.target - 0.5 + num('off') - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(xp - 1.5, 4, 3, 84);
+  }
   // time ticks relative to now (or to the left edge for the example)
   ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
   const ref = st.plan ? st.plan.target : (nowF !== null ? nowF : v0), step = span <= 60 ? 0.25 : span <= 120 ? 0.5 : span <= 240 ? 1 : 2;
@@ -510,7 +514,7 @@ function drawStrip() {
   if (nowF !== null) {
     const x = (nowF - v0) * cw;
     if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
-    note = st.plan ? 'Beeping: the gold bars mark the window (' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + '); press A on the last, higher beep, at "press".' :
+    note = st.plan ? 'Beeping: the window (gold bars) slides toward the dark now-line. Press A when the gold press line reaches it, on the last, higher beep.' :
       'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
   }
   $('stripnote').textContent = note;
