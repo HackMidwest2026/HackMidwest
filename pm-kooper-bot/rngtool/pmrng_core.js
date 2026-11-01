@@ -207,6 +207,7 @@
    * nextCoin: frame of the next coin draw (>= t0) */
   function works(seed, nextCoin, confirm, t0, prof) {
     prof = prof || PROFILES.timeout;
+    if (confirm < (t0 || 0)) return false;                       // before the known state: cannot be judged, never 'works'
     if (prof.sim) return prof.sim(seed, nextCoin, confirm, t0);
     if (!prof.rolls.length) return false;
     let s = seed >>> 0, nc = nextCoin, k = 0; const R_ = prof.rolls, last = R_[R_.length - 1].at;

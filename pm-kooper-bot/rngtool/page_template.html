@@ -331,7 +331,7 @@ function beepAt(perfMs, freq, dur) {
   beeps.push(o);
 }
 let beeps = [];
-function cancelBeeps() { beeps.forEach(o => { try { o.stop(); } catch (e) {} }); beeps = []; }
+function cancelBeeps() { if (beeps.length && typeof slog === 'function') slog('beepsCancelled', { n: beeps.length }); beeps.forEach(o => { try { o.stop(); } catch (e) {} }); beeps = []; }
 
 /* ---------- seed search in workers ---------- */
 let workers = [];
@@ -366,9 +366,11 @@ function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '
 /* First lock across gaps: before a lock, each stretch of visible coin is kept (st.chain) instead of thrown away. The
  * coin keeps drawing while it is hidden (measured through Castle room loads), so a gap only leaves the exact frame
  * count open: E (from the tap times) -30..+60 frames, worth about 2 bits. Lock needs 38 bits plus that per gap. */
-const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 2;
-function gapWin(tPrev, tNext) { const E = Math.round((tNext - tPrev) / FRAME); return [Math.max(48, E - GAP_LO), E + GAP_HI]; }
-const gapCost = () => Math.log2((GAP_LO + GAP_HI) / 24 + 1);
+const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 1, FLICKER = 1200;
+// hid = how long the coin was hidden: a short dropout (detection flicker, no room load) leaves the frame count exact
+function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= FLICKER ? [Math.max(24, E - 3), E + 6] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+const gapCost = hid => hid != null && hid <= FLICKER ? Math.log2(9 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
+const chainCost = () => st.chain.slice(1).reduce((a, c) => a + gapCost(c.hid), 0) + (st.chain.length ? gapCost(seg().hid) : 0);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
 function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
 /* Carrying the seed through turns: every modelled confirm (planned presses, and the turn's other inputs seen on their
@@ -454,14 +456,14 @@ function evaluate() {
   if (st.segs.length === 1 || !st.prevLock) {
     // first segment: filter existing candidates as taps come in (carried across a gap from the previous stretch)
     if (!st.cands && st.carry && s.taps.length) {
-      const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0]);
+      const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0], s.hid);
       st.carry_n = st.carry.short ? 0 : st.carry.cands.length; const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
       if (c && c.length) { st.cands = c; st.carryC0 = st.carry_n; } else if (c) st.chain = [];        // the gap did not fit: start the chain over here
     }
     if (st.cands) {
       st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
-      st.need = 32 + 6 + st.chain.length * gapCost(); st.have = bits(P.pattern) + chainBits();
-      const ownOk = !st.carryC0 || bits(P.pattern) - Math.log2(st.carryC0 * ((GAP_LO + GAP_HI) / 24 + 1)) >= 7;   // carried across a gap: this stretch must back it up alone
+      st.need = 32 + 6 + chainCost(); st.have = bits(P.pattern) + chainBits();
+      const ownOk = !st.carryC0 || bits(P.pattern) - Math.log2(st.carryC0) - gapCost(s.hid) >= 7;   // carried across a gap: this stretch must back it up alone
       if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; st.carryC0 = 0; updateClock(); }
       else if (st.cands.length === 0 && st.chain.length) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
@@ -486,11 +488,11 @@ function evaluate() {
     };
     m = [];
     if (st.rcarry && s.taps.length) {                                // continue the previous short stretch's candidates
-      const [lo, hi] = gapWin(st.rcarry.lastTap, s.taps[0]);
+      const [lo, hi] = gapWin(st.rcarry.lastTap, s.taps[0], s.hid);
       const c = R.extendCands(st.rcarry.cands, st.rcarry.pattern, P.pattern, lo, hi, 20000);
       if (c && c.length) {
-        st.cands = c; st.have = st.rcarry.have + bits(P.pattern); st.need = st.rcarry.need + gapCost(); st.tier = 0;
-        const own = bits(P.pattern) - Math.log2(st.rcarry.cands.length * ((GAP_LO + GAP_HI) / 24 + 1));   // evidence of this stretch alone
+        st.cands = c; st.have = st.rcarry.have + bits(P.pattern); st.need = st.rcarry.need + gapCost(s.hid); st.tier = 0;
+        const own = bits(P.pattern) - Math.log2(st.rcarry.cands.length) - gapCost(s.hid);   // evidence of this stretch alone
         if (c.length === 1 && st.have >= st.need && (st.rcarry.short || own >= 7)) { st.lock = { seg: st.segs.length - 1, seed: c[0] }; st.rcarry = null; updateClock(); }
         else st.lock = null;
         if (st.plan && st.lock && st.clock && !planOnTrack()) { cancelBeeps(); st.plan = null; }
@@ -511,7 +513,7 @@ function evaluate() {
           const bySeed = new Map(); r.forEach(x => { if (!bySeed.has(x.seed)) bySeed.set(x.seed, []); bySeed.get(x.seed).push(x.phase); });
           st.cands = [...bySeed.keys()]; st.need = Math.log2((hi - lo + 1) * 50) + 7; st.have = bits(pat(s.taps).pattern); st.tier = 'torch';
           if (bySeed.size === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0], torch: bySeed.get(st.cands[0]) }; updateClock(); }
-          else st.lock = null;
+          else { st.lock = null; if (s.raw && s.raw.length >= (s.probedAt || 0) + 12) maybeProbe(); }   // a savestate/reset still gets noticed
           render(); return;
         }
       }
@@ -591,7 +593,7 @@ function makePlan() {
   if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
   const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
   const rt = C.rate, tLast = B.tLast, nowF = (performance.now() - tLast) / rt;
-  const from = Math.ceil(nowF + num('lead') * 1000 / rt + 1), to = from + 1800;
+  const from = Math.max(1, Math.ceil(nowF + num('lead') * 1000 / rt + 1)), to = from + 1800;   // never before the plan's known state (frame 0)
   let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
   // prefer a wider window when it costs only a little more waiting (a 2-frame window first was always taken before):
   // 5+ within ~8 s of the earliest usable window, else 4 within ~6 s, else 3 within ~4 s, else the earliest
@@ -601,7 +603,7 @@ function makePlan() {
       else if (s >= 0) { runs.push({ start: from + s, end: from + i - 1, length: i - s }); s = -1; }
     }
     for (let k = minRun; k >= 1 && !w; k--) w = runs.find(r => r.length >= k) || null;
-    if (w) for (const [k, extra] of [[5, 240], [4, 180], [3, 120]]) {
+    if (w) for (const [k, extra] of [[5, 150], [4, 120], [3, 90]]) {
       if (w.length >= k) break;
       const better = runs.find(r => r.length >= k && r.start <= w.start + extra);
       if (better) { w = better; break; }
@@ -631,7 +633,12 @@ function addShine(t, auto) {
   const s = seg();
   if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
     const g = (t - s.taps[s.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
-    if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(6, 0.045 * g)) { V.rejected = (V.rejected || 0) + 1; return; }
+    if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(3, 0.01 * g)) {
+      V.rejected = (V.rejected || 0) + 1; V.rejStreak = (V.rejStreak || 0) + 1; slog('rejected', { at: Math.round(t), off: +(g - (48 + 24 * k)).toFixed(1), streak: V.rejStreak });
+      if (V.rejStreak < 3) return;
+      s.taps.pop(); if (s.raw) s.raw.pop(); slog('droppedSuspectShine', {});   // 3 in a row: the last accepted shine was the odd one out
+    }
+    V.rejStreak = 0;
   }
   // seed carried through turns: the coin was hidden during the attacks and shined unseen, so check the new shine against
   // the simulated shines directly (within 1.5 frames) instead of as a continuation of the tapped pattern
@@ -665,11 +672,13 @@ function newSegment() {
 }
 async function findChain() {
   const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
-  const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0]); return g; });
+  const hids = st.chain.map(c => c.hid).slice(1).concat([cur.hid]);
+  const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0], hids[i - 1]); return g; });
   let anchor = 0; segs.forEach((g, i) => { if (bits(g.pattern) > bits(segs[anchor].pattern)) anchor = i; });
   const token = cur.taps, nChain = st.chain.length;
   const r = await searchAll(null, { segs, anchor });
   if (seg().taps === token) {                                           // same stretch still on screen
+    slog('chainSearch', { stretches: segs.length, found: r.length });
     if (r.length) st.cands = r; else { st.chain.shift(); st.note = 'The stretches did not connect; dropping the oldest one.'; }
   } else if (st.chain.length && st.chain[st.chain.length - 1].taps[0] === token[0] && r.length) {
     const last = st.chain[st.chain.length - 1].taps; st.carry = { cands: r, pattern: pat(last).pattern, lastTap: last[last.length - 1] };
@@ -678,7 +687,7 @@ async function findChain() {
 }
 async function find() {
   if (st.searching) return;
-  if (!st.prevLock && st.chain.length && seg().taps.length >= 2) { findChain(); return; }
+  if (!st.prevLock && st.chain.length && seg().taps.length >= 2 && bits(pat(seg().taps).pattern) < 38) { findChain(); return; }
   const P = pat(seg().taps);
   if (st.segs.length > 1 && st.prevLock) { evaluate(); return; }
   if (P.error || seg().taps.length < 4) { st.msg = P.error || 'Tap at least 4 shines first (about 13 for a unique seed).'; render(); return; }
@@ -686,6 +695,27 @@ async function find() {
   st.cands = await searchAll(P.pattern);
   evaluate();
 }
+/* While a plan's press is far off, keep looking: a window at least as wide (and 3+ frames) that starts sooner, with
+ * time left for the countdown, takes over and the beeps move to it. */
+const SWITCH_LEAD = 2500;
+function maybeSwitchPlan() {
+  const P = st.plan; if (!P || P.aim4 || P.measured || !PROF().rolls.length) return;
+  const now = performance.now(); if (P.tPress - now < SWITCH_LEAD + 1500) return;
+  const from = Math.max(1, Math.ceil((now + SWITCH_LEAD - P.tLast) / P.rate) + 1), to = P.w.start - 1; if (to - from < 2) return;
+  const tab = R.timeOutTable(P.seedBL, from, to, PROF()); let best = null;
+  for (let i = 0, s = -1; i <= tab.length; i++) {
+    if (i < tab.length && tab[i]) { if (s < 0) s = i; }
+    else if (s >= 0) { const L = i - s; if (L >= Math.max(3, P.w.length)) { best = { start: from + s, end: from + i - 1, length: L }; break; } s = -1; }
+  }
+  if (!best) return;
+  const target = best.start + Math.floor((best.length - 1) / 2), tPress = P.tLast + (target - 0.5 + num('off')) * P.rate;
+  slog('switchPlan', { from: P.w.length + '@' + P.w.start, to: best.length + '@' + best.start, sooner: Math.round(P.tPress - tPress) });
+  P.w = best; P.target = target; P.tPress = tPress; P.switched = (P.switched || 0) + 1; cancelBeeps();
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
+  for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  render();
+}
+setInterval(maybeSwitchPlan, 250);
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
 function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
@@ -718,7 +748,7 @@ function render() {
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
+  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : st.plan.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
@@ -731,7 +761,7 @@ function render() {
   // spins
   {   // shines seen this segment / about how many it needs (bits of evidence: 38 for a first lock, log2(window)+7 to resync)
     const BITS_PER_SHINE = 2.9, first = st.segs.length === 1 || !st.prevLock, ch = first && !st.lock ? st.chain : [];
-    const need = (first ? 38 + ch.length * gapCost() : st.need || Math.log2(1300) + 7), have = (P.pattern ? bits(P.pattern) : 0) + (first && !st.lock ? chainBits() : 0);
+    const need = (first ? 38 + (ch.length ? chainCost() : 0) : st.need || Math.log2(1300) + 7), have = (P.pattern ? bits(P.pattern) : 0) + (first && !st.lock ? chainBits() : 0);
     const n = nSh + (first && !st.lock ? chainShines() : 0);
     const total = st.lock ? n : n + Math.max(1, Math.ceil(Math.max(0, need - have) / BITS_PER_SHINE));
     $('spins-count').textContent = '(' + n + '/' + total + ')' + (st.lock ? ' locked' : ch.length ? ' over ' + (ch.length + 1) + ' stretches' : '');
@@ -1093,23 +1123,26 @@ $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
 const SHORT_GAP = 4000;
 function coinBack(hiddenMs) {
   if (!seg().taps.length) return;
-  slog('coinBack', { taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
+  slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
-  if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
-    st.chain.push({ taps: s.taps.slice() }); if (st.chain.length > 24) st.chain.shift();
+  if (!st.prevLock && hiddenMs != null && hiddenMs > SHORT_GAP) {
+    st.chain = []; st.carry = null;                                  // C-up was closed (enemies, a battle): earlier stretches cannot connect
+  } else if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
+    st.chain.push({ taps: s.taps.slice(), hid: s.hid }); if (st.chain.length > 24) st.chain.shift();
     if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], short: hiddenMs != null && hiddenMs <= SHORT_GAP };
   } else if (st.prevLock && !P.error && st.cands && st.cands.length && st.cands.length <= 20000) {
     // re-finding a lock: carry this stretch's candidates across the (clean) gap into the next stretch, so short
     // stretches (maze rooms) add up instead of each needing ~6 shines in a row
     st.rcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 0, short: hiddenMs != null && hiddenMs <= SHORT_GAP };
   } else if (st.carry && s.taps.length) st.carry = null;                // a stretch too short to carry through: drop the carry
-  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; st.cands = null; st.carryC0 = 0; st.msg = null; render();
+  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; s.hid = hiddenMs; st.cands = null; st.carryC0 = 0; st.msg = null; render();
 }
 function autoAfterShine() {
   if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
-      chainBits() + bits(pat(seg().taps).pattern) - st.chain.length * gapCost() >= 33) findChain();
+      chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= 33 && bits(pat(seg().taps).pattern) < 38) findChain();
+  else if (!st.prevLock && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12 && bits(pat(seg().taps).pattern) >= 38) { st.chain = []; st.carry = null; find(); }   // this stretch alone is enough
   else if (st.segs.length === 1 && !st.chain.length && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
   if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
 }
@@ -1120,6 +1153,7 @@ const presses = (function () { try { return JSON.parse(localStorage.getItem('tot
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
 function checkPress(tObs) {
+  slog('screenClosed', { at: Math.round(tObs), step: routeStep, plan: st.plan ? { tPress: Math.round(st.plan.tPress), target: st.plan.target, w: st.plan.w.length, tMade: Math.round(st.plan.tMade || 0) } : null });
   const stp = isRoute() && RT()[routeStep], n0 = st.turnEv.length;
   if (stp && stp.turn && !PROF().rolls.length && st.lock && st.clock && !st.needResync && !unmodeledAfter(baseState().tLast)) {
     const B = baseState(), f = B.baseF + Math.round((tObs - B.tLast - num('vlag')) / st.clock.rate - (VAN[stp.cat] || VAN.M)() - num('pfix'));
@@ -1209,6 +1243,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, step: () => routeStep };   // for testing
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
 })();
 </script>
