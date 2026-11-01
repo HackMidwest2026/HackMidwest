@@ -1,0 +1,746 @@
+<title>Time Out Timer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: one working column. Status + the big shine button on top (what you touch mid-run), the frame strip
+   under it, then settings and the run procedure. Night-castle blues with the coin's gold as the accent. */
+:root {
+  --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
+  --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
+  --cursor: #172036;
+  --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--gold); }
+.tag { font-family: var(--mono); font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: stretch; }
+@media (max-width: 620px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.status { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.phase { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--mono); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { background: var(--gold-soft); border-color: var(--gold); color: var(--ink); }
+.chip.ok { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
+.chip.err { border-color: var(--warn); color: var(--warn); }
+#headline { font-family: var(--display); font-weight: 600; font-size: clamp(1.25rem, 3.6vw, 1.6rem); line-height: 1.25; margin: 0; text-wrap: balance; }
+#detail { color: var(--muted); margin: 0; max-width: 62ch; }
+.count { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: clamp(2.6rem, 9vw, 3.6rem); font-weight: 700; line-height: 1; color: var(--gold); }
+.count small { font-size: .35em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+#shine { font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .08em; text-transform: uppercase;
+  width: clamp(150px, 30vw, 200px); min-height: 150px; border-radius: 14px; border: 2px solid var(--gold); background: var(--gold-soft); color: var(--ink);
+  cursor: pointer; display: grid; place-items: center; gap: 2px; padding: 12px; touch-action: manipulation; user-select: none; }
+#shine kbd { font-family: var(--mono); font-size: .7rem; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
+#shine.flash { background: var(--gold); color: #1b1404; }
+@media (max-width: 620px) { #shine { width: 100%; min-height: 120px; } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button.b { font-family: var(--body); font-weight: 500; font-size: .9rem; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.b:hover { border-color: var(--muted); }
+button.b.primary { border-color: var(--gold); background: var(--gold-soft); }
+button.b kbd { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-left: 6px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: default; }
+.strip-wrap { overflow-x: auto; }
+canvas { display: block; width: 100%; height: 86px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 5px; }
+.spins { font-family: var(--mono); font-size: .9rem; letter-spacing: .12em; word-break: break-all; color: var(--muted); min-height: 1.5em; }
+.spins b { color: var(--gold); font-weight: 700; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+label.f { display: grid; gap: 4px; font-size: .86rem; color: var(--muted); }
+label.f input, label.f select { font-family: var(--mono); font-size: .95rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box; }
+label.c { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 70ch; }
+ol.steps b { font-weight: 600; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.note { font-size: .84rem; color: var(--muted); max-width: 70ch; margin: 0; }
+.cam { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 700px) { .cam { grid-template-columns: minmax(0, 1fr); } }
+#preview { width: 100%; height: auto; aspect-ratio: 4 / 3; max-width: 100%; background: #000; border-radius: 6px; cursor: crosshair; touch-action: none; }
+.read { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-family: var(--mono); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.read dt { color: var(--muted); } .read dd { margin: 0; }
+.meter { height: 8px; border-radius: 4px; background: var(--bad); overflow: hidden; position: relative; }
+.meter > i { position: absolute; inset: 0 auto 0 0; background: var(--gold); }
+.meter > b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--gold-soft); }
+.box-coin { color: var(--gold); } .box-target { color: #3d7bd9; }
+details summary { cursor: pointer; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { #shine.flash { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <h1>Time Out <span>Timer</span></h1>
+    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100)</div>
+  </header>
+
+  <section class="panel" id="auto">
+    <h2>Watch the game automatically (OBS Virtual Camera)</h2>
+    <div class="cam">
+      <div style="display:grid; gap:8px; min-width:0">
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin and target boxes"></canvas>
+        <div class="row">
+          <span class="seg" role="group" aria-label="Box to draw">
+            <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
+            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> Draw target box</button>
+          </span>
+          <button class="b" id="cap-target" disabled>Save target screen</button>
+        </div>
+      </div>
+      <div style="display:grid; gap:10px; min-width:0">
+        <div class="row">
+          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="">Default camera</option></select></label>
+        </div>
+        <div class="row">
+          <button class="b primary" id="cam-start">Start watching</button>
+          <button class="b" id="cam-stop" disabled>Stop</button>
+          <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
+        </div>
+        <p class="note" id="cam-msg">Opens the OBS Virtual Camera. Camera access works when this page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
+        <dl class="read">
+          <dt>Coin</dt><dd id="r-coin">–</dd>
+          <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
+          <dt>Shines seen</dt><dd id="r-shines">0</dd>
+          <dt>Target screen</dt><dd id="r-target">no reference saved</dd>
+          <dt>Video frames</dt><dd id="r-fps">–</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel stage" aria-live="polite">
+    <div class="status">
+      <div class="phase" id="phase">
+        <span class="chip" id="p-watch">Watch</span>
+        <span class="chip" id="p-lock">Seed</span>
+        <span class="chip" id="p-time">Window</span>
+      </div>
+      <p id="headline">Tap Shine each time the status-bar coin flashes white.</p>
+      <p id="detail">Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.</p>
+      <div class="count" id="count" hidden>0.0<small> s</small></div>
+      <div class="row">
+        <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
+        <button class="b" id="gap">New segment<kbd>N</kbd></button>
+        <button class="b" id="plan" disabled>Plan Time Out<kbd>P</kbd></button>
+        <button class="b" id="undo">Undo tap<kbd>⌫</kbd></button>
+        <button class="b" id="reset">Reset</button>
+      </div>
+    </div>
+    <button id="shine" type="button">Shine<kbd>Space</kbd></button>
+  </section>
+
+  <section class="panel">
+    <h2>Coin spins this segment</h2>
+    <div class="spins" id="spins">–</div>
+    <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Confirm frames ahead</h2>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="86" aria-label="Time Out success by target-confirm frame for the next 12 seconds"></canvas></div>
+    <div class="legend">
+      <span><i style="background:var(--good)"></i>Time Out works if you confirm on this frame</span>
+      <span><i style="background:var(--bad)"></i>fails</span>
+      <span><i style="background:var(--gold)"></i>chosen window</span>
+      <span><i style="background:var(--cursor)"></i>now</span>
+    </div>
+    <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
+  </section>
+
+  <section class="panel">
+    <details id="settings-d">
+      <summary>Timing settings</summary>
+      <div class="grid2">
+        <label class="f">Reaction to the shine (ms)<input id="s-react" type="number" step="5" value="200"></label>
+        <label class="f">TV / capture lag (ms)<input id="s-lag" type="number" step="5" value="0"></label>
+        <label class="f">Fine offset for the press (frames, + = later)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
+        <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
+        <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
+        <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
+        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
+        <label class="f">Video lag, capture to page (ms)<input id="s-vlag" type="number" step="5" value="50"></label>
+        <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
+        <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>In the run (automatic)</h2>
+    <ol class="steps">
+      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome. In OBS, start Virtual Camera. Here, pick it as the video source and press Start watching. Drag the gold box around the status-bar coin. Go to Time Out's target screen (hand on Bowser), drag the blue box over the name label above Bowser, and press Save target screen.</li>
+      <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
+      <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
+    </ol>
+    <h2 style="margin-top:16px">Without a camera (tapping)</h2>
+    <ol class="steps">
+      <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
+      <li><b>Gap.</b> Before leaving to do something else (turn 1, the hallway door), you can stop tapping. When the coin is in view again, press New segment, then tap again. A few shines resync it; the page shows when it is locked.</li>
+      <li><b>Turn 2.</b> Open Star Spirits, up 3 to Time Out, A, so the hand is on Bowser. Keep tapping shines while you do this if you can.</li>
+      <li><b>Press.</b> Press Plan Time Out. Confirm Bowser with A on the last beep. The strip shows the window you are aiming at.</li>
+    </ol>
+    <p class="note" style="margin-top:10px">Shines come 48 frames after a shine and 24 after a normal spin; one game frame is 33.4 ms. The Time Out roll comes 386 frames after the confirm and works on 30 or less, a 30.7% chance on a random frame. Verified frame for frame in an emulator, including after Super Jump Charge, Spiny Flip and Bowser's first attack.</p>
+  </section>
+</main>
+
+<script id="core-src">/* Paper Mario (JP) Hallway Bowser Time Out RNG tool: core logic (browser + Node).
+ *
+ * RNG: seed = seed * 0x5D588B65 + 1 (mod 2^32), stepped once per game frame plus once per draw.
+ * Status-bar coin: at the end of each spin loop it draws rand_int(100); 70+ plays the shine loop. The next draw
+ * comes 24 frames later after a normal spin, 48 after a shine.
+ * Time Out vs Hallway Bowser: STOP lands if rand_int(100) <= 30. Counting from the frame C of the target-confirm A:
+ * effect draws on C+24 (72 x rand(40000)), C+73 (40 x [rand(359), rand(10), rand(10)]), C+112 (72 x rand(30000)),
+ * the roll is the first draw on C+386. Within a frame: battle script (roll, effect spawns), then the coin, then the
+ * per-frame step. All verified against the emulator frame by frame. */
+(function (root) {
+  'use strict';
+  const MUL = 0x5D588B65;
+  const FRAME_MS = 1000 / (60000 / 1001 / 2);           // one game frame = 2 NTSC fields = 33.367 ms
+  const D1009 = Math.floor(4294967295 / 1010);
+  const SHINE_MIN = 700 * D1009;                          // advanced seed >= this -> rand_int(100) >= 70 -> shine
+  const adv = s => (Math.imul(s, MUL) + 1) >>> 0;
+  function affine(n) { let A = 1, C = 0; for (let i = 0; i < n; i++) { A = Math.imul(A, MUL) >>> 0; C = (Math.imul(C, MUL) + 1) >>> 0; } return [A, C]; }
+  const [A24, C24] = affine(24), [A48, C48] = affine(48);
+  const step24 = s => (Math.imul(s, A24) + C24) >>> 0, step48 = s => (Math.imul(s, A48) + C48) >>> 0;
+  function internal(s, mx) {
+    const d = Math.floor(4294967295 / (mx + 1)) || 1;
+    for (;;) { s = adv(s); const v = Math.floor(s / d); if (v <= mx) return [s, v]; }
+  }
+  function randInt(s, mx) {
+    if (mx === 1) { const [t, v] = internal(s, 1000); return [t, v >= 501 ? 1 : 0]; }
+    if (mx === 100) { const [t, v] = internal(s, 1009); return [t, Math.floor(v / 10)]; }
+    return internal(s, mx);
+  }
+
+  /* ---- coin pattern from shine taps ----
+   * taps: times (ms) at which the player saw a shine. Returns {pattern, gaps, worst} where pattern is a string of
+   * 'S' (shine) and '.' (normal spin), one character per coin draw from the first tapped shine to the last, and
+   * worst = the largest timing residual (frames) when snapping each gap to 48 + 24k. */
+  function patternFromTaps(taps) {
+    let pattern = 'S', worst = 0; const gaps = [];
+    for (let i = 1; i < taps.length; i++) {
+      const g = (taps[i] - taps[i - 1]) / FRAME_MS, k = Math.round((g - 48) / 24);
+      if (k < 0) return { error: 'two shines ' + g.toFixed(1) + ' frames apart (a shine loop is 48): extra tap?' };
+      worst = Math.max(worst, Math.abs(g - (48 + 24 * k))); gaps.push(k);
+      pattern += '.'.repeat(k) + 'S';
+    }
+    return { pattern, gaps, worst };
+  }
+  /* does seed s (value just before the first draw of pattern) reproduce it? */
+  function matches(s, pattern) {
+    for (let i = 0; i < pattern.length; i++) {
+      s = adv(s); const sh = s >= SHINE_MIN;
+      if (sh !== (pattern.charCodeAt(i) === 83)) return false;
+      s = sh ? step48(s) : step24(s);
+    }
+    return true;
+  }
+  /* brute force: all seeds in [lo, hi) that reproduce the pattern (seed = value before its first draw) */
+  function searchRange(pattern, lo, hi, cap) {
+    const out = []; const first = pattern.charCodeAt(0) === 83;
+    for (let x = lo; x < hi; x++) {
+      const s0 = x >>> 0, t = adv(s0);
+      if ((t >= SHINE_MIN) !== first) continue;                   // fast reject on the first draw
+      if (matches(s0, pattern)) { out.push(s0); if (out.length >= cap) break; }
+    }
+    return out;
+  }
+  /* faster brute force for patterns that start with a shine: iterate over the advanced seed t of the first draw
+   * (only the shine range [SHINE_MIN, 2^32) can match), check the rest, and invert to the seed before the draw.
+   * Covers t in [lo, hi) clipped to the shine range. */
+  const INV = (function () { let x = MUL; for (let i = 0; i < 5; i++) x = Math.imul(x, (2 - Math.imul(MUL, x)) >>> 0) >>> 0; return x; })();
+  const back = s => Math.imul((s - 1) >>> 0, INV) >>> 0;
+  function searchShineStart(pattern, lo, hi, cap) {
+    const out = []; lo = Math.max(lo, SHINE_MIN); hi = Math.min(hi, 4294967296);
+    for (let t = lo; t < hi; t++) {
+      let s = t >>> 0, ok = true;
+      s = step48(s);
+      for (let i = 1; i < pattern.length; i++) {
+        s = adv(s); const sh = s >= SHINE_MIN;
+        if (sh !== (pattern.charCodeAt(i) === 83)) { ok = false; break; }
+        s = sh ? step48(s) : step24(s);
+      }
+      if (ok) { out.push(back(t >>> 0)); if (out.length >= cap) break; }
+    }
+    return out;
+  }
+  /* state after the pattern: seed just before the next coin draw, and how many frames until it */
+  function afterPattern(s, pattern) {
+    let gap = 0;
+    for (let i = 0; i < pattern.length; i++) {
+      s = adv(s); const sh = s >= SHINE_MIN;
+      if (i < pattern.length - 1) s = sh ? step48(s) : step24(s); else gap = sh ? 48 : 24;
+    }
+    return { seedAfterLastDraw: s, framesToNextDraw: gap };
+  }
+  /* seed just before the LAST draw of the pattern */
+  function seedBeforeLastDraw(s, pattern) {
+    for (let i = 0; i < pattern.length - 1; i++) { s = adv(s); s = (s >= SHINE_MIN) ? step48(s) : step24(s); }
+    return s;
+  }
+  /* resync after a gap: from a known seed `from`, find every n in [0, nmax] such that adv^n(from) reproduces the new
+   * pattern (which starts at a tapped shine). Returns the matching n values (with their seeds). */
+  function resync(from, pattern, nmax, cap, nlo) {
+    const out = []; let s = from >>> 0; nlo = Math.max(0, nlo || 0);
+    for (let i = 0; i < nlo; i++) s = adv(s);
+    for (let n = nlo; n <= nmax; n++) {
+      if (matches(s, pattern)) { out.push({ n, seed: s }); if (out.length >= (cap || 16)) break; }
+      s = adv(s);
+    }
+    return out;
+  }
+
+  /* ---- Time Out ---- */
+  const EFFECTS = { 24: Array(72).fill(40000), 73: [].concat(...Array(40).fill([359, 10, 10])), 112: Array(72).fill(30000) };
+  const ROLL = 386;
+  /* seed: value just before frame t0's draws; nextCoin: frame of the next coin draw (>= t0); confirm: frame of the
+   * target-confirm A. Returns the Time Out roll (works if <= 30). */
+  function timeOutRoll(seed, nextCoin, confirm, t0) {
+    let s = seed >>> 0, nc = nextCoin;
+    for (let t = t0 || 0; t <= confirm + ROLL; t++) {
+      if (t === confirm + ROLL) return randInt(s, 100)[1];
+      const fx = EFFECTS[t - confirm];
+      if (fx) for (const mx of fx) s = randInt(s, mx)[0];
+      if (t === nc) { const r = randInt(s, 100); s = r[0]; nc = t + (r[1] >= 70 ? 48 : 24); }
+      s = adv(s);
+    }
+  }
+  /* frames (relative to frame 0 = a coin draw whose prior seed is seedBeforeDraw) where confirming works, for
+   * confirm frames from..to. Returns an array of booleans indexed from `from`. */
+  function timeOutTable(seedBeforeDraw, from, to) {
+    const out = [];
+    for (let c = from; c <= to; c++) out.push(timeOutRoll(seedBeforeDraw, 0, c, 0) <= 30);
+    return out;
+  }
+  /* the earliest run of at least minRun consecutive working confirm frames, starting no earlier than `from` */
+  function bestWindow(seedBeforeDraw, from, to, minRun) {
+    const tab = timeOutTable(seedBeforeDraw, from, to); let runStart = -1;
+    for (let i = 0; i <= tab.length; i++) {
+      if (i < tab.length && tab[i]) { if (runStart < 0) runStart = i; }
+      else if (runStart >= 0) { if (i - runStart >= minRun) return { start: from + runStart, end: from + i - 1, length: i - runStart }; runStart = -1; }
+    }
+    return null;
+  }
+
+  const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
+})(typeof self !== 'undefined' ? self : this);
+</script>
+<script>
+(function () {
+'use strict';
+const coreText = document.getElementById('core-src').textContent;
+const R = (new Function('self', coreText + '\nreturn self.PMRNG;'))({});
+const FRAME = R.FRAME_MS;
+const $ = id => document.getElementById(id);
+
+/* ---------- settings ---------- */
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch'];
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
+function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
+const num = k => parseFloat($('s-' + k).value) || 0;
+loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
+
+/* ---------- state ---------- */
+// segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
+const st = { segs: [{ taps: [] }], cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
+const seg = () => st.segs[st.segs.length - 1];
+
+/* ---------- audio ---------- */
+let ac = null;
+function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+function beepAt(perfMs, freq, dur) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + (perfMs - performance.now()) / 1000; if (t < a.currentTime) return;
+  const o = a.createOscillator(), g = a.createGain(); o.frequency.value = freq; o.type = 'square';
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  beeps.push(o);
+}
+let beeps = [];
+function cancelBeeps() { beeps.forEach(o => { try { o.stop(); } catch (e) {} }); beeps = []; }
+
+/* ---------- seed search in workers ---------- */
+let workers = [];
+function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
+function searchAll(pattern) {
+  stopWorkers(); st.searching = true;
+  const n = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 12));
+  const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
+  const src = coreText + `
+  self.onmessage = e => { const { pattern, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
+    for (let a = lo; a < hi; a += CH) { out.push(...R.searchShineStart(pattern, a, Math.min(hi, a + CH), 64)); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
+    self.postMessage({ done: out }); };`;
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  const prog = new Array(n).fill(0), total = 4294967296 - lo; let done = 0; const seeds = []; const t0 = performance.now();
+  return new Promise(res => {
+    for (let i = 0; i < n; i++) {
+      const w = new Worker(url); workers.push(w);
+      const a = lo + i * span, b = Math.min(4294967296, lo + (i + 1) * span);
+      w.onmessage = e => {
+        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText('Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
+        if (e.data.done) { seeds.push(...e.data.done); if (++done === n) { stopWorkers(); URL.revokeObjectURL(url); st.searching = false; res(seeds); } }
+      };
+      w.postMessage({ pattern, lo: a, hi: b });
+    }
+  });
+}
+
+/* ---------- logic ---------- */
+const BITS_S = -Math.log2(310 / 1010), BITS_N = -Math.log2(700 / 1010);
+function bits(pattern) { let b = 0; for (const c of pattern) b += c === 'S' ? BITS_S : BITS_N; return b; }
+function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '' }; }
+// draw frames of each tapped shine, relative to the first tapped draw of the pattern
+function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
+function lastLockedState() {
+  // seed after the last draw of the most recent locked segment, and that draw's time estimate
+  const L = st.lock; if (!L) return null;
+  const p = pat(st.segs[L.seg].taps).pattern; const a = R.afterPattern(L.seed, p);
+  return { seedAfter: a.seedAfterLastDraw, lastTap: st.segs[L.seg].taps[st.segs[L.seg].taps.length - 1] };
+}
+function evaluate() {
+  const s = seg(), P = pat(s.taps); st.msg = null; st.plan = null;
+  if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
+  if (st.segs.length === 1 || !st.prevLock) {
+    // first segment: filter existing candidates as taps come in
+    if (st.cands) {
+      st.cands = st.cands.filter(x => R.matches(x, P.pattern));
+      st.need = 32 + 6; st.have = bits(P.pattern);
+      if (st.cands.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
+      else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
+      else st.lock = null;
+    }
+  } else if (s.taps.length >= 1) {
+    // later segment: search steps from the previous lock, bounded by the elapsed time
+    const prev = st.prevLock;
+    let win = 1;
+    const tryResync = () => { const E = (s.taps[0] - prev.lastTap) / FRAME, lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range'); win = hi - lo + 1;
+      return R.resync(prev.seedAfter, pat(s.taps).pattern, hi, 32, lo); };
+    let m = tryResync();
+    while (!m.length && s.auto && s.taps.length > 1) { s.taps.shift(); m = tryResync(); }
+    st.cands = m.map(x => x.seed); st.need = Math.log2(win) + 7; st.have = bits(pat(s.taps).pattern);
+    if (m.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
+    else { st.lock = null; if (!m.length) st.msg = 'No position in the expected range fits these taps. Undo a mis-tap, or raise the resync range in settings.'; }
+  }
+  render();
+}
+// game-clock estimate for the locked segment: perf time of frame 0 (first tapped draw)
+function updateClock() {
+  const L = st.lock; const taps = st.segs[L.seg].taps; const p = pat(taps).pattern; const f = shineFrames(p);
+  let sum = 0; for (let i = 0; i < taps.length; i++) sum += taps[i] - f[i] * FRAME;
+  const auto = st.segs[L.seg].auto;                               // the shine shows 6 frames after the draw
+  const latency = 6 * FRAME + (auto ? num('vlag') : num('react') + num('lag'));
+  st.clock = { t0: sum / taps.length - latency, pattern: p, seed: L.seed, frames: f };
+  st.example = false;
+}
+function makePlan() {
+  if (!st.lock) return;
+  const C = st.clock; const lastF = C.frames[C.frames.length - 1];
+  const seedBL = R.seedBeforeLastDraw(C.seed, C.pattern);         // frame 0 of the plan = the last tapped shine's draw
+  const tLast = C.t0 + lastF * FRAME, nowF = (performance.now() - tLast) / FRAME;
+  const from = Math.ceil(nowF + num('lead') * 30 + 1), to = from + 1800;
+  let w = null, minRun = Math.max(1, Math.round(num('min')));
+  for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k);
+  if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
+  const target = w.start + Math.floor((w.length - 1) / 2);
+  const tPress = tLast + (target - 0.5 + num('off')) * FRAME;     // middle of the target frame's input window
+  const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
+  cancelBeeps();
+  st.plan = { w, target, tPress, tLast, seedBL, from, to, first, tab: R.timeOutTable(seedBL, first, last) };
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
+  for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  render();
+}
+
+/* ---------- input ---------- */
+function addShine(t, auto) {
+  const s = seg();
+  if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
+    const g = (t - s.taps[s.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
+    if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(6, 0.045 * g)) { V.rejected = (V.rejected || 0) + 1; return; }
+  }
+  if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matches(st.lock.seed, pat(s.taps.concat([t])).pattern)) {
+    newSegment(); seg().taps.push(t); seg().auto = true; evaluate(); return;      // unseen gap (an action drew numbers)
+  }
+  s.taps.push(t); s.auto = !!auto; st.example = false; evaluate();
+  if (auto) autoAfterShine();
+}
+function tap() {
+  audio(); addShine(performance.now(), false);
+  const b = $('shine'); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 90);
+}
+function undo() { seg().taps.pop(); evaluate(); }
+function newSegment() {
+  if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
+  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.plan = null; render();
+}
+async function find() {
+  if (st.searching) return;
+  const P = pat(seg().taps);
+  if (st.segs.length > 1 && st.prevLock) { evaluate(); return; }
+  if (P.error || seg().taps.length < 4) { st.msg = P.error || 'Tap at least 4 shines first (about 13 for a unique seed).'; render(); return; }
+  st.lock = null; st.cands = null; render();
+  st.cands = await searchAll(P.pattern);
+  evaluate();
+}
+function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, example: true }); render(); }
+$('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
+$('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.repeat) return;
+  if (e.code === 'Space') { e.preventDefault(); tap(); }
+  else if (e.key === 'f' || e.key === 'F') find();
+  else if (e.key === 'n' || e.key === 'N') newSegment();
+  else if (e.key === 'p' || e.key === 'P') makePlan();
+  else if (e.key === 'Backspace') { e.preventDefault(); undo(); }
+});
+
+/* ---------- rendering ---------- */
+function setText(h, d) { $('headline').textContent = h; $('detail').textContent = d; }
+function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
+function render() {
+  const s = seg(), P = pat(s.taps), nSh = s.taps.length;
+  const segLabel = st.segs.length > 1 ? 'Segment ' + st.segs.length + ': ' : '';
+  $('plan').disabled = !st.lock;
+  chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
+  if (st.searching) {}
+  else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
+  else if (st.plan) setText('Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
+  else if (st.lock) setText(segLabel + 'Locked', 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Keep tapping if you can; any mismatch will show here. Press Plan Time Out once the hand is on Bowser.');
+  else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
+  else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
+  else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
+  else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
+    nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
+  // spins
+  $('spins').innerHTML = P.pattern ? P.pattern.split('').map(c => c === 'S' ? '<b>S</b>' : '·').join('') : '–';
+  $('count').hidden = !st.plan;
+  drawStrip();
+}
+
+/* strip: the next ~12 s of confirm frames */
+const EXAMPLE = { seed: 0x12345678 };
+function stripData() {
+  if (st.plan) return { tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, w: st.plan.w };
+  if (st.lock && st.clock) {
+    const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * FRAME;
+    const nowF = Math.floor((performance.now() - tLast) / FRAME);
+    const key = seedBL + ':' + Math.floor(nowF / 120);
+    if (stripData.key !== key) { stripData.key = key; stripData.cache = { tab: R.timeOutTable(seedBL, nowF, nowF + 479), first: nowF, tLast, w: null }; }
+    return stripData.cache;
+  }
+  if (!stripData.ex) stripData.ex = { tab: R.timeOutTable(EXAMPLE.seed, 0, 359), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, 3) };
+  return stripData.ex;
+}
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function drawStrip() {
+  const cv = $('strip'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = 86; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const d = stripData(), N = Math.max(360, d.tab.length), cw = W / N;
+  const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
+  for (let i = 0; i < N && i < d.tab.length; i++) { ctx.fillStyle = d.tab[i] ? good : bad; ctx.fillRect(i * cw, 18, Math.max(1, cw - 0.2), 40); }
+  if (d.w) { const x = (d.w.start - d.first) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw, 6); ctx.fillRect(x, 60, d.w.length * cw, 6); }
+  ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
+  const secs = Math.floor(N / 30);
+  for (let s = 0; s <= secs; s += 2) { const x = s * 30 * cw, lab = (s ? '+' : '') + s + ' s', tw = ctx.measureText(lab).width; ctx.fillRect(Math.min(x, W - 1), 70, 1, 4); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 84); }
+  let note = 'Example seed 0x12345678, marked as an example. Your own frames appear once the seed is locked.';
+  if (d.tLast !== null) {
+    const nowF = (performance.now() - d.tLast) / FRAME, x = (nowF - d.first) * cw;
+    if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 2, 66); }
+    note = st.plan ? 'Gold bars mark the window. The dark line is now.' : 'Live: green frames would work if you confirmed on them. The dark line is now.';
+  }
+  $('stripnote').textContent = note;
+  if (st.plan) {
+    const left = (st.plan.tPress - performance.now()) / 1000;
+    $('count').innerHTML = (left > 0 ? left.toFixed(1) : '0.0') + '<small> s to press</small>';
+  }
+}
+/* calibration beeps on predicted shines */
+let calNext = 0;
+function calibrate() {
+  if (!$('s-cal').checked || !st.lock || !st.clock) return;
+  const C = st.clock, now = performance.now();
+  // walk the coin forward from the first tapped draw and beep at each predicted shine for the next 2 s
+  let s = C.seed, f = 0;
+  const horizon = (now - C.t0) / FRAME + 60;
+  while (f < horizon) {
+    s = R.adv(s); const sh = s >= R.SHINE_MIN;
+    if (sh) { const t = C.t0 + (f + 6) * FRAME + num('lag'); if (t > now && t > calNext && t < now + 2000) { beepAt(t, 1040, 0.05); calNext = t; } }
+    if (sh) { for (let i = 0; i < 48; i++) s = R.adv(s); f += 48; } else { for (let i = 0; i < 24; i++) s = R.adv(s); f += 24; }
+  }
+}
+function loop() { drawStrip(); calibrate(); requestAnimationFrame(loop); }
+
+/* ---------- automatic mode: read the coin from the OBS Virtual Camera ---------- */
+const V = { stream: null, video: document.createElement('video'), small: document.createElement('canvas'), draw: 'coin',
+  boxes: { coin: { x: 0.795, y: 0.005, w: 0.055, h: 0.09 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } },
+  present: false, absentSince: 0, wasGone: false, inShine: false, lastOnset: -1e9, below: 0, shines: 0,
+  winMax: 0, winStart: 0, peaks: [], shinePeaks: [], ref: null, score: 0, matchSince: 0, lostSince: 0,
+  frames: 0, fpsT: performance.now(), fps: 0 };
+V.video.muted = true; V.video.playsInline = true; V.small.width = 32; V.small.height = 32;
+const sctx = V.small.getContext('2d', { willReadFrequently: true });
+try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b) V.boxes = b; const r = JSON.parse(localStorage.getItem('tot-ref') || 'null'); if (r) V.ref = r; } catch (e) {}
+function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} }
+function camMsg(t) { $('cam-msg').textContent = t; }
+async function listCams() {
+  try {
+    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); const sel = $('cam-sel'), cur = sel.value;
+    sel.innerHTML = '<option value="">Default camera</option>' + ds.map(d => '<option value="' + d.deviceId + '">' + (d.label || 'Camera').replace(/</g, '&lt;') + '</option>').join('');
+    const obs = ds.find(d => /obs/i.test(d.label)); sel.value = cur || (obs ? obs.deviceId : '');
+  } catch (e) {}
+}
+async function startCam() {
+  audio();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg('This browser view has no camera access. Use Save for OBS mode, then open the saved file in Chrome.'); return; }
+  try {
+    const id = $('cam-sel').value;
+    V.stream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ frameRate: { ideal: 60 } }, id ? { deviceId: { exact: id } } : {}) });
+  } catch (e) { camMsg('Camera blocked (' + (e.name || 'error') + '). Inside claude.ai this is expected: use Save for OBS mode and open the file in Chrome.'); return; }
+  V.video.srcObject = V.stream; await V.video.play().catch(() => {});
+  $('cam-start').disabled = true; $('cam-stop').disabled = false; $('cap-target').disabled = false;
+  camMsg('Watching. Drag the boxes on the preview if they are not on the coin and the target name.');
+  listCams(); schedule();
+}
+function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); V.stream = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
+function schedule() {
+  if (!V.stream) return;
+  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { onFrame(meta.captureTime || meta.expectedDisplayTime || now); schedule(); });
+  else requestAnimationFrame(() => { onFrame(performance.now()); schedule(); });
+}
+function region(b) { const w = V.video.videoWidth, h = V.video.videoHeight; return [b.x * w, b.y * h, Math.max(1, b.w * w), Math.max(1, b.h * h)]; }
+function sample(b, ow, oh) { sctx.drawImage(V.video, ...region(b), 0, 0, ow, oh); return sctx.getImageData(0, 0, ow, oh).data; }
+function median(a) { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; }
+function threshold() {
+  const manual = num('wthr'); if (manual > 0) return manual;
+  const normal = median(V.peaks.slice(-30)), shine = median(V.shinePeaks.slice(-10));
+  if (V.shinePeaks.length >= 2 && shine > normal * 1.5) return (normal + shine) / 2;
+  return Math.max(0.02, normal * 2.5 + 0.005);
+}
+function onFrame(t) {
+  if (!V.video.videoWidth) return;
+  V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
+  // coin box: gold fraction (is the coin there?) and white fraction (the shine flash)
+  const d = sample(V.boxes.coin, 32, 32); let gold = 0, white = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (r > 200 && g > 200 && b > 190) white++;
+    else if (r > 140 && g > 95 && b < 120 && r > b + 60) gold++;
+  }
+  gold /= 1024; white /= 1024;
+  const present = gold + white > 0.3;
+  if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
+  else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(); } }
+  V.present = present;
+  const steady = present && !V.wasGone && V.presentSince && t - V.presentSince > 1000;   // shines count only on a steady coin
+  // per-loop maxima of the flash level, for the automatic threshold
+  if (t - V.winStart > 24 * FRAME) { if (present && !V.inShine) V.peaks.push(V.winMax); if (V.peaks.length > 60) V.peaks.shift(); V.winMax = 0; V.winStart = t; }
+  if (present) V.winMax = Math.max(V.winMax, white);
+  const thr = threshold();
+  if (steady && !V.inShine && white > thr && t - V.lastOnset > 40 * FRAME) {
+    V.inShine = true; V.lastOnset = t; V.below = 0; V.curPeak = white; V.shines++;
+    (V.hist = V.hist || []).push(t); addShine(t, true);
+  } else if (V.inShine) {
+    V.curPeak = Math.max(V.curPeak, white);
+    if (white < thr * 0.6) { if (++V.below >= 3) { V.inShine = false; V.shinePeaks.push(V.curPeak); if (V.shinePeaks.length > 20) V.shinePeaks.shift(); } } else V.below = 0;
+  }
+  // target screen
+  if (V.ref) {
+    const g = sample(V.boxes.target, 24, 16); let diff = 0;
+    for (let i = 0, j = 0; i < g.length; i += 4, j++) diff += Math.abs((g[i] + g[i + 1] + g[i + 2]) / 3 - V.ref[j]);
+    V.score = 1 - diff / (24 * 16 * 255);
+    const on = V.score >= num('tmatch');
+    if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
+    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
+  }
+  // readouts and preview (throttled)
+  if (V.frames % 2 === 0) {
+    $('r-coin').textContent = present ? 'visible' : 'hidden';
+    $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';
+    $('r-shines').textContent = V.shines;
+    $('r-target').textContent = V.ref ? (V.score * 100).toFixed(0) + '% match' + (V.score >= num('tmatch') ? ' (on target screen)' : '') : 'no reference saved';
+    $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + V.video.videoWidth + '×' + V.video.videoHeight;
+    drawPreview();
+  }
+}
+function drawPreview() {
+  const cv = $('preview'), c = cv.getContext('2d'); c.drawImage(V.video, 0, 0, cv.width, cv.height);
+  const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
+  box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+}
+// drag on the preview to set the selected box
+(function () {
+  const cv = $('preview'); let p0 = null;
+  const pt = e => { const r = cv.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
+  cv.addEventListener('pointerdown', e => { p0 = pt(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!p0) return; const q = pt(e); V.boxes[V.draw] = { x: Math.min(p0.x, q.x), y: Math.min(p0.y, q.y), w: Math.max(0.01, Math.abs(q.x - p0.x)), h: Math.max(0.01, Math.abs(q.y - p0.y)) }; if (!V.stream) drawIdlePreview(); });
+  cv.addEventListener('pointerup', () => { if (p0) { p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = []; } });
+})();
+function drawIdlePreview() {
+  const cv = $('preview'), c = cv.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = '#9aa'; c.font = '16px ' + css('--body'); c.fillText('Camera preview appears here', 20, 40);
+  const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
+  box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+}
+function setDraw(k) { V.draw = k; $('draw-coin').setAttribute('aria-pressed', k === 'coin'); $('draw-target').setAttribute('aria-pressed', k === 'target'); }
+$('draw-coin').onclick = () => setDraw('coin'); $('draw-target').onclick = () => setDraw('target');
+$('cap-target').onclick = () => {
+  if (!V.stream) return; const g = sample(V.boxes.target, 24, 16); const ref = [];
+  for (let i = 0; i < g.length; i += 4) ref.push((g[i] + g[i + 1] + g[i + 2]) / 3);
+  V.ref = ref; try { localStorage.setItem('tot-ref', JSON.stringify(ref)); } catch (e) {}
+  camMsg('Target screen saved. The page will plan and beep whenever it sees this screen with a locked seed.');
+};
+$('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
+// segments follow the coin: when it comes back after being hidden, the gap is a new segment
+function coinBack() {
+  if (!seg().taps.length) return;
+  if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
+  // not locked: this segment's shines can't continue across the gap; start it over
+  seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = null; render();
+}
+function autoAfterShine() {
+  if (st.segs.length === 1 && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
+  if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
+}
+function autoPlan() {
+  if (!st.lock || st.searching) return;
+  if (st.plan && performance.now() < st.plan.tPress + 600) return;
+  makePlan();
+}
+// claude.ai: offer the page as a file, since the camera only works outside the claude.ai frame
+(async function () {
+  const src = document.getElementById('standalone'); if (!src || !window.claude || !window.claude.use) return;
+  const dl = await window.claude.use('downloads'); if (!dl) return;
+  const btn = $('save-standalone'); btn.hidden = false;
+  btn.onclick = async () => {
+    try { const html = new TextDecoder().decode(Uint8Array.from(atob(src.textContent.trim()), c => c.charCodeAt(0))); await dl.save({ filename: 'time-out-timer.html', data: html }); camMsg('Saved. Open time-out-timer.html in Chrome or Edge, then press Start watching.'); }
+    catch (e) { if (e && e.code !== 'declined') camMsg('Could not save the file (' + (e && e.code || 'error') + ').'); }
+  };
+})();
+drawIdlePreview();
+render(); requestAnimationFrame(loop);
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam };   // for testing
+})();
+</script>

@@ -67,6 +67,18 @@ ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 7
 ol.steps b { font-weight: 600; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .note { font-size: .84rem; color: var(--muted); max-width: 70ch; margin: 0; }
+.cam { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 700px) { .cam { grid-template-columns: minmax(0, 1fr); } }
+#preview { width: 100%; height: auto; aspect-ratio: 4 / 3; max-width: 100%; background: #000; border-radius: 6px; cursor: crosshair; touch-action: none; }
+.read { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-family: var(--mono); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.read dt { color: var(--muted); } .read dd { margin: 0; }
+.meter { height: 8px; border-radius: 4px; background: var(--bad); overflow: hidden; position: relative; }
+.meter > i { position: absolute; inset: 0 auto 0 0; background: var(--gold); }
+.meter > b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--gold-soft); }
+.box-coin { color: var(--gold); } .box-target { color: #3d7bd9; }
 details summary { cursor: pointer; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 details[open] summary { margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) { #shine.flash { transition: none; } }
@@ -77,6 +89,40 @@ details[open] summary { margin-bottom: 10px; }
     <h1>Time Out <span>Timer</span></h1>
     <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100)</div>
   </header>
+
+  <section class="panel" id="auto">
+    <h2>Watch the game automatically (OBS Virtual Camera)</h2>
+    <div class="cam">
+      <div style="display:grid; gap:8px; min-width:0">
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin and target boxes"></canvas>
+        <div class="row">
+          <span class="seg" role="group" aria-label="Box to draw">
+            <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
+            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> Draw target box</button>
+          </span>
+          <button class="b" id="cap-target" disabled>Save target screen</button>
+        </div>
+      </div>
+      <div style="display:grid; gap:10px; min-width:0">
+        <div class="row">
+          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="">Default camera</option></select></label>
+        </div>
+        <div class="row">
+          <button class="b primary" id="cam-start">Start watching</button>
+          <button class="b" id="cam-stop" disabled>Stop</button>
+          <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
+        </div>
+        <p class="note" id="cam-msg">Opens the OBS Virtual Camera. Camera access works when this page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
+        <dl class="read">
+          <dt>Coin</dt><dd id="r-coin">–</dd>
+          <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
+          <dt>Shines seen</dt><dd id="r-shines">0</dd>
+          <dt>Target screen</dt><dd id="r-target">no reference saved</dd>
+          <dt>Video frames</dt><dd id="r-fps">–</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
@@ -128,7 +174,10 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
-        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="500" value="6000"></label>
+        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
+        <label class="f">Video lag, capture to page (ms)<input id="s-vlag" type="number" step="5" value="50"></label>
+        <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
+        <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
@@ -137,7 +186,13 @@ details[open] summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel">
-    <h2>In the run</h2>
+    <h2>In the run (automatic)</h2>
+    <ol class="steps">
+      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome. In OBS, start Virtual Camera. Here, pick it as the video source and press Start watching. Drag the gold box around the status-bar coin. Go to Time Out's target screen (hand on Bowser), drag the blue box over the name label above Bowser, and press Save target screen.</li>
+      <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
+      <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
+    </ol>
+    <h2 style="margin-top:16px">Without a camera (tapping)</h2>
     <ol class="steps">
       <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
       <li><b>Gap.</b> Before leaving to do something else (turn 1, the hallway door), you can stop tapping. When the coin is in view again, press New segment, then tap again. A few shines resync it; the page shows when it is locked.</li>
@@ -158,7 +213,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -178,7 +233,10 @@ function beepAt(perfMs, freq, dur) {
   const o = a.createOscillator(), g = a.createGain(); o.frequency.value = freq; o.type = 'square';
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  beeps.push(o);
 }
+let beeps = [];
+function cancelBeeps() { beeps.forEach(o => { try { o.stop(); } catch (e) {} }); beeps = []; }
 
 /* ---------- seed search in workers ---------- */
 let workers = [];
@@ -207,6 +265,8 @@ function searchAll(pattern) {
 }
 
 /* ---------- logic ---------- */
+const BITS_S = -Math.log2(310 / 1010), BITS_N = -Math.log2(700 / 1010);
+function bits(pattern) { let b = 0; for (const c of pattern) b += c === 'S' ? BITS_S : BITS_N; return b; }
 function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '' }; }
 // draw frames of each tapped shine, relative to the first tapped draw of the pattern
 function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
@@ -223,17 +283,21 @@ function evaluate() {
     // first segment: filter existing candidates as taps come in
     if (st.cands) {
       st.cands = st.cands.filter(x => R.matches(x, P.pattern));
-      if (st.cands.length === 1) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
+      st.need = 32 + 6; st.have = bits(P.pattern);
+      if (st.cands.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
     }
   } else if (s.taps.length >= 1) {
     // later segment: search steps from the previous lock, bounded by the elapsed time
-    const prev = st.prevLock; const E = (s.taps[0] - prev.lastTap) / FRAME;
-    const lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range');
-    const m = R.resync(prev.seedAfter, P.pattern, hi, 32, lo);
-    st.cands = m.map(x => x.seed);
-    if (m.length === 1) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
+    const prev = st.prevLock;
+    let win = 1;
+    const tryResync = () => { const E = (s.taps[0] - prev.lastTap) / FRAME, lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range'); win = hi - lo + 1;
+      return R.resync(prev.seedAfter, pat(s.taps).pattern, hi, 32, lo); };
+    let m = tryResync();
+    while (!m.length && s.auto && s.taps.length > 1) { s.taps.shift(); m = tryResync(); }
+    st.cands = m.map(x => x.seed); st.need = Math.log2(win) + 7; st.have = bits(pat(s.taps).pattern);
+    if (m.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
     else { st.lock = null; if (!m.length) st.msg = 'No position in the expected range fits these taps. Undo a mis-tap, or raise the resync range in settings.'; }
   }
   render();
@@ -242,7 +306,8 @@ function evaluate() {
 function updateClock() {
   const L = st.lock; const taps = st.segs[L.seg].taps; const p = pat(taps).pattern; const f = shineFrames(p);
   let sum = 0; for (let i = 0; i < taps.length; i++) sum += taps[i] - f[i] * FRAME;
-  const latency = 6 * FRAME + num('react') + num('lag');          // the shine shows ~6 frames after the draw
+  const auto = st.segs[L.seg].auto;                               // the shine shows 6 frames after the draw
+  const latency = 6 * FRAME + (auto ? num('vlag') : num('react') + num('lag'));
   st.clock = { t0: sum / taps.length - latency, pattern: p, seed: L.seed, frames: f };
   st.example = false;
 }
@@ -258,6 +323,7 @@ function makePlan() {
   const target = w.start + Math.floor((w.length - 1) / 2);
   const tPress = tLast + (target - 0.5 + num('off')) * FRAME;     // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
+  cancelBeeps();
   st.plan = { w, target, tPress, tLast, seedBL, from, to, first, tab: R.timeOutTable(seedBL, first, last) };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
@@ -265,10 +331,21 @@ function makePlan() {
 }
 
 /* ---------- input ---------- */
+function addShine(t, auto) {
+  const s = seg();
+  if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
+    const g = (t - s.taps[s.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
+    if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(6, 0.045 * g)) { V.rejected = (V.rejected || 0) + 1; return; }
+  }
+  if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matches(st.lock.seed, pat(s.taps.concat([t])).pattern)) {
+    newSegment(); seg().taps.push(t); seg().auto = true; evaluate(); return;      // unseen gap (an action drew numbers)
+  }
+  s.taps.push(t); s.auto = !!auto; st.example = false; evaluate();
+  if (auto) autoAfterShine();
+}
 function tap() {
-  audio(); const t = performance.now(); seg().taps.push(t);
+  audio(); addShine(performance.now(), false);
   const b = $('shine'); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 90);
-  st.example = false; evaluate();
 }
 function undo() { seg().taps.pop(); evaluate(); }
 function newSegment() {
@@ -284,7 +361,8 @@ async function find() {
   st.cands = await searchAll(P.pattern);
   evaluate();
 }
-function reset() { stopWorkers(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, example: true }); render(); }
+function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -308,7 +386,8 @@ function render() {
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
   else if (st.plan) setText('Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked', 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Keep tapping if you can; any mismatch will show here. Press Plan Time Out once the hand is on Bowser.');
-  else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep tapping shines. Each one filters instantly.');
+  else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
+  else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
   else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
     nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
@@ -371,7 +450,154 @@ function calibrate() {
   }
 }
 function loop() { drawStrip(); calibrate(); requestAnimationFrame(loop); }
+
+/* ---------- automatic mode: read the coin from the OBS Virtual Camera ---------- */
+const V = { stream: null, video: document.createElement('video'), small: document.createElement('canvas'), draw: 'coin',
+  boxes: { coin: { x: 0.795, y: 0.005, w: 0.055, h: 0.09 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } },
+  present: false, absentSince: 0, wasGone: false, inShine: false, lastOnset: -1e9, below: 0, shines: 0,
+  winMax: 0, winStart: 0, peaks: [], shinePeaks: [], ref: null, score: 0, matchSince: 0, lostSince: 0,
+  frames: 0, fpsT: performance.now(), fps: 0 };
+V.video.muted = true; V.video.playsInline = true; V.small.width = 32; V.small.height = 32;
+const sctx = V.small.getContext('2d', { willReadFrequently: true });
+try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b) V.boxes = b; const r = JSON.parse(localStorage.getItem('tot-ref') || 'null'); if (r) V.ref = r; } catch (e) {}
+function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} }
+function camMsg(t) { $('cam-msg').textContent = t; }
+async function listCams() {
+  try {
+    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); const sel = $('cam-sel'), cur = sel.value;
+    sel.innerHTML = '<option value="">Default camera</option>' + ds.map(d => '<option value="' + d.deviceId + '">' + (d.label || 'Camera').replace(/</g, '&lt;') + '</option>').join('');
+    const obs = ds.find(d => /obs/i.test(d.label)); sel.value = cur || (obs ? obs.deviceId : '');
+  } catch (e) {}
+}
+async function startCam() {
+  audio();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg('This browser view has no camera access. Use Save for OBS mode, then open the saved file in Chrome.'); return; }
+  try {
+    const id = $('cam-sel').value;
+    V.stream = await navigator.mediaDevices.getUserMedia({ video: Object.assign({ frameRate: { ideal: 60 } }, id ? { deviceId: { exact: id } } : {}) });
+  } catch (e) { camMsg('Camera blocked (' + (e.name || 'error') + '). Inside claude.ai this is expected: use Save for OBS mode and open the file in Chrome.'); return; }
+  V.video.srcObject = V.stream; await V.video.play().catch(() => {});
+  $('cam-start').disabled = true; $('cam-stop').disabled = false; $('cap-target').disabled = false;
+  camMsg('Watching. Drag the boxes on the preview if they are not on the coin and the target name.');
+  listCams(); schedule();
+}
+function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); V.stream = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
+function schedule() {
+  if (!V.stream) return;
+  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { onFrame(meta.captureTime || meta.expectedDisplayTime || now); schedule(); });
+  else requestAnimationFrame(() => { onFrame(performance.now()); schedule(); });
+}
+function region(b) { const w = V.video.videoWidth, h = V.video.videoHeight; return [b.x * w, b.y * h, Math.max(1, b.w * w), Math.max(1, b.h * h)]; }
+function sample(b, ow, oh) { sctx.drawImage(V.video, ...region(b), 0, 0, ow, oh); return sctx.getImageData(0, 0, ow, oh).data; }
+function median(a) { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; }
+function threshold() {
+  const manual = num('wthr'); if (manual > 0) return manual;
+  const normal = median(V.peaks.slice(-30)), shine = median(V.shinePeaks.slice(-10));
+  if (V.shinePeaks.length >= 2 && shine > normal * 1.5) return (normal + shine) / 2;
+  return Math.max(0.02, normal * 2.5 + 0.005);
+}
+function onFrame(t) {
+  if (!V.video.videoWidth) return;
+  V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
+  // coin box: gold fraction (is the coin there?) and white fraction (the shine flash)
+  const d = sample(V.boxes.coin, 32, 32); let gold = 0, white = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (r > 200 && g > 200 && b > 190) white++;
+    else if (r > 140 && g > 95 && b < 120 && r > b + 60) gold++;
+  }
+  gold /= 1024; white /= 1024;
+  const present = gold + white > 0.3;
+  if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
+  else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(); } }
+  V.present = present;
+  const steady = present && !V.wasGone && V.presentSince && t - V.presentSince > 1000;   // shines count only on a steady coin
+  // per-loop maxima of the flash level, for the automatic threshold
+  if (t - V.winStart > 24 * FRAME) { if (present && !V.inShine) V.peaks.push(V.winMax); if (V.peaks.length > 60) V.peaks.shift(); V.winMax = 0; V.winStart = t; }
+  if (present) V.winMax = Math.max(V.winMax, white);
+  const thr = threshold();
+  if (steady && !V.inShine && white > thr && t - V.lastOnset > 40 * FRAME) {
+    V.inShine = true; V.lastOnset = t; V.below = 0; V.curPeak = white; V.shines++;
+    (V.hist = V.hist || []).push(t); addShine(t, true);
+  } else if (V.inShine) {
+    V.curPeak = Math.max(V.curPeak, white);
+    if (white < thr * 0.6) { if (++V.below >= 3) { V.inShine = false; V.shinePeaks.push(V.curPeak); if (V.shinePeaks.length > 20) V.shinePeaks.shift(); } } else V.below = 0;
+  }
+  // target screen
+  if (V.ref) {
+    const g = sample(V.boxes.target, 24, 16); let diff = 0;
+    for (let i = 0, j = 0; i < g.length; i += 4, j++) diff += Math.abs((g[i] + g[i + 1] + g[i + 2]) / 3 - V.ref[j]);
+    V.score = 1 - diff / (24 * 16 * 255);
+    const on = V.score >= num('tmatch');
+    if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
+    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
+  }
+  // readouts and preview (throttled)
+  if (V.frames % 2 === 0) {
+    $('r-coin').textContent = present ? 'visible' : 'hidden';
+    $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';
+    $('r-shines').textContent = V.shines;
+    $('r-target').textContent = V.ref ? (V.score * 100).toFixed(0) + '% match' + (V.score >= num('tmatch') ? ' (on target screen)' : '') : 'no reference saved';
+    $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + V.video.videoWidth + '×' + V.video.videoHeight;
+    drawPreview();
+  }
+}
+function drawPreview() {
+  const cv = $('preview'), c = cv.getContext('2d'); c.drawImage(V.video, 0, 0, cv.width, cv.height);
+  const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
+  box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+}
+// drag on the preview to set the selected box
+(function () {
+  const cv = $('preview'); let p0 = null;
+  const pt = e => { const r = cv.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
+  cv.addEventListener('pointerdown', e => { p0 = pt(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!p0) return; const q = pt(e); V.boxes[V.draw] = { x: Math.min(p0.x, q.x), y: Math.min(p0.y, q.y), w: Math.max(0.01, Math.abs(q.x - p0.x)), h: Math.max(0.01, Math.abs(q.y - p0.y)) }; if (!V.stream) drawIdlePreview(); });
+  cv.addEventListener('pointerup', () => { if (p0) { p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = []; } });
+})();
+function drawIdlePreview() {
+  const cv = $('preview'), c = cv.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = '#9aa'; c.font = '16px ' + css('--body'); c.fillText('Camera preview appears here', 20, 40);
+  const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
+  box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+}
+function setDraw(k) { V.draw = k; $('draw-coin').setAttribute('aria-pressed', k === 'coin'); $('draw-target').setAttribute('aria-pressed', k === 'target'); }
+$('draw-coin').onclick = () => setDraw('coin'); $('draw-target').onclick = () => setDraw('target');
+$('cap-target').onclick = () => {
+  if (!V.stream) return; const g = sample(V.boxes.target, 24, 16); const ref = [];
+  for (let i = 0; i < g.length; i += 4) ref.push((g[i] + g[i + 1] + g[i + 2]) / 3);
+  V.ref = ref; try { localStorage.setItem('tot-ref', JSON.stringify(ref)); } catch (e) {}
+  camMsg('Target screen saved. The page will plan and beep whenever it sees this screen with a locked seed.');
+};
+$('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
+// segments follow the coin: when it comes back after being hidden, the gap is a new segment
+function coinBack() {
+  if (!seg().taps.length) return;
+  if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
+  // not locked: this segment's shines can't continue across the gap; start it over
+  seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = null; render();
+}
+function autoAfterShine() {
+  if (st.segs.length === 1 && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
+  if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
+}
+function autoPlan() {
+  if (!st.lock || st.searching) return;
+  if (st.plan && performance.now() < st.plan.tPress + 600) return;
+  makePlan();
+}
+// claude.ai: offer the page as a file, since the camera only works outside the claude.ai frame
+(async function () {
+  const src = document.getElementById('standalone'); if (!src || !window.claude || !window.claude.use) return;
+  const dl = await window.claude.use('downloads'); if (!dl) return;
+  const btn = $('save-standalone'); btn.hidden = false;
+  btn.onclick = async () => {
+    try { const html = new TextDecoder().decode(Uint8Array.from(atob(src.textContent.trim()), c => c.charCodeAt(0))); await dl.save({ filename: 'time-out-timer.html', data: html }); camMsg('Saved. Open time-out-timer.html in Chrome or Edge, then press Start watching.'); }
+    catch (e) { if (e && e.code !== 'declined') camMsg('Could not save the file (' + (e && e.code || 'error') + ').'); }
+  };
+})();
+drawIdlePreview();
 render(); requestAnimationFrame(loop);
-window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap };   // for testing
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam };   // for testing
 })();
 </script>
