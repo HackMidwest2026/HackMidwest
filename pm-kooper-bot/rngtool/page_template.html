@@ -130,7 +130,7 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel stage" aria-live="polite">
     <div class="status">
       <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
-      <h2 style="margin:0">Endgame route <span class="note" style="font-weight:400; text-transform:none; letter-spacing:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a step to jump there</span></h2>
+      <h2 style="margin:0">Endgame route <span class="note" style="font-weight:400; text-transform:none; letter-spacing:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</span></h2>
       <div id="route" hidden style="display:grid; gap:6px"><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
@@ -252,28 +252,29 @@ const JR = [
   { t: 'Jr T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'Jr T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'Jr T5', label: 'Super Charge', cat: 'M' }, { t: 'Jr T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
   { t: 'Jr T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'Jr T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K', optional: true } ];
-// The endgame route as played (headers and plain lines are shown but not tracked; steps with cat are target screens).
+// The endgame route exactly as the runner wrote it. Each turn's text is shown as written; its steps are the target
+// screens the page watches (cat), with the planned presses (prof) starred. optional = may not happen.
 const ENDGAME = [
-  { h: 'Duplighosts' },
-  { info: 'T1 Mario: Strategies → do nothing' },
-  { t: 'T1', label: 'Bombette: Strategies → do nothing → all 4 copy (3+ either side)', cat: 'S', prof: 'dup3' },
-  { info: 'T2 Bombette: Power Bomb' },
-  { h: 'Jr. Troopa' },
-  { t: 'T1', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T1', label: 'Bombette: Bomb', cat: 'K' },
-  { t: 'T2', label: 'Bombette (Z, goes first): Bomb', cat: 'K' }, { t: 'T2', label: 'Mario: Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
-  { t: 'T3', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
-  { t: 'T4', label: 'Bombette (Z, goes first): Bomb', cat: 'K' }, { t: 'T4', label: 'Mario: Maple Syrup [Down 1] → Close Call', cat: 'M', prof: 'jrcc_syrup' },
-  { t: 'T5', label: 'Mario: Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
-  { t: 'T6', label: 'Mario: Power Bounce ×6 → 6 bounces (5+ either side)', cat: 'K', prof: 'jrpb5' },
-  { t: 'T6', label: 'Bombette: Bomb, only if 5 bounces', cat: 'K', optional: true },
-  { info: 'T7 only if 4 bounces: Star Storm / Shooting Star [Down 5]' },
-  { h: 'Hallway Bowser' },
-  { t: 'T1', label: 'Mario: Super Jump Charge', cat: 'M' }, { t: 'T1', label: 'Lakilester: Spiny Flip', cat: 'B' },
-  { t: 'T2', label: 'Mario: Time Out → STOP', cat: 'B', prof: 'timeout' },
-  { h: 'Final Bowser (not planned yet: needs the lightning-aware tracking)' },
-  { info: 'Phase 1: T1 Charge; Do Nothing · T2 Bounce ×3; Do Nothing · T3 Star Beam' },
-  { info: 'Phase 2: T1 Charge; Cloud Nine · T2 Charge · T3 Jammin\' Jelly · T4 Charge · T5 Peach Beam; Do Nothing · T6 Charge; Do Nothing → Close Call · T7 Bounce ×7' } ];
-const ROUTES = { jr: JR, endgame: ENDGAME.filter(s => s.cat) };
+  { h: 'Duplighosts', turns: [
+    { text: 'T1: Do Nothing; Do Nothing - 4 Transform', steps: [{ label: 'Do Nothing (Bombette) → all 4 copy, 3+ either side', cat: 'S', prof: 'dup3' }] },
+    { text: 'T2: Power Bomb', steps: [] } ] },
+  { h: 'Jr. Troopa', turns: [
+    { text: 'T1: Charge; Bomb', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Bomb', cat: 'K' }] },
+    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Bomb', cat: 'K' }, { label: 'Whacka', cat: 'M' }] },
+    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' }] },
+    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Bomb', cat: 'K' }, { label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' }] },
+    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' }] },
+    { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }, { label: 'Bomb if 5 capped', cat: 'K', optional: true }] },
+    { text: 'T7: Star Storm if 4 capped / Shooting Star [Down 5] if 4 capped', steps: [] } ] },
+  { h: 'Hallway Bowser', turns: [
+    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Charge', cat: 'M' }, { label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }, { label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [{ label: 'Bounce', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [{ label: 'Bounce', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T5: Jump x2; Spiny Flip [3, 0] [0]', steps: [{ label: 'Jump', cat: 'B' }, { label: 'Spiny Flip', cat: 'B' }] } ] } ];
+const ENDGAME_STEPS = [];
+for (const f of ENDGAME) for (const tu of f.turns) for (const s of tu.steps) ENDGAME_STEPS.push(Object.assign({ t: f.h + ' ' + tu.text.split(':')[0] }, s));
+const ROUTES = { jr: JR, endgame: ENDGAME_STEPS };
 const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge, an item on Mario)', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
   B: { screen: 'a target screen with the hand on Bowser (Spiny Flip or Time Out)', box: 'the クッパ name box in the top-left' },
@@ -823,12 +824,10 @@ function applyProfile() {
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
     $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
     let k = 0;
-    $('route-list').innerHTML = ENDGAME.map(s => {
-      if (s.h) return '<li style="list-style:none; margin:8px 0 2px -1.4em; font-weight:600; color:var(--ink)">' + s.h + '</li>';
-      if (s.info) return '<li style="list-style:none; margin-left:-1.4em; opacity:.75">· ' + s.info + '</li>';
-      const i = k++;
-      return '<li data-i="' + i + '" style="list-style:none; margin-left:-1.4em; cursor:pointer' + (i === routeStep ? ';font-weight:700;color:var(--ink)' : '') + '">' + (i + 1) + '. ' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>';
-    }).join('');
+    $('route-list').innerHTML = ENDGAME.map(f => '<li style="list-style:none; margin:8px 0 2px -1.4em; font-weight:600; color:var(--ink)">' + f.h + '</li>' +
+      f.turns.map(tu => '<li style="list-style:none; margin-left:-1.4em">' + tu.text + (tu.steps.length ? '<br>' : '') +
+        tu.steps.map(s => { const i = k++; const cur = i === routeStep;
+          return '<span data-i="' + i + '" class="chip' + (cur ? ' on' : '') + '" style="cursor:pointer; margin:2px 4px 2px 0; display:inline-block' + (cur ? '; font-weight:700' : '') + '">' + (i + 1) + '. ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</span>'; }).join('') + '</li>').join('')).join('');
   } else {
     $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
     $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
@@ -836,7 +835,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
-$('route-list').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) setStep(+li.dataset.i); });
+$('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
 $('s-prof').addEventListener('change', () => { saveSettings(); applyProfile(); });
