@@ -80,17 +80,18 @@ def lo(t):
     """Laki outside (pra_01 reflected side): west upper door, rock-jump stale-target setup, guided arc push into the
     lower corner, two ledge jumps, top-wall push to the palace wall, hold-up ending, ride + B, pra_01 south door."""
     import rmc_lo_route as lo_route, rmc_lo_end as lo_end
-    tim.CHAIN = None                                     # the setup depends on the plain spins' exact positions
+    tim.CHAIN = 21                                       # chained spin-jumps to the door and to the rock
     marks = {}
     af, mc = to_door(t, 0, -75, (-80, 0), 90, 60, 25)    # pra_02 west upper door -> pra_01 north (entry 2)
     marks['west upper door A'] = af
     lo_route.to_rock(t, 600, 565, 0)                      # spin along the mirror, walk left, rock jump, fill, hop
     marks['rock setup done'] = t.n
+    tim.CHAIN = None
     lo_route.arc(t, json.load(open('data/rmc_lo_arc.json')))
     marks['Laki in lower corner'] = t.n
     lo_route.ledge_wall(t, json.load(open('data/rmc_lo_wall.json')))
     marks['Laki pinned at palace wall'] = t.n
-    t.step(); lo_end.replay(t, 32, 646, 685)              # hold-up ending: A+down 32, stopping hammer, C-down
+    t.step(); lo_end.replay(t, 32, 641, 680)              # hold-up ending: A+down 32, stopping hammer, C-down
     marks['C-down'] = t.n
     tim.CHAIN = 21                                       # after the clip: chained spin-jumps
     for i in range(16): t.step()
@@ -99,11 +100,16 @@ def lo(t):
     marks['pra_01 south door A'] = af
     return marks, to_door(t, 520, 230, (0, -80), 90, 60, 60)
 
-def replay(e, log, n_end):
-    """continuous replay from START with no loads; returns frames where the queued map changes."""
-    e.load(START); prev = where(e)[:2]; ch = []
+VI_COUNT = 811363          # COP0 Count ticks per VI in this core (VI clock 48681812 Hz / 60)
+def replay(e, log, n_end, times=None):
+    """continuous replay from START with no loads; returns steps where the queued map changes. If `times` is a dict,
+    fills it with the emulated time (seconds, from COP0 Count) at the end of every step. A step is one rendered game
+    frame; during room transitions the game holds a frame for several VIs, so real time comes from the Count clock."""
+    e.load(START); prev = where(e)[:2]; ch = []; last = e.count(); vis = 0
     for n in range(1, n_end + 1):
         b, x, y = log[n]; e.step(b, x, y, 2)
+        c = e.count(); vis += ((c - last) & 0xFFFFFFFF) / VI_COUNT; last = c
+        if times is not None: times[n] = vis / 60
         w = where(e)[:2]
         if w != prev: ch.append((n, w)); prev = w
     return ch
@@ -115,9 +121,9 @@ if __name__ == '__main__':
         t = T(e); t.start()
         marks, (af, mc) = globals()[nm](t)
         log = {n: t.log[n] for n in range(1, mc + 1)}
-        ch = replay(e, log, mc)
-        ok = ch and ch[-1] == (mc, (21, 1)) or (ch and ch[-1][0] == mc)
-        print('%s: bottom door A on frame %d = %.2f s  (map change queued %d)  marks %s' % (nm, af, af / 30, mc, marks))
+        tm = {}; ch = replay(e, log, mc, tm)
+        print('%s: bottom door A on step %d = %.3f s real (emulated clock) = %.1f frames at 30 fps   [step count/30 = %.2f s]' % (nm, af, tm[af], tm[af] * 30, af / 30))
+        print('    marks (step: real s): %s' % {k: (v, round(tm[v], 2)) for k, v in marks.items() if v})
         print('    continuous replay map changes: %s -> %s' % (ch, 'MATCH' if ch and ch[-1][0] == mc else 'MISMATCH'))
-        out[nm] = {'door_A_frame': af, 'map_change': mc, 'marks': marks, 'replay_changes': ch, 'inputs': [log[n] for n in range(1, mc + 1)]}
-    json.dump(out, open('/dev/shm/pmbot/rmc_timing_%s.json' % '_'.join(names), 'w'))
+        out[nm] = {'door_A_frame': af, 'door_A_seconds': tm[af], 'times': [tm[n] for n in range(1, mc + 1)], 'map_change': mc, 'marks': marks, 'replay_changes': ch, 'inputs': [log[n] for n in range(1, mc + 1)]}
+    for nm in out: json.dump({nm: out[nm]}, open('data/rmc_timing_%s.json' % nm, 'w'))

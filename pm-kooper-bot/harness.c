@@ -300,3 +300,6 @@ int h_dbg_events(unsigned *out, int max){
     pthread_mutex_unlock(&mtx);
     return n;
 }
+
+/* COP0 Count (reg 9): advances with emulated time, including load screens (811363 ticks per VI in this core) */
+unsigned h_count(void){ unsigned *c = pDebugGetCPUDataPtr ? pDebugGetCPUDataPtr(M64P_CPU_REG_COP0) : NULL; return c ? c[9] : 0; }

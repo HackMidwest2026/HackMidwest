@@ -22,6 +22,7 @@ class Emu:
         self.lib = ctypes.CDLL(os.path.join(HERE, 'harness.so'))
         self.lib.h_rdram.restype = ctypes.c_void_p
         self.lib.h_frame.restype = ctypes.c_uint
+        self.lib.h_count.restype = ctypes.c_uint
         r = self.lib.h_init(os.path.abspath(CORE_DBG if os.environ.get('M64P_DBG') == '1' else CORE).encode(), RSP.encode(), rom.encode(),
                             datadir.encode(), int(verbose))
         if r != 0:
@@ -74,6 +75,10 @@ class Emu:
     def step(self, buttons=0, x=0, y=0, n=1):
         if self.lib.h_step(buttons, x, y, n) != 0:
             raise RuntimeError('emulator stopped')
+
+    def count(self):
+        """COP0 Count: emulated-time clock (811363 ticks per VI in this core; 32-bit, wraps)"""
+        return self.lib.h_count()
 
     def save(self, path):
         self.lib.h_save(os.path.abspath(path).encode())

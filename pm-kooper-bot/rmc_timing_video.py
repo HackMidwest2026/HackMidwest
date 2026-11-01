@@ -5,7 +5,7 @@ from emu import *
 from pm import *
 from PIL import Image, ImageDraw, ImageFont
 nm, outp = sys.argv[1], sys.argv[2]
-D = json.load(open('/dev/shm/pmbot/rmc_timing_%s.json' % nm))[nm]
+D = json.load(open('data/rmc_timing_%s.json' % nm))[nm]
 TITLE = {'v1': 'RMC v1  pra_02 switch-block clip (frame-perfect hops)', 'v2': 'RMC v2  pra_02 switch-block clip (RTA version)',
          'v3': 'RMC v3  pra_01 Ultra Boots climb', 'lo': 'RMC Laki outside  pra_01 stale-target push'}[nm]
 MAPS = {(21, 0): 'pra_01', (21, 1): 'pra_02', (20, 9): 'sam_10', (21, 2): 'next room'}
@@ -16,7 +16,9 @@ for fn in os.listdir(raw): os.remove(os.path.join(raw, fn))
 F = '/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf'
 font, mid, big = ImageFont.truetype(F % '', 14), ImageFont.truetype(F % '-Bold', 16), ImageFont.truetype(F % '-Bold', 26)
 e.load('states/pra02_topdoor_closed.st')
-inp = D['inputs']; af = D['door_A_frame']; marks = {v: k for k, v in D['marks'].items()}
+AF = os.environ.get('AUDCAP_FILE'); aoff = os.path.getsize(AF) if AF else 0   # audio written from here on is this replay's
+nframes = 0
+inp = D['inputs']; af = D['door_A_frame']; TM = [0.0] + D['times']; vf = 0; marks = {v: k for k, v in D['marks'].items()}
 tail = 12
 W, H, GW, GH = 860, 400, 592, 400
 note = ''
@@ -31,11 +33,11 @@ for n in range(0, len(inp) + 1):
     im = Image.new('RGB', (W, H), (18, 18, 22)); im.paste(Image.open(shot).crop((104, 100, 104 + GW, 100 + GH)).convert('RGB'), (0, 0))
     dr = ImageDraw.Draw(im); X = GW + 14
     if n in marks: note = '%s @ %d' % (marks[n], n)
-    t_n = min(n, af)
+    t_s = TM[min(n, af)]                       # real (emulated-clock) seconds since the door closed
     dr.text((X, 10), nm.upper(), fill=(255, 220, 120), font=big)
-    dr.text((X, 46), 'frame %4d' % t_n, fill=(255, 255, 255), font=big)
-    dr.text((X, 80), '%6.2f s' % (t_n / 30), fill=(255, 255, 255), font=big)
-    if n >= af: dr.text((X, 114), 'END: door A (f%d)' % af, fill=(120, 255, 120), font=mid)
+    dr.text((X, 46), '%6.2f s' % t_s, fill=(255, 255, 255), font=big)
+    dr.text((X, 80), '= %5.1f fr' % (t_s * 30), fill=(200, 200, 200), font=mid)
+    if n >= af: dr.text((X, 114), 'END: door A (%.2f s)' % TM[af], fill=(120, 255, 120), font=mid)
     w = where(e)[:2]; p = player(e)
     dr.text((X, 142), 'map var: %s' % MAPS.get(w, str(w)), fill=(200, 200, 200), font=font)  # set when a door/LZ fires
     dr.text((X, 160), 'x %.0f  y %.0f  z %.0f' % (p['x'], p['y'], p['z']), fill=(200, 200, 200), font=font)
@@ -51,7 +53,20 @@ for n in range(0, len(inp) + 1):
         dr.rounded_rectangle((bx, by, bx + 46, by + 36), radius=8, fill=col if on else (40, 40, 40), outline=col, width=2)
         dr.text((bx + 23, by + 18), lab, fill=(0, 0, 0) if on else col, font=mid, anchor='mm')
     dr.text((8, GH - 22), TITLE, fill=(255, 255, 255), font=font, stroke_width=2, stroke_fill=(0, 0, 0))
-    im.save(os.path.join(raw, 'c%05d.png' % n))
-    if n == 1: im.save(os.path.join(raw, 'c%05d.png' % 0))
-subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', '30', '-i', os.path.join(raw, 'c%05d.png'), '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '22', outp], check=True)
+    # real-time pacing: during room transitions one game frame is held for several VIs, so repeat it
+    target = round(TM[n] * 30)
+    while vf <= target: im.save(os.path.join(raw, 'c%05d.png' % vf)); vf += 1
+    nframes = vf
+vid = outp if not AF else os.path.join(raw, 'v.mp4')
+subprocess.run(['ffmpeg', '-v', 'error', '-y', '-framerate', '30', '-i', os.path.join(raw, 'c%05d.png'), '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-crf', '22', vid], check=True)
+if AF:
+    # audio captured by audcap.so for this replay; the game queues sound slightly ahead of the picture, so trim that
+    # lead (audio length - video length) from the start, then mux
+    import wave
+    rate = int(open(AF + '.rate').read()); data = open(AF, 'rb').read()[aoff:]
+    lead = len(data) / 4 / rate - nframes / 30
+    if lead > 0: data = data[int(lead * rate) * 4:]
+    wv = os.path.join(raw, 'a.wav'); w = wave.open(wv, 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(rate); w.writeframes(data); w.close()
+    print('audio: rate %d, lead trimmed %.3f s' % (rate, lead))
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', vid, '-i', wv, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', outp], check=True)
 print('wrote', outp)
