@@ -95,11 +95,11 @@ details[open] summary { margin-bottom: 10px; }
     <h2>Watch the game automatically (OBS Virtual Camera)</h2>
     <div class="cam">
       <div style="display:grid; gap:8px; min-width:0">
-        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin and target boxes"></canvas>
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box and the Time Out hand box"></canvas>
         <div class="row">
           <span class="seg" role="group" aria-label="Box to draw">
             <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
-            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> Draw target box</button>
+            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> Time Out's Hand on Hallway</button>
           </span>
           <button class="b" id="cap-target" disabled>Save target screen</button>
         </div>
@@ -200,7 +200,7 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel">
     <h2>In the run (automatic)</h2>
     <ol class="steps">
-      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), drag the blue box over the name label above Bowser, and press Save target screen. The boxes and the target screen are remembered.</li>
+      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), click Time Out's Hand on Hallway, drag the blue box over the name label above Bowser, and press Save target screen. The boxes and the target screen are remembered.</li>
       <li><b>Optional: check the timing.</b> Once a seed is locked, tick "Beep on every predicted shine" in Timing settings. The beeps should land on the white flashes; if they come early, raise "Video lag"; if late, lower it.</li>
       <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
       <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
