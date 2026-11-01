@@ -396,7 +396,40 @@
     return null;
   }
 
+  /* ---- torch rooms (the Duplighost room kpa_53, the Heart Block room kpa_114) ----
+   * Measured (12 runs): exactly 12 draws every 50 frames, after the coin when they share a frame, on a phase fixed by
+   * the room load (unknown to the page: 50 possibilities). Between two coin draws on frames F and F+g the RNG steps
+   * g + 12 x (torch frames in [F, F+g)). */
+  const JUMP = (function () { const A = new Uint32Array(2400), C = new Uint32Array(2400); A[0] = 1; for (let i = 1; i < 2400; i++) { A[i] = Math.imul(A[i - 1], MUL) >>> 0; C[i] = (Math.imul(C[i - 1], MUL) + 1) >>> 0; } return { A, C }; })();
+  const jumpN = (s, n) => (Math.imul(s, JUMP.A[n]) + JUMP.C[n]) >>> 0;
+  const torchesIn = (a, b, ph) => { let n = 0; for (let f = a; f < b; f++) if (((f - ph) % 50 + 50) % 50 === 0) n++; return n; };
+  function walkTorch(seed, pattern, ph, upto) {          // returns the seed before draw `upto` (or after the whole pattern), or -1 if the pattern breaks
+    let s = seed >>> 0, F = 0;
+    for (let i = 0; i < pattern.length; i++) {
+      if (i === upto) return s;
+      const d = adv(s), sh = d >= SHINE_MIN;
+      if (sh !== (pattern.charCodeAt(i) === 83)) return -1;
+      const g = sh ? 48 : 24;
+      if (i === pattern.length - 1) return upto === -2 ? jumpN(d, 0) : d;   // after the last draw
+      s = jumpN(d, g + 12 * torchesIn(F, F + g, ph)); F += g;
+    }
+    return s;
+  }
+  const matchesTorch = (seed, pattern, ph) => walkTorch(seed, pattern, ph) !== -1;
+  const seedBeforeLastDrawTorch = (seed, pattern, ph) => walkTorch(seed, pattern, ph, pattern.length - 1);
+  /* re-lock in a torch room: every start n in [nlo, nmax] steps after `from` and every phase */
+  function resyncTorch(from, pattern, nmax, cap, nlo) {
+    const out = []; let s = from >>> 0; nlo = Math.max(0, nlo || 0);
+    for (let i = 0; i < nlo; i++) s = adv(s);
+    for (let n = nlo; n <= nmax; n++) {
+      if ((adv(s) >= SHINE_MIN) === (pattern.charCodeAt(0) === 83))
+        for (let ph = 0; ph < 50; ph++) if (matchesTorch(s, pattern, ph)) { out.push({ n, seed: s, phase: ph }); if (out.length >= (cap || 64)) return out; }
+      s = adv(s);
+    }
+    return out;
+  }
+
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

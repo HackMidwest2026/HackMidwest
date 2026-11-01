@@ -176,3 +176,14 @@ numbers every few seconds. The ride is the first-lock spot; the flood rooms + ca
 More rooms (`kpa_roomsteps.py`): kpa_63 (Save Block room after door 1), kpa_118 (room before the key) and kpa_119 (key
 room) are clean; kpa_114 (Heart Block room: 12 draws every 50 frames, like the Duplighost room's torches) and kpa_115
 are not. "Download session log" saves every shine, gap, lock, plan and press with times (JSON) for analysing a run.
+
+## Torch rooms (Duplighost room kpa_53, Heart Block room kpa_114)
+
+`torch_log.py` (12 runs, 1500 frames): exactly 12 draws every 50 frames, after the coin on shared frames, on a phase set
+by the room load. `R.matchesTorch` / `R.resyncTorch` search every start position and all 50 phases; phases that put the
+torches in the same gaps between coin draws give the same seed and are kept until later shines split them
+(`test_torch_core.js`: the true phase matches in all 12 logs). On the page the torch model is tried when the plain one
+finds nothing, before old shines are dropped; a lock there keeps every phase that still fits. Carrying candidates across
+a gap is trusted only when the coin was hidden for at most 4 s (a room load with C-up held); after a longer gap (C-up
+closed through enemies, a battle) the new stretch must rule out a wrong carried candidate on its own (7 bits).
+`test_torch_page.js`: re-locks in the torch room on the true seed (8-11 shines) and after a battle (3/3, no wrong lock).

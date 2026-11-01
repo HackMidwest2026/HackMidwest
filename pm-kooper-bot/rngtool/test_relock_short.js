@@ -1,5 +1,5 @@
 /* Re-finding a lock from short stretches (maze rooms): lock seed A, then an enemy room (extra draws, coin hidden),
- * then stretches of only 2-3 shines with the coin hidden 6-10 s between them (room loads; the coin keeps drawing). No
+ * then stretches of only 2-3 shines with the coin hidden ~1.5 s between them (room loads, C-up held). No
  * single stretch has the ~6 shines a resync needs; together they must re-lock on A's trajectory. */
 const { chromium } = require('playwright');
 (async () => {
@@ -15,12 +15,12 @@ const { chromium } = require('playwright');
       const tap = f => 1e5 + (f + 6) * F + vlag;
       for (const f of sh.filter(f => f < 1450)) T.addShine(tap(f), true);
       await wait(() => T.st.lock); if (!T.st.lock) return { skipped: 'no starting lock from 48 s of shines' }; T.coinBack();
-      // short stretches: visible ~7 s (210 frames), hidden ~8 s (240 frames)
+      // short stretches: visible ~7 s (210 frames), hidden ~1.5 s (50 frames)
       let n = 0, stretches = 0, at = null;
-      for (let a = 2200; a < 9000 && !T.st.lock; a += 450) {
+      for (let a = 2200; a < 9000 && !T.st.lock; a += 260) {
         const vis = sh.filter(f => f >= a && f < a + 210).slice(0, 3); if (!vis.length) continue; stretches++;
         for (const f of vis) { T.addShine(tap(f), true); n++; await wait(() => !T.st.searching); if (T.st.lock) { at = { stretches, shines: n }; break; } }
-        if (!T.st.lock) T.coinBack();
+        if (!T.st.lock) T.coinBack(1500);
       }
       const want = T.st.lock && T.st.lock.seed >>> 0; let onA = false;
       const S2 = { s: seed >>> 0, nc: 5, inst: [] };

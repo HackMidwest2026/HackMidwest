@@ -411,7 +411,8 @@ function baseState() {   // plan frame 0: the last tapped shine, or the first co
     st.groupCache = { k: gk, g };
     if (g.length) return { seedBL: g[0].seed, baseF: g[0].F, tLast: C.t0 + g[0].F * C.rate, carried: true, ambiguous: g.length > 1 ? g.length : 0, branch: g.length === 1 ? g[0].branch : null };
   }
-  return { seedBL: R.seedBeforeLastDraw(C.seed, C.pattern), baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
+  const sbl = st.lock && st.lock.torch ? R.seedBeforeLastDrawTorch(C.seed, C.pattern, st.lock.torch[0]) : R.seedBeforeLastDraw(C.seed, C.pattern);
+  return { seedBL: sbl, baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
 }
 function predictedShineNear(f, ev) {
   ev = ev || evNow(); const S = { s: st.lock.seed >>> 0, nc: 0, inst: [] };
@@ -444,7 +445,7 @@ function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern
 function lastLockedState() {
   // seed after the last draw of the most recent locked segment, and that draw's time estimate
   const L = st.lock; if (!L) return null;
-  const p = pat(st.segs[L.seg].taps).pattern; const a = R.afterPatternEv(L.seed, p, evNow());
+  const p = pat(st.segs[L.seg].taps).pattern; const a = L.torch ? { seedAfterLastDraw: R.walkTorch(L.seed, p, L.torch[0]) } : R.afterPatternEv(L.seed, p, evNow());
   return { seedAfter: a.seedAfterLastDraw, lastTap: st.segs[L.seg].taps[st.segs[L.seg].taps.length - 1] };
 }
 function evaluate() {
@@ -454,13 +455,14 @@ function evaluate() {
     // first segment: filter existing candidates as taps come in (carried across a gap from the previous stretch)
     if (!st.cands && st.carry && s.taps.length) {
       const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0]);
-      const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
-      if (c && c.length) st.cands = c; else if (c) st.chain = [];        // the gap did not fit: start the chain over here
+      st.carry_n = st.carry.short ? 0 : st.carry.cands.length; const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
+      if (c && c.length) { st.cands = c; st.carryC0 = st.carry_n; } else if (c) st.chain = [];        // the gap did not fit: start the chain over here
     }
     if (st.cands) {
       st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
       st.need = 32 + 6 + st.chain.length * gapCost(); st.have = bits(P.pattern) + chainBits();
-      if (st.cands.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
+      const ownOk = !st.carryC0 || bits(P.pattern) - Math.log2(st.carryC0 * ((GAP_LO + GAP_HI) / 24 + 1)) >= 7;   // carried across a gap: this stretch must back it up alone
+      if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; st.carryC0 = 0; updateClock(); }
       else if (st.cands.length === 0 && st.chain.length) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
@@ -488,7 +490,8 @@ function evaluate() {
       const c = R.extendCands(st.rcarry.cands, st.rcarry.pattern, P.pattern, lo, hi, 20000);
       if (c && c.length) {
         st.cands = c; st.have = st.rcarry.have + bits(P.pattern); st.need = st.rcarry.need + gapCost(); st.tier = 0;
-        if (c.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: c[0] }; st.rcarry = null; updateClock(); }
+        const own = bits(P.pattern) - Math.log2(st.rcarry.cands.length * ((GAP_LO + GAP_HI) / 24 + 1));   // evidence of this stretch alone
+        if (c.length === 1 && st.have >= st.need && (st.rcarry.short || own >= 7)) { st.lock = { seg: st.segs.length - 1, seed: c[0] }; st.rcarry = null; updateClock(); }
         else st.lock = null;
         if (st.plan && st.lock && st.clock && !planOnTrack()) { cancelBeeps(); st.plan = null; }
         render(); return;
@@ -498,7 +501,23 @@ function evaluate() {
     m = tryResync();
     // Nothing fits: these shines came while something else drew random numbers (level-up confetti, a room with enemies,
     // torches), or after a false detection. Keep only the newest ones; the lock (prevLock) is never dropped for this.
+    // torch rooms (Duplighost room, Heart Block room): 12 draws every 50 frames on an unknown phase. Try that model when
+    // the plain one finds nothing; a lock there keeps every phase that still fits.
+    if (!m.length && s.auto && s.taps.length >= 3) {
+      const E = Math.floor((s.taps[0] - prev.lastTap) / FRAME);
+      for (const [lo, hi] of [[Math.max(0, E - 300), E + num('range')], [0, E + 20000]]) {
+        const r = R.resyncTorch(prev.seedAfter, pat(s.taps).pattern, hi, 400, lo);
+        if (r.length) {
+          const bySeed = new Map(); r.forEach(x => { if (!bySeed.has(x.seed)) bySeed.set(x.seed, []); bySeed.get(x.seed).push(x.phase); });
+          st.cands = [...bySeed.keys()]; st.need = Math.log2((hi - lo + 1) * 50) + 7; st.have = bits(pat(s.taps).pattern); st.tier = 'torch';
+          if (bySeed.size === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0], torch: bySeed.get(st.cands[0]) }; updateClock(); }
+          else st.lock = null;
+          render(); return;
+        }
+      }
+    }
     while (!m.length && s.auto && s.taps.length > 3) { s.taps.shift(); m = tryResync(); }
+
     // A savestate or console reset looks the same at first, so after 12+ shines in a row that never fit, search all
     // seeds with them in the background: one clean fit = the RNG really was replaced; none = a stretch to ignore.
     if (!m.length || (s.raw && s.raw.length >= (s.probedAt || 0) + 12 && !st.lock)) maybeProbe();
@@ -621,6 +640,11 @@ function addShine(t, auto) {
     const keep = hypsAlive().filter(imp => predictedShineNear(f, evFor(imp)));
     if (keep.length) { if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1; render(); return; }
     newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;      // the carried turns went differently
+  }
+  if (auto && st.lock && st.lock.torch && st.lock.seg === st.segs.length - 1) {
+    const p2 = pat(s.taps.concat([t])).pattern, keep = st.lock.torch.filter(ph => R.matchesTorch(st.lock.seed, p2, ph));
+    if (keep.length) { st.lock.torch = keep; s.taps.push(t); (s.raw = s.raw || []).push(t); updateClock(); render(); return; }
+    newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;
   }
   if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matchesEv(st.lock.seed, pat(s.taps.concat([t])).pattern, evNow())) {
     newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;      // unseen gap (an action drew numbers)
@@ -946,7 +970,7 @@ function onFrame(t) {
   gold /= 1024; white /= 1024;
   const present = gold + white > 0.3;
   if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
-  else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(); } }
+  else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(V.presentSince - V.absentSince); } }
   V.present = present;
   const steady = present && !V.wasGone && V.presentSince && t - V.presentSince > 1000;   // shines count only on a steady coin
   // per-loop maxima of the flash level, for the automatic threshold
@@ -1064,7 +1088,10 @@ $('cap-target').onclick = () => {
 };
 $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
 // segments follow the coin: when it comes back after being hidden, the gap is a new segment
-function coinBack() {
+/* hiddenMs: how long the coin was gone. A short gap (a room load with C-up held) cannot hide other random numbers;
+ * a long one (C-up closed through a room with enemies, a battle, a cutscene) can. */
+const SHORT_GAP = 4000;
+function coinBack(hiddenMs) {
   if (!seg().taps.length) return;
   slog('coinBack', { taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
@@ -1072,13 +1099,13 @@ function coinBack() {
   const s = seg(), P = pat(s.taps);
   if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
     st.chain.push({ taps: s.taps.slice() }); if (st.chain.length > 24) st.chain.shift();
-    if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1] };
+    if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], short: hiddenMs != null && hiddenMs <= SHORT_GAP };
   } else if (st.prevLock && !P.error && st.cands && st.cands.length && st.cands.length <= 20000) {
     // re-finding a lock: carry this stretch's candidates across the (clean) gap into the next stretch, so short
     // stretches (maze rooms) add up instead of each needing ~6 shines in a row
-    st.rcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 0 };
+    st.rcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 0, short: hiddenMs != null && hiddenMs <= SHORT_GAP };
   } else if (st.carry && s.taps.length) st.carry = null;                // a stretch too short to carry through: drop the carry
-  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; st.cands = null; st.msg = null; render();
+  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; st.cands = null; st.carryC0 = 0; st.msg = null; render();
 }
 function autoAfterShine() {
   if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
