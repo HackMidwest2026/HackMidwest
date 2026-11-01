@@ -32,3 +32,10 @@ pressing on every frame of every window. All 34 variants gave identical cap roll
 cap roll for loop bounce k is the `rand_int(100)` on confirm + 73 + 26(k-1) frames (chance 200 x 0.65^k vs the
 roll), so like Time Out the whole Power Bounce outcome is fixed by the frame of the target-confirm A, as long as
 every action command is hit. Pressing early (before the window) still drops the bounce.
+
+## OBS notes (after a user report of OBS freezing)
+The seed search now runs on 2 threads by default (max half the cores) so OBS keeps its CPU; the camera source only
+keeps the OBS Virtual Camera open (never a capture card OBS is using); the default source is an OBS windowed
+projector captured with getDisplayMedia; frames are read from the track (MediaStreamTrackProcessor) when Chrome stops
+video callbacks for a hidden window; the preview keeps the video's aspect ratio. `test_cam3.js` (MODE=vfc and
+MODE=bg, emulator footage): both locked the true seed after 16-17 shines with the 2-thread search.
