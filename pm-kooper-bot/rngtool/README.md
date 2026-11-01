@@ -173,3 +173,6 @@ between them are clean, about a minute of coin in one block: the place for the f
 kpa_11 (the lava room next to the jail, Save Block + island Life Shroom; the route rides it on Lakilester) is clean
 once its Koopatrol is defeated (GF_KPA11_Defeated_Guard, as in the route); while it is there its wander AI draws random
 numbers every few seconds. The ride is the first-lock spot; the flood rooms + cannon room are the backup.
+More rooms (`kpa_roomsteps.py`): kpa_63 (Save Block room after door 1), kpa_118 (room before the key) and kpa_119 (key
+room) are clean; kpa_114 (Heart Block room: 12 draws every 50 frames, like the Duplighost room's torches) and kpa_115
+are not. "Download session log" saves every shine, gap, lock, plan and press with times (JSON) for analysing a run.

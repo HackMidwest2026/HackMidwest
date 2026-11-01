@@ -125,7 +125,7 @@ details[open] summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel">
-    <h2>Coin spins this segment <span id="spins-count"></span></h2>
+    <div class="row" style="justify-content:space-between; align-items:center"><h2 style="margin:0">Coin spins this segment <span id="spins-count"></span></h2><button class="b" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button></div>
     <div class="spins" id="spins">–</div>
     <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
   </section>
@@ -238,7 +238,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>C-up on</b> (clean rooms, nothing else uses random numbers):<br>1. The lava room after the jail, once its Koopatrol is defeated (key): the whole Lakilester ride from the Save Block past the Life Shroom island to Blockless. <b>Get the first lock here</b> (about 45 s of coin).<br>2. Both flood rooms and the cannon room (also enough for a lock if the first one did not finish).<br>3. The room after the Dry Bones room, the quiz room.<br>4. The Save Block staircase room, the 2 key rooms, the 7 maze rooms.<br><b>C-up off:</b> the jail, the lava room while its Koopatrol is still there, the Dry Bones room, the room before the quiz, the room after the quiz (Magikoopas), the locked-door room near its enemies, the fire room, the Duplighost room. The lock survives those; a few shines in the Duplighost menu re-find it.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>C-up on</b> (clean rooms, nothing else uses random numbers):<br>1. The lava room after the jail, once its Koopatrol is defeated (key): the whole Lakilester ride from the Save Block past the Life Shroom island to Blockless. <b>Get the first lock here</b> (about 45 s of coin).<br>2. Both flood rooms and the cannon room (also enough for a lock if the first one did not finish).<br>3. The Save Block room after door 1, the room after the Dry Bones room, the room before the key (and the key room, both ways), the quiz room.<br>4. The Save Block staircase room, the 2 key rooms, the 7 maze rooms.<br><b>C-up off:</b> the jail, the lava room while its Koopatrol is still there, the Dry Bones room, the Heart Block room after it and the room past it, the room before the quiz, the room after the quiz (Magikoopas), the locked-door room near its enemies, the fire room, the Duplighost room. The lock survives those; a few shines in the Duplighost menu re-find it.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -426,9 +426,11 @@ function logInput(tObs, cat, id, modeled) {
 }
 function unmodeledAfter(tBase) { return (st.inputs || []).find(x => !x.modeled && x.tc > tBase - 0.5 * FRAME); }
 // candidates = impact frame x (guard landed or not), encoded imp * 2 + guard
-function addTurn(f, id, why, imps) { st.turnEv.push(imps ? { f, id, imps } : { f, id }); if (imps) st.hyp = imps.flatMap(i => [i * 2 + 1, i * 2]); st.note = null; V.turnNote = why; }
+function addTurn(f, id, why, imps) {
+  slog('turn', { f, id, cands: imps ? imps.length * 2 : null }); st.turnEv.push(imps ? { f, id, imps } : { f, id }); if (imps) st.hyp = imps.flatMap(i => [i * 2 + 1, i * 2]); st.note = null; V.turnNote = why; }
 // an input before the planned one (Charge, Bomb): its target screen closed at tObs
 function preConfirm(pr, tObs) {
+  slog('preConfirm', { id: pr.id, at: Math.round(tObs) });
   { const stp = isRoute() && RT()[routeStep]; V.preDone = V.preDone || {};
     if (stp && stp.pre) stp.pre.forEach((q, k) => { if (q.cat === pr.cat && q.id === pr.id) V.preDone[routeStep + ':' + k] = true; }); }
   if (!st.lock || !st.clock || st.needResync || unmodeledAfter(baseState().tLast)) { logInput(tObs, pr.cat, pr.id, false); return; }
@@ -510,6 +512,7 @@ function evaluate() {
 // The RNG is nowhere near where it should be (savestate, console reset, a retried fight, a very long menu): forget the
 // old trajectory and search all seeds again from this segment's shines. The measured frame rate is kept.
 async function maybeProbe() {
+  slog('probe', { raw: (seg().raw || []).length });
   const s = seg(), raw = (s.raw || []).slice(-20);
   if (st.searching || raw.length < 12 || raw.length < (s.probedAt || 0) + 12) return;
   const P = pat(raw); if (P.error || bits(P.pattern) < 38) return;
@@ -600,6 +603,7 @@ function makePlan() {
   st.plan = { tMade: performance.now(), w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  slog('plan', { prof: PROF().id, step: routeStep, window: w.length, target, tPress: Math.round(tPress), carried: !!B.carried });
   render();
 }
 
@@ -621,6 +625,7 @@ function addShine(t, auto) {
   if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matchesEv(st.lock.seed, pat(s.taps.concat([t])).pattern, evNow())) {
     newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;      // unseen gap (an action drew numbers)
   }
+  slog('shine', { at: Math.round(t), auto: !!auto, seg: st.segs.length, locked: !!st.lock });
   s.taps.push(t); if (auto) (s.raw = s.raw || []).push(t); s.auto = !!auto; st.example = false; evaluate();
   if (auto) autoAfterShine();
 }
@@ -631,6 +636,7 @@ function tap() {
 function undo() { seg().taps.pop(); evaluate(); }
 function newSegment() {
   if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
+  slog('newSegment', { segs: st.segs.length + 1 });
   st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.rcarry = null; st.turnEv = []; st.hyp = null; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
 }
 async function findChain() {
@@ -659,7 +665,7 @@ async function find() {
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
 function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
-$('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
+$('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); tap(); }
@@ -672,7 +678,16 @@ document.addEventListener('keydown', e => {
 /* ---------- rendering ---------- */
 function setText(h, d) { $('headline').textContent = h; $('detail').textContent = d; }
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
+/* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
+const SLOG = []; let slogLock = null;
+function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
+function downloadLog() {
+  const blob = new Blob([JSON.stringify({ version: 1, saved: new Date().toISOString(), settings: (() => { const o = {}; SET.forEach(k => o[k] = $('s-' + k).value); return o; })(), route: routeStep, events: SLOG }, null, 0)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'timeout-timer-log-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+}
 function render() {
+  { const k = st.lock ? (st.lock.seed >>> 0) + ':' + st.lock.seg : null;
+    if (k !== slogLock) { slog(st.lock ? 'lock' : 'unlock', st.lock ? { seed: st.lock.seed >>> 0, seg: st.lock.seg, segs: st.segs.length, tier: st.tier, have: st.have, need: st.need, carried: st.turnEv.length } : { segs: st.segs.length }); slogLock = k; } }
   const s = seg(), P = pat(s.taps), nSh = s.taps.length;
   const segLabel = st.segs.length > 1 ? 'Segment ' + st.segs.length + ': ' : '';
   $('plan').disabled = !st.lock;
@@ -1033,7 +1048,8 @@ function applyProfile() {
   }
   render();
 }
-function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+function setStep(i) {
+  slog('step', { to: i }); routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
@@ -1050,6 +1066,7 @@ $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
 // segments follow the coin: when it comes back after being hidden, the gap is a new segment
 function coinBack() {
   if (!seg().taps.length) return;
+  slog('coinBack', { taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
@@ -1108,7 +1125,8 @@ function measurePress(tObs) {
   if (onBeeps) { presses.push(err); while (presses.length > 8) presses.shift(); }
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
   const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
-  P.measured = { frame: f, c, err, inWin, works, tObs, onBeeps }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  P.measured = { frame: f, c, err, inWin, works, tObs, onBeeps };
+  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, onBeeps }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
   if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
