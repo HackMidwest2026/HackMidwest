@@ -33,6 +33,7 @@ for s in hits:
         patched = True
         j = raw.find(needle, j + 1)
 assert patched
+if os.environ.get('STORY'): e.w8(STORY, int(os.environ['STORY']))     # DIAGNOSTIC setup: story progress (e.g. 95 = reached Peach's castle)
 # Lakilester (partner 8): mark him recruited and make him the current partner before the map load
 e.w8(PLAYER_DATA + 0x14 + 8 * 8, 1)
 e.w8(PLAYER_DATA + 0x12, 8)
