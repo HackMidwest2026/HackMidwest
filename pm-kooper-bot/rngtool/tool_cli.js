@@ -1,7 +1,7 @@
 /* Command-line front end to pmrng_core.js (used by the emulator end-to-end test).
  * node tool_cli.js find   '{"taps":[ms,...]}'                         -> seeds (value before the first tapped draw)
  * node tool_cli.js resync '{"from":seed,"taps":[...],"nmax":N}'        -> matches [{n, seed}]
- * node tool_cli.js plan   '{"seed":seedBeforeLastDraw,"from":f,"to":t,"minRun":k}' -> best window (frames after that draw)
+ * node tool_cli.js plan   '{"seed":seedBeforeLastDraw,"from":f,"to":t,"minRun":k,"profile":"timeout|dup4"}' -> best window (frames after that draw)
  * node tool_cli.js after  '{"seed":seed,"pattern":"S..S"}'             -> seed after the last draw + frames to next draw */
 const R = require('./pmrng_core.js');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
@@ -28,7 +28,8 @@ if (!isMainThread) {
   } else if (cmd === 'pattern') {
     out(R.patternFromTaps(a.taps));
   } else if (cmd === 'plan') {
-    out({ window: R.bestWindow(a.seed >>> 0, a.from, a.to, a.minRun), table: R.timeOutTable(a.seed >>> 0, a.from, a.to).map(x => x ? 'S' : '.').join('') });
+    const P = R.PROFILES[a.profile || 'timeout'];
+    out({ window: R.bestWindow(a.seed >>> 0, a.from, a.to, a.minRun, P), table: R.timeOutTable(a.seed >>> 0, a.from, a.to, P).map(x => x ? 'S' : '.').join('') });
   } else if (cmd === 'after') {
     out(R.afterPattern(a.seed >>> 0, a.pattern));
   } else if (cmd === 'beforelast') {

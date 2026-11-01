@@ -99,7 +99,7 @@ details[open] summary { margin-bottom: 10px; }
         <div class="row">
           <span class="seg" role="group" aria-label="Box to draw">
             <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
-            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> Time Out's Hand on Hallway</button>
+            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> <span id="target-label">Time Out's Hand on Hallway</span></button>
           </span>
           <button class="b" id="cap-target" disabled>Save target screen</button>
         </div>
@@ -114,6 +114,7 @@ details[open] summary { margin-bottom: 10px; }
           <button class="b" id="test-beep">Test beeps</button>
           <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
         </div>
+        <p class="note" id="fight-help"></p>
         <p class="note" id="cam-msg">Reads the game from an OBS projector window (or the OBS Virtual Camera). This works when the page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
         <dl class="read">
           <dt>Coin</dt><dd id="r-coin">–</dd>
@@ -128,6 +129,7 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
+      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option></select></label>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
         <span class="chip" id="p-lock">Seed</span>
@@ -139,7 +141,7 @@ details[open] summary { margin-bottom: 10px; }
       <div class="row">
         <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
         <button class="b" id="gap">New segment<kbd>N</kbd></button>
-        <button class="b" id="plan" disabled>Plan Time Out<kbd>P</kbd></button>
+        <button class="b" id="plan" disabled>Plan press<kbd>P</kbd></button>
         <button class="b" id="undo">Undo tap<kbd>⌫</kbd></button>
         <button class="b" id="reset">Reset</button>
       </div>
@@ -160,7 +162,7 @@ details[open] summary { margin-bottom: 10px; }
         <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
       </select></label>
     </div>
-    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Time Out success by target-confirm frame"></canvas></div>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Working confirm frames for the selected fight"></canvas></div>
     <div class="legend">
       <span>Working frames, colored by how many in a row:</span>
       <span><i style="background:var(--run1)"></i>1</span>
@@ -231,10 +233,11 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
+const PROF = () => R.PROFILES[$('s-prof').value] || R.PROFILES.timeout;
 loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
 
 /* ---------- state ---------- */
@@ -375,15 +378,15 @@ function makePlan() {
   const seedBL = R.seedBeforeLastDraw(C.seed, C.pattern);         // frame 0 of the plan = the last tapped shine's draw
   const rt = C.rate, tLast = C.t0 + lastF * rt, nowF = (performance.now() - tLast) / rt;
   const from = Math.ceil(nowF + num('lead') * 1000 / rt + 1), to = from + 1800;
-  let w = null, minRun = Math.max(1, Math.round(num('min')));
-  for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k);
+  let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
+  for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k, PROF());
   if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
   const target = w.start + Math.floor((w.length - 1) / 2);
   if (!(tLast + target * rt - performance.now() > 0 && tLast + target * rt - performance.now() < 120000)) { st.msg = 'Timing clock problem: the planned press is not in the next two minutes. Please report this; press Reset meanwhile.'; render(); return; }
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, tPress, tLast, rate: rt, seedBL, from, to, first, tab: R.timeOutTable(seedBL, first, last) };
+  st.plan = { w, target, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()) };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -464,11 +467,11 @@ function stripData() {
   if (st.clock && (st.lock || !st.note)) {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
     const nowF = Math.floor((performance.now() - tLast) / C.rate);
-    const key = seedBL + ':' + Math.floor(nowF / 120);
-    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479), first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
+    const key = PROF().id + ':' + seedBL + ':' + Math.floor(nowF / 120);
+    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
     return Object.assign({}, stripData.cache, { tLast, rate: C.rate, stale: !st.lock });
   }
-  if (!stripData.ex) stripData.ex = { tab: R.timeOutTable(EXAMPLE.seed, 0, 359), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, 3) };
+  if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()) };
   return stripData.ex;
 }
 function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
@@ -575,7 +578,12 @@ const V = { stream: null, video: document.createElement('video'), small: documen
 V.video.muted = true; V.video.playsInline = true; V.small.width = 32; V.small.height = 32;
 const sctx = V.small.getContext('2d', { willReadFrequently: true });
 try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b) V.boxes = b; const r = JSON.parse(localStorage.getItem('tot-ref') || 'null'); if (r) V.ref = r; } catch (e) {}
-function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} }
+// each fight has its own target screen: box + saved reference (the Time Out one migrates from the old single slot)
+let targets = {}; try { targets = JSON.parse(localStorage.getItem('tot-targets') || 'null') || { timeout: { box: V.boxes.target, ref: V.ref } }; } catch (e) {}
+const DEFAULT_TARGET = { x: 0.55, y: 0.12, w: 0.2, h: 0.08 };
+function storeTarget() { targets[PROF().id] = { box: V.boxes.target, ref: V.ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} }
+function useTarget() { const T = targets[PROF().id] || {}; V.boxes.target = T.box || Object.assign({}, DEFAULT_TARGET); V.ref = T.ref || null; V.wasOn = false; V.matchSince = 0; }
+function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} storeTarget(); }
 function camMsg(t) { $('cam-msg').textContent = t; }
 async function listCams() {
   try {
@@ -727,7 +735,7 @@ function drawPreview() {
   cv.addEventListener('pointermove', e => { if (!p0) return; const q = pt(e); V.boxes[V.draw] = { x: Math.min(p0.x, q.x), y: Math.min(p0.y, q.y), w: Math.max(0.01, Math.abs(q.x - p0.x)), h: Math.max(0.01, Math.abs(q.y - p0.y)) }; if (!V.stream) drawIdlePreview(); });
   cv.addEventListener('pointerup', () => {
     if (!p0) return; p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = [];
-    if (V.draw === 'target') { V.ref = null; try { localStorage.removeItem('tot-ref'); } catch (e) {} camMsg('Target box moved. Go to the target screen and press Save target screen again.'); }
+    if (V.draw === 'target') { V.ref = null; storeTarget(); camMsg('Target box moved. Go to the target screen and press Save target screen again.'); }
   });
 })();
 function drawIdlePreview() {
@@ -736,12 +744,19 @@ function drawIdlePreview() {
   const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
   box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
 }
+function applyProfile() {
+  const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
+  $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
+  $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
+  render();
+}
+$('s-prof').addEventListener('change', () => { saveSettings(); applyProfile(); });
 function setDraw(k) { V.draw = k; $('draw-coin').setAttribute('aria-pressed', k === 'coin'); $('draw-target').setAttribute('aria-pressed', k === 'target'); }
 $('draw-coin').onclick = () => setDraw('coin'); $('draw-target').onclick = () => setDraw('target');
 $('cap-target').onclick = () => {
   if (!V.stream) return; const g = sample(V.boxes.target, 24, 16); const ref = [];
   for (let i = 0; i < g.length; i += 4) ref.push((g[i] + g[i + 1] + g[i + 2]) / 3);
-  V.ref = ref; try { localStorage.setItem('tot-ref', JSON.stringify(ref)); } catch (e) {}
+  V.ref = ref; storeTarget();
   camMsg('Target screen saved. The page will plan and beep whenever it sees this screen with a locked seed.');
 };
 $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
@@ -758,7 +773,7 @@ function autoAfterShine() {
 }
 /* which frame did the confirm land on? The name box disappears from the video 2 game frames after the confirm
  * frame (measured in the emulator); the same video pipeline carries the shines, so capture lag cancels out. */
-const VANISH = 2;
+const VANISH_ = () => PROF().vanish;   // frames from the confirm until the target box changes (emulator)
 const presses = (function () { try { return JSON.parse(localStorage.getItem('tot-presses') || '[]'); } catch (e) { return []; } })();
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
@@ -767,19 +782,19 @@ function checkPress(tObs) {
   if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
   if (st.lock && st.clock) {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
-    const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH - num('pfix'));
-    const ok = R.timeOutRoll(seedBL, 0, f, 0) <= 30;
-    V.pressNote = 'No beep plan was running. You confirmed on a frame where Time Out ' + (ok ? 'WORKS' : 'fails') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
+    const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH_() - num('pfix'));
+    const ok = R.works(seedBL, 0, f, 0, PROF());
+    V.pressNote = 'No beep plan was running. You confirmed on a frame where ' + PROF().short + ': ' + (ok ? 'YES' : 'no') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
   } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
   showPresses();
 }
 function measurePress(tObs) {
   V.pressNote = null;
-  const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH - num('pfix');   // continuous frame estimate (pfix: capture-specific delay of the name box vanishing)
+  const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH_() - num('pfix');   // continuous frame estimate (pfix: capture-specific delay of the name box vanishing)
   const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
   presses.push(err); while (presses.length > 8) presses.shift();
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
-  const inWin = f >= P.w.start && f <= P.w.end, works = R.timeOutRoll(P.seedBL, 0, f, 0) <= 30;
+  const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
   P.measured = { frame: f, c, err, inWin, works, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   showPresses();
 }
@@ -795,7 +810,7 @@ function showPresses() {
   let s = 'Press check: last press ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '') + '. ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
-  if (ready) s += 'Only if Time Out has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
+  if (ready) s += 'Only if it has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
   $('press-apply').hidden = $('press-apply-v').hidden = !ready;
   $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
   $('press-msg').textContent = s;
@@ -830,7 +845,7 @@ function autoPlan() {
   };
 })();
 drawIdlePreview();
-render(); requestAnimationFrame(loop);
+applyProfile(); requestAnimationFrame(loop);
 window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack };   // for testing
 })();
 </script>

@@ -120,16 +120,45 @@
       s = adv(s);
     }
   }
+  /* ---- fight profiles: the random rolls a confirm decides, counted in frames from the confirm frame ----
+   * effects: extra draws in the script phase of a frame (before the coin); rolls: in order, each must pass.
+   * vanish: frames from the confirm until the saved target-screen box changes (press check). All measured in the
+   * emulator (JP) frame by frame. */
+  const PROFILES = {
+    timeout: { id: 'timeout', name: 'Hallway Bowser: Time Out', short: 'Time Out works', effects: EFFECTS,
+      rolls: [{ at: ROLL, max: 100, ok: v => v <= 30 }], vanish: 2, minRun: 3,
+      screen: 'Time Out\'s target screen (hand on Bowser)', box: 'the クッパ name box in the top-left' },
+    // Duplighosts x4 (kpa3 formation 2), Bombette out, turn 1 do nothing / do nothing: the confirm is Bombette's
+    // "do nothing"; each Duplighost rolls RandInt(1000) < 600 to copy on the enemy turn. On the all-copy path there are
+    // no other draws (13 seeds checked, every roll matched).
+    dup4: { id: 'dup4', name: 'Duplighosts: all 4 copy Bombette', short: 'all 4 Duplighosts copy', effects: {},
+      rolls: [13, 110, 207, 304].map(at => ({ at, max: 1000, ok: v => v < 600 })), vanish: 3, minRun: 2,
+      screen: 'Bombette\'s Strategies menu with the hand on なにもしない (do nothing)', box: 'the Strategies panel (both lines and a little below)' },
+  };
+  /* does confirming on frame `confirm` give the profile's result? seed: value just before frame t0's draws;
+   * nextCoin: frame of the next coin draw (>= t0) */
+  function works(seed, nextCoin, confirm, t0, prof) {
+    prof = prof || PROFILES.timeout;
+    let s = seed >>> 0, nc = nextCoin, k = 0; const R_ = prof.rolls, last = R_[R_.length - 1].at;
+    for (let t = t0 || 0; t <= confirm + last; t++) {
+      const rel = t - confirm, fx = prof.effects[rel];
+      if (fx) for (const mx of fx) s = randInt(s, mx)[0];
+      while (k < R_.length && R_[k].at === rel) { const r = randInt(s, R_[k].max); s = r[0]; if (!R_[k].ok(r[1])) return false; k++; }
+      if (t === nc) { const r = randInt(s, 100); s = r[0]; nc = t + (r[1] >= 70 ? 48 : 24); }
+      s = adv(s);
+    }
+    return true;
+  }
   /* frames (relative to frame 0 = a coin draw whose prior seed is seedBeforeDraw) where confirming works, for
    * confirm frames from..to. Returns an array of booleans indexed from `from`. */
-  function timeOutTable(seedBeforeDraw, from, to) {
+  function timeOutTable(seedBeforeDraw, from, to, prof) {
     const out = [];
-    for (let c = from; c <= to; c++) out.push(timeOutRoll(seedBeforeDraw, 0, c, 0) <= 30);
+    for (let c = from; c <= to; c++) out.push(works(seedBeforeDraw, 0, c, 0, prof));
     return out;
   }
   /* the earliest run of at least minRun consecutive working confirm frames, starting no earlier than `from` */
-  function bestWindow(seedBeforeDraw, from, to, minRun) {
-    const tab = timeOutTable(seedBeforeDraw, from, to); let runStart = -1;
+  function bestWindow(seedBeforeDraw, from, to, minRun, prof) {
+    const tab = timeOutTable(seedBeforeDraw, from, to, prof); let runStart = -1;
     for (let i = 0; i <= tab.length; i++) {
       if (i < tab.length && tab[i]) { if (runStart < 0) runStart = i; }
       else if (runStart >= 0) { if (i - runStart >= minRun) return { start: from + runStart, end: from + i - 1, length: i - runStart }; runStart = -1; }
@@ -138,6 +167,6 @@
   }
 
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

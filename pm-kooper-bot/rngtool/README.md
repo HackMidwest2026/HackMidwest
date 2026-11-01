@@ -49,3 +49,16 @@ MODE=bg, emulator footage): both locked the true seed after 16-17 shines with th
 - `test_press_sim.js` feeds the recorded frames (`rec_video_confirm.py`) to the page with exact timestamps:
   at 33.430 and 33.367 ms per frame the fitted rate matches to 4 decimals and the measured confirm frame is exact (54).
 - The strip view no longer jitters: "now" stays fixed while scrolling, and ticks are relative to now (or the press).
+
+## Fight profiles (Fight selector on the page)
+`pmrng_core.js` `PROFILES`: each profile lists the rolls one confirm decides (frames after the confirm), extra effect
+draws, and how many frames after the confirm the saved target-screen box changes (press check).
+- `timeout`: Hallway Bowser, Time Out (as above).
+- `dup4`: 4 Duplighosts (battle 0x2402), Bombette out, T1 do nothing / do nothing. The confirm is Bombette's
+  "do nothing" (Strategies: up 1, A, down 1, A). Each Duplighost rolls RandInt(1000) < 600 to copy on the enemy turn
+  at confirm + 13, 110, 207, 304 (all-copy path; no other draws besides the coin). Model matched the emulator on 13
+  seeds (`dup_rolls_log.py`). About 13% of frames work, mostly single frames; runs of 2 are common, so the planner
+  takes 2-frame windows. Target screen: Bombette's Strategies panel (it disappears 3 frames after the confirm).
+- `e2e_dup.py SEED` (debug core): seed from coin shines in Mario's menu, menu path, resync, planned confirm:
+  seeds 2468ace0, 13579bdf, 0f0f1e1e: all 4 copied.
+- `../boss_battle_start_setup.py`: battle setup with PARTNER / BRANK / BADGES (DIAGNOSTIC).
