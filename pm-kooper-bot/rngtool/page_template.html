@@ -111,6 +111,7 @@ details[open] summary { margin-bottom: 10px; }
         <div class="row">
           <button class="b primary" id="cam-start">Start watching</button>
           <button class="b" id="cam-stop" disabled>Stop</button>
+          <button class="b" id="test-beep">Test beeps</button>
           <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
         </div>
         <p class="note" id="cam-msg">Reads the game from an OBS projector window (or the OBS Virtual Camera). This works when the page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
@@ -641,7 +642,9 @@ function onFrame(t) {
     $('r-coin').textContent = present ? 'visible' : 'hidden';
     $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';
     $('r-shines').textContent = V.shines;
-    $('r-target').textContent = V.ref ? (V.score * 100).toFixed(0) + '% match' + (V.score >= num('tmatch') ? ' (on target screen)' : '') : 'no reference saved';
+    const need = Math.round(num('tmatch') * 100);
+    $('r-target').textContent = !V.ref ? 'not saved: press Save target screen' :
+      (V.score * 100).toFixed(0) + '% match' + (V.score >= num('tmatch') ? (st.lock ? ' · on target screen' : ' · on target screen, waiting for a seed lock') : ' (needs ' + need + '%)');
     $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + dims().join('×') + (V.src ? ' · background' : '');
     if (!document.hidden) drawPreview();
   }
@@ -659,7 +662,10 @@ function drawPreview() {
   const pt = e => { const r = cv.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
   cv.addEventListener('pointerdown', e => { p0 = pt(e); cv.setPointerCapture(e.pointerId); });
   cv.addEventListener('pointermove', e => { if (!p0) return; const q = pt(e); V.boxes[V.draw] = { x: Math.min(p0.x, q.x), y: Math.min(p0.y, q.y), w: Math.max(0.01, Math.abs(q.x - p0.x)), h: Math.max(0.01, Math.abs(q.y - p0.y)) }; if (!V.stream) drawIdlePreview(); });
-  cv.addEventListener('pointerup', () => { if (p0) { p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = []; } });
+  cv.addEventListener('pointerup', () => {
+    if (!p0) return; p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = [];
+    if (V.draw === 'target') { V.ref = null; try { localStorage.removeItem('tot-ref'); } catch (e) {} camMsg('Target box moved. Go to the target screen and press Save target screen again.'); }
+  });
 })();
 function drawIdlePreview() {
   const cv = $('preview'), c = cv.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height);
@@ -718,6 +724,15 @@ function showPresses() {
 $('press-apply').onclick = () => { $('s-off').value = $('press-apply').dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
 $('press-clear').onclick = () => { presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
 showPresses();
+// sound check: the same four beeps a plan plays, starting in half a second
+$('test-beep').onclick = () => {
+  const a = audio(); if (!a) { camMsg('This browser has no Web Audio.'); return; }
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms'), t = performance.now() + 500;
+  for (let i = 0; i < n; i++) beepAt(t + i * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  camMsg('Playing ' + n + ' test beeps (audio ' + a.state + '). No sound? Check that this tab is not muted and which speaker Chrome uses.');
+};
+// any click or key wakes the audio (browsers start it suspended until the page is used)
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
 function autoPlan() {
   if (!st.lock || st.searching) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
