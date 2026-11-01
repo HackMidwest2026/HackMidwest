@@ -293,6 +293,14 @@ const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof 
 const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
 loadSettings(); $('s-prof').value = 'endgame';   // one route for every fight
 SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
+// a new beep offset applies right away: beeps still to come are re-scheduled for the same aimed frame
+$('s-off').addEventListener('input', () => {
+  saveSettings(); const P = st.plan; if (!P || P.tPress < performance.now()) return;
+  P.tPress = P.tLast + (P.target - 0.5 + num('off')) * P.rate; cancelBeeps();
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
+  for (let i = 0; i < n; i++) beepAt(P.tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  render();
+});
 
 /* ---------- state ---------- */
 // segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
