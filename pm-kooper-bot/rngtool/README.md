@@ -25,3 +25,10 @@ Tests (headless Chrome with emulator footage as a fake camera, `test_cam.js`, `t
 video alone after 13 shines; full turn-1 -> turn-2 -> target-screen footage: both locks on the true seed trajectory,
 plan anchored on the true seed, and the planned confirm (frame 2784+170) made Time Out work in the emulator
 (`verify_planned_confirm.py`).
+
+## Power Bounce: does action-command timing change the cap? (No.)
+`pb_timing_test.py` (debug core) maps each bounce's action-command window vs Hallway Bowser and replays the chain
+pressing on every frame of every window. All 34 variants gave identical cap rolls, end frame and RNG seed. The
+cap roll for loop bounce k is the `rand_int(100)` on confirm + 73 + 26(k-1) frames (chance 200 x 0.65^k vs the
+roll), so like Time Out the whole Power Bounce outcome is fixed by the frame of the target-confirm A, as long as
+every action command is hit. Pressing early (before the window) still drops the bounce.
