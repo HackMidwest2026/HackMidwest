@@ -157,6 +157,18 @@
       effects: { 52: Array(11).fill(359), 79: Array(11).fill(359), 106: Array(10).fill(359) },
       rolls: [[78, 140], [105, 98], [132, 68]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
       screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
+    // Final Bowser phase 2 Power Bounce (chance 60: 120, 72, 43, 25, 15...), after the Peach Beam, Mario in Danger,
+    // 4 Super Charges. Cap rolls every 27 frames from +71; hit-effect draws (11 x rand(359)) one frame before each roll.
+    // NOT usable on the page yet: phase 2 also has the stage lightning (fixed schedule from the battle start), which the
+    // seed tracking must add before these tables are right. Model (with the lightning added) matched 13 seeds.
+    fbpb6: { id: 'fbpb6', name: 'Final Bowser: Power Bounce 6+ hits', short: '6+ bounces', group: 'fb', needsStage: 'kkj_02',
+      effects: { 45: Array(11).fill(359), 72: Array(11).fill(359), 99: Array(11).fill(359), 126: Array(11).fill(359) },
+      rolls: [[71, 120], [98, 72], [125, 43], [152, 25]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
+      screen: 'Power Bounce target screen (hand on Bowser)', box: 'the クッパ name box in the top-left' },
+    fbpb7: { id: 'fbpb7', name: 'Final Bowser: Power Bounce 7+ hits', short: '7+ bounces', group: 'fb', needsStage: 'kkj_02',
+      effects: { 45: Array(11).fill(359), 72: Array(11).fill(359), 99: Array(11).fill(359), 126: Array(11).fill(359), 153: Array(11).fill(359) },
+      rolls: [[71, 120], [98, 72], [125, 43], [152, 25], [179, 15]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 1,
+      screen: 'Power Bounce target screen (hand on Bowser)', box: 'the クッパ name box in the top-left' },
   };
   // Duplighosts with branching: a copy -> next roll 97 frames later; a failed copy -> tackle (8 x rand(359) on +34)
   // and the next roll 78 frames later. Measured in the emulator (13 seeds, every roll and effect matched).
@@ -181,7 +193,7 @@
   /* Duplighosts: the earliest frame in [from, to] where all 4 copy and both neighbours give 3+; returns
    * {target, window} with window = the 3+ run around it, or null */
   // base profile -> its better outcome: aim at a frame with the better outcome whose neighbours both give the base one
-  const TOP = { dup3: 'dup4', jrpb5: 'jrpb6' };
+  const TOP = { dup3: 'dup4', jrpb5: 'jrpb6', fbpb6: 'fbpb7' };
   function aimTop(seed, from, to, baseId) {
     const P3 = PROFILES[baseId], P4 = PROFILES[TOP[baseId]], c3 = {}, w3 = f => (f in c3 ? c3[f] : (c3[f] = works(seed, 0, f, 0, P3)));
     for (let f = from + 1; f < to; f++) {
