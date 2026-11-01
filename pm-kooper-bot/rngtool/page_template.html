@@ -1,0 +1,377 @@
+<title>Time Out Timer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: one working column. Status + the big shine button on top (what you touch mid-run), the frame strip
+   under it, then settings and the run procedure. Night-castle blues with the coin's gold as the accent. */
+:root {
+  --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
+  --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
+  --cursor: #172036;
+  --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--gold); }
+.tag { font-family: var(--mono); font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: stretch; }
+@media (max-width: 620px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.status { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.phase { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--mono); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { background: var(--gold-soft); border-color: var(--gold); color: var(--ink); }
+.chip.ok { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
+.chip.err { border-color: var(--warn); color: var(--warn); }
+#headline { font-family: var(--display); font-weight: 600; font-size: clamp(1.25rem, 3.6vw, 1.6rem); line-height: 1.25; margin: 0; text-wrap: balance; }
+#detail { color: var(--muted); margin: 0; max-width: 62ch; }
+.count { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: clamp(2.6rem, 9vw, 3.6rem); font-weight: 700; line-height: 1; color: var(--gold); }
+.count small { font-size: .35em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+#shine { font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .08em; text-transform: uppercase;
+  width: clamp(150px, 30vw, 200px); min-height: 150px; border-radius: 14px; border: 2px solid var(--gold); background: var(--gold-soft); color: var(--ink);
+  cursor: pointer; display: grid; place-items: center; gap: 2px; padding: 12px; touch-action: manipulation; user-select: none; }
+#shine kbd { font-family: var(--mono); font-size: .7rem; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
+#shine.flash { background: var(--gold); color: #1b1404; }
+@media (max-width: 620px) { #shine { width: 100%; min-height: 120px; } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button.b { font-family: var(--body); font-weight: 500; font-size: .9rem; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.b:hover { border-color: var(--muted); }
+button.b.primary { border-color: var(--gold); background: var(--gold-soft); }
+button.b kbd { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-left: 6px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: default; }
+.strip-wrap { overflow-x: auto; }
+canvas { display: block; width: 100%; height: 86px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 5px; }
+.spins { font-family: var(--mono); font-size: .9rem; letter-spacing: .12em; word-break: break-all; color: var(--muted); min-height: 1.5em; }
+.spins b { color: var(--gold); font-weight: 700; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+label.f { display: grid; gap: 4px; font-size: .86rem; color: var(--muted); }
+label.f input, label.f select { font-family: var(--mono); font-size: .95rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box; }
+label.c { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 70ch; }
+ol.steps b { font-weight: 600; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.note { font-size: .84rem; color: var(--muted); max-width: 70ch; margin: 0; }
+details summary { cursor: pointer; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { #shine.flash { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <h1>Time Out <span>Timer</span></h1>
+    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100)</div>
+  </header>
+
+  <section class="panel stage" aria-live="polite">
+    <div class="status">
+      <div class="phase" id="phase">
+        <span class="chip" id="p-watch">Watch</span>
+        <span class="chip" id="p-lock">Seed</span>
+        <span class="chip" id="p-time">Window</span>
+      </div>
+      <p id="headline">Tap Shine each time the status-bar coin flashes white.</p>
+      <p id="detail">Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.</p>
+      <div class="count" id="count" hidden>0.0<small> s</small></div>
+      <div class="row">
+        <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
+        <button class="b" id="gap">New segment<kbd>N</kbd></button>
+        <button class="b" id="plan" disabled>Plan Time Out<kbd>P</kbd></button>
+        <button class="b" id="undo">Undo tap<kbd>⌫</kbd></button>
+        <button class="b" id="reset">Reset</button>
+      </div>
+    </div>
+    <button id="shine" type="button">Shine<kbd>Space</kbd></button>
+  </section>
+
+  <section class="panel">
+    <h2>Coin spins this segment</h2>
+    <div class="spins" id="spins">–</div>
+    <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Confirm frames ahead</h2>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="86" aria-label="Time Out success by target-confirm frame for the next 12 seconds"></canvas></div>
+    <div class="legend">
+      <span><i style="background:var(--good)"></i>Time Out works if you confirm on this frame</span>
+      <span><i style="background:var(--bad)"></i>fails</span>
+      <span><i style="background:var(--gold)"></i>chosen window</span>
+      <span><i style="background:var(--cursor)"></i>now</span>
+    </div>
+    <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
+  </section>
+
+  <section class="panel">
+    <details id="settings-d">
+      <summary>Timing settings</summary>
+      <div class="grid2">
+        <label class="f">Reaction to the shine (ms)<input id="s-react" type="number" step="5" value="200"></label>
+        <label class="f">TV / capture lag (ms)<input id="s-lag" type="number" step="5" value="0"></label>
+        <label class="f">Fine offset for the press (frames, + = later)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
+        <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
+        <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
+        <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
+        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="500" value="6000"></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>In the run</h2>
+    <ol class="steps">
+      <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
+      <li><b>Gap.</b> Before leaving to do something else (turn 1, the hallway door), you can stop tapping. When the coin is in view again, press New segment, then tap again. A few shines resync it; the page shows when it is locked.</li>
+      <li><b>Turn 2.</b> Open Star Spirits, up 3 to Time Out, A, so the hand is on Bowser. Keep tapping shines while you do this if you can.</li>
+      <li><b>Press.</b> Press Plan Time Out. Confirm Bowser with A on the last beep. The strip shows the window you are aiming at.</li>
+    </ol>
+    <p class="note" style="margin-top:10px">Shines come 48 frames after a shine and 24 after a normal spin; one game frame is 33.4 ms. The Time Out roll comes 386 frames after the confirm and works on 30 or less, a 30.7% chance on a random frame. Verified frame for frame in an emulator, including after Super Jump Charge, Spiny Flip and Bowser's first attack.</p>
+  </section>
+</main>
+
+<script id="core-src">/*CORE*/</script>
+<script>
+(function () {
+'use strict';
+const coreText = document.getElementById('core-src').textContent;
+const R = (new Function('self', coreText + '\nreturn self.PMRNG;'))({});
+const FRAME = R.FRAME_MS;
+const $ = id => document.getElementById(id);
+
+/* ---------- settings ---------- */
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range'];
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
+function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
+const num = k => parseFloat($('s-' + k).value) || 0;
+loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
+
+/* ---------- state ---------- */
+// segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
+const st = { segs: [{ taps: [] }], cands: null, lock: null, searching: false, clock: null, plan: null, msg: null, example: true };
+const seg = () => st.segs[st.segs.length - 1];
+
+/* ---------- audio ---------- */
+let ac = null;
+function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+function beepAt(perfMs, freq, dur) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + (perfMs - performance.now()) / 1000; if (t < a.currentTime) return;
+  const o = a.createOscillator(), g = a.createGain(); o.frequency.value = freq; o.type = 'square';
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+
+/* ---------- seed search in workers ---------- */
+let workers = [];
+function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
+function searchAll(pattern) {
+  stopWorkers(); st.searching = true;
+  const n = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 12));
+  const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
+  const src = coreText + `
+  self.onmessage = e => { const { pattern, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
+    for (let a = lo; a < hi; a += CH) { out.push(...R.searchShineStart(pattern, a, Math.min(hi, a + CH), 64)); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
+    self.postMessage({ done: out }); };`;
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  const prog = new Array(n).fill(0), total = 4294967296 - lo; let done = 0; const seeds = []; const t0 = performance.now();
+  return new Promise(res => {
+    for (let i = 0; i < n; i++) {
+      const w = new Worker(url); workers.push(w);
+      const a = lo + i * span, b = Math.min(4294967296, lo + (i + 1) * span);
+      w.onmessage = e => {
+        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText('Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
+        if (e.data.done) { seeds.push(...e.data.done); if (++done === n) { stopWorkers(); URL.revokeObjectURL(url); st.searching = false; res(seeds); } }
+      };
+      w.postMessage({ pattern, lo: a, hi: b });
+    }
+  });
+}
+
+/* ---------- logic ---------- */
+function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '' }; }
+// draw frames of each tapped shine, relative to the first tapped draw of the pattern
+function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
+function lastLockedState() {
+  // seed after the last draw of the most recent locked segment, and that draw's time estimate
+  const L = st.lock; if (!L) return null;
+  const p = pat(st.segs[L.seg].taps).pattern; const a = R.afterPattern(L.seed, p);
+  return { seedAfter: a.seedAfterLastDraw, lastTap: st.segs[L.seg].taps[st.segs[L.seg].taps.length - 1] };
+}
+function evaluate() {
+  const s = seg(), P = pat(s.taps); st.msg = null; st.plan = null;
+  if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
+  if (st.segs.length === 1 || !st.prevLock) {
+    // first segment: filter existing candidates as taps come in
+    if (st.cands) {
+      st.cands = st.cands.filter(x => R.matches(x, P.pattern));
+      if (st.cands.length === 1) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; updateClock(); }
+      else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
+      else st.lock = null;
+    }
+  } else if (s.taps.length >= 1) {
+    // later segment: search steps from the previous lock, bounded by the elapsed time
+    const prev = st.prevLock; const E = (s.taps[0] - prev.lastTap) / FRAME;
+    const lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range');
+    const m = R.resync(prev.seedAfter, P.pattern, hi, 32, lo);
+    st.cands = m.map(x => x.seed);
+    if (m.length === 1) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
+    else { st.lock = null; if (!m.length) st.msg = 'No position in the expected range fits these taps. Undo a mis-tap, or raise the resync range in settings.'; }
+  }
+  render();
+}
+// game-clock estimate for the locked segment: perf time of frame 0 (first tapped draw)
+function updateClock() {
+  const L = st.lock; const taps = st.segs[L.seg].taps; const p = pat(taps).pattern; const f = shineFrames(p);
+  let sum = 0; for (let i = 0; i < taps.length; i++) sum += taps[i] - f[i] * FRAME;
+  const latency = 6 * FRAME + num('react') + num('lag');          // the shine shows ~6 frames after the draw
+  st.clock = { t0: sum / taps.length - latency, pattern: p, seed: L.seed, frames: f };
+  st.example = false;
+}
+function makePlan() {
+  if (!st.lock) return;
+  const C = st.clock; const lastF = C.frames[C.frames.length - 1];
+  const seedBL = R.seedBeforeLastDraw(C.seed, C.pattern);         // frame 0 of the plan = the last tapped shine's draw
+  const tLast = C.t0 + lastF * FRAME, nowF = (performance.now() - tLast) / FRAME;
+  const from = Math.ceil(nowF + num('lead') * 30 + 1), to = from + 1800;
+  let w = null, minRun = Math.max(1, Math.round(num('min')));
+  for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k);
+  if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
+  const target = w.start + Math.floor((w.length - 1) / 2);
+  const tPress = tLast + (target - 0.5 + num('off')) * FRAME;     // middle of the target frame's input window
+  const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
+  st.plan = { w, target, tPress, tLast, seedBL, from, to, first, tab: R.timeOutTable(seedBL, first, last) };
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
+  for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  render();
+}
+
+/* ---------- input ---------- */
+function tap() {
+  audio(); const t = performance.now(); seg().taps.push(t);
+  const b = $('shine'); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 90);
+  st.example = false; evaluate();
+}
+function undo() { seg().taps.pop(); evaluate(); }
+function newSegment() {
+  if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
+  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.plan = null; render();
+}
+async function find() {
+  if (st.searching) return;
+  const P = pat(seg().taps);
+  if (st.segs.length > 1 && st.prevLock) { evaluate(); return; }
+  if (P.error || seg().taps.length < 4) { st.msg = P.error || 'Tap at least 4 shines first (about 13 for a unique seed).'; render(); return; }
+  st.lock = null; st.cands = null; render();
+  st.cands = await searchAll(P.pattern);
+  evaluate();
+}
+function reset() { stopWorkers(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, example: true }); render(); }
+$('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
+$('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.repeat) return;
+  if (e.code === 'Space') { e.preventDefault(); tap(); }
+  else if (e.key === 'f' || e.key === 'F') find();
+  else if (e.key === 'n' || e.key === 'N') newSegment();
+  else if (e.key === 'p' || e.key === 'P') makePlan();
+  else if (e.key === 'Backspace') { e.preventDefault(); undo(); }
+});
+
+/* ---------- rendering ---------- */
+function setText(h, d) { $('headline').textContent = h; $('detail').textContent = d; }
+function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
+function render() {
+  const s = seg(), P = pat(s.taps), nSh = s.taps.length;
+  const segLabel = st.segs.length > 1 ? 'Segment ' + st.segs.length + ': ' : '';
+  $('plan').disabled = !st.lock;
+  chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
+  if (st.searching) {}
+  else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
+  else if (st.plan) setText('Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
+  else if (st.lock) setText(segLabel + 'Locked', 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Keep tapping if you can; any mismatch will show here. Press Plan Time Out once the hand is on Bowser.');
+  else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep tapping shines. Each one filters instantly.');
+  else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
+  else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
+    nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
+  // spins
+  $('spins').innerHTML = P.pattern ? P.pattern.split('').map(c => c === 'S' ? '<b>S</b>' : '·').join('') : '–';
+  $('count').hidden = !st.plan;
+  drawStrip();
+}
+
+/* strip: the next ~12 s of confirm frames */
+const EXAMPLE = { seed: 0x12345678 };
+function stripData() {
+  if (st.plan) return { tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, w: st.plan.w };
+  if (st.lock && st.clock) {
+    const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * FRAME;
+    const nowF = Math.floor((performance.now() - tLast) / FRAME);
+    const key = seedBL + ':' + Math.floor(nowF / 120);
+    if (stripData.key !== key) { stripData.key = key; stripData.cache = { tab: R.timeOutTable(seedBL, nowF, nowF + 479), first: nowF, tLast, w: null }; }
+    return stripData.cache;
+  }
+  if (!stripData.ex) stripData.ex = { tab: R.timeOutTable(EXAMPLE.seed, 0, 359), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, 3) };
+  return stripData.ex;
+}
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function drawStrip() {
+  const cv = $('strip'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = 86; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const d = stripData(), N = Math.max(360, d.tab.length), cw = W / N;
+  const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
+  for (let i = 0; i < N && i < d.tab.length; i++) { ctx.fillStyle = d.tab[i] ? good : bad; ctx.fillRect(i * cw, 18, Math.max(1, cw - 0.2), 40); }
+  if (d.w) { const x = (d.w.start - d.first) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw, 6); ctx.fillRect(x, 60, d.w.length * cw, 6); }
+  ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
+  const secs = Math.floor(N / 30);
+  for (let s = 0; s <= secs; s += 2) { const x = s * 30 * cw, lab = (s ? '+' : '') + s + ' s', tw = ctx.measureText(lab).width; ctx.fillRect(Math.min(x, W - 1), 70, 1, 4); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 84); }
+  let note = 'Example seed 0x12345678, marked as an example. Your own frames appear once the seed is locked.';
+  if (d.tLast !== null) {
+    const nowF = (performance.now() - d.tLast) / FRAME, x = (nowF - d.first) * cw;
+    if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 2, 66); }
+    note = st.plan ? 'Gold bars mark the window. The dark line is now.' : 'Live: green frames would work if you confirmed on them. The dark line is now.';
+  }
+  $('stripnote').textContent = note;
+  if (st.plan) {
+    const left = (st.plan.tPress - performance.now()) / 1000;
+    $('count').innerHTML = (left > 0 ? left.toFixed(1) : '0.0') + '<small> s to press</small>';
+  }
+}
+/* calibration beeps on predicted shines */
+let calNext = 0;
+function calibrate() {
+  if (!$('s-cal').checked || !st.lock || !st.clock) return;
+  const C = st.clock, now = performance.now();
+  // walk the coin forward from the first tapped draw and beep at each predicted shine for the next 2 s
+  let s = C.seed, f = 0;
+  const horizon = (now - C.t0) / FRAME + 60;
+  while (f < horizon) {
+    s = R.adv(s); const sh = s >= R.SHINE_MIN;
+    if (sh) { const t = C.t0 + (f + 6) * FRAME + num('lag'); if (t > now && t > calNext && t < now + 2000) { beepAt(t, 1040, 0.05); calNext = t; } }
+    if (sh) { for (let i = 0; i < 48; i++) s = R.adv(s); f += 48; } else { for (let i = 0; i < 24; i++) s = R.adv(s); f += 24; }
+  }
+}
+function loop() { drawStrip(); calibrate(); requestAnimationFrame(loop); }
+render(); requestAnimationFrame(loop);
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap };   // for testing
+})();
+</script>
