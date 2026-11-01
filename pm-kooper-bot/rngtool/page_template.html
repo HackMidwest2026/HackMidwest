@@ -9,16 +9,17 @@
   --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
   --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
   --cursor: #172036;
+  --run1: #d0342c; --run2: #1f8a3b; --run3: #2563d9; --run4: #8b3fd1; --run5: #e07b00;
   --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark } }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #3fcf6a; --run3: #5b93ff; --run4: #b77cff; --run5: #ffa133; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; color-scheme: dark }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #3fcf6a; --run3: #5b93ff; --run4: #b77cff; --run5: #ffa133; color-scheme: dark }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
 main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
@@ -152,10 +153,20 @@ details[open] summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel">
-    <h2>Confirm frames ahead</h2>
-    <div class="strip-wrap"><canvas id="strip" width="860" height="86" aria-label="Time Out success by target-confirm frame for the next 12 seconds"></canvas></div>
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h2 style="margin:0">Confirm frames ahead</h2>
+      <label class="f" style="flex:0 0 auto">Zoom<select id="s-zoom">
+        <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
+      </select></label>
+    </div>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Time Out success by target-confirm frame"></canvas></div>
     <div class="legend">
-      <span><i style="background:var(--good)"></i>Time Out works if you confirm on this frame</span>
+      <span>Working frames, colored by how many in a row:</span>
+      <span><i style="background:var(--run1)"></i>1</span>
+      <span><i style="background:var(--run2)"></i>2</span>
+      <span><i style="background:var(--run3)"></i>3</span>
+      <span><i style="background:var(--run4)"></i>4</span>
+      <span><i style="background:var(--run5)"></i>5+</span>
       <span><i style="background:var(--bad)"></i>fails</span>
       <span><i style="background:var(--gold)"></i>chosen window</span>
       <span><i style="background:var(--cursor)"></i>now</span>
@@ -216,7 +227,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -408,7 +419,7 @@ function stripData() {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * FRAME;
     const nowF = Math.floor((performance.now() - tLast) / FRAME);
     const key = seedBL + ':' + Math.floor(nowF / 120);
-    if (stripData.key !== key) { stripData.key = key; stripData.cache = { tab: R.timeOutTable(seedBL, nowF, nowF + 479), first: nowF, tLast, w: null }; }
+    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479), first: f0, tLast, w: null }; }   // data only; the view scrolls smoothly in drawStrip
     return stripData.cache;
   }
   if (!stripData.ex) stripData.ex = { tab: R.timeOutTable(EXAMPLE.seed, 0, 359), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, 3) };
@@ -417,20 +428,51 @@ function stripData() {
 function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 function drawStrip() {
   const cv = $('strip'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth, H = 86; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const W = cv.clientWidth, H = 120; cv.style.height = H + 'px';
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-  const d = stripData(), N = Math.max(360, d.tab.length), cw = W / N;
+  const d = stripData(), span = Math.max(30, Math.round((num('zoom') || 12) * 30)), cw = W / span;
+  const nowF = d.tLast !== null ? (performance.now() - d.tLast) / FRAME : null;
+  // view: centred on the chosen window once planned, otherwise scrolling with "now" near the left edge
+  let v0;
+  if (d.w && (st.plan || nowF === null)) v0 = Math.round((d.w.start + d.w.end) / 2 - span / 2);
+  else if (nowF !== null) v0 = Math.floor(nowF - span * 0.1);
+  else v0 = d.first;
   const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
-  for (let i = 0; i < N && i < d.tab.length; i++) { ctx.fillStyle = d.tab[i] ? good : bad; ctx.fillRect(i * cw, 18, Math.max(1, cw - 0.2), 40); }
-  if (d.w) { const x = (d.w.start - d.first) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw, 6); ctx.fillRect(x, 60, d.w.length * cw, 6); }
+  const gap = cw >= 5 ? Math.min(2, cw * 0.15) : 0.2;                       // visible gaps between frames when zoomed
+  // run length of working frames at each index (each run colored by its length: 1 red, 2 green, 3 blue, 4 purple, 5+ orange)
+  if (d.runs === undefined || d.runsOf !== d.tab) {
+    const r = new Array(d.tab.length).fill(0);
+    for (let i = 0; i < d.tab.length;) { if (!d.tab[i]) { i++; continue; } let k = i; while (k < d.tab.length && d.tab[k]) k++; for (let m = i; m < k; m++) r[m] = k - i; i = k; }
+    d.runs = r; d.runsOf = d.tab;
+  }
+  const RUN = [null, css('--run1'), css('--run2'), css('--run3'), css('--run4'), css('--run5')];
+  for (let j = 0; j < span; j++) {
+    const i = v0 + j - d.first; if (i < 0 || i >= d.tab.length) continue;
+    ctx.fillStyle = d.tab[i] ? RUN[Math.min(5, d.runs[i])] : bad; ctx.fillRect(j * cw, 20, Math.max(1, cw - gap), 56);
+  }
+  // run length printed on each run when there is room
+  ctx.font = '600 12px ' + css('--mono'); ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+  for (let j = 0; j < span; j++) {
+    const i = v0 + j - d.first; if (i < 0 || i >= d.tab.length || !d.tab[i] || (i > 0 && d.tab[i - 1])) continue;
+    const n = d.runs[i], w = n * cw; if (w < 12) continue;
+    ctx.fillText(String(n), (j + n / 2) * cw - gap / 2, 52);
+  }
+  ctx.textAlign = 'left';
+  if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
+  // time ticks relative to now (or to the left edge for the example)
   ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
-  const secs = Math.floor(N / 30);
-  for (let s = 0; s <= secs; s += 2) { const x = s * 30 * cw, lab = (s ? '+' : '') + s + ' s', tw = ctx.measureText(lab).width; ctx.fillRect(Math.min(x, W - 1), 70, 1, 4); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 84); }
+  const ref = nowF !== null ? nowF : v0, step = span <= 60 ? 0.25 : span <= 120 ? 0.5 : span <= 240 ? 1 : 2;
+  for (let s = Math.ceil((v0 - ref) / 30 / step) * step; (ref + s * 30 - v0) < span; s += step) {
+    const x = (ref + s * 30 - v0) * cw; if (x < 0) continue;
+    const lab = (s > 0 ? '+' : '') + (Math.round(s * 100) / 100) + ' s', tw = ctx.measureText(lab).width;
+    ctx.fillRect(Math.min(x, W - 1), 90, 1, 5); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 106);
+  }
   let note = 'Example seed 0x12345678, marked as an example. Your own frames appear once the seed is locked.';
-  if (d.tLast !== null) {
-    const nowF = (performance.now() - d.tLast) / FRAME, x = (nowF - d.first) * cw;
-    if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 2, 66); }
-    note = st.plan ? 'Gold bars mark the window. The dark line is now.' : 'Live: green frames would work if you confirmed on them. The dark line is now.';
+  if (nowF !== null) {
+    const x = (nowF - v0) * cw;
+    if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
+    note = st.plan ? 'Gold bars mark the window (' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + '). The dark line is now; it moves toward the window.' : 'Live: green frames would work if you confirmed on them. The dark line is now.';
   }
   $('stripnote').textContent = note;
   if (st.plan) {
