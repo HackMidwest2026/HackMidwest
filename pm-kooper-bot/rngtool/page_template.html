@@ -433,7 +433,7 @@ function render() {
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText('Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
+  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan Time Out once the hand is on Bowser.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
@@ -660,12 +660,13 @@ function onFrame(t) {
     const g = sample(V.boxes.target, 24, 16); let diff = 0;
     for (let i = 0, j = 0; i < g.length; i += 4, j++) diff += Math.abs((g[i] + g[i + 1] + g[i + 2]) / 3 - V.ref[j]);
     V.score = 1 - diff / (24 * 16 * 255);
-    const on = V.score >= num('tmatch');
+    // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
+    const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
     if (V.wasOn && !on && V.onFor > 200) checkPress(t);   // the target screen just closed (after being up for a moment)
     V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
     V.wasOn = on;
     if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
-    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
+    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 1000 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
   }
   // readouts and preview (throttled)
   if (V.frames % 10 === 0 && st.lock && !st.plan && !st.searching) render();   // keep the 'no beeps yet' match % current
@@ -782,7 +783,7 @@ $('test-beep').onclick = () => {
 function autoPlan() {
   if (!st.lock || st.searching) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
-  makePlan();
+  const again = !!st.plan; makePlan(); if (st.plan) st.plan.again = again;
 }
 // claude.ai: offer the page as a file, since the camera only works outside the claude.ai frame
 (async function () {

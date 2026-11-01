@@ -4,7 +4,7 @@ from emu import *
 from pm import *
 from btl import *
 from rngsim import *
-OUT = '/dev/shm/pmbot/vid'; os.makedirs(OUT, exist_ok=True)
+OUT = os.environ.get('VID_OUT', '/dev/shm/pmbot/vid'); os.makedirs(OUT, exist_ok=True)
 for f in os.listdir(OUT): os.remove(os.path.join(OUT, f))
 SH = 700 * (0xFFFFFFFF // 1010)
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/rv2')
@@ -26,5 +26,5 @@ MENU = {5: (0, 0, -70), 13: (0, 0, -70), 21: (A, 0, 0), 31: (0, 0, 70), 37: (0, 
 for i in range(60): step(*MENU.get(i, (0, 0, 0)))
 marks['target_screen'] = F[0]; wait(150)
 marks['confirm'] = F[0]; step(A); step(A); wait(200)
-json.dump({'truth': truth, 'marks': marks, 'frames': F[0]}, open('/dev/shm/pmbot/vid3_truth.json', 'w'))
+json.dump({'truth': truth, 'marks': marks, 'frames': F[0]}, open(os.path.join(os.path.dirname(OUT), 'vid3_truth.json'), 'w'))
 print('frames', F[0], 'marks', marks, 'coin draws in menus', len(truth))
