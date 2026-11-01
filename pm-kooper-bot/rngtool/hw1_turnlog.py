@@ -33,9 +33,13 @@ out = {'seed': seed, 'dseed': dseed}
 try:
     w(15, A); w(10, 0, 0, -70); w(10, 0, 0, -70); w(20, A); confirm('T1 Charge'); until([14]); w(10); out['charge'] = hp()
     w(25, A); w(25, A); until([17], cap=80); confirm('T1 Spiny Flip')
-    for f in range(200): step(A if f in range(20, 140, 2) else 0)      # (action command: press A along the way)
-    until([13], cap=4000); out['t2'] = [hp(), bstate(e)]; w(30); confirms.append((len(log), 'T2 menu'))
+    # aim: wait for the stick prompt (30 frames), hold right ~13 frames onto Bowser, no A (the throw comes when the
+    # aim timer runs out, on a fixed frame)
+    for f in range(40 + rnd.randint(0, 8)): step()
+    for f in range(10 + rnd.randint(0, 4)): step(0, 70, 0)
+    out['bowserHP_after_flip_wait'] = None
+    until([13], cap=4000); out['bowser'] = e.s8(e.u32(BSTATUS + 0xE0) + 0x1B8); out['t2'] = [hp(), bstate(e)]; w(30); confirms.append((len(log), 'T2 menu'))
 except Exception as ex: out['error'] = str(ex)
 out.update(confirms=confirms, log=log, seeds=seeds, bstates=st_)
 os.makedirs('data', exist_ok=True); json.dump(out, open('data/hw1_%08x_%d.json' % (seed, dseed), 'w'))
-print('seed %08x d%d: confirms %s, after charge %s, T2 menu %s, err %s' % (seed, dseed, confirms, out.get('charge'), out.get('t2'), out.get('error')))
+print('seed %08x d%d: Bowser HP %s, Mario HP/FP after T1 %s, err %s' % (seed, dseed, out.get('bowser'), out.get('t2'), out.get('error')))

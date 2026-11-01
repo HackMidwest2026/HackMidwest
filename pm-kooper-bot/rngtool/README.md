@@ -145,3 +145,16 @@ the Duplighost torches, a stray C-up) no longer drop the lock: the page keeps on
 waits for ones that fit. Only after 12+ shines in a row that never fit does it search all seeds with them in the
 background: one clean fit means the RNG really was replaced (savestate, reset, retried fight) and the page follows it;
 none means the stretch is ignored. Tests: `test_dirty.js`, `test_lost.js`.
+
+## Hallway Bowser T1 carried to Time Out
+
+`hw1_turnlog.py` / `hw1_guardlog.py` (26 runs from the route start state `boss_2302_route_menu.st`: DIAGNOSTIC setup
+Lakilester Super rank, Jump Charge + Power Bounce + Close Call, 10 HP / 15 FP; random seeds, delays and aims; 8 runs
+guarding): Charge = the Jr. model. Spiny Flip: an aim sparkle (`energy_in_out`, 10 parts, 20-frame cycle, +39..+119),
+impact 8 x rand(359) on a frame that depends on where the reticle ended up (+147..+154 here), then Bowser's AI 44 frames
+later (`EVS_UseAttack`): RandInt(80) < 20 Body Slam, else RandInt(60) < 20 Claw Swipe, else Fire Breath. Each attack's
+draws were measured, guarded (A 1-3 frames before the hit, `hw1_guardtiming.py`) and not; `test_hw_t1.js`: every frame
+of all 26 runs matches. On the page the impact frame and the guard are unknown, so 66 candidates (+138..+170, guard or
+not) are simulated; candidates in the same RNG state at the current frame are merged, and each shine in T2's menu drops
+the ones that did not predict it. `test_hw_carry.js`: 6 cases (all attacks, guarded or not, impact +141..+163): 1-3
+shines, then Time Out planned and STOP in the game every time.

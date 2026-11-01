@@ -273,7 +273,7 @@ const ENDGAME = [
     { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }] },
     { text: 'T7: Star Storm if 4 capped / Shooting Star [Down 5] if 4 capped', steps: [] } ] },
   { h: 'Hallway Bowser', turns: [
-    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Spiny Flip', cat: 'B' }] },
+    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Spiny Flip', cat: 'B', turn: 'hw_spiny', pre: [{ cat: 'M', id: 'hw_charge' }], imps: Array.from({ length: 33 }, (_, i) => 138 + i) }] },
     { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }] },
     { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [] },
     { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [] },
@@ -354,21 +354,47 @@ function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0);
 /* Carrying the seed through turns: every modelled confirm (planned presses, and the turn's other inputs seen on their
  * own target screens) is an event on the locked segment's frames (frame 0 = its first tapped draw). The game's draws for
  * those turns are simulated (R.TURNS), so the next plan starts right away; later shines only have to agree. */
-let evCache = null;
-function evNow() { const k = st.turnEv.map(e => e.f + e.id).join(); if (!evCache || evCache.k !== k) evCache = { k, ev: R.buildEv(st.turnEv) }; return evCache.ev; }
-let baseCache = null;
+/* Hallway T1: the Spiny Flip's impact frame depends on where the reticle ended up, and whether the guard on Bowser's
+ * attack landed changes his draws; the page sees neither. Every
+ * candidate (st.hyp) is simulated; candidates that end in the same RNG state are the same for planning; each shine in
+ * T2's menu keeps only the candidates that predicted it. */
+const evCache = new Map();
+function evFor(imp) {
+  const k = st.turnEv.map(e => e.f + e.id).join() + '|' + imp;
+  if (!evCache.has(k)) { if (evCache.size > 400) evCache.clear(); evCache.set(k, R.buildEv(st.turnEv.map(e => e.imps ? Object.assign({ imp: imp >> 1, guard: !!(imp & 1) }, e) : e))); }
+  return evCache.get(k);
+}
+const hypsAlive = () => (st.hyp && st.hyp.length ? st.hyp : [null]);
+function evNow() { return evFor(hypsAlive()[0]); }
+const baseCache = new Map();
+function baseFor(imp) {
+  const C = st.clock, lastF = C.frames[C.frames.length - 1], k = C.seed + ':' + lastF + ':' + st.turnEv.map(e => e.f + e.id).join() + '|' + imp;
+  if (!baseCache.has(k)) { if (baseCache.size > 400) baseCache.clear(); baseCache.set(k, R.baseAfter(C.seed, evFor(imp), lastF)); }
+  return baseCache.get(k);
+}
 function baseState() {   // plan frame 0: the last tapped shine, or the first coin draw after the carried turns
   const C = st.clock, lastF = C.frames[C.frames.length - 1];
   if (st.turnEv.length) {
-    const k = C.seed + ':' + lastF + ':' + evNow().size + ':' + st.turnEv.length;
-    if (!baseCache || baseCache.k !== k) { const b = R.baseAfter(C.seed, evNow(), lastF); baseCache = { k, b }; }
-    const b = baseCache.b;
-    if (b) return { seedBL: b.seed, baseF: b.F, tLast: C.t0 + b.F * C.rate, carried: true };
+    // candidates that reach the same RNG state are the same future: line them up at a common coin draw before comparing
+    // (compared at the current frame: different attacks can end in the same RNG state a little later)
+    const bs = hypsAlive().map(imp => [imp, baseFor(imp)]).filter(x => x[1]), groups = new Map();
+    const nowF = Math.floor((performance.now() - C.t0) / C.rate), Fc = Math.max(nowF, ...bs.map(x => x[1].F));
+    const gk = hypsAlive().join() + '@' + (Fc >> 5);
+    if (st.groupCache && st.groupCache.k === gk && bs.length) { const g0 = st.groupCache.g; return { seedBL: g0[0].seed, baseF: g0[0].F, tLast: C.t0 + g0[0].F * C.rate, carried: true, ambiguous: g0.length > 1 ? g0.length : 0, branch: g0.length === 1 ? g0[0].branch : null }; }
+    for (const [imp, b] of bs) {
+      const S = { s: b.seed >>> 0, nc: b.F, inst: [] }; let f = b.F;
+      while (!(f >= Fc && f === S.nc)) { R.frameEv(S, f, null); f++; }
+      const k = S.s + ':' + f;
+      if (!groups.has(k)) groups.set(k, { seed: S.s, F: f, branch: b.branch, imps: [] }); groups.get(k).imps.push(imp);
+    }
+    const g = [...groups.values()].sort((a, b) => b.imps.length - a.imps.length);
+    st.groupCache = { k: gk, g };
+    if (g.length) return { seedBL: g[0].seed, baseF: g[0].F, tLast: C.t0 + g[0].F * C.rate, carried: true, ambiguous: g.length > 1 ? g.length : 0, branch: g.length === 1 ? g[0].branch : null };
   }
   return { seedBL: R.seedBeforeLastDraw(C.seed, C.pattern), baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
 }
-function predictedShineNear(f) {
-  const ev = evNow(), S = { s: st.lock.seed >>> 0, nc: 0, inst: [] };
+function predictedShineNear(f, ev) {
+  ev = ev || evNow(); const S = { s: st.lock.seed >>> 0, nc: 0, inst: [] };
   for (let g = 0; g <= f + 2; g++) { const r = R.frameEv(S, g, ev); if (r && Math.abs(g - f) <= 1.5) return true; }
   return false;
 }
@@ -379,7 +405,8 @@ function logInput(tObs, cat, id, modeled) {
   if (st.inputs.length > 40) st.inputs.shift();
 }
 function unmodeledAfter(tBase) { return (st.inputs || []).find(x => !x.modeled && x.tc > tBase - 0.5 * FRAME); }
-function addTurn(f, id, why) { st.turnEv.push({ f, id }); st.note = null; V.turnNote = why; }
+// candidates = impact frame x (guard landed or not), encoded imp * 2 + guard
+function addTurn(f, id, why, imps) { st.turnEv.push(imps ? { f, id, imps } : { f, id }); if (imps) st.hyp = imps.flatMap(i => [i * 2 + 1, i * 2]); st.note = null; V.turnNote = why; }
 // an input before the planned one (Charge, Bomb): its target screen closed at tObs
 function preConfirm(pr, tObs) {
   { const stp = isRoute() && RT()[routeStep]; V.preDone = V.preDone || {};
@@ -504,6 +531,7 @@ function makePlan() {
     st.msg = 'The seed is being carried, but the page did not see this turn\'s ' + stp0.pre.map(pr => pr.id.replace('jr_', '')).join(' / ') + ' confirm (its target screen is not saved, or was not recognized). Show a few shines to find the seed again.'; render(); return;
   }
   const C = st.clock, B = baseState();
+  if (B.ambiguous) { st.msg = 'Waiting for shines to tell when the Spiny Flip landed (' + B.ambiguous + ' possibilities left; each shine in this menu cuts them down).'; render(); return; }
   const um = unmodeledAfter(B.tLast);
   if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
   const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
@@ -540,7 +568,8 @@ function addShine(t, auto) {
   // the simulated shines directly (within 1.5 frames) instead of as a continuation of the tapped pattern
   if (auto && st.lock && st.turnEv.length && st.clock && st.lock.seg === st.segs.length - 1) {
     const C = st.clock, f = (t - C.t0 - 6 * C.rate - num('vlag')) / C.rate;
-    if (predictedShineNear(f)) { st.carryOk = (st.carryOk || 0) + 1; render(); return; }
+    const keep = hypsAlive().filter(imp => predictedShineNear(f, evFor(imp)));
+    if (keep.length) { if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1; render(); return; }
     newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;      // the carried turns went differently
   }
   if (auto && st.lock && st.lock.seg === st.segs.length - 1 && !R.matchesEv(st.lock.seed, pat(s.taps.concat([t])).pattern, evNow())) {
@@ -556,7 +585,7 @@ function tap() {
 function undo() { seg().taps.pop(); evaluate(); }
 function newSegment() {
   if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
-  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.turnEv = []; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
+  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.turnEv = []; st.hyp = null; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
 }
 async function findChain() {
   const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
@@ -582,7 +611,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -626,8 +655,9 @@ function render() {
   $('count').hidden = !st.plan;
   { const cn = $('carry-note'), n = st.turnEv.length;
     cn.hidden = !(n || st.needResync);
+    const Bn = n && st.clock ? baseState() : null;
     cn.textContent = st.needResync ? 'The last Close Call did not land as planned: the page needs a few shines to find the seed again.'
-      : 'Seed carried through ' + n + ' input' + (n > 1 ? 's' : '') + ' since the last shines (' + st.turnEv.map(e => e.id.replace('jr_', '').replace('_cc', '★')).join(', ') + '). The next plan is ready without new shines; any shine you show is checked against it' + (st.carryOk ? ' (' + st.carryOk + ' checked so far, all where expected).' : '.'); }
+      : 'Seed carried through ' + n + ' input' + (n > 1 ? 's' : '') + ' since the last shines (' + st.turnEv.map(e => e.id.replace('jr_', '').replace('_cc', '★')).join(', ') + '). ' + (Bn && Bn.ambiguous ? 'The Spiny Flip\'s landing frame and whether your guard landed are not visible, so ' + Bn.ambiguous + ' possibilities are tracked; a few shines in the next menu settle it.' : 'The next plan is ready without new shines; any shine you show is checked against it' + (st.carryOk ? ' (' + st.carryOk + ' checked so far, all where expected).' : '.')) + (Bn && Bn.branch ? ' Bowser: ' + Bn.branch + '.' : ''); }
   drawStrip();
 }
 
@@ -999,7 +1029,7 @@ function checkPress(tObs) {
   const stp = isRoute() && RT()[routeStep], n0 = st.turnEv.length;
   if (stp && stp.turn && !PROF().rolls.length && st.lock && st.clock && !st.needResync && !unmodeledAfter(baseState().tLast)) {
     const B = baseState(), f = B.baseF + Math.round((tObs - B.tLast - num('vlag')) / st.clock.rate - (VAN[stp.cat] || VAN.M)() - num('pfix'));
-    addTurn(f, stp.turn, 'Carrying the seed through this turn.');
+    addTurn(f, stp.turn, 'Carrying the seed through this turn.', stp.imps);
   }
   checkPress_(tObs);
   if (stp) logInput(tObs, stp.cat, stp.turn || stp.label, st.turnEv.length > n0);

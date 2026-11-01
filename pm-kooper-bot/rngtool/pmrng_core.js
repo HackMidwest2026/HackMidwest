@@ -312,34 +312,55 @@
    * Super Charge sparkles (energy_in_out: created on +c, 10 parts each with rand(10) speed and rand(10) start phase,
    * every part redraws rand(359) each time its 10-frame counter wraps, from the frame it is created until +r). The coin
    * keeps its 24/48-frame schedule through all of it. */
-  const TURNS = {"jr_bomb_cc":{"pre":{"73":[359,359,359,359,359,359,359,359],"179":[100]},"post":{"73":[360]}},"jr_bomb":{"pre":{"73":[359,359,359,359,359,359,359,359]},"post":{"73":[360]}},"jr_syrup_cc":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"163":[100]},"post":{}},"jr_nothing_cc":{"pre":{"26":[100]},"post":{}},"jr_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]},"jr_whacka":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"190":[359,359,359,359,359,359,359,359,359,359]},"post":{}}};
+  const TURNS = {"jr_bomb_cc":{"pre":{"73":[359,359,359,359,359,359,359,359],"179":[100]},"post":{"73":[360]}},"jr_bomb":{"pre":{"73":[359,359,359,359,359,359,359,359]},"post":{"73":[360]}},"jr_syrup_cc":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"163":[100]},"post":{}},"jr_nothing_cc":{"pre":{"26":[100]},"post":{}},"jr_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]},"jr_whacka":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"190":[359,359,359,359,359,359,359,359,359,359]},"post":{}},"hw_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]},"hw_spiny":{"pre":{},"post":{},"eio":[[39,119,20]],"impact":[359,359,359,359,359,359,359,359],"ai":44}};
   /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
   function buildEv(list) {
     const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };
-    for (const { f, id } of list || []) {
+    for (const { f, id, imp, guard } of list || []) {
       const T = TURNS[id]; if (!T) continue;
       for (const o in T.pre) get(f + +o).pre.push(...T.pre[o]);
       for (const o in T.post) get(f + +o).post.push(...T.post[o]);
-      for (const [c, r] of T.eio || []) get(f + c).eio.push(f + r);
+      for (const [c, r, per] of T.eio || []) get(f + c).eio.push([f + r, per || 10]);
+      if (T.impact && imp != null) { get(f + imp).pre.push(...T.impact); const a = get(f + imp + T.ai); a.ai = id; a.guard = !!guard; }
     }
     return m;
   }
   /* one game frame: battle-script draws, effect creation, the coin (if due), effect updates, the frame step.
    * S = {s, nc, inst}; returns null, or whether the coin drew a shine */
+  /* Hallway Bowser's T1 AI (EVS_UseAttack): RandInt(80) < 20 Body Slam; else RandInt(60) < 20 Claw Swipe (frame +72:
+   * rand(100) then 10 x rand(359); +231: 6 x rand(359)); else Fire Breath (no draws). All three measured in the emulator (18 runs). */
+  /* guarded (A just before the hit): Body Slam and Claw Swipe only draw their 10 x rand(359) (+71 / +72) */
+  function bowserT1(S, f, guard) {
+    const a = randInt(S.s, 80); S.s = a[0];
+    S.extra = S.extra || new Map();
+    if (a[1] < 20) {                                                  // Body Slam: +71 10 x rand(359), +76 2 x rand(2), +133/139/145 6 x rand(359)
+      S.branch = 'body slam'; S.extra.set(f + 71, Array(10).fill(359));
+      if (!guard) { S.extra.set(f + 76, [2, 2]); for (const o of [133, 139, 145]) S.extra.set(f + o, Array(6).fill(359)); }
+      return;
+    }
+    const b = randInt(S.s, 60); S.s = b[0];
+    if (b[1] < 20) {
+      S.branch = 'claw swipe';
+      if (guard) S.extra.set(f + 72, Array(10).fill(359));
+      else { S.extra.set(f + 72, [100].concat(Array(10).fill(359))); S.extra.set(f + 231, Array(6).fill(359)); }
+    } else S.branch = 'fire breath';
+  }
   function frameEv(S, f, ev) {
     const e = ev && ev.get(f); let r = null;
     if (e) {
       for (const mx of e.pre) S.s = randInt(S.s, mx)[0];
-      for (const rm of e.eio) {
+      if (e.ai) bowserT1(S, f, e.guard);
+      for (const [rm, per] of e.eio) {
         S.s = randInt(S.s, 360)[0]; const p = [];
-        for (let i = 0; i < 10; i++) { S.s = randInt(S.s, 10)[0]; const q = randInt(S.s, 10); S.s = q[0]; p.push(-q[1]); }
-        S.inst.push({ rm, p });
+        for (let i = 0; i < 10; i++) { S.s = randInt(S.s, 10)[0]; const q = randInt(S.s, per); S.s = q[0]; p.push(-q[1]); }
+        S.inst.push({ rm, per, p });
       }
     }
+    if (S.extra && S.extra.has(f)) { for (const mx of S.extra.get(f)) S.s = randInt(S.s, mx)[0]; S.extra.delete(f); }
     if (f === S.nc) { const q = randInt(S.s, 100); S.s = q[0]; r = q[1] >= 70; S.nc = f + (r ? 48 : 24); }
     if (e) for (const mx of e.post) S.s = randInt(S.s, mx)[0];
     if (S.inst.length) {
-      for (const I of S.inst) if (f < I.rm) for (let i = 0; i < 10; i++) { if (++I.p[i] >= 10) { I.p[i] = 0; S.s = randInt(S.s, 359)[0]; } }
+      for (const I of S.inst) if (f < I.rm) for (let i = 0; i < 10; i++) { if (++I.p[i] >= (I.per || 10)) { I.p[i] = 0; S.s = randInt(S.s, 359)[0]; } }
       S.inst = S.inst.filter(I => f + 1 < I.rm);
     }
     S.s = adv(S.s);
@@ -366,9 +387,10 @@
   function baseAfter(seed, ev, minF) {
     const S = { s: seed >>> 0, nc: 0, inst: [] }; let last = 0;
     for (const f of ev.keys()) last = Math.max(last, f);
-    for (const e of ev.values()) for (const rm of e.eio) last = Math.max(last, rm);
+    for (const e of ev.values()) for (const [rm] of e.eio) last = Math.max(last, rm);
     for (let f = 0; f < 400000; f++) {
-      if (f >= minF && f > last && f === S.nc && !S.inst.length) return { seed: S.s, F: f };
+      if (S.unknown) return null;
+      if (f >= minF && f > last && f === S.nc && !S.inst.length && !(S.extra && S.extra.size)) return { seed: S.s, F: f, branch: S.branch };
       frameEv(S, f, ev);
     }
     return null;
