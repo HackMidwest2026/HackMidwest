@@ -305,13 +305,23 @@ function evaluate() {
       else st.lock = null;
     }
   } else if (s.taps.length >= 1) {
-    // later segment: search steps from the previous lock, bounded by the elapsed time
+    // later segment: search forward from the previous lock. First near the elapsed time; if nothing fits, widen step
+    // by step (a busy turn, charge, an attack or a room load can use thousands of extra random numbers). Locking needs
+    // more shines in a wider search (log2(window) + 7 bits), so a wide search cannot lock on a chance fit.
     const prev = st.prevLock;
-    let win = 1;
-    const tryResync = () => { const E = (s.taps[0] - prev.lastTap) / FRAME, lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range'); win = hi - lo + 1;
-      return R.resync(prev.seedAfter, pat(s.taps).pattern, hi, 32, lo); };
-    let m = tryResync(), dropped = 0;
+    let win = 1, m = [];
+    const tryResync = () => {
+      const E = Math.floor((s.taps[0] - prev.lastTap) / FRAME);
+      const tiers = [[Math.max(0, E - 300), E + num('range')], [0, E + 20000], [0, E + 200000]];
+      for (let k = 0; k < tiers.length; k++) {
+        const [lo, hi] = tiers[k]; win = hi - lo + 1; st.tier = k;
+        const r = R.resync(prev.seedAfter, pat(s.taps).pattern, hi, 32, lo); if (r.length) return r;
+      }
+      return [];
+    };
+    m = tryResync(); let dropped = 0;
     while (!m.length && s.auto && s.taps.length > 1 && dropped < 2) { s.taps.shift(); dropped++; m = tryResync(); }   // a false first detection
+    // nothing fits even 200,000 numbers ahead: the RNG was replaced (savestate, reset, retried fight)
     if (!m.length && s.auto && s.taps.length >= 4) { lostTrack(); return; }
     st.cands = m.map(x => x.seed); st.need = Math.log2(win) + 7; st.have = bits(pat(s.taps).pattern);
     if (m.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
@@ -426,7 +436,7 @@ function render() {
   else if (st.lock) setText(segLabel + 'Locked', 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Keep tapping if you can; any mismatch will show here. Press Plan Time Out once the hand is on Bowser.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
-  else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
+  else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), st.tier ? 'Searching further ahead: the game used a lot of random numbers during the gap (an attack, charge or room load). This needs a few more shines; the seed is kept.' : 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
   else if (st.note) setText(nSh ? 'Re-finding the seed: ' + nSh + ' shine' + (nSh > 1 ? 's' : '') : 'Lost track, watching again', st.note);
   else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
     nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
