@@ -91,41 +91,30 @@ details[open] summary { margin-bottom: 10px; }
     <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100)</div>
   </header>
 
-  <section class="panel" id="auto">
-    <h2>Watch the game automatically (OBS Virtual Camera)</h2>
-    <div class="cam">
-      <div style="display:grid; gap:8px; min-width:0">
-        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box and the Time Out hand box"></canvas>
-        <div class="row">
-          <span class="seg" role="group" aria-label="Box to draw">
-            <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
-            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> <span id="target-label">Time Out's Hand on Hallway</span></button>
-          </span>
-          <button class="b" id="cap-target" disabled>Save target screen</button>
-        </div>
-      </div>
-      <div style="display:grid; gap:10px; min-width:0">
-        <div class="row">
-          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="window">A window (OBS projector, no Virtual Camera)</option><option value="">OBS Virtual Camera</option></select></label>
-        </div>
-        <div class="row">
-          <button class="b primary" id="cam-start">Start watching</button>
-          <button class="b" id="cam-stop" disabled>Stop</button>
-          <button class="b" id="test-beep">Test beeps</button>
-          <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
-        </div>
-        <p class="note" id="fight-help"></p>
-        <p class="note" id="cam-msg">Reads the game from an OBS projector window (or the OBS Virtual Camera). This works when the page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
-        <dl class="read">
-          <dt>Coin</dt><dd id="r-coin">–</dd>
-          <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
-          <dt>Shines seen</dt><dd id="r-shines">0</dd>
-          <dt>Target screen</dt><dd id="r-target">no reference saved</dd>
-          <dt>Video frames</dt><dd id="r-fps">–</dd>
-        </dl>
-      </div>
+  <section class="panel">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h2 style="margin:0">Confirm frames ahead</h2>
+      <label class="f" style="flex:0 0 auto">Zoom<select id="s-zoom">
+        <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
+      </select></label>
     </div>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Working confirm frames for the selected fight"></canvas></div>
+    <div class="legend">
+      <span>Working frames, colored by how many in a row:</span>
+      <span><i style="background:var(--run1)"></i>1</span>
+      <span><i style="background:var(--run2)"></i>2</span>
+      <span><i style="background:var(--run3)"></i>3</span>
+      <span><i style="background:var(--run4)"></i>4</span>
+      <span><i style="background:var(--run5)"></i>5+</span>
+      <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i><span id="legend4-text">top band: all 4 copy</span></span>
+      <span><i style="background:var(--bad)"></i>fails</span>
+      <span><i style="background:var(--gold)"></i>chosen window</span>
+      <span><i style="background:var(--cursor)"></i>now</span>
+    </div>
+    <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
+    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Move beeps</button><button class="b" id="press-apply-v" hidden>Move visual</button><button class="b" id="press-clear">Clear</button></div>
   </section>
+
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
@@ -157,29 +146,6 @@ details[open] summary { margin-bottom: 10px; }
     <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
   </section>
 
-  <section class="panel">
-    <div class="row" style="justify-content:space-between; align-items:center">
-      <h2 style="margin:0">Confirm frames ahead</h2>
-      <label class="f" style="flex:0 0 auto">Zoom<select id="s-zoom">
-        <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
-      </select></label>
-    </div>
-    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Working confirm frames for the selected fight"></canvas></div>
-    <div class="legend">
-      <span>Working frames, colored by how many in a row:</span>
-      <span><i style="background:var(--run1)"></i>1</span>
-      <span><i style="background:var(--run2)"></i>2</span>
-      <span><i style="background:var(--run3)"></i>3</span>
-      <span><i style="background:var(--run4)"></i>4</span>
-      <span><i style="background:var(--run5)"></i>5+</span>
-      <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i><span id="legend4-text">top band: all 4 copy</span></span>
-      <span><i style="background:var(--bad)"></i>fails</span>
-      <span><i style="background:var(--gold)"></i>chosen window</span>
-      <span><i style="background:var(--cursor)"></i>now</span>
-    </div>
-    <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
-    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Move beeps</button><button class="b" id="press-apply-v" hidden>Move visual</button><button class="b" id="press-clear">Clear</button></div>
-  </section>
 
   <section class="panel">
     <details id="settings-d">
@@ -223,6 +189,42 @@ details[open] summary { margin-bottom: 10px; }
       <li><b>Press.</b> Press Plan Time Out. Confirm Bowser with A on the last beep. The strip shows the window you are aiming at.</li>
     </ol>
     <p class="note" style="margin-top:10px">Shines come 48 frames after a shine and 24 after a normal spin; one game frame is 33.4 ms. The Time Out roll comes 386 frames after the confirm and works on 30 or less, a 30.7% chance on a random frame. Verified frame for frame in an emulator, including after Super Jump Charge, Spiny Flip and Bowser's first attack.</p>
+  </section>
+
+  <section class="panel" id="auto">
+    <h2>Watch the game automatically (OBS Virtual Camera)</h2>
+    <div class="cam">
+      <div style="display:grid; gap:8px; min-width:0">
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box and the Time Out hand box"></canvas>
+        <div class="row">
+          <span class="seg" role="group" aria-label="Box to draw">
+            <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
+            <button class="b" id="draw-target" aria-pressed="false"><span class="box-target">■</span> <span id="target-label">Time Out's Hand on Hallway</span></button>
+          </span>
+          <button class="b" id="cap-target" disabled>Save target screen</button>
+        </div>
+      </div>
+      <div style="display:grid; gap:10px; min-width:0">
+        <div class="row">
+          <label class="f" style="flex:1 1 180px">Video source<select id="cam-sel"><option value="window">A window (OBS projector, no Virtual Camera)</option><option value="">OBS Virtual Camera</option></select></label>
+        </div>
+        <div class="row">
+          <button class="b primary" id="cam-start">Start watching</button>
+          <button class="b" id="cam-stop" disabled>Stop</button>
+          <button class="b" id="test-beep">Test beeps</button>
+          <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
+        </div>
+        <p class="note" id="fight-help"></p>
+        <p class="note" id="cam-msg">Reads the game from an OBS projector window (or the OBS Virtual Camera). This works when the page is opened from a file in Chrome or Edge; inside claude.ai it is blocked, so use Save for OBS mode first.</p>
+        <dl class="read">
+          <dt>Coin</dt><dd id="r-coin">–</dd>
+          <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
+          <dt>Shines seen</dt><dd id="r-shines">0</dd>
+          <dt>Target screen</dt><dd id="r-target">no reference saved</dd>
+          <dt>Video frames</dt><dd id="r-fps">–</dd>
+        </dl>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -938,13 +940,14 @@ function showPresses() {
   const avg = presses.reduce((a, b) => a + b, 0) / presses.length;
   const spread = Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length);
   const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
-  let s = 'Press check: last press ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '') + '. ';
+  const head = 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '');
+  let s = '';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
   if (ready) s += 'Only if it has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
   $('press-apply').hidden = $('press-apply-v').hidden = !ready;
   $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
-  $('press-msg').textContent = s;
+  $('press-msg').innerHTML = '<span style="color:var(--run1); font-weight:700; font-size:1.25em; display:block; margin-bottom:2px">' + head + '</span>' + s;
 }
 function applyPress(id, btn) { $(id).value = $(btn).dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); }
 $('press-apply').onclick = () => applyPress('s-off', 'press-apply');
