@@ -91,3 +91,6 @@ draws, and how many frames after the confirm the saved target-screen box changes
   identical once aligned). Re-run with the fix: dup3 6/6, dup4 3/3, Jr. Troopa T2-T6 5/5 worked.
 - The all-4 target must have both neighbours giving 3+ (`aim4` in pmrng_core.js). e2e with the press on the target
   and one frame early/late (SHIFT=0/-1/+1, 4 seeds each): exact = 4 copies 4/4; one frame off = 3 or 4 copies 8/8.
+- Jr. Troopa T6: the route step uses `jrpb5` (5+ hits: first three cap rolls pass) and aims at a 6+ frame whose
+  neighbours both give 5+ (`aimTop`). 5 hits leave him at 4 HP for Bombette's Bomb. e2e_jr.py jrpb5 with
+  SHIFT=0/-1/+1 (4 seeds each): exact = 6+ hits (Jr. Troopa at 0 HP) 4/4; one frame off = 5 or 6+ hits 8/8.

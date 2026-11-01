@@ -152,6 +152,11 @@
       effects: { 52: Array(11).fill(359), 79: Array(11).fill(359), 106: Array(10).fill(359), 133: Array(10).fill(359) },
       rolls: [[78, 140], [105, 98], [132, 68], [159, 47]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
       screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
+    // 5+ hits = the first three cap rolls pass (5 hits leave him at 4 HP for Bombette's Bomb on this route)
+    jrpb5: { id: 'jrpb5', name: 'Jr. Troopa: Power Bounce 5+ hits (aims at 6+)', short: '5+ bounces', group: 'jr',
+      effects: { 52: Array(11).fill(359), 79: Array(11).fill(359), 106: Array(10).fill(359) },
+      rolls: [[78, 140], [105, 98], [132, 68]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
+      screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
   };
   // Duplighosts with branching: a copy -> next roll 97 frames later; a failed copy -> tackle (8 x rand(359) on +34)
   // and the next roll 78 frames later. Measured in the emulator (13 seeds, every roll and effect matched).
@@ -175,8 +180,10 @@
     vanish: 3, minRun: 2, screen: PROFILES.dup4.screen, box: PROFILES.dup4.box };
   /* Duplighosts: the earliest frame in [from, to] where all 4 copy and both neighbours give 3+; returns
    * {target, window} with window = the 3+ run around it, or null */
-  function aim4(seed, from, to) {
-    const P3 = PROFILES.dup3, P4 = PROFILES.dup4, c3 = {}, w3 = f => (f in c3 ? c3[f] : (c3[f] = works(seed, 0, f, 0, P3)));
+  // base profile -> its better outcome: aim at a frame with the better outcome whose neighbours both give the base one
+  const TOP = { dup3: 'dup4', jrpb5: 'jrpb6' };
+  function aimTop(seed, from, to, baseId) {
+    const P3 = PROFILES[baseId], P4 = PROFILES[TOP[baseId]], c3 = {}, w3 = f => (f in c3 ? c3[f] : (c3[f] = works(seed, 0, f, 0, P3)));
     for (let f = from + 1; f < to; f++) {
       if (!w3(f) || !w3(f - 1) || !w3(f + 1) || !works(seed, 0, f, 0, P4)) continue;
       let s = f, e = f; while (s - 1 >= from && w3(s - 1)) s--; while (e + 1 <= to && w3(e + 1)) e++;
@@ -218,6 +225,6 @@
   }
 
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aim4 };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

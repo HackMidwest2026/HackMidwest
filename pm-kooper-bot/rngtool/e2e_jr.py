@@ -15,7 +15,7 @@ FRAME_MS = 1000 / (60000 / 1001 / 2)
 SH = 700 * (0xFFFFFFFF // 1010)
 PROF, seed0 = sys.argv[1], int(sys.argv[2], 16); rnd = random.Random(seed0)
 ST = {'jrcc_bomb': 'states/jr_t3_bomb_target.st', 'jrcc_syrup': 'states/jr_t4_syrup.st', 'jrcc_nothing': 'states/jr_t5_nothing.st',
-      'jrpb6': 'states/jr_t6_pb_target.st'}[PROF]
+      'jrpb6': 'states/jr_t6_pb_target.st', 'jrpb5': 'states/jr_t6_pb_target.st'}[PROF]
 ST = os.environ.get('ST', ST)
 def tool(cmd, arg):
     r = subprocess.run(['node', os.path.join(HERE, 'tool_cli.js'), cmd, json.dumps(arg)], capture_output=True, text=True, check=True)
@@ -46,19 +46,20 @@ L = sh[-1]; now_rel = F[0] - L
 pl = tool('plan', {'seed': bl, 'from': now_rel + 60, 'to': now_rel + 60 + 1800, 'minRun': 2, 'profile': PROF})
 w = pl['window']
 if not w: print('FAIL: no window'); sys.exit(1)
-target = L + w['start'] + (w['length'] - 1) // 2   # model frame t = the step numbered L + t
+target = L + (pl['target'] if pl.get('target') is not None else w['start'] + (w['length'] - 1) // 2) + int(os.environ.get('SHIFT', '0'))   # model frame t = the step numbered L + t
 while F[0] < target - 1: step()
 hp0, jr = e.s8(PLAYER_DATA + 2), e.u32(BSTATUS + 0xE0)
 PB = {47, 74, 102, 130, 158, 186, 214}
 for f in range(900):
     if f == 0: b = A
     elif PROF == 'jrcc_bomb': b = A if (10 < f < 200 and f % 2 == 0) else 0
-    elif PROF == 'jrpb6': b = A if f in PB else 0
+    elif PROF in ('jrpb6', 'jrpb5'): b = A if f in PB else 0
     else: b = 0
     step(b)
     if f > 60 and bstate(e) in (13, 14, 27, 32): break
-if PROF == 'jrpb6':
-    ok = e.s8(jr + 0x1B8) <= 0; what = 'Jr. Troopa HP %d' % e.s8(jr + 0x1B8)
+if PROF in ('jrpb6', 'jrpb5'):
+    hpj = e.s8(jr + 0x1B8); ok = hpj <= (0 if PROF == 'jrpb6' else 4)
+    what = 'Jr. Troopa HP %d = %s' % (hpj, '6+ hits' if hpj <= 0 else ('5 hits' if hpj == 4 else 'fewer than 5 hits'))
 else:
     ok = e.s8(PLAYER_DATA + 2) == hp0 and bstate(e) in (13, 14); what = 'Mario HP %d -> %d, state %d' % (hp0, e.s8(PLAYER_DATA + 2), bstate(e))
 print('RESULT %s seed %08x: window %d frames -> %s (%s)' % (PROF, seed0, w['length'], 'WORKED' if ok else 'missed', what))

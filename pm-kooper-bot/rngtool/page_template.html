@@ -171,7 +171,7 @@ details[open] summary { margin-bottom: 10px; }
       <span><i style="background:var(--run3)"></i>3</span>
       <span><i style="background:var(--run4)"></i>4</span>
       <span><i style="background:var(--run5)"></i>5+</span>
-      <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i>top band: all 4 copy</span>
+      <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i><span id="legend4-text">top band: all 4 copy</span></span>
       <span><i style="background:var(--bad)"></i>fails</span>
       <span><i style="background:var(--gold)"></i>chosen window</span>
       <span><i style="background:var(--cursor)"></i>now</span>
@@ -247,7 +247,7 @@ const ROUTE = [
   { t: 'T3', label: 'Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
   { t: 'T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'T5', label: 'Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
-  { t: 'T6', label: 'Power Bounce → 6+ bounces', cat: 'K', prof: 'jrpb6' }, { t: 'T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K' } ];
+  { t: 'T6', label: 'Power Bounce → 6+ bounces (5+ either side)', cat: 'K', prof: 'jrpb5' }, { t: 'T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K' } ];
 const CAT = { M: { screen: 'a target screen with the hand on Mario', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
   S: { screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' } };
@@ -402,15 +402,15 @@ function makePlan() {
   let target = w.start + Math.floor((w.length - 1) / 2), aim4 = false;
   // Duplighosts 3+: aim at a frame where all 4 copy whose neighbours both give 3+ (another all-4 frame or a 3), so a
   // frame early or late still gets 3. Earliest such frame in the next minute; otherwise the plain window.
-  if (PROF().id === 'dup3') {
-    const w4 = R.aim4(seedBL, from, to);
+  if (R.TOP[PROF().id]) {
+    const w4 = R.aimTop(seedBL, from, to, PROF().id);
     if (w4) { w = w4.window; target = w4.target; aim4 = true; }
   }
   if (!(tLast + target * rt - performance.now() > 0 && tLast + target * rt - performance.now() < 120000)) { st.msg = 'Timing clock problem: the planned press is not in the next two minutes. Please report this; press Reset meanwhile.'; render(); return; }
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, first, last, R.PROFILES.dup4) : null };
+  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -470,7 +470,7 @@ function render() {
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? 'Aiming at the frame where all 4 copy (the others in the window still give 3).' : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
+  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan Time Out once the hand is on Bowser.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
@@ -492,7 +492,7 @@ function stripData() {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
     const nowF = Math.floor((performance.now() - tLast) / C.rate);
     const key = PROF().id + ':' + seedBL + ':' + Math.floor(nowF / 120);
-    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, f0, nowF + 479, R.PROFILES.dup4) : null, first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
+    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, f0, nowF + 479, R.PROFILES[R.TOP[PROF().id]]) : null, first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
     return Object.assign({}, stripData.cache, { tLast, rate: C.rate, stale: !st.lock });
   }
   if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()) };
@@ -772,7 +772,7 @@ function drawIdlePreview() {
 }
 function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
-  $('route').hidden = !isRoute(); $('legend4').hidden = PROF().id !== 'dup3';
+  $('route').hidden = !isRoute(); $('legend4').hidden = !R.TOP[PROF().id]; $('legend4-text').textContent = PROF().id === 'jrpb5' ? 'top band: 6+ bounces' : 'top band: all 4 copy';
   if (isRoute()) {
     const S = ROUTE[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', S: 'Bombette\'s Strategies' }[S.cat];

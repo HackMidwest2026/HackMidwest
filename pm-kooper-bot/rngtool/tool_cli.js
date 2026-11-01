@@ -30,7 +30,7 @@ if (!isMainThread) {
   } else if (cmd === 'plan') {
     const P = R.PROFILES[a.profile || 'timeout'];
     let w = R.bestWindow(a.seed >>> 0, a.from, a.to, a.minRun, P), target = w ? w.start + Math.floor((w.length - 1) / 2) : null;
-    if (P.id === 'dup3') { const r = R.aim4(a.seed >>> 0, a.from, a.to); if (r) { w = r.window; target = r.target; } }   // same as the page
+    if (R.TOP[P.id]) { const r = R.aimTop(a.seed >>> 0, a.from, a.to, P.id); if (r) { w = r.window; target = r.target; } }   // same as the page
     out({ target, window: w, table: R.timeOutTable(a.seed >>> 0, a.from, a.to, P).map(x => x ? 'S' : '.').join('') });
   } else if (cmd === 'after') {
     out(R.afterPattern(a.seed >>> 0, a.pattern));
