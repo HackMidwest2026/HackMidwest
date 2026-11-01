@@ -89,3 +89,5 @@ draws, and how many frames after the confirm the saved target-screen box changes
   Time Out test, where it meant "one frame into the window"). Mapping is model frame t = the emulator step numbered
   L + t. Found when aiming at single all-4 frames (`e2e_dup_framecheck.py` compares emulator vs model per frame:
   identical once aligned). Re-run with the fix: dup3 6/6, dup4 3/3, Jr. Troopa T2-T6 5/5 worked.
+- The all-4 target must have both neighbours giving 3+ (`aim4` in pmrng_core.js). e2e with the press on the target
+  and one frame early/late (SHIFT=0/-1/+1, 4 seeds each): exact = 4 copies 4/4; one frame off = 3 or 4 copies 8/8.

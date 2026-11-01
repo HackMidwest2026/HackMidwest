@@ -173,6 +173,17 @@
   }
   PROFILES.dup3 = { id: 'dup3', name: 'Duplighosts: 3+ copy Bombette', short: '3+ Duplighosts copy', effects: {}, rolls: [{ at: 13 }], sim: dupSim(3),
     vanish: 3, minRun: 2, screen: PROFILES.dup4.screen, box: PROFILES.dup4.box };
+  /* Duplighosts: the earliest frame in [from, to] where all 4 copy and both neighbours give 3+; returns
+   * {target, window} with window = the 3+ run around it, or null */
+  function aim4(seed, from, to) {
+    const P3 = PROFILES.dup3, P4 = PROFILES.dup4, c3 = {}, w3 = f => (f in c3 ? c3[f] : (c3[f] = works(seed, 0, f, 0, P3)));
+    for (let f = from + 1; f < to; f++) {
+      if (!w3(f) || !w3(f - 1) || !w3(f + 1) || !works(seed, 0, f, 0, P4)) continue;
+      let s = f, e = f; while (s - 1 >= from && w3(s - 1)) s--; while (e + 1 <= to && w3(e + 1)) e++;
+      return { target: f, window: { start: s, end: e, length: e - s + 1 } };
+    }
+    return null;
+  }
   /* does confirming on frame `confirm` give the profile's result? seed: value just before frame t0's draws;
    * nextCoin: frame of the next coin draw (>= t0) */
   function works(seed, nextCoin, confirm, t0, prof) {
@@ -207,6 +218,6 @@
   }
 
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aim4 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

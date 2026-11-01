@@ -30,15 +30,7 @@ if (!isMainThread) {
   } else if (cmd === 'plan') {
     const P = R.PROFILES[a.profile || 'timeout'];
     let w = R.bestWindow(a.seed >>> 0, a.from, a.to, a.minRun, P), target = w ? w.start + Math.floor((w.length - 1) / 2) : null;
-    if (P.id === 'dup3') {                     // same as the page: aim at an all-4 frame inside a 3+ window
-      for (let s0 = a.from, n = 0; n < 200; n++) {
-        const c = R.bestWindow(a.seed >>> 0, s0, a.to, a.minRun, P); if (!c) break;
-        const mid = (c.start + c.end) / 2; let best = null;
-        for (let f = c.start; f <= c.end; f++) if (R.works(a.seed >>> 0, 0, f, 0, R.PROFILES.dup4) && (best === null || Math.abs(f - mid) < Math.abs(best - mid))) best = f;
-        if (best !== null) { w = c; target = best; break; }
-        s0 = c.end + 1;
-      }
-    }
+    if (P.id === 'dup3') { const r = R.aim4(a.seed >>> 0, a.from, a.to); if (r) { w = r.window; target = r.target; } }   // same as the page
     out({ target, window: w, table: R.timeOutTable(a.seed >>> 0, a.from, a.to, P).map(x => x ? 'S' : '.').join('') });
   } else if (cmd === 'after') {
     out(R.afterPattern(a.seed >>> 0, a.pattern));
