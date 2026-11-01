@@ -135,6 +135,7 @@ details[open] summary { margin-bottom: 10px; }
       <p id="headline">Tap Shine each time the status-bar coin flashes white.</p>
       <p id="detail">Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.</p>
       <div class="count" id="count" hidden>0.0<small> s</small></div>
+      <div class="row" id="press-row" hidden><p class="note" id="press-msg" style="margin:0"></p><button class="b" id="press-apply" hidden>Apply</button><button class="b" id="press-clear">Clear</button></div>
       <div class="row">
         <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
         <button class="b" id="gap">New segment<kbd>N</kbd></button>
@@ -178,15 +179,15 @@ details[open] summary { margin-bottom: 10px; }
     <details id="settings-d">
       <summary>Timing settings</summary>
       <div class="grid2">
-        <label class="f">Reaction to the shine (ms)<input id="s-react" type="number" step="5" value="200"></label>
-        <label class="f">TV / capture lag (ms)<input id="s-lag" type="number" step="5" value="0"></label>
-        <label class="f">Fine offset for the press (frames, + = later)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Reaction to the shine, tapping only (ms)<input id="s-react" type="number" step="5" value="200"></label>
+        <label class="f">TV lag, tapping only (ms)<input id="s-lag" type="number" step="5" value="0"></label>
+        <label class="f">Fine offset for the press (frames, + = later; set by Apply)<input id="s-off" type="number" step="0.5" value="0"></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
         <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
         <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
-        <label class="f">Video lag, capture to page (ms)<input id="s-vlag" type="number" step="5" value="50"></label>
+        <label class="f">Video lag, camera mode (ms; same effect as Fine offset)<input id="s-vlag" type="number" step="5" value="50"></label>
         <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
         <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
@@ -200,8 +201,8 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel">
     <h2>In the run (automatic)</h2>
     <ol class="steps">
-      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), click Time Out's Hand on Hallway, drag the blue box over the name label above Bowser, and press Save target screen. The boxes and the target screen are remembered.</li>
-      <li><b>Optional: check the timing.</b> Once a seed is locked, tick "Beep on every predicted shine" in Timing settings. The beeps should land on the white flashes; if they come early, raise "Video lag"; if late, lower it.</li>
+      <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), click Time Out's Hand on Hallway, drag the blue box over the クッパ name box in the top-left corner, and press Save target screen. The boxes and the target screen are remembered.</li>
+      <li><b>Calibrate (a few practice presses).</b> After each confirm the page reads from the video which frame you actually pressed on and shows "you pressed N frames late/early" under the countdown, with a suggested Fine offset. Press Apply after 3 or more presses agree. This covers your capture lag, your TV and your own timing in one number.</li>
       <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
       <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
     </ol>
@@ -616,6 +617,8 @@ function onFrame(t) {
     for (let i = 0, j = 0; i < g.length; i += 4, j++) diff += Math.abs((g[i] + g[i + 1] + g[i + 2]) / 3 - V.ref[j]);
     V.score = 1 - diff / (24 * 16 * 255);
     const on = V.score >= num('tmatch');
+    if (V.wasOn && !on && st.plan && Math.abs(t - st.plan.tPress) < (V.measureWin || 3000)) measurePress(t);
+    V.wasOn = on;
     if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
     else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
   }
@@ -670,6 +673,37 @@ function autoAfterShine() {
   if (st.segs.length === 1 && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
   if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
 }
+/* which frame did the confirm land on? The name box disappears from the video 2 game frames after the confirm
+ * frame (measured in the emulator); the same video pipeline carries the shines, so capture lag cancels out. */
+const VANISH = 2;
+const presses = (function () { try { return JSON.parse(localStorage.getItem('tot-presses') || '[]'); } catch (e) { return []; } })();
+function measurePress(tObs) {
+  const P = st.plan, c = (tObs - P.tLast - num('vlag')) / FRAME - VANISH;   // continuous frame estimate
+  const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
+  presses.push(err); while (presses.length > 8) presses.shift();
+  try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
+  const inWin = f >= P.w.start && f <= P.w.end;
+  P.measured = { frame: f, c, err, inWin };
+  showPresses();
+}
+function showPresses() {
+  const row = $('press-row'), P = st.plan && st.plan.measured;
+  if (!presses.length) { row.hidden = true; return; }
+  row.hidden = false;
+  const last = presses[presses.length - 1], r = x => Math.round(x * 10) / 10;
+  const avg = presses.reduce((a, b) => a + b, 0) / presses.length;
+  const spread = Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length);
+  const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
+  let s = 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window)' : ' (outside the window)') : '') + '. ';
+  if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
+  const sug = Math.round((num('off') - avg) * 2) / 2;
+  if (presses.length >= 3 && Math.abs(avg) >= 0.5) { s += 'Suggested Fine offset: ' + sug + '.'; $('press-apply').hidden = false; $('press-apply').dataset.v = sug; }
+  else $('press-apply').hidden = true;
+  $('press-msg').textContent = s;
+}
+$('press-apply').onclick = () => { $('s-off').value = $('press-apply').dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
+$('press-clear').onclick = () => { presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
+showPresses();
 function autoPlan() {
   if (!st.lock || st.searching) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
