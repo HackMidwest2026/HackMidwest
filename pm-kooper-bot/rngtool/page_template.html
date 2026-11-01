@@ -129,7 +129,8 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
-      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option><option value="dup3">Duplighosts: 3+ copy Bombette</option><option value="endgame">Whole endgame: Duplighosts → Jr. Troopa → Hallway Bowser</option><option value="jr">Jr. Troopa route (Close Calls + Power Bounce)</option></select></label>
+      <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
+      <h2 style="margin:0">Endgame route <span class="note" style="font-weight:400; text-transform:none; letter-spacing:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a step to jump there</span></h2>
       <div id="route" hidden style="display:grid; gap:6px"><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
@@ -268,7 +269,8 @@ const RT = () => ROUTES[$('s-prof').value] || JR;
 let routeStep = 0; try { routeStep = Math.max(0, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0); } catch (e) {}
 const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof ? R.PROFILES[RT()[Math.min(routeStep, RT().length - 1)].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
 const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
-loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
+loadSettings(); $('s-prof').value = 'endgame';   // one route for every fight
+SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
 
 /* ---------- state ---------- */
 // segments: [{taps: [ms]}]; lock: {seg, seed (before the first tapped draw of that segment)}
@@ -619,6 +621,8 @@ try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b) 
 // each fight has its own target screen: box + saved reference (the Time Out one migrates from the old single slot)
 let targets = {}; try { targets = JSON.parse(localStorage.getItem('tot-targets') || 'null') || { timeout: { box: V.boxes.target, ref: V.ref } }; } catch (e) {}
 const DEFAULT_TARGET = { x: 0.55, y: 0.12, w: 0.2, h: 0.08 };
+if (!targets.jr_B && targets.timeout && targets.timeout.ref) targets.jr_B = targets.timeout;   // Time Out's screen = target on Bowser
+if (!targets.jr_S && targets.dup4 && targets.dup4.ref) targets.jr_S = targets.dup4;          // Duplighosts' screen = Bombette's Strategies
 function storeTarget() { targets[TKEY()] = { box: V.boxes.target, ref: V.ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} }
 function useTarget() { const T = targets[TKEY()] || {}; V.boxes.target = T.box || Object.assign({}, DEFAULT_TARGET); V.ref = T.ref || null; V.wasOn = false; V.matchSince = 0; }
 function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} storeTarget(); }
@@ -798,7 +802,7 @@ function applyProfile() {
     routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
     $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
-    $('route-list').innerHTML = RT().map((s, i) => '<li' + (i === routeStep ? ' style="font-weight:700;color:var(--ink)"' : '') + '>' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>').join('');
+    $('route-list').innerHTML = RT().map((s, i) => '<li data-i="' + i + '" style="cursor:pointer' + (i === routeStep ? ';font-weight:700;color:var(--ink)' : '') + '">' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</li>').join('');
   } else {
     $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
     $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
@@ -806,6 +810,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) { routeStep = Math.max(0, Math.min(RT().length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+$('route-list').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
 $('s-prof').addEventListener('change', () => { saveSettings(); applyProfile(); });
