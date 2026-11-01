@@ -158,3 +158,12 @@ of all 26 runs matches. On the page the impact frame and the guard are unknown, 
 not) are simulated; candidates in the same RNG state at the current frame are merged, and each shine in T2's menu drops
 the ones that did not predict it. `test_hw_carry.js`: 6 cases (all attacks, guarded or not, impact +141..+163): 1-3
 shines, then Time Out planned and STOP in the game every time.
+
+## Re-finding a lock from short stretches
+
+While a lock is being re-found (after a gap with other random numbers), each stretch's candidate positions are carried
+across the next clean gap (the coin keeps drawing; `R.extendCands`, E-30..+60 frames) instead of being thrown away when
+the coin hides, so short stretches (maze rooms, 2-3 shines each) add up. 2-shine stretches now count for a first lock
+too. Rooms measured clean before the quiz room: kpa_133 (flood), kpa_134, kpa_130 (cannon), kpa_112; kpa_113 is not.
+`test_relock_short.js`: after an enemy room, only 2-3-shine stretches with 8 s gaps: re-locked on the true seed in all
+4 cases (14-18 shines over 6-10 stretches).

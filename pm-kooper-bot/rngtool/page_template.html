@@ -238,7 +238,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Before the Duplighosts:</b> hold C-up as much as you can in the staircase room (the one with the Save Block and no enemies) and in the 7 maze rooms. Those rooms are the only ones on the way that let the page find the seed; shines elsewhere (rooms with enemies, fire or torches) do not count.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Lock early:</b> hold C-up in the flood room (water puzzle), the room after it, the cannon room and the next room: they are clean, and that is where the first lock (about 14 shines) fits. The lock then survives the rooms with enemies. <b>After that:</b> C-up in the staircase room (Save Block), the key rooms and the 7 maze rooms keeps it fresh; keep it closed where there are enemies, fire or torches. In the Duplighost menu a few shines re-find it.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -366,7 +366,7 @@ function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '
 /* First lock across gaps: before a lock, each stretch of visible coin is kept (st.chain) instead of thrown away. The
  * coin keeps drawing while it is hidden (measured through Castle room loads), so a gap only leaves the exact frame
  * count open: E (from the tap times) -30..+60 frames, worth about 2 bits. Lock needs 38 bits plus that per gap. */
-const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 3;
+const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 2;
 function gapWin(tPrev, tNext) { const E = Math.round((tNext - tPrev) / FRAME); return [Math.max(48, E - GAP_LO), E + GAP_HI]; }
 const gapCost = () => Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
@@ -480,6 +480,19 @@ function evaluate() {
       }
       return [];
     };
+    m = [];
+    if (st.rcarry && s.taps.length) {                                // continue the previous short stretch's candidates
+      const [lo, hi] = gapWin(st.rcarry.lastTap, s.taps[0]);
+      const c = R.extendCands(st.rcarry.cands, st.rcarry.pattern, P.pattern, lo, hi, 20000);
+      if (c && c.length) {
+        st.cands = c; st.have = st.rcarry.have + bits(P.pattern); st.need = st.rcarry.need + gapCost(); st.tier = 0;
+        if (c.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: c[0] }; st.rcarry = null; updateClock(); }
+        else st.lock = null;
+        if (st.plan && st.lock && st.clock && !planOnTrack()) { cancelBeeps(); st.plan = null; }
+        render(); return;
+      }
+      st.rcarry = null;                                              // the gap was not clean (enemies, a battle): search from the old lock again
+    }
     m = tryResync();
     // Nothing fits: these shines came while something else drew random numbers (level-up confetti, a room with enemies,
     // torches), or after a false detection. Keep only the newest ones; the lock (prevLock) is never dropped for this.
@@ -605,7 +618,7 @@ function tap() {
 function undo() { seg().taps.pop(); evaluate(); }
 function newSegment() {
   if (!st.lock) { st.msg = 'Lock a seed before starting a new segment.'; render(); return; }
-  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.turnEv = []; st.hyp = null; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
+  st.prevLock = lastLockedState(); st.segs.push({ taps: [] }); st.lock = null; st.cands = null; st.rcarry = null; st.turnEv = []; st.hyp = null; st.carryOk = 0; st.needResync = false; render();   // a running plan stays
 }
 async function findChain() {
   const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
@@ -631,7 +644,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -1028,8 +1041,12 @@ function coinBack() {
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
   if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
-    st.chain.push({ taps: s.taps.slice() }); if (st.chain.length > 8) st.chain.shift();
+    st.chain.push({ taps: s.taps.slice() }); if (st.chain.length > 24) st.chain.shift();
     if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1] };
+  } else if (st.prevLock && !P.error && st.cands && st.cands.length && st.cands.length <= 20000) {
+    // re-finding a lock: carry this stretch's candidates across the (clean) gap into the next stretch, so short
+    // stretches (maze rooms) add up instead of each needing ~6 shines in a row
+    st.rcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 0 };
   } else if (st.carry && s.taps.length) st.carry = null;                // a stretch too short to carry through: drop the carry
   s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; st.cands = null; st.msg = null; render();
 }
