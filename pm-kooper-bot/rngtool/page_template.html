@@ -310,13 +310,22 @@ function evaluate() {
     let win = 1;
     const tryResync = () => { const E = (s.taps[0] - prev.lastTap) / FRAME, lo = Math.max(0, Math.floor(E) - 300), hi = Math.floor(E) + num('range'); win = hi - lo + 1;
       return R.resync(prev.seedAfter, pat(s.taps).pattern, hi, 32, lo); };
-    let m = tryResync();
-    while (!m.length && s.auto && s.taps.length > 1) { s.taps.shift(); m = tryResync(); }
+    let m = tryResync(), dropped = 0;
+    while (!m.length && s.auto && s.taps.length > 1 && dropped < 2) { s.taps.shift(); dropped++; m = tryResync(); }   // a false first detection
+    if (!m.length && s.auto && s.taps.length >= 4) { lostTrack(); return; }
     st.cands = m.map(x => x.seed); st.need = Math.log2(win) + 7; st.have = bits(pat(s.taps).pattern);
     if (m.length === 1 && st.have >= st.need) { st.lock = { seg: st.segs.length - 1, seed: m[0].seed }; updateClock(); }
     else { st.lock = null; if (!m.length) st.msg = 'No position in the expected range fits these taps. Undo a mis-tap, or raise the resync range in settings.'; }
   }
   render();
+}
+// The RNG is nowhere near where it should be (savestate, console reset, a retried fight, a very long menu): forget the
+// old trajectory and search all seeds again from this segment's shines. The measured frame rate is kept.
+function lostTrack() {
+  const taps = seg().taps.slice();
+  Object.assign(st, { segs: [{ taps, auto: true }], cands: null, lock: null, prevLock: null, clock: null, plan: null, msg: null,
+    note: 'Lost track of the RNG (a savestate, reset or long menu moves it). Finding the seed again from the next shines.' });
+  cancelBeeps(); render(); autoAfterShine();
 }
 // game-clock estimate for the locked segment: perf time of frame 0 (first tapped draw)
 // The console's frame length is measured from the shines (least-squares slope of shine time vs game frame) instead of
@@ -329,6 +338,7 @@ function fitRate(taps, f) {
   const r = sft / sff; return Math.abs(r / FRAME - 1) < 0.05 ? r : null;
 }
 function updateClock() {
+  st.note = null;
   const L = st.lock; const taps = st.segs[L.seg].taps; const p = pat(taps).pattern; const f = shineFrames(p);
   const span = f[f.length - 1] - f[0], fr = fitRate(taps, f);
   if (fr && span >= (st.rateSpan || 0)) { st.rate = fr; st.rateSpan = span; }
@@ -390,7 +400,7 @@ async function find() {
   evaluate();
 }
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -417,6 +427,7 @@ function render() {
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
+  else if (st.note) setText(nSh ? 'Re-finding the seed: ' + nSh + ' shine' + (nSh > 1 ? 's' : '') : 'Lost track, watching again', st.note);
   else setText(nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ' tapped' : 'Tap Shine each time the status-bar coin flashes white.',
     nSh >= 12 ? 'Press Find seed. If more than one seed fits, keep tapping.' : 'Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.');
   // spins
@@ -750,6 +761,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 render(); requestAnimationFrame(loop);
-window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame };   // for testing
+window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack };   // for testing
 })();
 </script>
