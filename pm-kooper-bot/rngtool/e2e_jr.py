@@ -46,7 +46,7 @@ L = sh[-1]; now_rel = F[0] - L
 pl = tool('plan', {'seed': bl, 'from': now_rel + 60, 'to': now_rel + 60 + 1800, 'minRun': 2, 'profile': PROF})
 w = pl['window']
 if not w: print('FAIL: no window'); sys.exit(1)
-target = L + w['start'] + (w['length'] - 1) // 2 + 1
+target = L + w['start'] + (w['length'] - 1) // 2   # model frame t = the step numbered L + t
 while F[0] < target - 1: step()
 hp0, jr = e.s8(PLAYER_DATA + 2), e.u32(BSTATUS + 0xE0)
 PB = {47, 74, 102, 130, 158, 186, 214}

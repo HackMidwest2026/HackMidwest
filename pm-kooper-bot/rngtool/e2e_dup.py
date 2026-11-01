@@ -65,7 +65,7 @@ PROFILE = os.environ.get('PROFILE', 'dup4'); NEED = 3 if PROFILE == 'dup3' else 
 pl = tool('plan', {'seed': bl, 'from': now_rel + 60, 'to': now_rel + 60 + 1800, 'minRun': 2, 'profile': PROFILE})
 w = pl['window']; print('plan: confirm frames %s (relative to the last shine), now = %d' % (w, now_rel))
 if not w: print('FAIL: no window'); sys.exit(1)
-target = L2 + w['start'] + (w['length'] - 1) // 2 + 1        # model frame t = step number L2 + t (+1: 1-based F)
+target = L2 + (pl['target'] if pl.get('target') is not None else w['start'] + (w['length'] - 1) // 2)   # model frame t = the step numbered L2 + t (the A step)
 wait(target - 1 - F[0]); assert F[0] == target - 1
 e.bp_add(RAND_INT); e.dbg_log(1); e.dbg_events()
 s = e.u32(SEED); rolls = []                         # replay every rand_int call the game makes (debug core log)

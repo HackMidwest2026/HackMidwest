@@ -399,12 +399,24 @@ function makePlan() {
   let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
   for (let k = minRun; k >= 1 && !w; k--) w = R.bestWindow(seedBL, from, to, k, PROF());
   if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
-  const target = w.start + Math.floor((w.length - 1) / 2);
+  let target = w.start + Math.floor((w.length - 1) / 2), aim4 = false;
+  // Duplighosts 3+: aim at a frame where all 4 copy, inside a 3+ window (so a frame off still gives 3). Take the
+  // earliest such window in the next minute; inside it, the all-4 frame nearest the middle. Otherwise the plain window.
+  if (PROF().id === 'dup3') {
+    const k = Math.max(1, w.length >= minRun ? minRun : w.length);
+    for (let a = from, n = 0; n < 200; n++) {
+      const c = R.bestWindow(seedBL, a, to, k, PROF()); if (!c) break;
+      const mid = (c.start + c.end) / 2; let best = null;
+      for (let f = c.start; f <= c.end; f++) if (R.works(seedBL, 0, f, 0, R.PROFILES.dup4) && (best === null || Math.abs(f - mid) < Math.abs(best - mid))) best = f;
+      if (best !== null) { w = c; target = best; aim4 = true; break; }
+      a = c.end + 1;
+    }
+  }
   if (!(tLast + target * rt - performance.now() > 0 && tLast + target * rt - performance.now() < 120000)) { st.msg = 'Timing clock problem: the planned press is not in the next two minutes. Please report this; press Reset meanwhile.'; render(); return; }
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, first, last, R.PROFILES.dup4) : null };
+  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: PROF().id === 'dup3' ? R.timeOutTable(seedBL, first, last, R.PROFILES.dup4) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -464,7 +476,7 @@ function render() {
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. Aiming at the middle one. Missed it? Press Plan Time Out again for the next window.');
+  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? 'Aiming at the frame where all 4 copy (the others in the window still give 3).' : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan Time Out once the hand is on Bowser.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');

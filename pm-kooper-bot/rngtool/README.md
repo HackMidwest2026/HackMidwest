@@ -83,3 +83,9 @@ draws, and how many frames after the confirm the saved target-screen box changes
   instead of +97). It reproduced every roll of 11 logged seeds (frames and values, including 1- and 2-fail paths);
   `PROFILE=dup3 e2e_dup.py`: 4/4 worked (two with exactly 3 copies, one after a failed second ghost).
   About half of all frames give 3+ copies (vs ~14% for all 4).
+- Duplighosts 3+: the beeps aim at a frame where all 4 copy, inside a 3+ window (earliest such window in the next
+  minute; the all-4 frame nearest its middle). e2e (PROFILE=dup3): 6/6 got all four copies.
+- Test-harness fix: e2e_dup.py / e2e_jr.py pressed one frame after the planned model frame (a "+1" copied from the
+  Time Out test, where it meant "one frame into the window"). Mapping is model frame t = the emulator step numbered
+  L + t. Found when aiming at single all-4 frames (`e2e_dup_framecheck.py` compares emulator vs model per frame:
+  identical once aligned). Re-run with the fix: dup3 6/6, dup4 3/3, Jr. Troopa T2-T6 5/5 worked.
