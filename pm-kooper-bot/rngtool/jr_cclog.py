@@ -12,7 +12,9 @@ e.w32(SEED, seed); e.w32(SEED2, seed)                      # DIAGNOSTIC: chosen 
 e.bp_add(RAND_INT); e.dbg_log(1); e.dbg_events()
 s = seed; log = []; seen = []
 for f in range(3000):
-    e.step(A if f == 0 else 0, 0, 0, 2)
+    G = os.environ.get('GUARD', '')
+    gset = set(int(x) for x in G.split(',') if x) if G != 'mash' else set(range(100, 260, 2))
+    e.step(A if (f == 0 or f in gset) else 0, 0, 0, 2)
     for x in e.dbg_events():
         mx = x['a0'] if x['a0'] < 0x80000000 else x['a0'] - (1 << 32)
         s, v = rand_int(s, mx)

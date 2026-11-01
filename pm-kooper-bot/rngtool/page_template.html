@@ -242,7 +242,7 @@ const num = k => parseFloat($('s-' + k).value) || 0;
 // Mario, K = target on Jr. Troopa, S = Bombette's Strategies menu). prof: the table for the presses that decide a roll.
 const ROUTE = [
   { t: 'T1', label: 'Super Charge (hand on Mario)', cat: 'M' }, { t: 'T1', label: 'Bombette: Bomb (hand on Jr.)', cat: 'K' },
-  { t: 'T2', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T2', label: 'Whacka\'s Bump (hand on Mario)', cat: 'M' },
+  { t: 'T2', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T2', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'T3', label: 'Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
   { t: 'T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
   { t: 'T5', label: 'Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },

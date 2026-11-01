@@ -16,6 +16,7 @@ SH = 700 * (0xFFFFFFFF // 1010)
 PROF, seed0 = sys.argv[1], int(sys.argv[2], 16); rnd = random.Random(seed0)
 ST = {'jrcc_bomb': 'states/jr_t3_bomb_target.st', 'jrcc_syrup': 'states/jr_t4_syrup.st', 'jrcc_nothing': 'states/jr_t5_nothing.st',
       'jrpb6': 'states/jr_t6_pb_target.st'}[PROF]
+ST = os.environ.get('ST', ST)
 def tool(cmd, arg):
     r = subprocess.run(['node', os.path.join(HERE, 'tool_cli.js'), cmd, json.dumps(arg)], capture_output=True, text=True, check=True)
     return json.loads(r.stdout)

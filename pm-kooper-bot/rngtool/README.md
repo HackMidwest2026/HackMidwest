@@ -75,3 +75,7 @@ draws, and how many frames after the confirm the saved target-screen box changes
   Each model matched the emulator on every roll of 7-9 seeds. `e2e_jr.py PROFILE SEED`: 2 seeds x 4 profiles, all worked.
   The page's "Jr. Troopa route" follows every target screen of the route and advances after each confirm.
   Scripts: `jr_*.py` (route building in the emulator, roll logs).
+- Route update (two Maple Syrups, no Whacka's Bump): Mario stays at 2 HP from T1, so T2 is also a Close Call turn
+  (Bombette Bomb, then Maple Syrup = `jrcc_syrup`, same model: matched 9 seeds; e2e 3/3 worked).
+- Guarding does not matter: the Close Call roll was identical with no guard, mashing A, and single presses at 7
+  different frames before the hit (T2 and T5 states; `jr_cclog.py` with GUARD=...).
