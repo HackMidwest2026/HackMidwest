@@ -23,6 +23,13 @@
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
 main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
+.layout { display: grid; grid-template-columns: minmax(0, 880px) minmax(260px, 340px); gap: 18px; justify-content: center; align-items: start; }
+.layout > main { margin: 0; }
+.side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; display: grid; gap: 8px; align-content: start; }
+.side #route-list { font-size: .8rem; }
+.side #route-list .chip { font-size: .68rem; padding: 2px 7px; }
+@media (max-width: 1240px) { .layout { grid-template-columns: minmax(0, 880px); } .side { position: static; max-height: none; } }
+
 header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
 h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: .02em; margin: 0; text-wrap: balance; }
 h1 span { color: var(--gold); }
@@ -85,6 +92,7 @@ details[open] summary { margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) { #shine.flash { transition: none; } }
 </style>
 
+<div class="layout">
 <main>
   <header>
     <h1>Time Out <span>Timer</span></h1>
@@ -126,8 +134,6 @@ details[open] summary { margin-bottom: 10px; }
   <section class="panel stage" aria-live="polite">
     <div class="status">
       <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
-      <h2 style="margin:0">Endgame route <span class="note" style="font-weight:400; text-transform:none; letter-spacing:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</span></h2>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Before the Duplighosts:</b> hold C-up as much as you can in the staircase room (the one with the Save Block and no enemies) and in the 7 maze rooms. Those rooms are the only ones on the way that let the page find the seed; shines elsewhere (rooms with enemies, fire or torches) do not count.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
         <span class="chip" id="p-lock">Seed</span>
@@ -229,6 +235,12 @@ details[open] summary { margin-bottom: 10px; }
     </div>
   </section>
 </main>
+<aside class="panel side" id="side" aria-label="Endgame route">
+    <h2 style="margin:0">Endgame route</h2>
+    <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Before the Duplighosts:</b> hold C-up as much as you can in the staircase room (the one with the Save Block and no enemies) and in the 7 maze rooms. Those rooms are the only ones on the way that let the page find the seed; shines elsewhere (rooms with enemies, fire or torches) do not count.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+</aside>
+</div>
 
 <script id="core-src">/*CORE*/</script>
 <script>
