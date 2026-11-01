@@ -184,6 +184,7 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">TV lag, tapping only (ms)<input id="s-lag" type="number" step="5" value="0"></label>
         <label class="f">Beep offset (frames, + = later; Move beeps sets it)<input id="s-off" type="number" step="0.5" value="0"></label>
         <label class="f">Visual offset (frames, + = later; Move visual sets it)<input id="s-voff" type="number" step="0.5" value="0"></label>
+        <label class="f">Press check correction (frames; raise it if presses that worked read as late)<input id="s-pfix" type="number" step="0.5" value="0"></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
         <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
@@ -230,7 +231,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -755,7 +756,7 @@ function checkPress(tObs) {
   if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
   if (st.lock && st.clock) {
     const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
-    const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH);
+    const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH - num('pfix'));
     const ok = R.timeOutRoll(seedBL, 0, f, 0) <= 30;
     V.pressNote = 'No beep plan was running. You confirmed on a frame where Time Out ' + (ok ? 'WORKS' : 'fails') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
   } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
@@ -763,7 +764,7 @@ function checkPress(tObs) {
 }
 function measurePress(tObs) {
   V.pressNote = null;
-  const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH;   // continuous frame estimate
+  const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH - num('pfix');   // continuous frame estimate (pfix: capture-specific delay of the name box vanishing)
   const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
   presses.push(err); while (presses.length > 8) presses.shift();
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
@@ -783,7 +784,7 @@ function showPresses() {
   let s = 'Press check: last press ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '') + '. ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
-  if (ready) s += 'Pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
+  if (ready) s += 'Only if Time Out has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
   $('press-apply').hidden = $('press-apply-v').hidden = !ready;
   $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
   $('press-msg').textContent = s;
