@@ -46,14 +46,18 @@ def go_spin(t, tx, tz, maxf=600, tol=0.5, stop_spin=30, mn=14):
         lastz = bool(b)
         t.step(b, int(round(mag * dx / d)), int(round(-mag * dz / d)))
     return False
+CHAIN = None   # set to a spin frame (e.g. 21) to jump out of every spin there (A 1 frame) and re-spin on landing
 def go_fast(t, tx, tz, rc=40, far=60, tol=0.5, maxf=600, mn=14):
-    """spin-dash toward (tx,tz); jump-cancel the spin once within rc; walk the last bit."""
-    e = t.e; lastz = False
+    """spin-dash toward (tx,tz); jump-cancel the spin once within rc; walk the last bit. With CHAIN set, a spin that
+    is still far from the target is also cut by a 1-frame jump on spin frame CHAIN, skipping its end lag."""
+    e = t.e; lastz = False; k = 0
     for f in range(maxf):
         p = player(e); dx, dz = tx - p['x'], tz - p['z']; d = math.hypot(dx, dz)
         if d < tol and p['action'] in (0, 1, 2): return True
         a = p['action']; b = 0
+        k = k + 1 if a == 26 else 0
         if a == 26 and d < rc: b = A
+        elif a == 26 and CHAIN and k == CHAIN: b = A
         elif a in (0, 1, 2) and d > far and not lastz: b = Z
         lastz = b == Z
         mag = max(mn, min(80, int(d * 10))) if d > 0.01 else 0

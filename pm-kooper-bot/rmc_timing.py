@@ -16,6 +16,7 @@ Each route is searched with savestates (door A frames, push loop), then the reco
 start state in one continuous run with no savestate loads, and that replay is what is reported.
 usage: rmc_timing.py [v1 v2 v3 lo]"""
 import sys, json
+import rmc_tim as tim
 from rmc_tim import *
 from rmc_clipseq import *
 
@@ -51,6 +52,7 @@ def v1(t):
     return marks, finish_front(t, marks, 8, 500, 90, 60, 60)
 
 def v2(t):
+    tim.CHAIN = 21                                       # 1-frame jump out of every spin on spin frame 21
     marks = {}
     common_setup(t); marks['lined up behind Laki'] = t.n
     push(t, stop=930); marks['push done (Laki x>930)'] = t.n
@@ -58,6 +60,7 @@ def v2(t):
     return marks, finish_front(t, marks, 7, 500, 90, 60, 30)
 
 def v3(t):
+    tim.CHAIN = 21
     e = t.e
     marks = {}
     af, mc = to_door(t, 0, -75, (-80, 0), 90, 60, 25)    # pra_02 west upper door -> pra_01 north (entry 2)
@@ -77,6 +80,7 @@ def lo(t):
     """Laki outside (pra_01 reflected side): west upper door, rock-jump stale-target setup, guided arc push into the
     lower corner, two ledge jumps, top-wall push to the palace wall, hold-up ending, ride + B, pra_01 south door."""
     import rmc_lo_route as lo_route, rmc_lo_end as lo_end
+    tim.CHAIN = None                                     # the setup depends on the plain spins' exact positions
     marks = {}
     af, mc = to_door(t, 0, -75, (-80, 0), 90, 60, 25)    # pra_02 west upper door -> pra_01 north (entry 2)
     marks['west upper door A'] = af
@@ -88,6 +92,7 @@ def lo(t):
     marks['Laki pinned at palace wall'] = t.n
     t.step(); lo_end.replay(t, 32, 646, 685)              # hold-up ending: A+down 32, stopping hammer, C-down
     marks['C-down'] = t.n
+    tim.CHAIN = 21                                       # after the clip: chained spin-jumps
     for i in range(16): t.step()
     ride(t, 1000, 60, 8); dismount(t)
     af, mc = to_door(t, 1000, 60, (80, 0), 90, 60, 30)   # pra_01 south door -> pra_02 lower west door
@@ -104,7 +109,7 @@ def replay(e, log, n_end):
     return ch
 
 if __name__ == '__main__':
-    names = sys.argv[1:] or ['v1', 'v2', 'v3', 'lo']
+    names = sys.argv[1:] or ['v2', 'lo', 'v3']
     e = Emu('pm-jp.z64', '/dev/shm/pmbot/rmct'); out = {}
     for nm in names:
         t = T(e); t.start()
