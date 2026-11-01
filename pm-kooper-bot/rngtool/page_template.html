@@ -129,7 +129,8 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
-      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option></select></label>
+      <label class="f" style="max-width:360px">Fight<select id="s-prof"><option value="timeout">Hallway Bowser: Time Out</option><option value="dup4">Duplighosts: all 4 copy Bombette</option><option value="jr">Jr. Troopa route (Close Calls + Power Bounce)</option></select></label>
+      <div id="route" hidden style="display:grid; gap:6px"><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
         <span class="chip" id="p-lock">Seed</span>
@@ -237,7 +238,23 @@ const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'v
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
-const PROF = () => R.PROFILES[$('s-prof').value] || R.PROFILES.timeout;
+// Jr. Troopa route: every target screen of the route in order. cat: which saved screen it looks like (M = target on
+// Mario, K = target on Jr. Troopa, S = Bombette's Strategies menu). prof: the table for the presses that decide a roll.
+const ROUTE = [
+  { t: 'T1', label: 'Super Charge (hand on Mario)', cat: 'M' }, { t: 'T1', label: 'Bombette: Bomb (hand on Jr.)', cat: 'K' },
+  { t: 'T2', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T2', label: 'Whacka\'s Bump (hand on Mario)', cat: 'M' },
+  { t: 'T3', label: 'Super Charge', cat: 'M' }, { t: 'T3', label: 'Bombette: Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb' },
+  { t: 'T4', label: 'Bombette: Bomb', cat: 'K' }, { t: 'T4', label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup' },
+  { t: 'T5', label: 'Super Charge', cat: 'M' }, { t: 'T5', label: 'Bombette: do nothing → Close Call', cat: 'S', prof: 'jrcc_nothing' },
+  { t: 'T6', label: 'Power Bounce → 6+ bounces', cat: 'K', prof: 'jrpb6' }, { t: 'T6', label: 'Bombette: Bomb (only if 5 bounces)', cat: 'K' } ];
+const CAT = { M: { screen: 'a target screen with the hand on Mario', box: 'the マリオ name box in the top-left' },
+  K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
+  S: { screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' } };
+const NOPLAN = { id: 'none', name: 'no roll on this step', short: 'nothing to plan', effects: {}, rolls: [], vanish: 2, minRun: 2 };
+let routeStep = 0; try { routeStep = Math.max(0, Math.min(ROUTE.length - 1, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0)); } catch (e) {}
+const isRoute = () => $('s-prof').value === 'jr';
+const PROF = () => isRoute() ? (ROUTE[routeStep].prof ? R.PROFILES[ROUTE[routeStep].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
+const TKEY = () => isRoute() ? 'jr_' + ROUTE[routeStep].cat : PROF().id;
 loadSettings(); SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
 
 /* ---------- state ---------- */
@@ -373,7 +390,7 @@ function updateClock() {
   st.example = false;
 }
 function makePlan() {
-  if (!st.lock) return;
+  if (!st.lock || !PROF().rolls.length) return;
   const C = st.clock; const lastF = C.frames[C.frames.length - 1];
   const seedBL = R.seedBeforeLastDraw(C.seed, C.pattern);         // frame 0 of the plan = the last tapped shine's draw
   const rt = C.rate, tLast = C.t0 + lastF * rt, nowF = (performance.now() - tLast) / rt;
@@ -547,6 +564,7 @@ function drawStrip() {
     note = d.stale && !st.plan ? 'Resyncing after a gap: the faded frames are the prediction from before it (they may shift a little when it locks again).' : st.plan ? 'Beeping: press A when the gold line in the middle of the window reaches the white now-line, or on the last, higher beep. Visual offset moves the strip so the two happen together.' :
       'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
   }
+  if (!PROF().rolls.length) note = 'This route step decides nothing random: just play it. The page moves to the next step when this screen closes.';
   $('stripnote').textContent = note;
   if (st.plan) {
     const left = (st.plan.tPress - performance.now()) / 1000;
@@ -581,8 +599,8 @@ try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b) 
 // each fight has its own target screen: box + saved reference (the Time Out one migrates from the old single slot)
 let targets = {}; try { targets = JSON.parse(localStorage.getItem('tot-targets') || 'null') || { timeout: { box: V.boxes.target, ref: V.ref } }; } catch (e) {}
 const DEFAULT_TARGET = { x: 0.55, y: 0.12, w: 0.2, h: 0.08 };
-function storeTarget() { targets[PROF().id] = { box: V.boxes.target, ref: V.ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} }
-function useTarget() { const T = targets[PROF().id] || {}; V.boxes.target = T.box || Object.assign({}, DEFAULT_TARGET); V.ref = T.ref || null; V.wasOn = false; V.matchSince = 0; }
+function storeTarget() { targets[TKEY()] = { box: V.boxes.target, ref: V.ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} }
+function useTarget() { const T = targets[TKEY()] || {}; V.boxes.target = T.box || Object.assign({}, DEFAULT_TARGET); V.ref = T.ref || null; V.wasOn = false; V.matchSince = 0; }
 function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} storeTarget(); }
 function camMsg(t) { $('cam-msg').textContent = t; }
 async function listCams() {
@@ -746,10 +764,21 @@ function drawIdlePreview() {
 }
 function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
-  $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
-  $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
+  $('route').hidden = !isRoute();
+  if (isRoute()) {
+    const S = ROUTE[routeStep], C = CAT[S.cat];
+    $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', S: 'Bombette\'s Strategies' }[S.cat];
+    $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. The route has three screens to save once (on Mario, on Jr. Troopa, Strategies); after each confirm it moves to the next step by itself.';
+    $('route-list').innerHTML = ROUTE.map((s, i) => '<li' + (i === routeStep ? ' style="font-weight:700;color:var(--ink)"' : '') + '>' + s.t + ' ' + s.label + (s.prof ? ' ★' : '') + '</li>').join('');
+  } else {
+    $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
+    $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
+  }
   render();
 }
+function setStep(i) { routeStep = Math.max(0, Math.min(ROUTE.length - 1, i)); try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+$('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
+document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
 $('s-prof').addEventListener('change', () => { saveSettings(); applyProfile(); });
 function setDraw(k) { V.draw = k; $('draw-coin').setAttribute('aria-pressed', k === 'coin'); $('draw-target').setAttribute('aria-pressed', k === 'target'); }
 $('draw-coin').onclick = () => setDraw('coin'); $('draw-target').onclick = () => setDraw('target');
@@ -777,7 +806,9 @@ const VANISH_ = () => PROF().vanish;   // frames from the confirm until the targ
 const presses = (function () { try { return JSON.parse(localStorage.getItem('tot-presses') || '[]'); } catch (e) { return []; } })();
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
-function checkPress(tObs) {
+function checkPress(tObs) { checkPress_(tObs); if (isRoute()) setStep(routeStep + 1); }
+function checkPress_(tObs) {
+  if (!PROF().rolls.length) return;
   if (st.plan && Math.abs(tObs - st.plan.tPress) < (V.measureWin || 3000)) { measurePress(tObs); return; }
   if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
   if (st.lock && st.clock) {
@@ -830,7 +861,7 @@ $('test-beep').onclick = () => {
 // any click or key wakes the audio (browsers start it suspended until the page is used)
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
 function autoPlan() {
-  if (!st.lock || st.searching) return;
+  if (!st.lock || st.searching || !PROF().rolls.length) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
   const again = !!st.plan; makePlan(); if (st.plan) st.plan.again = again;
 }

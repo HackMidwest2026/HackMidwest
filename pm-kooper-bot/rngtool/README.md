@@ -62,3 +62,16 @@ draws, and how many frames after the confirm the saved target-screen box changes
 - `e2e_dup.py SEED` (debug core): seed from coin shines in Mario's menu, menu path, resync, planned confirm:
   seeds 2468ace0, 13579bdf, 0f0f1e1e: all 4 copied.
 - `../boss_battle_start_setup.py`: battle setup with PARTNER / BRANK / BADGES (DIAGNOSTIC).
+- Jr. Troopa (battle 0x0207; Bombette Super, Ultra Boots, 10 HP/10 FP; badges Super Jump Charge, Power Bounce,
+  Close Call, Speedy Spin). Close Call = rand_int(100) < 30 when his attack hits Mario under 6 HP (he only targets
+  Mario; base form is Leap only, no attack-choice roll; he stays in base form through T5 on this route).
+  - `jrcc_bomb` (T3, Bombette's Bomb confirm): bomb-explosion draws at +73 (8x359, 360), roll at +179. The mash meter
+    speed does not matter (same roll with mash every 2/3/5 frames, even when damage changed).
+  - `jrcc_syrup` (T4, Maple Syrup confirm): sparkles at +118 ([359,10,10] x10), roll at +163.
+  - `jrcc_nothing` (T5, Bombette's do nothing): roll at +26.
+  - `jrpb6` (T6, Power Bounce confirm): cap rolls at +78/105/132/159 must be <= 140/98/68/47 (6+ hits); hit-effect
+    draws at +52/79/106/133. With three charges, 6 hits kill him (5 leave 4 HP for Bombette's Bomb). AC windows
+    46-51, 73-78, 101-105, 129-132, 157-159; any frame in a window gives the same rolls (34 variants).
+  Each model matched the emulator on every roll of 7-9 seeds. `e2e_jr.py PROFILE SEED`: 2 seeds x 4 profiles, all worked.
+  The page's "Jr. Troopa route" follows every target screen of the route and advances after each confirm.
+  Scripts: `jr_*.py` (route building in the emulator, roll logs).
