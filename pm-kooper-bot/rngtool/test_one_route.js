@@ -13,6 +13,6 @@ const { chromium } = require('playwright');
   const r2 = await p.evaluate(() => ({ current: document.querySelector('#route-list [data-i][style*="700"]').textContent, label: document.getElementById('target-label').textContent, carriedOver: !!window.__tot.V.ref, refValue: window.__tot.V.ref && window.__tot.V.ref[0] }));
   await p.click('#route-list [data-i="0"]');
   const r3 = await p.evaluate(() => ({ current: document.querySelector('#route-list [data-i][style*="700"]').textContent, carriedOver: !!window.__tot.V.ref, refValue: window.__tot.V.ref && window.__tot.V.ref[0] }));
-  const panel = await (await p.$('#route')).evaluateHandle(e => e.closest('section')); await panel.asElement().screenshot({ path: 'one.png' });
+  const panel = await (await p.$('#route')).evaluateHandle(e => e.closest('section, aside')); await panel.asElement().screenshot({ path: 'one.png' });
   console.log(JSON.stringify(r)); console.log('jump to Time Out:', JSON.stringify(r2)); console.log('jump to Duplighosts:', JSON.stringify(r3)); console.log('errors', errs); await b.close();
 })();
