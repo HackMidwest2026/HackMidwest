@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 nm, outp = sys.argv[1], sys.argv[2]
 D = json.load(open('/dev/shm/pmbot/rmc_timing_%s.json' % nm))[nm]
 TITLE = {'v1': 'RMC v1  pra_02 switch-block clip (frame-perfect hops)', 'v2': 'RMC v2  pra_02 switch-block clip (RTA version)',
-         'v3': 'RMC v3  pra_01 Ultra Boots climb'}[nm]
+         'v3': 'RMC v3  pra_01 Ultra Boots climb', 'lo': 'RMC Laki outside  pra_01 stale-target push'}[nm]
 MAPS = {(21, 0): 'pra_01', (21, 1): 'pra_02', (20, 9): 'sam_10', (21, 2): 'next room'}
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/rv%s' % nm)
 for i in range(150): e.step(0, 0, 0, 2)

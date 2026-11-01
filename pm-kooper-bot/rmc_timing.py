@@ -3,14 +3,18 @@ Start: states/pra02_topdoor_closed.st = the first frame on which pra_02's top (b
        entering from pra_04 (Speedy Spin + Ultra Boots equipped, Lakilester out).
 End:   the frame of the A press that opens pra_02's bottom (front-wall) door (the map change is queued 18 frames later).
 Every route uses Speedy Spin dashes (Z) for movement, cancelled with a jump (A) near the target.
-  v1  pra_02 block clip (frame-perfect): corner setup, push Laki to the right wall, run 10, A5 hops, C-down on f37.
-  v2  pra_02 block clip, RTA version: same setup, push stops at Laki x>930, full jump f3, 4 floor frames, A5 hop.
-  v3  pra_01 Ultra Boots climb: west upper door -> pra_01 north, neutral climb, land on the near-cave floor (sam_10
+The three methods are Laki inside (v1/v2, two input variants of the same pra_02 clip), Laki outside (lo) and Ultra
+Boots outside (v3).
+  v1  Laki inside, frame-perfect hops: corner setup, push Laki to the right wall, run 10, A5 hops, C-down on f37.
+  v2  Laki inside, RTA hops: same setup, push stops at Laki x>930, full jump f3, 4 floor frames, A5 hop.
+  lo  Laki outside (pra_01 reflected side): rock-jump stale-target setup, arc push, ledge, top-wall push, hold-up
+      ending, ride to pra_01's south door -> pra_02 lower west door -> bottom door.
+  v3  Ultra Boots outside, pra_01 climb: west upper door -> pra_01 north, neutral climb, land on the near-cave floor (sam_10
       loads), walk straight back into pra_01 (south side, entry 0), pra_01 south door -> pra_02 lower west door,
       bottom door.
 Each route is searched with savestates (door A frames, push loop), then the recorded inputs are replayed from the
 start state in one continuous run with no savestate loads, and that replay is what is reported.
-usage: rmc_timing.py [v1 v2 v3]"""
+usage: rmc_timing.py [v1 v2 v3 lo]"""
 import sys, json
 from rmc_tim import *
 from rmc_clipseq import *
@@ -69,6 +73,27 @@ def v3(t):
     marks['pra_01 south door A'] = af
     return marks, to_door(t, 520, 230, (0, -80), 90, 60, 60)
 
+def lo(t):
+    """Laki outside (pra_01 reflected side): west upper door, rock-jump stale-target setup, guided arc push into the
+    lower corner, two ledge jumps, top-wall push to the palace wall, hold-up ending, ride + B, pra_01 south door."""
+    import rmc_lo_route as lo_route, rmc_lo_end as lo_end
+    marks = {}
+    af, mc = to_door(t, 0, -75, (-80, 0), 90, 60, 25)    # pra_02 west upper door -> pra_01 north (entry 2)
+    marks['west upper door A'] = af
+    lo_route.to_rock(t, 600, 565, 0)                      # spin along the mirror, walk left, rock jump, fill, hop
+    marks['rock setup done'] = t.n
+    lo_route.arc(t, json.load(open('data/rmc_lo_arc.json')))
+    marks['Laki in lower corner'] = t.n
+    lo_route.ledge_wall(t, json.load(open('data/rmc_lo_wall.json')))
+    marks['Laki pinned at palace wall'] = t.n
+    t.step(); lo_end.replay(t, 32, 646, 685)              # hold-up ending: A+down 32, stopping hammer, C-down
+    marks['C-down'] = t.n
+    for i in range(16): t.step()
+    ride(t, 1000, 60, 8); dismount(t)
+    af, mc = to_door(t, 1000, 60, (80, 0), 90, 60, 30)   # pra_01 south door -> pra_02 lower west door
+    marks['pra_01 south door A'] = af
+    return marks, to_door(t, 520, 230, (0, -80), 90, 60, 60)
+
 def replay(e, log, n_end):
     """continuous replay from START with no loads; returns frames where the queued map changes."""
     e.load(START); prev = where(e)[:2]; ch = []
@@ -79,7 +104,7 @@ def replay(e, log, n_end):
     return ch
 
 if __name__ == '__main__':
-    names = sys.argv[1:] or ['v1', 'v2', 'v3']
+    names = sys.argv[1:] or ['v1', 'v2', 'v3', 'lo']
     e = Emu('pm-jp.z64', '/dev/shm/pmbot/rmct'); out = {}
     for nm in names:
         t = T(e); t.start()
