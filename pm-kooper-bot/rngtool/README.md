@@ -167,3 +167,6 @@ the coin hides, so short stretches (maze rooms, 2-3 shines each) add up. 2-shine
 too. Rooms measured clean before the quiz room: kpa_133 (flood), kpa_134, kpa_130 (cannon), kpa_112; kpa_113 is not.
 `test_relock_short.js`: after an enemy room, only 2-3-shine stretches with 8 s gaps: re-locked on the true seed in all
 4 cases (14-18 shines over 6-10 stretches).
+
+Early castle (`kpa_roomride.py`, Lakilester ridden over the lava): kpa_12 and kpa_14 (the two lava rides) and kpa_13
+between them are clean, about a minute of coin in one block: the place for the first lock. kpa_111 (Dry Bones) is not.
