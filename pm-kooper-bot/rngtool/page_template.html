@@ -9,17 +9,17 @@
   --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
   --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
   --cursor: #172036;
-  --run1: #d0342c; --run2: #1f8a3b; --run3: #2563d9; --run4: #8b3fd1; --run5: #e07b00;
+  --run1: #d0342c; --run2: #e8c21a; --run3: #1f8a3b; --run4: #2563d9; --run5: #8b3fd1;
   --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #3fcf6a; --run3: #5b93ff; --run4: #b77cff; --run5: #ffa133; color-scheme: dark } }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #3fcf6a; --run3: #5b93ff; --run4: #b77cff; --run5: #ffa133; color-scheme: dark }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
 main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
@@ -440,7 +440,7 @@ function drawStrip() {
   else v0 = d.first;
   const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
   const gap = cw >= 5 ? Math.min(2, cw * 0.15) : 0.2;                       // visible gaps between frames when zoomed
-  // run length of working frames at each index (each run colored by its length: 1 red, 2 green, 3 blue, 4 purple, 5+ orange)
+  // run length of working frames at each index (each run colored by its length: 1 red, 2 yellow, 3 green, 4 blue, 5+ purple)
   if (d.runs === undefined || d.runsOf !== d.tab) {
     const r = new Array(d.tab.length).fill(0);
     for (let i = 0; i < d.tab.length;) { if (!d.tab[i]) { i++; continue; } let k = i; while (k < d.tab.length && d.tab[k]) k++; for (let m = i; m < k; m++) r[m] = k - i; i = k; }
@@ -452,11 +452,11 @@ function drawStrip() {
     ctx.fillStyle = d.tab[i] ? RUN[Math.min(5, d.runs[i])] : bad; ctx.fillRect(j * cw, 20, Math.max(1, cw - gap), 56);
   }
   // run length printed on each run when there is room
-  ctx.font = '600 12px ' + css('--mono'); ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+  ctx.font = '600 12px ' + css('--mono'); ctx.textAlign = 'center';
   for (let j = 0; j < span; j++) {
     const i = v0 + j - d.first; if (i < 0 || i >= d.tab.length || !d.tab[i] || (i > 0 && d.tab[i - 1])) continue;
     const n = d.runs[i], w = n * cw; if (w < 12) continue;
-    ctx.fillText(String(n), (j + n / 2) * cw - gap / 2, 52);
+    ctx.fillStyle = n === 2 ? '#1a1a1a' : '#ffffff'; ctx.fillText(String(n), (j + n / 2) * cw - gap / 2, 52);   // dark text on yellow
   }
   ctx.textAlign = 'left';
   if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
