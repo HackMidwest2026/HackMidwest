@@ -173,7 +173,7 @@ details[open] summary { margin-bottom: 10px; }
       <span><i style="background:var(--cursor)"></i>now</span>
     </div>
     <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
-    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Apply</button><button class="b" id="press-clear">Clear</button></div>
+    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Move beeps</button><button class="b" id="press-apply-v" hidden>Move visual</button><button class="b" id="press-clear">Clear</button></div>
   </section>
 
   <section class="panel">
@@ -182,13 +182,14 @@ details[open] summary { margin-bottom: 10px; }
       <div class="grid2">
         <label class="f">Reaction to the shine, tapping only (ms)<input id="s-react" type="number" step="5" value="200"></label>
         <label class="f">TV lag, tapping only (ms)<input id="s-lag" type="number" step="5" value="0"></label>
-        <label class="f">Fine offset for the press (frames, + = later; set by Apply)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Beep offset (frames, + = later; Move beeps sets it)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Visual offset (frames, + = later; Move visual sets it)<input id="s-voff" type="number" step="0.5" value="0"></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
         <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
         <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
-        <label class="f">Video lag, camera mode (ms; same effect as Fine offset)<input id="s-vlag" type="number" step="5" value="50"></label>
+        <label class="f">Video lag, camera mode (ms; moves beeps and visual together)<input id="s-vlag" type="number" step="5" value="50"></label>
         <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
         <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
@@ -203,7 +204,7 @@ details[open] summary { margin-bottom: 10px; }
     <h2>In the run (automatic)</h2>
     <ol class="steps">
       <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), click Time Out's Hand on Hallway, drag the blue box over the クッパ name box in the top-left corner, and press Save target screen. The boxes and the target screen are remembered.</li>
-      <li><b>Calibrate (a few practice presses).</b> After each confirm the page reads from the video which frame you actually pressed on and shows "you pressed N frames late/early" under the countdown, with a suggested Fine offset. Press Apply after 3 or more presses agree. This covers your capture lag, your TV and your own timing in one number.</li>
+      <li><b>Calibrate (a few practice presses).</b> After each confirm, Press check under the strip reads from the video which frame you actually pressed on, measured against the middle of the window. After 3 presses that agree, press Move beeps if you pressed on the beeps, or Move visual if you pressed when the gold line reached the now-line. The two are separate because sound and picture reach you with different delays.</li>
       <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
       <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
     </ol>
@@ -229,7 +230,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -500,7 +501,7 @@ function drawStrip() {
   ctx.textAlign = 'left';
   if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
   if (st.plan) {   // the aimed press moment: where the dark "now" line must be when you press
-    const xp = (st.plan.target - 0.5 + num('off') - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(xp - 1.5, 4, 3, 84);
+    const xp = (st.plan.target - 0.5 + num('voff') - v0) * cw;   // visual cue has its own offset (screen delay differs from audio delay) ctx.fillStyle = gold; ctx.fillRect(xp - 1.5, 4, 3, 84);
   }
   // time ticks relative to now (or to the left edge for the example)
   ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
@@ -514,7 +515,7 @@ function drawStrip() {
   if (nowF !== null) {
     const x = (nowF - v0) * cw;
     if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
-    note = st.plan ? 'Beeping: the window (gold bars) slides toward the dark now-line. Press A when the gold press line reaches it, on the last, higher beep.' :
+    note = st.plan ? 'Beeping: the window (gold bars) slides toward the now-line. By eye: press A when the gold press line reaches the now-line. By ear: on the last, higher beep.' :
       'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
   }
   $('stripnote').textContent = note;
@@ -759,20 +760,23 @@ function measurePress(tObs) {
 function showPresses() {
   const row = $('press-row'), P = st.plan && st.plan.measured;
   row.hidden = false;
-  if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; $('press-apply').hidden = true; return; }
-  if (!presses.length) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed.'; $('press-apply').hidden = true; return; }
+  if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
+  if (!presses.length) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed, measured against the middle of the window.'; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
   const last = presses[presses.length - 1], r = x => Math.round(x * 10) / 10;
   const avg = presses.reduce((a, b) => a + b, 0) / presses.length;
   const spread = Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length);
   const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
   let s = 'Press check: last press ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '') + '. ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
-  const sug = Math.round((num('off') - avg) * 2) / 2;
-  if (presses.length >= 3 && Math.abs(avg) >= 0.5) { s += 'Suggested Fine offset: ' + sug + '.'; $('press-apply').hidden = false; $('press-apply').dataset.v = sug; }
-  else $('press-apply').hidden = true;
+  const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
+  if (ready) s += 'Pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
+  $('press-apply').hidden = $('press-apply-v').hidden = !ready;
+  $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
   $('press-msg').textContent = s;
 }
-$('press-apply').onclick = () => { $('s-off').value = $('press-apply').dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
+function applyPress(id, btn) { $(id).value = $(btn).dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); }
+$('press-apply').onclick = () => applyPress('s-off', 'press-apply');
+$('press-apply-v').onclick = () => applyPress('s-voff', 'press-apply-v');
 $('press-clear').onclick = () => { presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
 showPresses();
 // sound check: the same four beeps a plan plays, starting in half a second
