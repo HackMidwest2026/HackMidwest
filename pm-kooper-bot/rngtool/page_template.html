@@ -115,6 +115,12 @@ details[open] summary { margin-bottom: 10px; }
     <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Move beeps</button><button class="b" id="press-apply-v" hidden>Move visual</button><button class="b" id="press-clear">Clear</button></div>
   </section>
 
+  <section class="panel">
+    <h2>Coin spins this segment <span id="spins-count"></span></h2>
+    <div class="spins" id="spins">–</div>
+    <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
+  </section>
+
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
@@ -140,11 +146,7 @@ details[open] summary { margin-bottom: 10px; }
     <button id="shine" type="button">Shine<kbd>Space</kbd></button>
   </section>
 
-  <section class="panel">
-    <h2>Coin spins this segment <span id="spins-count"></span></h2>
-    <div class="spins" id="spins">–</div>
-    <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
-  </section>
+
 
 
   <section class="panel">
