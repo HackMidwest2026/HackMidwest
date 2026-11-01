@@ -491,12 +491,15 @@ function drawStrip() {
   if (V.corr) { const dt = Math.min(0.1, (pn - (V.corrT || pn)) / 1000), k = 50 * dt; V.corr = Math.abs(V.corr) <= k ? 0 : V.corr - Math.sign(V.corr) * k; }
   V.corrT = pn;
   const nowF = d.tLast !== null ? (pn - (V.corr || 0) - d.tLast) / d.rate : null;
+  // Visual offset shifts the whole strip: the middle of the aimed frame meets the now-line at the visual cue moment
+  // (target - 0.5 + voff frames), so 'press when the window's middle reaches the line' includes your reaction.
+  const nowD = nowF === null ? null : nowF + 1 - num('voff');
   V.dispAbs = C && d.tLast !== null ? (pn - (V.corr || 0) - d.tLast) / d.rate + (d.tLast - C.t0) / C.rate : null; V.dispT = pn;   // for tests: displayed now in segment frames, and when
   // view: centred on the chosen window once planned, otherwise scrolling with "now" near the left edge
   // v0 may be fractional: "now" stays fixed near the left and the frames glide toward it (no jitter), also while a
   // plan is counting down, so the window can be watched arriving at the line
   let v0;
-  if (nowF !== null) v0 = nowF - span * (st.plan ? 0.25 : 0.1);
+  if (nowD !== null) v0 = nowD - span * (st.plan ? 0.25 : 0.1);
   else if (d.w) v0 = Math.round((d.w.start + d.w.end) / 2 - span / 2);
   else v0 = d.first;
   const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
@@ -523,22 +526,22 @@ function drawStrip() {
   }
   ctx.textAlign = 'left'; ctx.globalAlpha = 1;
   if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
-  if (st.plan) {   // the aimed press moment: where the dark "now" line must be when you press
-    const xp = (st.plan.target - 0.5 + num('voff') - v0) * cw;   // visual cue has its own offset (screen delay differs from audio delay) ctx.fillStyle = gold; ctx.fillRect(xp - 1.5, 4, 3, 84);
+  if (st.plan) {   // middle of the aimed frame: press when this reaches the now-line
+    const xm = (st.plan.target + 0.5 - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(xm - 1.5, 4, 3, 84);
   }
   // time ticks relative to now (or to the left edge for the example)
   ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
-  const ref = st.plan ? st.plan.target : (nowF !== null ? nowF : v0), step = span <= 60 ? 0.25 : span <= 120 ? 0.5 : span <= 240 ? 1 : 2;
+  const ref = st.plan ? st.plan.target + 0.5 : (nowD !== null ? nowD : v0), step = span <= 60 ? 0.25 : span <= 120 ? 0.5 : span <= 240 ? 1 : 2;
   for (let s = Math.ceil((v0 - ref) / 30 / step) * step; (ref + s * 30 - v0) < span; s += step) {
     const x = (ref + s * 30 - v0) * cw; if (x < 0) continue;
     const lab = st.plan && Math.abs(s) < 1e-9 ? 'press' : (s > 0 ? '+' : '') + (Math.round(s * 100) / 100) + ' s', tw = ctx.measureText(lab).width;
     ctx.fillRect(Math.min(x, W - 1), 90, 1, 5); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 106);
   }
   let note = 'Example seed 0x12345678, marked as an example. Your own frames appear once the seed is locked.';
-  if (nowF !== null) {
-    const x = (nowF - v0) * cw;
+  if (nowD !== null) {
+    const x = (nowD - v0) * cw;
     if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
-    note = d.stale && !st.plan ? 'Resyncing after a gap: the faded frames are the prediction from before it (they may shift a little when it locks again).' : st.plan ? 'Beeping: the window (gold bars) slides toward the now-line. By eye: press A when the gold press line reaches the now-line. By ear: on the last, higher beep.' :
+    note = d.stale && !st.plan ? 'Resyncing after a gap: the faded frames are the prediction from before it (they may shift a little when it locks again).' : st.plan ? 'Beeping: press A when the gold line in the middle of the window reaches the white now-line, or on the last, higher beep. Visual offset moves the strip so the two happen together.' :
       'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
   }
   $('stripnote').textContent = note;
