@@ -643,7 +643,8 @@ function onFrame(t) {
     for (let i = 0, j = 0; i < g.length; i += 4, j++) diff += Math.abs((g[i] + g[i + 1] + g[i + 2]) / 3 - V.ref[j]);
     V.score = 1 - diff / (24 * 16 * 255);
     const on = V.score >= num('tmatch');
-    if (V.wasOn && !on && st.plan && Math.abs(t - st.plan.tPress) < (V.measureWin || 3000)) measurePress(t);
+    if (V.wasOn && !on && V.onFor > 200) checkPress(t);   // the target screen just closed (after being up for a moment)
+    V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
     V.wasOn = on;
     if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
     else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 300 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
@@ -708,24 +709,39 @@ function autoAfterShine() {
  * frame (measured in the emulator); the same video pipeline carries the shines, so capture lag cancels out. */
 const VANISH = 2;
 const presses = (function () { try { return JSON.parse(localStorage.getItem('tot-presses') || '[]'); } catch (e) { return []; } })();
+// Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
+// Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
+function checkPress(tObs) {
+  if (st.plan && Math.abs(tObs - st.plan.tPress) < (V.measureWin || 3000)) { measurePress(tObs); return; }
+  if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
+  if (st.lock && st.clock) {
+    const C = st.clock, lastF = C.frames[C.frames.length - 1], seedBL = R.seedBeforeLastDraw(C.seed, C.pattern), tLast = C.t0 + lastF * C.rate;
+    const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH);
+    const ok = R.timeOutRoll(seedBL, 0, f, 0) <= 30;
+    V.pressNote = 'No beep plan was running. You confirmed on a frame where Time Out ' + (ok ? 'WORKS' : 'fails') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
+  } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
+  showPresses();
+}
 function measurePress(tObs) {
+  V.pressNote = null;
   const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH;   // continuous frame estimate
   const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
   presses.push(err); while (presses.length > 8) presses.shift();
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
-  const inWin = f >= P.w.start && f <= P.w.end;
-  P.measured = { frame: f, c, err, inWin, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  const inWin = f >= P.w.start && f <= P.w.end, works = R.timeOutRoll(P.seedBL, 0, f, 0) <= 30;
+  P.measured = { frame: f, c, err, inWin, works, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   showPresses();
 }
 function showPresses() {
   const row = $('press-row'), P = st.plan && st.plan.measured;
-  if (!presses.length) { row.hidden = true; return; }
   row.hidden = false;
+  if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; $('press-apply').hidden = true; return; }
+  if (!presses.length) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed.'; $('press-apply').hidden = true; return; }
   const last = presses[presses.length - 1], r = x => Math.round(x * 10) / 10;
   const avg = presses.reduce((a, b) => a + b, 0) / presses.length;
   const spread = Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length);
   const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
-  let s = 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window)' : ' (outside the window)') : '') + '. ';
+  let s = 'Press check: last press ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '') + '. ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const sug = Math.round((num('off') - avg) * 2) / 2;
   if (presses.length >= 3 && Math.abs(avg) >= 0.5) { s += 'Suggested Fine offset: ' + sug + '.'; $('press-apply').hidden = false; $('press-apply').dataset.v = sug; }

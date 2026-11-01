@@ -27,13 +27,13 @@ const RATE = parseFloat(process.env.RATE_MS || '33.4300'), LAG = parseFloat(proc
       b.close();
       while (T.st.searching) { const s = window.__sim; window.__sim = null; await new Promise(r => setTimeout(r, 200)); window.__sim = s; }
     }
-    return { rate: T.st.rate, L: T.st.lastPress, lock: T.st.lock, shines: V.shines };
+    return { rate: T.st.rate, L: T.st.lastPress, lock: T.st.lock, shines: V.shines, msg: document.getElementById('press-msg').textContent, rowHidden: document.getElementById('press-row').hidden };
   }, { n: T3.frames, tgtF: T3.marks.target_screen + 30, RATE, LAG });
   const pre = new Map(T3.truth.filter(t => t.shine).map(t => [t.seed_before >>> 0, t.frame]));
   if (!r.L) { console.log('no measurement', JSON.stringify(r).slice(0, 300)); }
   else {
     const want = T3.marks.confirm - pre.get(r.L.seedBL >>> 0);
-    console.log('RATE_MS', RATE, '| fitted frame ms', r.rate.toFixed(4), '| true confirm frame', want, '| measured', r.L.c.toFixed(2), '->', r.L.frame, want === r.L.frame ? 'MATCH' : 'MISMATCH');
+    console.log('RATE_MS', RATE, '| fitted frame ms', r.rate.toFixed(4), '| true confirm frame', want, '| measured', r.L.c.toFixed(2), '->', r.L.frame, want === r.L.frame ? 'MATCH' : 'MISMATCH'); console.log('readout:', r.rowHidden ? '(hidden)' : r.msg);
   }
   console.log('errors', errs); await b.close();
 })();
