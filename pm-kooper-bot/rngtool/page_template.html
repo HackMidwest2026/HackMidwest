@@ -523,7 +523,7 @@ function makePlan() {
   const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
   const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
   cancelBeeps();
-  st.plan = { w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
+  st.plan = { tMade: performance.now(), w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
   const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
   for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
   render();
@@ -1007,7 +1007,8 @@ function checkPress(tObs) {
 }
 function checkPress_(tObs) {
   if (!PROF().rolls.length) return;
-  if (st.plan && Math.abs(tObs - st.plan.tPress) < (V.measureWin || 3000)) { measurePress(tObs); return; }
+  // any confirm after the plan was made counts (pressing early on a working frame to save time is fine)
+  if (st.plan && tObs > (st.plan.tMade || 0) && tObs < st.plan.tPress + (V.measureWin || 3000)) { measurePress(tObs); return; }
   if (st.plan) { V.pressNote = 'The target screen closed ' + ((tObs - st.plan.tPress) / 1000).toFixed(1) + ' s from the planned press, so it was not counted (backed out, or pressed on a different beep).'; showPresses(); return; }
   if (st.lock && st.clock) {
     const C = st.clock, B = baseState(), seedBL = B.seedBL, tLast = B.tLast;
@@ -1023,10 +1024,11 @@ function measurePress(tObs) {
   V.pressNote = null;
   const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH_() - num('pfix');   // continuous frame estimate (pfix: capture-specific delay of the name box vanishing)
   const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
-  presses.push(err); while (presses.length > 8) presses.shift();
+  const onBeeps = Math.abs(err) <= 3;                                      // only presses made on the beeps calibrate the offsets
+  if (onBeeps) { presses.push(err); while (presses.length > 8) presses.shift(); }
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
   const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
-  P.measured = { frame: f, c, err, inWin, works, tObs }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  P.measured = { frame: f, c, err, inWin, works, tObs, onBeeps }; st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
   if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
@@ -1035,12 +1037,12 @@ function showPresses() {
   const row = $('press-row'), P = st.plan && st.plan.measured;
   row.hidden = false;
   if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
-  if (!presses.length) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed, measured against the middle of the window.'; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
-  const last = presses[presses.length - 1], r = x => Math.round(x * 10) / 10;
-  const avg = presses.reduce((a, b) => a + b, 0) / presses.length;
-  const spread = Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length);
+  if (!presses.length && !(P || st.lastPress)) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed, measured against the middle of the window.'; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
+  const last = presses.length ? presses[presses.length - 1] : (P || st.lastPress || { err: 0 }).err, r = x => Math.round(x * 10) / 10;
+  const avg = presses.length ? presses.reduce((a, b) => a + b, 0) / presses.length : 0;
+  const spread = presses.length ? Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length) : 0;
   const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
-  const head = 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '');
+  const head = P && !P.onBeeps ? 'Pressed ' + Math.abs(Math.round(P.err)) + ' frames ' + (P.err < 0 ? 'before' : 'after') + ' the beeps: ' + (P.works ? 'a working frame' : 'a failing frame') : 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '');
   let s = '';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
