@@ -315,10 +315,19 @@
     }
     return out;
   }
-  /* carry candidates (seeds before prevPattern's first draw) across one gap; null if too many */
-  function extendCands(cands, prevPattern, nextPattern, lo, hi, cap) {
+  /* the same across a gap that ends in a torch room (12 draws every 50 frames, unknown phase): [{seed, phase}] */
+  function extendWideTorch(cands, prevPattern, nextPattern, lo, hi, cap) {
     const out = [];
-    for (const c of cands) if (!gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap)) return null;
+    for (const c of cands) {
+      const r = resyncTorch(afterPattern(c, prevPattern).seedAfterLastDraw, nextPattern, hi, cap, lo);
+      for (const x of r) { out.push({ seed: x.seed, phase: x.phase }); if (out.length > cap) return null; }
+    }
+    return out;
+  }
+  /* carry candidates (seeds before prevPattern's first draw) across one gap; null if too many */
+  function extendCands(cands, prevPattern, nextPattern, lo, hi, cap, m1, m2) {
+    const out = [];
+    for (const c of cands) if (!gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap, m1, m2)) return null;
     return out;
   }
 
@@ -434,6 +443,35 @@
   }
   const matchesTorch = (seed, pattern, ph) => walkTorch(seed, pattern, ph) !== -1;
   const seedBeforeLastDrawTorch = (seed, pattern, ph) => walkTorch(seed, pattern, ph, pattern.length - 1);
+  /* first lock inside a torch room: every seed whose first draw shines, every torch phase; the first gap holds 0 or 1
+   * torch bursts, so most seeds are ruled out by checking the second draw both ways before trying the 50 phases */
+  function searchShineStartTorch(pattern, lo, hi, cap) {
+    // depth-first over "a torch burst in this gap or not" (gaps are under 50 frames: 0 or 1), keeping the set of torch
+    // phases (50 bits, as two 25-bit halves) that agree; most seeds die within a few draws
+    const out = []; lo = Math.max(lo, SHINE_MIN); hi = Math.min(hi, 4294967296);
+    if (!searchShineStartTorch.M) {
+      const M = { 24: [], 48: [] };
+      for (const g of [24, 48]) for (let f = 0; f < 50; f++) { let a = 0, b = 0; for (let ph = 0; ph < 50; ph++) if (torchesIn(f, f + g, ph) > 0) { if (ph < 25) a |= 1 << ph; else b |= 1 << (ph - 25); } M[g].push([a, b]); }
+      searchShineStartTorch.M = M;
+    }
+    const M = searchShineStartTorch.M, FULL = (1 << 25) - 1, L = pattern.length, P = [];
+    for (let i = 0; i < L; i++) P.push(pattern.charCodeAt(i) === 83);
+    let s0t = 0, full = false;
+    const rec = (d, F, i, ma, mb) => {
+      if (i === L - 1) {
+        const s0 = back(s0t);
+        for (let ph = 0; ph < 50; ph++) if (ph < 25 ? (ma >> ph) & 1 : (mb >> (ph - 25)) & 1) { out.push({ seed: s0, phase: ph }); if (out.length >= cap) { full = true; return; } }
+        return;
+      }
+      const g = P[i] ? 48 : 24, m = M[g][F % 50], want = P[i + 1];
+      let na = ma & ~m[0], nb = mb & ~m[1];
+      if (na || nb) { const e = adv(jumpN(d, g)); if ((e >= SHINE_MIN) === want) { rec(e, F + g, i + 1, na, nb); if (full) return; } }
+      na = ma & m[0]; nb = mb & m[1];
+      if (na || nb) { const e = adv(jumpN(d, g + 12)); if ((e >= SHINE_MIN) === want) rec(e, F + g, i + 1, na, nb); }
+    };
+    for (let t = lo; t < hi && !full; t++) { s0t = t >>> 0; rec(s0t, 0, 0, FULL, FULL); }
+    return out;
+  }
   /* re-lock in a torch room: every start n in [nlo, nmax] steps after `from` and every phase */
   function resyncTorch(from, pattern, nmax, cap, nlo) {
     const out = []; let s = from >>> 0; nlo = Math.max(0, nlo || 0);
@@ -447,6 +485,6 @@
   }
 
   const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
-    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, extendWide, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
+    seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, extendWide, extendWideTorch, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, searchShineStartTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

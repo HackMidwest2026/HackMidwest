@@ -7,7 +7,7 @@ const DIR = process.argv[2], CW = 80, CH = 64, FB = CW * CH * 3, buf = fs.readFi
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1100, height: 1600 } }); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
   await p.addInitScript(() => Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 4 }));
-  await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');
+  await p.goto(process.env.PAGE || 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');   // PAGE: another build to compare
   const t0 = await p.evaluate(() => {
     const S = { react: '200', lag: '0', off: '-5', min: '3', lead: '4', beeps: '4', gapms: '500', range: '1000', vlag: '50', wthr: '0', tmatch: '0.92', cpu: '2', zoom: '1.5', voff: '-6', pfix: '0' };
     for (const [k, v] of Object.entries(S)) { const el = document.getElementById('s-' + k); if (el) { el.value = v; el.dispatchEvent(new Event('change')); el.dispatchEvent(new Event('input')); } }

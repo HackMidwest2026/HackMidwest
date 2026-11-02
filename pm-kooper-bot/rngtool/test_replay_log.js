@@ -4,9 +4,9 @@ const { chromium } = require('playwright'); const log = require(require('path').
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
-  await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');
+  await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html'); if (process.env.NOEDGES) await p.evaluate(() => { window.__noedges = true; });
   const out = await p.evaluate(async (events) => {
-    const T = window.__tot; document.getElementById('reset').click();
+    const T = window.__tot; document.getElementById('reset').click(); if (window.__noedges) T.EDGES.on = false;
     const setNow = t => { window.__dt += t - performance.now(); };
     const wait = async () => { for (let i = 0; i < 1200 && T.st.searching; i++) await new Promise(r => setTimeout(r, 50)); };
     const res = []; let lastShine = null, locked = null;

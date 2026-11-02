@@ -238,7 +238,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Pull out the C-up in:</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The lava room after the jail with the island Life Shroom (first lock here)</li><li>The Blockless lava room</li><li>The Save Block room after door 1</li><li>Both flood rooms</li><li>The cannon room</li><li>The room after the Dry Bones block push</li><li>The Heart Block room</li><li>The room after the Hammer Bros block push</li><li>The room after you get the block-push key</li><li>The quiz room</li><li>The Save Block room after door 2</li><li>The 7 maze rooms</li><li>The Duplighost room (re-locks right before the fight)</li></ol><b>Do not pull it out:</b> inside the jail, or in any room with moving enemies. The lock survives those rooms.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Pull out the C-up in:</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The lava room after the jail with the island Life Shroom (first lock here)</li><li>The Blockless lava room</li><li>The Save Block room after door 1</li><li>Both flood rooms</li><li>The cannon room</li><li>The room after the Dry Bones block push</li><li>The Heart Block room</li><li>The room after the Hammer Bros block push</li><li>The room after you get the block-push key</li><li>The quiz room</li><li>The Save Block room after door 2</li><li>The 7 maze rooms (press C-up again each time the bar hides: these looks carry through the next room into the Duplighost room)</li><li>The Duplighost room: stand still with the bar up until it locks (about 25 s after a good maze, 45-50 s without)</li></ol><b>Do not pull it out:</b> inside the jail, or in any room with moving enemies. The lock survives those rooms.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -336,13 +336,13 @@ function cancelBeeps() { if (beeps.length && typeof slog === 'function') slog('b
 /* ---------- seed search in workers ---------- */
 let workers = [];
 function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
-function searchAll(pattern, chain) {
+function searchAll(pattern, chain, torch) {
   stopWorkers(); st.searching = true;
   const n = Math.max(1, Math.min(Math.floor((navigator.hardwareConcurrency || 4) / 2), Math.round(num('cpu')) || 2));   // leave cores for OBS
   const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
   const src = coreText + `
-  self.onmessage = e => { const { pattern, chain, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
-    for (let a = lo; a < hi; a += CH) { out.push(...(chain ? R.searchChain(chain.segs, chain.anchor, a, Math.min(hi, a + CH), 64) : R.searchShineStart(pattern, a, Math.min(hi, a + CH), 64))); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
+  self.onmessage = e => { const { pattern, chain, lo, hi, torch } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
+    for (let a = lo; a < hi; a += CH) { out.push(...(chain ? R.searchChain(chain.segs, chain.anchor, a, Math.min(hi, a + CH), 64) : (torch ? R.searchShineStartTorch : R.searchShineStart)(pattern, a, Math.min(hi, a + CH), 64))); self.postMessage({ progress: Math.min(hi, a + CH) - lo }); }
     self.postMessage({ done: out }); };`;
   const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
   const prog = new Array(n).fill(0), total = 4294967296 - lo; let done = 0; const seeds = []; const t0 = performance.now();
@@ -351,10 +351,10 @@ function searchAll(pattern, chain) {
       const w = new Worker(url); workers.push(w);
       const a = lo + i * span, b = Math.min(4294967296, lo + (i + 1) * span);
       w.onmessage = e => {
-        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText(chain ? 'Searching all 4.3 billion seeds across ' + chain.segs.length + ' stretches…' : 'Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
+        if (e.data.progress !== undefined) { prog[i] = e.data.progress; const p = prog.reduce((x, y) => x + y, 0) / total; setText(chain ? 'Searching all 4.3 billion seeds across ' + chain.segs.length + ' stretches…' : torch ? 'No plain fit: searching all seeds with the torch-room model (about 2 minutes)…' : 'Searching all 4.3 billion seeds…', Math.round(p * 100) + '% · ' + ((performance.now() - t0) / 1000).toFixed(1) + ' s'); }
         if (e.data.done) { seeds.push(...e.data.done); if (++done === n) { stopWorkers(); URL.revokeObjectURL(url); st.searching = false; res(seeds); } }
       };
-      w.postMessage({ pattern, chain, lo: a, hi: b });
+      w.postMessage({ pattern, chain, lo: a, hi: b, torch: !!torch });
     }
   });
 }
@@ -377,7 +377,28 @@ function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAM
 // (the coin draws every 24 frames, so a window under 24 frames wide still leaves about one choice: the cost stays small)
 const gapCost = hid => hid != null && hid <= 1200 ? Math.log2(4 / 24 + 1) : hid != null && hid <= FLICKER ? Math.log2(10 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 const chainCost = () => st.chain.slice(1).reduce((a, c) => a + gapCost(c.hid), 0) + (st.chain.length ? gapCost(seg().hid) : 0);
-function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
+/* Edges of each look: the coin draws right after a stretch's last shine while the coin was still up (m1), and right
+ * before the next stretch's first shine once the coin was steady again (m2), showed no shine. Each is a known
+ * non-shine (the core's gap search enforces them). Margins: a draw counts only 10 frames inside the visible time (its
+ * flash must be seen), and not past a rejected detection; at most 4 per side. */
+const EDGE_MARGIN = 10, EDGE_MAX = 4, EDGES = { on: true };   // EDGES.on: tests compare with and without
+function edgeAfter(taps, hideT, rejT) {           // m1
+  if (!EDGES.on || !taps.length || hideT == null) return 0;
+  const tl = taps[taps.length - 1], end = Math.min(hideT, rejT != null && rejT > tl ? rejT - 3 * FRAME : Infinity);
+  let k = 0; while (k < EDGE_MAX && tl + (48 + 24 * k + EDGE_MARGIN) * FRAME <= end) k++;
+  return k;
+}
+function edgeBefore(taps, steadyT) {               // m2: draw i before the first shine is a non-shine if a shine there (i.e. at 24i+24 frames back) would have been seen
+  if (!EDGES.on || !taps.length || steadyT == null) return 0;
+  const tf = taps[0]; let k = 0; while (k < EDGE_MAX && tf - (24 * (k + 1) + 24 + 3) * FRAME >= steadyT) k++;
+  return k;
+}
+const segM2 = s => edgeBefore(s.taps, s.vis0);
+// gap i (into chain stretch i, or into the current stretch) and its edge constraints
+function gapEdges(i) { const L = st.chain.concat([seg()]); return { m1: L[i - 1].m1 || 0, m2: i < st.chain.length ? (L[i].m2 || 0) : segM2(seg()) }; }
+function chainEdges() { let n = 0; for (let i = 1; i <= st.chain.length; i++) { const g = gapEdges(i); n += g.m1 + g.m2; } return n; }
+function chainBitsUpTo(n) { let b = 0; for (let i = 0; i < n; i++) { b += bits(pat(st.chain[i].taps).pattern); if (i) { const g = gapEdges(i); b += (g.m1 + g.m2) * BITS_N; } } return b; }
+function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0) + chainEdges() * BITS_N; }
 function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
 /* Carrying the seed through turns: every modelled confirm (planned presses, and the turn's other inputs seen on their
  * own target screens) is an event on the locked segment's frames (frame 0 = its first tapped draw). The game's draws for
@@ -466,24 +487,48 @@ function evaluate() {
   if (P.error) { st.msg = P.error + ' Use Undo tap.'; render(); return; }
   if (st.segs.length === 1 || !st.prevLock) {
     // first segment: filter existing candidates as taps come in (carried across a gap from the previous stretch)
-    if (!st.cands && st.wcarry && s.taps.length) {
+    // near-lock candidates carried across a gap that drew other random numbers (enemies, a cutscene): search a window of
+    // RNG steps once this stretch has 3 shines (fewer fit almost anywhere); if the plain coin fits nowhere, try a torch
+    // room (the Duplighost room) with every torch phase
+    if (!st.cands && st.wcarry && s.taps.length >= (st.wcarry.cands.length <= 50 ? 3 : 5)) {
       const E = Math.floor((s.taps[0] - st.wcarry.lastTap) / FRAME), lo = Math.max(0, E - 300), hi = E + num('range');
-      const c = R.extendWide(st.wcarry.cands, st.wcarry.pattern, P.pattern, lo, hi, 20000);
-      slog('wideExtend', { from: st.wcarry.cands.length, to: c ? c.length : null });
-      if (c && c.length) { st.cands = c; st.wbase = { have: st.wcarry.have, need: st.wcarry.need + Math.log2(hi - lo + 1) }; }
+      const W = st.wcarry, c = W.torchOnly ? [] : R.extendWide(W.cands, W.pattern, P.pattern, lo, hi, 200000);
+      if (!W.torchOnly) slog('wideExtend', { from: W.cands.length, to: c ? c.length : null });
+      if (c && c.length) { st.cands = c; st.wtorch = null; st.wtry = W; st.wbase = { have: W.have, need: W.need + Math.log2(hi - lo + 1) }; }
+      else if (c && st.wcarry.cands.length <= 64) {
+        const r = R.extendWideTorch(st.wcarry.cands, st.wcarry.pattern, P.pattern, lo, hi, 2000);
+        slog('wideExtendTorch', { from: st.wcarry.cands.length, to: r ? r.length : null });
+        if (r && r.length) { st.wtorch = new Map(); for (const x of r) { if (!st.wtorch.has(x.seed)) st.wtorch.set(x.seed, []); st.wtorch.get(x.seed).push(x.phase); }
+          st.cands = [...st.wtorch.keys()]; st.wbase = { have: st.wcarry.have, need: st.wcarry.need + Math.log2((hi - lo + 1) * 50) }; }
+      }
       st.wcarry = null;
     }
     if (!st.cands && st.carry && s.taps.length) {
       const [lo, hi] = gapWin(st.carry.lastTap, s.taps[0], s.hid);
-      st.carry_n = st.carry.short ? 0 : st.carry.cands.length; const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000); st.carry = null;
-      if (c && c.length) { st.cands = c; st.carryC0 = st.carry_n; } else if (c) st.chain = [];        // the gap did not fit: start the chain over here
+      st.carry_n = st.carry.short ? 0 : st.carry.cands.length; const ge = st.chain.length ? gapEdges(st.chain.length) : { m1: 0, m2: 0 }; const c = R.extendCands(st.carry.cands, st.carry.pattern, P.pattern, lo, hi, 20000, ge.m1, ge.m2); st.carry = null;
+      if (c && c.length) { st.cands = c; st.carryC0 = st.carry_n; }
+      else if (c) {                                                   // the gap did not fit: start the chain over here, but
+        // keep the candidates for a wide search (the gap may have crossed a room with enemies, into a torch room)
+        const W0 = st.carry0; st.carry0 = null;
+        if (W0 && W0.cands.length <= 5000) st.wcarry = W0;
+        st.chain = [];
+      }
     }
     if (st.cands) {
-      st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
+      if (st.wtorch) { for (const [sd, phs] of st.wtorch) { const k = phs.filter(ph => R.matchesTorch(sd, P.pattern, ph)); if (k.length) st.wtorch.set(sd, k); else st.wtorch.delete(sd); } st.cands = [...st.wtorch.keys()]; }
+      else st.cands = st.cands.filter(x => R.matchesEv(x, P.pattern, st.lock ? evNow() : null));
       st.need = (st.wbase ? st.wbase.need : 38) + chainCost(); st.have = bits(P.pattern) + chainBits() + (st.wbase ? st.wbase.have : 0);
       const ownOk = !st.carryC0 || bits(P.pattern) - Math.log2(st.carryC0) - gapCost(s.hid) >= 7;   // carried across a gap: this stretch must back it up alone
-      if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; st.carryC0 = 0; st.wbase = null; updateClock(); }
-      else if (st.cands.length === 0 && (st.chain.length || st.wbase)) { st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.wbase = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
+      if (st.cands.length === 1 && st.have >= st.need && ownOk) { st.lock = { seg: st.segs.length - 1, seed: st.cands[0] }; if (st.wtorch) st.lock.torch = st.wtorch.get(st.cands[0]); st.wtorch = null; st.carryC0 = 0; st.wbase = null; updateClock(); }
+      else if (st.cands.length === 0 && st.wbase && st.wtry && !st.wtry.torchOnly && st.wtry.cands.length <= 64) {
+        // the plain wide carry fit a few shines by chance and died: the new room may be a torch room
+        st.wcarry = Object.assign({}, st.wtry, { torchOnly: true }); st.wtry = null; st.cands = null; st.wbase = null; slog('wideDiedTryTorch', {});
+        evaluate(); return;
+      }
+      else if (st.cands.length === 0 && (st.chain.length || st.wbase)) {
+        // a carry that fit the first shine or two by chance and then died: the gap was not clean, try the wide search
+        if (st.carry0 && !st.wbase && st.carry0.cands.length <= 5000) { st.wcarry = st.carry0; slog('carryDied', { cands: st.carry0.cands.length }); }
+        st.carry0 = null; st.lock = null; st.cands = null; st.chain = []; st.carry = null; st.wbase = null; st.note = 'The earlier stretches did not connect (a room with its own random numbers?). Continuing from this stretch.'; }
       else if (st.cands.length === 0) { st.lock = null; st.msg = 'No seed fits these taps. A shine was probably missed or tapped twice: Undo the last tap or Reset this segment.'; }
       else st.lock = null;
     }
@@ -652,7 +697,7 @@ function addShine(t, auto) {
   if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
     const g = (t - s.taps[s.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
     if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(3, 0.01 * g)) {
-      V.rejected = (V.rejected || 0) + 1; V.rejStreak = (V.rejStreak || 0) + 1; slog('rejected', { at: Math.round(t), off: +(g - (48 + 24 * k)).toFixed(1), streak: V.rejStreak });
+      s.rej = t; V.rejected = (V.rejected || 0) + 1; V.rejStreak = (V.rejStreak || 0) + 1; slog('rejected', { at: Math.round(t), off: +(g - (48 + 24 * k)).toFixed(1), streak: V.rejStreak });
       if (V.rejStreak < 3) return;
       s.taps.pop(); if (s.raw) s.raw.pop(); slog('droppedSuspectShine', {});   // 3 in a row: the last accepted shine was the odd one out
     }
@@ -695,7 +740,7 @@ function newSegment() {
 async function findChain() {
   const cur = seg(), list = st.chain.map(c => c.taps).concat([cur.taps.slice()]);
   const hids = st.chain.map(c => c.hid).slice(1).concat([cur.hid]);
-  const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0], hids[i - 1]); return g; });
+  const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) { [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0], hids[i - 1]); Object.assign(g, gapEdges(i)); } return g; });
   let anchor = 0; segs.forEach((g, i) => { if (bits(g.pattern) > bits(segs[anchor].pattern)) anchor = i; });
   const token = cur.taps, nChain = st.chain.length; st.searchKind = 'chain';
   const r = await searchAll(null, { segs, anchor });
@@ -720,6 +765,20 @@ async function find() {
   if (P.error || seg().taps.length < 4) { st.msg = P.error || 'Tap at least 4 shines first (about 13 for a unique seed).'; render(); return; }
   st.lock = null; st.cands = null; render();
   st.cands = await searchAll(P.pattern);
+  if (!st.cands.length && canTorch()) { findTorch(); return; }
+  evaluate();
+}
+// nothing fits the plain coin (none at all, or the few chance fits died): maybe a torch room (Duplighost room torches
+// in view: 12 draws every 50 frames). Search every seed and torch phase once per stretch (about 2 minutes); the lock
+// then needs log2(50) more bits
+const canTorch = () => !st.prevLock && !st.lock && !st.searching && !seg().torchTried && seg().taps.length >= 8 && bits(pat(seg().taps).pattern) >= 30;
+async function findTorch() {
+  const s = seg(), P = pat(s.taps); s.torchTried = true; st.cands = null; st.chain = []; st.carry = null; slog('torchSearch', { taps: s.taps.length });
+  const r = await searchAll(P.pattern, null, true);
+  slog('torchSearchDone', { found: r.length });
+  if (seg() !== s || !s.taps.length) { evaluate(); return; }
+  if (r.length) { st.wtorch = new Map(); for (const x of r) { if (!st.wtorch.has(x.seed)) st.wtorch.set(x.seed, []); st.wtorch.get(x.seed).push(x.phase); }
+    st.cands = [...st.wtorch.keys()]; st.wbase = { have: 0, need: 38 + Math.log2(50) }; }
   evaluate();
 }
 /* While a plan's press is far off, keep looking: a window at least as wide (and 3+ frames) that starts sooner, with
@@ -744,7 +803,7 @@ function maybeSwitchPlan() {
 }
 setInterval(maybeSwitchPlan, 250);
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, carry0: null, wtorch: null, wtry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -1157,7 +1216,10 @@ const SHORT_GAP = 4000;
 // drops its oldest stretch, so a dirty gap heals itself.
 const CHAIN_GAP = 15000;
 function coinBack(hiddenMs) {
-  if (!seg().taps.length) return;
+  if (!seg().taps.length) {          // a look with no shine: the gap to the next shine now spans both dropouts
+    const s = seg(); if (hiddenMs != null) { s.vis0 = performance.now(); if (s.hid != null) s.hid += hiddenMs; } else s.vis0 = null;
+    return;
+  }
   slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
   // locked, and the coin was only gone for a moment (no room load): keep the lock; the next shines are checked against
   // where the locked seed puts its shines (some may have been missed during the dropout)
@@ -1165,6 +1227,7 @@ function coinBack(hiddenMs) {
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
+  const hideT = hiddenMs != null ? performance.now() - 1000 - hiddenMs : null;   // the coin went away here (it is reported 1 s after it is steady again)
   if (!st.prevLock && hiddenMs != null && hiddenMs > CHAIN_GAP) {
     // C-up was closed (a cutscene, enemies, a battle): the coin-continuation chain cannot connect, but a near-lock's few
     // candidates can be carried across with the same wide search a lock uses after a gap
@@ -1174,26 +1237,32 @@ function coinBack(hiddenMs) {
     slog('wideCarry', { cands: st.wcarry ? st.wcarry.cands.length : null, pending: !!st.wcarryPending });
     st.chain = []; st.carry = null;
   } else if (!st.prevLock && !P.error && s.taps.length >= CHAIN_MIN) {
-    st.chain.push({ taps: s.taps.slice(), hid: s.hid }); if (st.chain.length > 24) st.chain.shift();
-    if (st.cands && st.cands.length) st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], short: hiddenMs != null && hiddenMs <= SHORT_GAP };
+    st.chain.push({ taps: s.taps.slice(), hid: s.hid, m1: edgeAfter(s.taps, hideT, s.rej), m2: segM2(s) }); if (st.chain.length > 24) st.chain.shift();
+    if (st.cands && st.cands.length) { st.carry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], short: hiddenMs != null && hiddenMs <= SHORT_GAP };
+      st.carry0 = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: chainBitsUpTo(st.chain.length), need: 38 + chainCost() }; }
   } else if (st.prevLock && !P.error && st.cands && st.cands.length && st.cands.length <= 20000) {
     // re-finding a lock: carry this stretch's candidates across the (clean) gap into the next stretch, so short
     // stretches (maze rooms) add up instead of each needing ~6 shines in a row
     st.rcarry = { cands: st.cands, pattern: P.pattern, lastTap: s.taps[s.taps.length - 1], have: st.have || 0, need: st.need || 0, short: hiddenMs != null && hiddenMs <= SHORT_GAP };
   } else if (st.carry && s.taps.length) st.carry = null;                // a stretch too short to carry through: drop the carry
-  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; s.hid = hiddenMs; st.cands = null; st.carryC0 = 0; st.msg = null; render();
+  s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; s.hid = hiddenMs; s.vis0 = hiddenMs != null ? performance.now() : null; s.rej = null; s.singleTried = false; s.torchTried = false; st.cands = null; st.carryC0 = 0; st.msg = null; render();
 }
+// a chain search from 20 net bits: its few thousand candidates are what a wide carry takes through a room with
+// enemies into the Duplighost room (a lock still needs 38)
+const CHAIN_SEARCH_BITS = 20;
 function autoAfterShine() {
   // this stretch alone is (nearly) enough: search it by itself (about 1 s) instead of waiting on a slow chain search
   // that a cutscene or a missed shine may have broken; candidates from 30 bits on, the lock still needs 38
-  if (!st.prevLock && !st.lock && !st.cands && seg().taps.length >= 8 && bits(pat(seg().taps).pattern) >= 30 && (!st.searching || st.searchKind === 'chain')) {
+  // (once per stretch, even over carried candidates: a carry that fit by chance must not block a lock from this stretch)
+  if (!st.prevLock && !st.lock && !seg().singleTried && seg().taps.length >= 8 && bits(pat(seg().taps).pattern) >= 30 && (!st.searching || st.searchKind === 'chain')) {
     if (st.searching) { stopWorkers(); st.searching = false; slog('chainSearchStopped', {}); }
-    st.chain = []; st.carry = null; st.searchKind = 'single'; find(); return;
+    seg().singleTried = true; st.chain = []; st.carry = null; st.carry0 = null; st.wcarry = null; st.wtry = null; st.wtorch = null; st.wbase = null; st.cands = null; st.searchKind = 'single'; find(); return;
   }
   if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
-      chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= 26 && bits(pat(seg().taps).pattern) < 38) findChain();
+      chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= CHAIN_SEARCH_BITS && bits(pat(seg().taps).pattern) < 38) findChain();
   else if (!st.prevLock && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12 && bits(pat(seg().taps).pattern) >= 38) { st.chain = []; st.carry = null; find(); }   // this stretch alone is enough
   else if (st.segs.length === 1 && !st.chain.length && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12) find();
+  if (st.cands && st.cands.length === 0 && canTorch()) { findTorch(); return; }
   if (st.cands && st.cands.length === 0) { seg().taps = []; if (st.segs.length === 1) st.cands = null; st.msg = 'A detection did not fit; starting this segment again.'; render(); }
 }
 /* which frame did the confirm land on? The name box disappears from the video 2 game frames after the confirm
@@ -1293,6 +1362,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
+window.__tot = { EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
 })();
 </script>

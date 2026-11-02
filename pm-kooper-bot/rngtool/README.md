@@ -229,3 +229,27 @@ times (about 1 bit of evidence per second of coin, and closed-C-up rooms restart
 Coin-present fix: the quiz door's speech bubble sat over the coin box and its white counted as "coin on screen" for the
 whole quiz (run 3: a 2-minute quiz looked like a 20 s gap with 117 s of coin and no shines). Present now needs the
 status bar's tan/gold (with g > 0.6 r, so lava glow does not count); `test_present.js` (emulator frames incl. the quiz).
+
+## Maze rooms -> Duplighost room (Nov 2)
+
+Measured (emulator): kpa_102 between the maze and the Duplighost room has 3 wandering enemies (~3.5 extra RNG steps per
+second; 29 in a 9 s crossing; running straight in starts a battle). kpa_53 has no entry cutscene (the Duplighost scene
+starts when you talk to "Peach"), but standing near the entrance its torches draw (452 extra steps in 62 s, the torch
+model). Run 3's Duplighost-room lock matched the plain coin for 53 s, so where the runner waits the torches did not draw.
+Standing still keeps the status bar up (1774 of 1853 frames); walking it hides after ~7.3 s.
+Page changes:
+- Look edges (option 2): draws right after a look's last shine and right before the next look's first shine that were
+  on screen without a shine are known non-shines (m1/m2 per gap, 10-frame margin, not past a rejected detection, at
+  most 4 each side; `test_edges_page.js`: lock after 56-90 s of short looks instead of 63-120 s). A look with no shine
+  now extends the gap (its time and hidden time) instead of being dropped.
+- Carry through kpa_102 (option 1): a chain search starts from 20 net bits so the maze leaves candidates; when the
+  next stretch does not continue them (enemy steps), they are carried with the wide window (E-300..E+1000 steps) and,
+  if those die, with the torch model (all 50 phases, <= 64 candidates). `test_maze_dup_page.js`: Duplighost-room lock
+  after 23-28 s when the maze left candidates (4 of 6 seeds; else ~46-50 s, same as fresh). TORCH=1: 28-32 s carried.
+- First lock inside a torch room: if no seed fits the plain coin (or the chance fits die) after 30 bits, search every
+  seed and torch phase (`searchShineStartTorch`, ~2 min with 2 workers); lock needs 38 + log2(50) bits.
+- One single-stretch search per stretch even over carried candidates (a chance carry no longer blocks the lock).
+Emulator end to end (`speedrun/`, SR_START=kpa40_e1.st, 7 maze rooms 8 s each, kpa_102 closed 9 s, kpa_53 standing
+60 s; Xvfb 800x600): 28 of 29 showable shines detected, no false ones; the maze looks gave only 1-2 shines each (no
+candidates), so the lock came from the Duplighost room alone via the torch search: true lock 47 s after the first shine
+there (plus ~2 min of search time). The page before these changes did not lock at all there.

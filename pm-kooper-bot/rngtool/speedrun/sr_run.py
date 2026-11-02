@@ -4,7 +4,8 @@ to the next route room by writing gGameStatus area/map/entry while the map chang
 the room's entry point before walking out). C-up is pressed the way a runner does (it auto-hides after ~7 s; re-pressed
 after a reaction delay). Video: 640x480 at 29.97 fps (one video frame per game frame), 0-6 extra frames per room load (console
 load time with no game frames), mild blur + JPEG. Truth: per game frame RNG seed before/after, step count, map.
-usage: DISPLAY=:92 M64P_GFX=... python3 sr_run.py OUTDIR [nrooms]"""
+usage: DISPLAY=:92 M64P_GFX=... python3 sr_run.py OUTDIR [nrooms]   (Xvfb screen 800x600: the crop assumes the centered 640x480 window)
+env SR_START=state file, SR_PLAN=json list of [map, open, seconds] to play only part of the route"""
 import subprocess, sys, os, io, json, math, random
 import numpy as np
 from PIL import Image, ImageFilter
@@ -23,13 +24,14 @@ PLAN = [('kpa_11', 1, 22), ('kpa_62', 1, 14), ('kpa_63', 1, 7), ('kpa_60', 0, 6)
         ('kpa_82', 1, 6), ('kpa_82', 0, 40), ('kpa_61', 0, 8), ('kpa_33', 1, 8), ('kpa_52', 0, 5),
         ('kpa_40', 1, 5), ('kpa_41', 1, 5), ('kpa_40', 1, 5), ('kpa_41', 1, 5), ('kpa_40', 1, 5), ('kpa_41', 1, 5), ('kpa_40', 1, 5),
         ('kpa_102', 0, 6), ('kpa_53', 1, 50)][:NR]
+if os.environ.get('SR_PLAN'): PLAN = [tuple(x) for x in json.loads(os.environ['SR_PLAN'])]   # e.g. the maze rooms -> Duplighost room only
 # entries with walk exits where the room has one (doors may be locked); the exit back through that entry leaves the room
 ENT = {'kpa_11': 1, 'kpa_62': 1, 'kpa_63': 0, 'kpa_60': 1, 'kpa_133': 1, 'kpa_134': 0, 'kpa_130': 0, 'kpa_111': 1, 'kpa_112': 0,
        'kpa_113': 0, 'kpa_114': 0, 'kpa_115': 0, 'kpa_118': 0, 'kpa_119': 0, 'kpa_82': 0, 'kpa_61': 0, 'kpa_33': 0, 'kpa_52': 0,
        'kpa_40': 1, 'kpa_41': 0, 'kpa_102': 0, 'kpa_53': 0}
 e = Emu('pm-jp.z64', '/dev/shm/pmbot/sr_emu')
 for i in range(60): e.step(0, 0, 0, 2)
-e.load('states/kpa11_e1_nog.st'); e.step(0, 0, 0, 2)
+e.load('states/' + os.environ.get('SR_START', 'kpa11_e1_nog.st')); e.step(0, 0, 0, 2)
 y4m = open(OUT + '/run.y4m', 'wb'); y4m.write(b'YUV4MPEG2 W640 H480 F30000:1001 Ip A1:1 C420jpeg\n')
 VF = [0]; truth = []; GF = [0]; events = []
 def grab():
@@ -106,7 +108,8 @@ for ri, (m, op, secs) in enumerate(PLAN):
         n = 0
     # which stick direction leads away from the door Mario came in by (into the room)?
     best = (0, 0); bd = -1; p0 = player(e)
-    if m == 'kpa_11': bd = 0; dd0 = math.hypot(p0['x'] - DOOR[0][0], p0['z'] - DOOR[0][1])
+    dd0 = math.hypot(p0['x'] - DOOR[0][0], p0['z'] - DOOR[0][1])
+    if m == 'kpa_11': bd = 0
     for sx, sy in ([(50, 0), (-50, 0), (0, 50), (0, -50)] if m != 'kpa_11' else []):
         for i in range(6): tick(bool(op), sx, sy)
         q = player(e); d = math.hypot(q['x'] - DOOR[0][0], q['z'] - DOOR[0][1]) - dd0
@@ -114,7 +117,7 @@ for ri, (m, op, secs) in enumerate(PLAN):
         for i in range(6): tick(bool(op), -sx, -sy)
     for i in range(max(0, n - 48)):
         ph = i % 70; sx, sy = best
-        x, y = ((sx, sy) if ph < 25 else (-sx, -sy) if 35 <= ph < 55 else (0, 0)) if op else (0, 0)   # runner-ish steps, drifting into the room
+        x, y = ((sx, sy) if ph < 25 else (-sx, -sy) if 35 <= ph < 55 else (0, 0)) if op == 1 else (0, 0)   # runner-ish steps, drifting into the room (open = 2: stand still with the bar up)
         tick(bool(op), x, y)
         if mode() == GM_CHANGE_MAP and ri + 1 < len(PLAN):                              # walked into an exit anyway: go on
             events.append({'unplanned_exit': m, 'gf': GF[0]}); wait_world(target=(PLAN[ri + 1][0], ENT[PLAN[ri + 1][0]]), lag=rnd.randint(0, 6)); unplanned = True; break
