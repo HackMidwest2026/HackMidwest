@@ -10,3 +10,5 @@ Emulator scripts (run from the emulator's bot1/ dir) and C seed searches. Every 
   command works pressing 2-5 frames before the HP drop; 2 used), `_blmodel.py` / `blsearch.c` model the RNG (coin from
   frame 23, 6 star draws per hit, roll k at d+76+26k, matches the emulator log). Delay 3, all 2^32 seeds: best 26 bounces
   (35 seeds), 25 (334), 24 (2042). fc75ed54 and f535f83f verified at 26 in the emulator (Blooper 30 -> 4 HP).
+- Blooper, more confirm delays (all 2^32 seeds each): d0 best 27 (3 seeds), d1 27 (1), d2 **29** (1: 1c08132d,
+  verified in the emulator, Blooper 30 -> 1 HP, video), d3 26 (35), d4 28 (2). 30 (a one-cycle kill) not found yet.
