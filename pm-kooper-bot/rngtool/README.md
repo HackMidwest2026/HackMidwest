@@ -202,3 +202,6 @@ exactly onto the predicted shine). `test_pickup_lock.js`: a 2 s pickup and a 2.5
 (no re-sync, shift measured as 5).
 After Jr. Troopa (STORY 95 states, `kpa_roomsteps.py`): kpa_83, kpa_121, osr_02 (outside Peach's castle) and Peach's
 castle kkj_10/11/12/14/15/16/17/18/19/22 are all clean.
+Library = kkj_16: the Life Shroom and Power Rush pickups (`kkj16_pickup.py`, DIAGNOSTIC teleport onto the item) add no RNG
+draws; the coin keeps drawing through the item-get message. After Hallway Bowser (GFLAGS 1FA,1FB; also 1FA only for the
+kkj_23 Bowser-flees scene): kkj_13, kkj_22, kkj_23, kkj_24 and kkj_25 (entry 0, the route's door) are all clean.
