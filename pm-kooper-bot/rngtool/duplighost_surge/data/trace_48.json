@@ -1,0 +1,3084 @@
+[
+ {
+  "seed": "91076163",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   6,
+   7,
+   12,
+   13,
+   3
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 53,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   7,
+   215,
+   763,
+   73
+  ],
+  "model_match": true,
+  "n_draws_compared": 174,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "6a25b577",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   5,
+   13,
+   12,
+   6,
+   13
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 113,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   376,
+   331,
+   351,
+   794
+  ],
+  "model_match": true,
+  "n_draws_compared": 132,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 32,
+   "coin": 20,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "67bf623f",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   13,
+   10,
+   9,
+   6,
+   13
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 113,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   765,
+   272,
+   866,
+   453
+  ],
+  "model_match": true,
+  "n_draws_compared": 128,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 48,
+   "coin": 20,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "fd43915c",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   14,
+   3,
+   13,
+   11,
+   7
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 89,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   955,
+   674,
+   282,
+   528
+  ],
+  "model_match": true,
+  "n_draws_compared": 102,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "cc825a22",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   12,
+   10,
+   7,
+   15,
+   4
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 87,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   224,
+   146,
+   293,
+   900
+  ],
+  "model_match": true,
+  "n_draws_compared": 126,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 32,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "abe49f8d",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   13,
+   1,
+   12,
+   4,
+   2
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 93,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   560,
+   769,
+   176,
+   792
+  ],
+  "model_match": true,
+  "n_draws_compared": 80,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 32,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "a3ecbe1f",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   6,
+   9,
+   14,
+   13,
+   9
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 56,
+  "fw_draws": 8,
+  "partner": 8,
+  "rolls": [],
+  "model_match": false,
+  "n_draws_compared": 93,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 24,
+   "coin": 53,
+   "roll": 0
+  },
+  "first_mismatch": [
+   [
+    44,
+    "coin",
+    100,
+    37
+   ],
+   [
+    44,
+    "fw",
+    359,
+    133
+   ]
+  ]
+ },
+ {
+  "seed": "051d4ed7",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   12,
+   6,
+   11,
+   11,
+   2
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 74,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   535,
+   162,
+   80,
+   274
+  ],
+  "model_match": false,
+  "n_draws_compared": 72,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 24,
+   "coin": 20,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    86
+   ],
+   [
+    46,
+    "fw",
+    359,
+    203
+   ]
+  ]
+ },
+ {
+  "seed": "d8a87a34",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   15,
+   12,
+   14,
+   12,
+   2
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 102,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   65,
+   675,
+   925,
+   746
+  ],
+  "model_match": true,
+  "n_draws_compared": 181,
+  "other_draws": [
+   [
+    588,
+    100,
+    "0x80277518",
+    12
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 48,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "3930b256",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   15,
+   9,
+   14,
+   12,
+   2
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 75,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   291,
+   185,
+   998,
+   841
+  ],
+  "model_match": true,
+  "n_draws_compared": 136,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 40,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "e28ed1b2",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   14,
+   9,
+   10,
+   9,
+   13
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 67,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   871,
+   363,
+   536,
+   553
+  ],
+  "model_match": true,
+  "n_draws_compared": 119,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 40,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "49534a7c",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   15,
+   11,
+   11,
+   5,
+   12
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 76,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   555,
+   728,
+   902,
+   184
+  ],
+  "model_match": true,
+  "n_draws_compared": 101,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 40,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "527fb01c",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   6,
+   8,
+   13,
+   3,
+   8
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 53,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   60,
+   305,
+   213,
+   175
+  ],
+  "model_match": true,
+  "n_draws_compared": 124,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 32,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "f831bba5",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   15,
+   12,
+   7,
+   8,
+   9
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 108,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   982,
+   796,
+   349,
+   494
+  ],
+  "model_match": true,
+  "n_draws_compared": 90,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "eba9b1fa",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   11,
+   3,
+   8,
+   4,
+   4
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 63,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   948,
+   587,
+   910,
+   341
+  ],
+  "model_match": false,
+  "n_draws_compared": 72,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 40,
+   "coin": 12,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    63,
+    "fw",
+    359,
+    333
+   ],
+   [
+    44,
+    "fw",
+    359,
+    127
+   ]
+  ]
+ },
+ {
+  "seed": "6b3f3720",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   9,
+   5,
+   2,
+   7,
+   5
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 38,
+  "fw_draws": 8,
+  "partner": 8,
+  "rolls": [],
+  "model_match": false,
+  "n_draws_compared": 102,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 24,
+   "coin": 54,
+   "roll": 0
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    254
+   ],
+   [
+    46,
+    "fw",
+    359,
+    51
+   ]
+  ]
+ },
+ {
+  "seed": "29bd67fd",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   9,
+   12,
+   4,
+   15,
+   5
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 79,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   209,
+   933,
+   219,
+   363
+  ],
+  "model_match": true,
+  "n_draws_compared": 175,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 40,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "7f7237cb",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   13,
+   8,
+   3,
+   15,
+   2
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 52,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   183,
+   139,
+   408,
+   728
+  ],
+  "model_match": true,
+  "n_draws_compared": 131,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 32,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "9bb0bcc8",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   7,
+   4,
+   4,
+   5,
+   6
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 81,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   799,
+   643,
+   892,
+   944
+  ],
+  "model_match": false,
+  "n_draws_compared": 127,
+  "other_draws": [
+   [
+    468,
+    100,
+    "0x80277518",
+    4
+   ],
+   [
+    540,
+    100,
+    "0x80277518",
+    28
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 48,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    468,
+    "other",
+    100,
+    4
+   ],
+   [
+    477,
+    "coin",
+    100,
+    68
+   ]
+  ]
+ },
+ {
+  "seed": "c5441427",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   16,
+   3,
+   4,
+   14,
+   8
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 74,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   476,
+   569,
+   638,
+   580
+  ],
+  "model_match": true,
+  "n_draws_compared": 94,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 32,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "0bd3bc0a",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   10,
+   6,
+   12,
+   5,
+   5
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 77,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   695,
+   87,
+   112,
+   763
+  ],
+  "model_match": true,
+  "n_draws_compared": 132,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 40,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "bb28baf5",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   11,
+   9,
+   6,
+   10,
+   10
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 93,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   463,
+   323,
+   880,
+   1000
+  ],
+  "model_match": true,
+  "n_draws_compared": 82,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 32,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "6ef5cfe0",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   10,
+   12,
+   8,
+   11,
+   8
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 82,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   806,
+   683,
+   316,
+   849
+  ],
+  "model_match": false,
+  "n_draws_compared": 76,
+  "other_draws": [
+   [
+    551,
+    100,
+    "0x80277518",
+    6
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 40,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    44,
+    "coin",
+    100,
+    55
+   ],
+   [
+    44,
+    "fw",
+    359,
+    196
+   ]
+  ]
+ },
+ {
+  "seed": "75a355c7",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   5,
+   12,
+   10,
+   3,
+   5
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 65,
+  "fw_draws": 8,
+  "partner": 4,
+  "rolls": [
+   682,
+   665,
+   860
+  ],
+  "model_match": false,
+  "n_draws_compared": 79,
+  "other_draws": [
+   [
+    433,
+    100,
+    "0x80277518",
+    53
+   ],
+   [
+    629,
+    4,
+    "0x80147234",
+    1
+   ],
+   [
+    632,
+    4,
+    "0x802d46e0",
+    1
+   ],
+   [
+    1391,
+    4,
+    "0x80147234",
+    0
+   ],
+   [
+    1393,
+    1000,
+    "0x80241070",
+    975
+   ],
+   [
+    1393,
+    10000,
+    "0x802410d4",
+    1746
+   ],
+   [
+    1393,
+    16,
+    "0x80049298",
+    7
+   ],
+   [
+    1393,
+    60,
+    "0x800492b8",
+    2
+   ],
+   [
+    1404,
+    10000,
+    "0x80139834",
+    742
+   ],
+   [
+    1404,
+    60,
+    "0x80139848",
+    26
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 40,
+   "coin": 12,
+   "roll": 3
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    293
+   ],
+   [
+    46,
+    "fw",
+    359,
+    316
+   ]
+  ]
+ },
+ {
+  "seed": "e30a406c",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   6,
+   2,
+   11,
+   3,
+   13
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 92,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   465,
+   892,
+   66,
+   102
+  ],
+  "model_match": true,
+  "n_draws_compared": 177,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 40,
+   "coin": 21,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "790b0441",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   16,
+   4,
+   6,
+   8,
+   10
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 91,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   546,
+   525,
+   564,
+   514
+  ],
+  "model_match": true,
+  "n_draws_compared": 133,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 32,
+   "coin": 21,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "61e1f016",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   6,
+   7,
+   12,
+   9,
+   12
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 65,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   90,
+   874,
+   290,
+   187
+  ],
+  "model_match": true,
+  "n_draws_compared": 116,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 40,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "06365e4b",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   6,
+   3,
+   14,
+   14,
+   1
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 79,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   766,
+   768,
+   963,
+   811
+  ],
+  "model_match": false,
+  "n_draws_compared": 102,
+  "other_draws": [
+   [
+    468,
+    100,
+    "0x80277518",
+    14
+   ],
+   [
+    540,
+    100,
+    "0x80277518",
+    11
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 40,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    468,
+    "other",
+    100,
+    14
+   ],
+   [
+    480,
+    "coin",
+    100,
+    49
+   ]
+  ]
+ },
+ {
+  "seed": "51c5f7c6",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   14,
+   13,
+   7,
+   12,
+   12
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 104,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   194,
+   877,
+   538,
+   20
+  ],
+  "model_match": true,
+  "n_draws_compared": 134,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "72a4545c",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   10,
+   5,
+   8,
+   11,
+   4
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 102,
+  "fw_draws": 6,
+  "partner": 4,
+  "rolls": [
+   683,
+   849,
+   602
+  ],
+  "model_match": false,
+  "n_draws_compared": 85,
+  "other_draws": [
+   [
+    485,
+    100,
+    "0x80277518",
+    60
+   ],
+   [
+    681,
+    4,
+    "0x80147234",
+    1
+   ],
+   [
+    684,
+    4,
+    "0x802d46e0",
+    0
+   ],
+   [
+    1443,
+    4,
+    "0x80147234",
+    2
+   ],
+   [
+    1445,
+    1000,
+    "0x80241070",
+    608
+   ],
+   [
+    1445,
+    10000,
+    "0x802410d4",
+    9602
+   ],
+   [
+    1445,
+    16,
+    "0x80049298",
+    3
+   ],
+   [
+    1445,
+    60,
+    "0x800492b8",
+    21
+   ],
+   [
+    1456,
+    10000,
+    "0x80139834",
+    3969
+   ],
+   [
+    1456,
+    60,
+    "0x80139848",
+    57
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 40,
+   "coin": 14,
+   "roll": 3
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "b2440af0",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   15,
+   6,
+   9,
+   4,
+   11
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 77,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   116,
+   897,
+   236,
+   74
+  ],
+  "model_match": false,
+  "n_draws_compared": 70,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 32,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    44,
+    "coin",
+    100,
+    11
+   ],
+   [
+    44,
+    "fw",
+    359,
+    42
+   ]
+  ]
+ },
+ {
+  "seed": "826d8944",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   17,
+   5,
+   13,
+   6,
+   4
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 109,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   93,
+   113,
+   731,
+   648
+  ],
+  "model_match": false,
+  "n_draws_compared": 77,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 32,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    28
+   ],
+   [
+    46,
+    "fw",
+    359,
+    190
+   ]
+  ]
+ },
+ {
+  "seed": "95ce07ee",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   16,
+   7,
+   10,
+   15,
+   5
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 81,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   438,
+   449,
+   985,
+   757
+  ],
+  "model_match": true,
+  "n_draws_compared": 178,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 40,
+   "coin": 22,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "b08db7bb",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   15,
+   5,
+   6,
+   15,
+   2
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 66,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   350,
+   54,
+   757,
+   359
+  ],
+  "model_match": true,
+  "n_draws_compared": 138,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "d38cd7aa",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   7,
+   11,
+   7,
+   6,
+   12
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 90,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   799,
+   668,
+   386,
+   421
+  ],
+  "model_match": true,
+  "n_draws_compared": 127,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 48,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "a9249f9c",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   8,
+   2,
+   9,
+   5,
+   1
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 90,
+  "fw_draws": 6,
+  "partner": 1,
+  "rolls": [
+   981,
+   839,
+   312,
+   864
+  ],
+  "model_match": true,
+  "n_draws_compared": 102,
+  "other_draws": [
+   [
+    576,
+    100,
+    "0x80277518",
+    81
+   ],
+   [
+    772,
+    4,
+    "0x80147234",
+    0
+   ],
+   [
+    775,
+    4,
+    "0x802d46e0",
+    1
+   ],
+   [
+    1534,
+    4,
+    "0x80147234",
+    0
+   ],
+   [
+    1536,
+    1000,
+    "0x80241070",
+    67
+   ],
+   [
+    1536,
+    10000,
+    "0x802410d4",
+    4495
+   ],
+   [
+    1536,
+    16,
+    "0x80049298",
+    11
+   ],
+   [
+    1536,
+    60,
+    "0x800492b8",
+    19
+   ],
+   [
+    1547,
+    10000,
+    "0x80139834",
+    5439
+   ],
+   [
+    1547,
+    60,
+    "0x801398a8",
+    24
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 40,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "701da568",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   16,
+   11,
+   7,
+   3,
+   6
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 77,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   298,
+   789,
+   538,
+   321
+  ],
+  "model_match": true,
+  "n_draws_compared": 131,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 40,
+   "coin": 15,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "5742dc8e",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   16,
+   12,
+   11,
+   8,
+   8
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 115,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   112,
+   34,
+   720,
+   842
+  ],
+  "model_match": true,
+  "n_draws_compared": 83,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 32,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "6ee15ff6",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   5,
+   2,
+   2,
+   11,
+   5
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 87,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   254,
+   363,
+   360,
+   621
+  ],
+  "model_match": false,
+  "n_draws_compared": 62,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 24,
+   "coin": 18,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    44,
+    "coin",
+    100,
+    8
+   ],
+   [
+    44,
+    "fw",
+    359,
+    31
+   ]
+  ]
+ },
+ {
+  "seed": "c1d31c7b",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   17,
+   3,
+   10,
+   5,
+   3
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 77,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   657,
+   788,
+   149,
+   289
+  ],
+  "model_match": false,
+  "n_draws_compared": 83,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 40,
+   "coin": 15,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    126
+   ],
+   [
+    46,
+    "fw",
+    359,
+    210
+   ]
+  ]
+ },
+ {
+  "seed": "f58fda8e",
+  "pattern": [
+   1,
+   1,
+   null
+  ],
+  "gaps": [
+   14,
+   6,
+   7,
+   15,
+   12
+  ],
+  "spinies": 28,
+  "throws": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20,
+   22,
+   24,
+   26,
+   28,
+   30,
+   32,
+   34,
+   36,
+   38,
+   40,
+   42,
+   44,
+   46,
+   48,
+   50,
+   52,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 87,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   196,
+   869,
+   980,
+   491
+  ],
+  "model_match": true,
+  "n_draws_compared": 180,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 112,
+   "fw": 48,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "2500aa36",
+  "pattern": [
+   1,
+   2,
+   null
+  ],
+  "gaps": [
+   10,
+   5,
+   9,
+   14,
+   8
+  ],
+  "spinies": 19,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 87,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   106,
+   608,
+   860,
+   492
+  ],
+  "model_match": true,
+  "n_draws_compared": 148,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 76,
+   "fw": 48,
+   "coin": 20,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "37125b0b",
+  "pattern": [
+   2,
+   2,
+   null
+  ],
+  "gaps": [
+   11,
+   7,
+   13,
+   14,
+   11
+  ],
+  "spinies": 14,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 105,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   820,
+   99,
+   121,
+   949
+  ],
+  "model_match": true,
+  "n_draws_compared": 117,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 56,
+   "fw": 40,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "69d9097e",
+  "pattern": [
+   3,
+   3,
+   null
+  ],
+  "gaps": [
+   11,
+   2,
+   13,
+   15,
+   7
+  ],
+  "spinies": 10,
+  "throws": [
+   0,
+   6,
+   12,
+   18,
+   24,
+   30,
+   36,
+   42,
+   48,
+   54
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 111,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   751,
+   342,
+   918,
+   198
+  ],
+  "model_match": true,
+  "n_draws_compared": 103,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 40,
+   "fw": 40,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "1307b6dc",
+  "pattern": [
+   2,
+   1,
+   null
+  ],
+  "gaps": [
+   9,
+   13,
+   5,
+   9,
+   9
+  ],
+  "spinies": 18,
+  "throws": [
+   0,
+   3,
+   6,
+   9,
+   12,
+   15,
+   18,
+   21,
+   24,
+   27,
+   30,
+   33,
+   36,
+   39,
+   42,
+   45,
+   48,
+   51
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 85,
+  "fw_draws": 8,
+  "partner": 4,
+  "rolls": [
+   656,
+   973,
+   625
+  ],
+  "model_match": false,
+  "n_draws_compared": 137,
+  "other_draws": [
+   [
+    471,
+    100,
+    "0x80277518",
+    99
+   ],
+   [
+    667,
+    4,
+    "0x80147234",
+    0
+   ],
+   [
+    670,
+    4,
+    "0x802d46e0",
+    4
+   ],
+   [
+    1429,
+    4,
+    "0x80147234",
+    3
+   ],
+   [
+    1431,
+    1000,
+    "0x80241070",
+    698
+   ],
+   [
+    1431,
+    10000,
+    "0x802410d4",
+    3958
+   ],
+   [
+    1431,
+    16,
+    "0x80049298",
+    4
+   ],
+   [
+    1431,
+    60,
+    "0x800492b8",
+    27
+   ],
+   [
+    1442,
+    10000,
+    "0x80139834",
+    57
+   ],
+   [
+    1442,
+    60,
+    "0x80139848",
+    31
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 72,
+   "fw": 48,
+   "coin": 14,
+   "roll": 3
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "bb417e43",
+  "pattern": [
+   4,
+   4,
+   null
+  ],
+  "gaps": [
+   6,
+   12,
+   10,
+   13,
+   7
+  ],
+  "spinies": 7,
+  "throws": [
+   0,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48
+  ],
+  "menu_after_last": 103,
+  "confirm_after_menu": 61,
+  "fw_draws": 6,
+  "partner": 3,
+  "rolls": [
+   903,
+   547,
+   641,
+   464
+  ],
+  "model_match": true,
+  "n_draws_compared": 89,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 28,
+   "fw": 40,
+   "coin": 17,
+   "roll": 4
+  },
+  "first_mismatch": null
+ },
+ {
+  "seed": "2ddc3ebc",
+  "pattern": [
+   3,
+   3,
+   4,
+   40
+  ],
+  "gaps": [
+   5,
+   7,
+   11,
+   8,
+   3
+  ],
+  "spinies": 4,
+  "throws": [
+   0,
+   6,
+   12,
+   18
+  ],
+  "menu_after_last": 122,
+  "confirm_after_menu": 96,
+  "fw_draws": 8,
+  "partner": 1,
+  "rolls": [
+   946,
+   638,
+   198,
+   969
+  ],
+  "model_match": false,
+  "n_draws_compared": 76,
+  "other_draws": [
+   [
+    565,
+    100,
+    "0x80277518",
+    49
+   ],
+   [
+    761,
+    4,
+    "0x80147234",
+    4
+   ],
+   [
+    764,
+    4,
+    "0x802d46e0",
+    2
+   ],
+   [
+    1523,
+    4,
+    "0x80147234",
+    3
+   ],
+   [
+    1525,
+    1000,
+    "0x80241070",
+    217
+   ],
+   [
+    1525,
+    10000,
+    "0x802410d4",
+    8829
+   ],
+   [
+    1525,
+    16,
+    "0x80049298",
+    7
+   ],
+   [
+    1525,
+    60,
+    "0x800492b8",
+    25
+   ],
+   [
+    1536,
+    10000,
+    "0x80139834",
+    3213
+   ],
+   [
+    1536,
+    60,
+    "0x80139848",
+    15
+   ]
+  ],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 16,
+   "fw": 40,
+   "coin": 16,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    44,
+    "coin",
+    100,
+    100
+   ],
+   [
+    44,
+    "fw",
+    359,
+    357
+   ]
+  ]
+ },
+ {
+  "seed": "00b7b031",
+  "pattern": [
+   2,
+   2,
+   6,
+   45
+  ],
+  "gaps": [
+   16,
+   6,
+   12,
+   13,
+   5
+  ],
+  "spinies": 6,
+  "throws": [
+   0,
+   4,
+   8,
+   12,
+   16,
+   20
+  ],
+  "menu_after_last": 116,
+  "confirm_after_menu": 108,
+  "fw_draws": 8,
+  "partner": 3,
+  "rolls": [
+   698,
+   943,
+   305,
+   15
+  ],
+  "model_match": false,
+  "n_draws_compared": 87,
+  "other_draws": [],
+  "frames_not_1_draw": [],
+  "replay_ok": true,
+  "draw_counts": {
+   "spiny": 24,
+   "fw": 40,
+   "coin": 19,
+   "roll": 4
+  },
+  "first_mismatch": [
+   [
+    59,
+    "fw",
+    359,
+    54
+   ],
+   [
+    46,
+    "fw",
+    359,
+    249
+   ]
+  ]
+ }
+]

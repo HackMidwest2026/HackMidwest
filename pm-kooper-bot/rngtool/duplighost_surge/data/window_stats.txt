@@ -1,0 +1,48 @@
+fast model vs surge_model.simulate, mismatches on 3+/4 outcomes: 0
+{
+ "samples": 20000,
+ "ready_after_menu": 30,
+ "span": 60,
+ "P(all 4) per frame": 0.1292,
+ "P(3+) per frame": 0.4745,
+ "P(aim4: all 4 with both neighbours 3+) per frame": 0.0297,
+ "runs of all-4 frames (length: share)": {
+  "1": 0.871,
+  "2": 0.113,
+  "3": 0.014,
+  "4": 0.002,
+  "5": 0.0,
+  "6": 0.0,
+  "7": 0.0
+ },
+ "wait_first_4": {
+  "what": "first all-4 frame",
+  "mean_frames": 6.7,
+  "median": 4,
+  "p90": 16,
+  "p99": 33,
+  "P(none by +15 frames = 0.5 s)": 0.1245,
+  "P(none by +30 = 1 s)": 0.0156,
+  "P(none by +60 = 2 s)": 0.0003
+ },
+ "wait_first_3plus": {
+  "what": "first 3+ frame",
+  "mean_frames": 1.16,
+  "median": 1,
+  "p90": 3,
+  "p99": 7,
+  "P(none by +15 frames = 0.5 s)": 0.0003,
+  "P(none by +30 = 1 s)": 0.0,
+  "P(none by +60 = 2 s)": 0.0
+ },
+ "wait_first_aim4": {
+  "what": "first all-4 frame with both neighbours 3+",
+  "mean_frames": 39.83,
+  "median": 26,
+  "p90": 91,
+  "p99": 218,
+  "P(none by +15 frames = 0.5 s)": 0.6745,
+  "P(none by +30 = 1 s)": 0.4567,
+  "P(none by +60 = 2 s)": 0.2185
+ }
+}
