@@ -29,8 +29,11 @@ json.dump(rows, open(out, 'w'))
 print('frames', len(rows))
 # ---- summary: timeline and the coin draw pattern (for boot_search.c) ----
 sig = next(r['i'] for r in rows if r['blue'] < 0.5)                                  # GV-USB2 blue screen ends
-logo = next(r['i'] for r in rows[sig:] if r['lum'] > 85 and r['i'] > sig + 5)        # N64 logo fading in (lum jump)
-dark = [r['i'] for r in rows if r['lum'] < 2]
+# N64 logo: first frame of the fade-in. It fades in from black (clip 2) or from the capture's grey settling screen
+# (clip 1: grey 61 -> 89.7 in one frame), so take the first frame that is either non-black after black or a jump of > 20.
+logo = next(r['i'] for k, r in enumerate(rows) if r['i'] > sig + 5 and ((r['lum'] > 10 and rows[k - 1]['lum'] < 3)
+                                                                          or r['lum'] - rows[k - 1]['lum'] > 20))
+dark = [r['i'] for r in rows if r['lum'] < 2 and r['i'] > logo + 200]
 load_lo, load_hi = (dark[0], dark[-1]) if dark else (None, None)                     # black screen of the file load
 bar = next((r['i'] for r in rows[(load_hi or 0):] if r['bar'] > 0.2), None)
 on = [r['i'] for k, r in enumerate(rows) if bar and r['i'] > bar and r['white'] > 0.02 and rows[k - 1]['white'] <= 0.02]

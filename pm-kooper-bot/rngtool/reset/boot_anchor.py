@@ -7,7 +7,7 @@ import os, sys, shutil
 T0_ = int(sys.argv[1]) if len(sys.argv) > 1 else 120
 PER = int(sys.argv[2]) if len(sys.argv) > 2 else 20
 os.chdir('/tmp/claude-0/pm/bot1'); sys.path.insert(0, '.')
-from emu import *; from pm import *; from rngsim import SEED
+from emu import *; from pm import *; from rngsim import SEED, adv
 TICKS_PER_VI = 811363                     # this core (emu.py)
 dd = '/dev/shm/pmbot/ba%d' % os.getpid(); os.makedirs(dd, exist_ok=True)
 for f in os.listdir('/tmp/claude-0/pm/savegame'): shutil.copy(os.path.join('/tmp/claude-0/pm/savegame', f), dd)
@@ -21,15 +21,17 @@ while vi < 6000:
     st = e.u8(gs + 0xAC) if 0x80000000 <= gs < 0x80800000 else -1
     if init is None and prev == 1 and s != 1: init = vi; seed0 = s
     prev = s
-    log.append((vi, m, st, e.count()))
+    log.append((vi, m, st, e.count(), s))
     if m == 4 and mode4 is None: mode4 = vi
     if mode4 is not None and vi > mode4 + 2: break
 C = seed0 - 1
 print('seed first seen at harness step', init, ': seed %08x -> boot Count ~ %08x' % (seed0, C))
 last = None
-for vi_, m, st, cnt in log:
+for vi_, m, st, cnt, sd in log:
     if (m, st) != last:
-        print('step %4d  mode %2d  startupState %2d  Count %08x  (%+.1f VIs after the seed line)' % (vi_, m, st, cnt, (cnt - C) / TICKS_PER_VI))
+        k = 0; t = seed0
+        while t != sd and k < 20000: t = adv(t); k += 1
+        print('step %4d  mode %2d  startupState %2d  Count %08x  (%+.1f VIs after the seed line)  RNG steps since %d' % (vi_, m, st, cnt, (cnt - C) / TICKS_PER_VI, k))
         last = (m, st)
 logos = next(r for r in log if r[1] == 1)
 prevr = log[log.index(logos) - 1]

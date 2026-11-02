@@ -158,3 +158,59 @@ Emulator, Mario standing. "Clean" means only the frame step and the coin draw. C
 Files: `boot_clip.py` (video timeline + coin pattern), `boot_anchor.py` (emulator VI anchors around the seed line),
 `boot_search.c` (boot-prior forward search; `gcc -O2 -fopenmp -o boot_search boot_search.c -lm`),
 `make_state_kzn03.py`, `kzn03_draws.py` (per-caller RNG draws, field and pause), `coin_model_check.py`.
+
+## Second boot clip (Nov 2, 16:02, "console boot into reload, in chapter 1"): first console boot Count
+
+**Result: boot Count C = 0x02079874 (34.0 M ticks, 0.726 s at 46.875 MHz), n0 = 306 steps to the first used coin
+draw. The seed is certain; the (C, n0) split is very likely but not proven.** That is 6.23 M ticks (+22 %) above
+the emulator's 0x01A84563–0x01A87874. One boot gives no spread.
+
+### The clip
+- **JP:** the title is マリオストーリー and the file select is in Japanese.
+- **Room:** trd_00, the Koopa Bros. Fortress exterior with a Save Block. Mario has Bombette (STORY ≥ BOMBETTE_JOINED).
+  At that story the room's NPCs are the Koopa Bros. (removed once STORY ≥ SPOTTED_BY_KOOPA_BROS) and Eldstar (only
+  after the boss), so there are **no enemies and nothing wandering**.
+- **Measured clean** with `make_state_warp.py trd_00 0 -83 3` (DIAGNOSTIC warp, story and Bombette written) and
+  `kzn03_draws.py`. Over 1800 field frames the only calls are the frame step and 56 coin draws. The pause is clean
+  too. `coin_model_check.py` reproduces all 48 draws.
+- **Timeline (video frames):** blue screen to 85, black signal from 86, N64 logo fade-in from 124, title, file select,
+  black load 558–602, field from 603, status bar up from 665 to the end (3330). That is **44.4 s** standing, with the
+  bar and scene steady (no input, no pause).
+- **Against the recording instructions:**
+  - Capture before power-on: yes.
+  - A through to the file, with the logos skipped: yes.
+  - No input and no pause: yes.
+  - Stand ≥ 45 s: 44.4 s, just short but enough.
+- **Coin:** 15 shines, all on cadence. The pattern with 3 plain spins before the first shine (`boot_clip.py`) is
+  `...SS...SS.SSS.....SSSS..S.S...S.......S`: 40 draws, 38.9 bits.
+
+### Search
+- `boot_search 01A70000 01A9FFFF 280 400` (an emulator-like window): **no fit**. The console is not inside the
+  emulator's window.
+- `boot_search 01000000 02FFFFFF 300 360`: **one fit, C = 0x02079874, n0 = 306**, seed at that draw 0xD74B7923.
+  Expected chance fits 0.004, so the seed is right (≈ 8 bits of margin).
+- **Aliases** (`unwind.py D74B7923 1000 01000000 03000000`): along the same path the window is also hit at n0 = 487
+  (C = 0x019BEAB7) and n0 = 641 (0x01457DF9). Both are impossible: the game makes at most 1 step per 2 VIs plus the
+  fixed extras, so n0 ≤ (727 − 86) / 2 + 16 + 3 ≈ 340. With no limit on C, n0 = 333 (C = 0x0354C685, 1.19 s) and
+  n0 = 243 (0x0468F923, 1.58 s) also fit.
+- **Why n0 = 306** (`boot_anchor.py`, which now also counts RNG steps per game mode):
+  - In the emulator the seed line comes 13–17 VIs before the logos, so here it falls at about video frame 109.
+    Seed line to that draw (video 727) is ≈ 309 game frames at 2 VIs each, + 15..16 extras + ~3 field coin draws
+    ≈ 328 with no lag.
+  - The emulator loses ~32 game frames to lag in the file load (mode 15 → 4: 252 VIs, 94 steps). n0 = 306 means
+    ≈ 22 lag frames, about the console's 45-frame black load.
+  - n0 = 333 would need zero lag during the load and a seed line before video frame 99. n0 = 243 would need ~85 lag
+    frames. So C = 0x02079874 is the only reading that fits the video.
+- **What it means:** the console's boot takes ~0.13 s more CPU time to reach the seed line than this emulator. The
+  emulator's absolute Count is no prior for the console. Only the console's own spread around ~0x0207xxxx matters for
+  the reset idea, and it is still unknown.
+
+### Record next
+- **Same room** (trd_00 Save Block, the same file) and the same procedure: 4 more power-cycle boots, then 2 with the
+  reset button.
+- Stand **≥ 50 s** each (this one, at 44 s, had 8 bits of margin).
+- Keep the button pattern to the file about the same, so lag and n0 stay comparable.
+- Search each boot with the wide window first (`01000000 02FFFFFF`, n0 ± 30 around 306 + the frame difference).
+  Once two boots agree, use C ± 2²⁰ around them: aliases drop to ~0.001.
+- Spread = max − min of the C values. If it is ≤ ~10⁵ ticks the reset idea is worth building; if it is ~10⁶ or more,
+  drop it.
