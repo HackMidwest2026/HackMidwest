@@ -205,3 +205,11 @@ castle kkj_10/11/12/14/15/16/17/18/19/22 are all clean.
 Library = kkj_16: the Life Shroom and Power Rush pickups (`kkj16_pickup.py`, DIAGNOSTIC teleport onto the item) add no RNG
 draws; the coin keeps drawing through the item-get message. After Hallway Bowser (GFLAGS 1FA,1FB; also 1FA only for the
 kkj_23 Bowser-flees scene): kkj_13, kkj_22, kkj_23, kkj_24 and kkj_25 (entry 0, the route's door) are all clean.
+
+Run 3 log (Nov 2): the dungeon glances were mostly 1-2 shines each and never connected (`chainscan.js`: no seed fits
+even with wide gap windows, so some shines were missed or doubled); one 1.9 s room load measured 7 frames longer than
+the game ran (console load time without game frames). Changes: room-load gap windows reach 12-14 frames below the clock
+(still under 24 frames wide, so they cost almost nothing), and once the current stretch alone has 30 bits it is searched
+by itself (stopping a running chain search). Replaying the Duplighost-room stretch now locks at 655.7 s instead of 665.3 s.
+`test_edges_core.js` covers optional m1/m2 gap constraints in the core (draws seen without a shine at a gap's edges); the
+page does not feed them yet.

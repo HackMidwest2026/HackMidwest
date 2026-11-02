@@ -251,13 +251,18 @@
   const applyF = (f, s) => (Math.imul(s, f[0]) + f[1]) >>> 0, applyB = (f, s) => Math.imul((s - f[1]) >>> 0, f[2]) >>> 0;
   const F24 = affInv(24), F48 = affInv(48);
   /* forward across a gap: prevPattern starts from seed c; returns seeds before nextPattern's first draw */
-  function gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap) {
-    let s = afterPattern(c, prevPattern).seedAfterLastDraw, f = 48;   // segments end on a shine: next draw 48 later
+  // m1: the first m1 draws after the previous stretch's last shine were seen (coin still visible) and did not shine;
+  // m2: the last m2 draws before the next stretch's first shine likewise (coin already back)
+  function gapFwd(c, prevPattern, nextPattern, lo, hi, out, cap, m1, m2) {
+    m1 = m1 || 0; m2 = m2 || 0;
+    let s = afterPattern(c, prevPattern).seedAfterLastDraw, f = 48, j = 0, lastS = 0;   // segments end on a shine: next draw 48 later
     s = step48(s);
     while (f <= hi) {
       const d = adv(s), sh = d >= SHINE_MIN;
-      if (sh && f >= lo && matches(s, nextPattern)) { out.push(s); if (out.length > cap) return false; }
-      s = sh ? step48(d) : step24(d); f += sh ? 48 : 24;
+      if (sh && j < m1) return true;
+      if (sh && f >= lo && f - lastS - 48 >= 24 * m2 && matches(s, nextPattern)) { out.push(s); if (out.length > cap) return false; }
+      if (sh) lastS = f;
+      s = sh ? step48(d) : step24(d); f += sh ? 48 : 24; j++;
     }
     return true;
   }
@@ -265,7 +270,7 @@
    * before that segment in frames (ignored for the first). The scan runs over the anchor segment's first draw value
    * t in [tlo, thi). */
   function searchChain(segs, anchor, tlo, thi, cap) {
-    const P = segs.map(g => ({ p: g.pattern, lo: g.lo, hi: g.hi, Lm1: affInv(patSteps(g.pattern) - 1) })), pa = P[anchor].p, out = [];
+    const P = segs.map(g => ({ p: g.pattern, lo: g.lo, hi: g.hi, m1: g.m1 || 0, m2: g.m2 || 0, Lm1: affInv(patSteps(g.pattern) - 1) })), pa = P[anchor].p, out = [];
     tlo = Math.max(tlo, SHINE_MIN); thi = Math.min(thi, 4294967296);
     for (let t = tlo; t < thi; t++) {
       let s = step48(t >>> 0), ok = true;
@@ -277,26 +282,27 @@
       if (!ok) continue;
       const sa = back(t >>> 0);
       let back_ = [sa];
-      for (let i = anchor; i > 0 && back_.length; i--) { const r = []; for (const x of back_) { gapBackAll(x, P[i - 1], P[i].lo, P[i].hi, r, 256); if (r.length >= 256) break; } back_ = r; }
+      for (let i = anchor; i > 0 && back_.length; i--) { const r = []; for (const x of back_) { gapBackAll(x, P[i - 1], P[i].lo, P[i].hi, r, 256, P[i].m1, P[i].m2); if (r.length >= 256) break; } back_ = r; }
       if (!back_.length) continue;
       let set = [sa];
-      for (let i = anchor + 1; i < P.length && set.length; i++) { const nx = []; for (const c of set) gapFwd(c, P[i - 1].p, P[i].p, P[i].lo, P[i].hi, nx, 4096); set = nx; }
+      for (let i = anchor + 1; i < P.length && set.length; i++) { const nx = []; for (const c of set) gapFwd(c, P[i - 1].p, P[i].p, P[i].lo, P[i].hi, nx, 4096, P[i].m1, P[i].m2); set = nx; }
       for (const v of set) { out.push(v); if (out.length >= cap) return out; }
     }
     return out;
   }
   /* all start seeds of the previous segment that fit (used when the chain continues further back) */
-  function gapBackAll(s, P, lo, hi, out, cap) {
-    const st = [s, 0]; let n = 20000;
+  function gapBackAll(s, P, lo, hi, out, cap, m1, m2) {
+    m1 = m1 || 0; m2 = m2 || 0;
+    const st = [s, 0, 0, 0]; let n = 20000;          // seed, frames back, draws back, N draws in a row just before
     while (st.length && n-- > 0) {
-      const f = st.pop(), x = st.pop();
+      const r = st.pop(), j = st.pop(), f = st.pop(), x = st.pop();
       const y48 = applyB(F48, x);
-      if (y48 >= SHINE_MIN && f + 48 <= hi) {
-        if (f + 48 >= lo) { const c = applyB(P.Lm1, back(y48)); if (matches(c, P.p)) { out.push(c); if (out.length >= cap) return; } }
-        st.push(back(y48), f + 48);
+      if (y48 >= SHINE_MIN && f + 48 <= hi && j + 1 > m2) {
+        if (f + 48 >= lo && r >= m1) { const c = applyB(P.Lm1, back(y48)); if (matches(c, P.p)) { out.push(c); if (out.length >= cap) return; } }
+        st.push(back(y48), f + 48, j + 1, 0);
       }
       const y24 = applyB(F24, x);
-      if (y24 < SHINE_MIN && f + 24 <= hi) st.push(back(y24), f + 24);
+      if (y24 < SHINE_MIN && f + 24 <= hi) st.push(back(y24), f + 24, j + 1, r + 1);
     }
   }
   /* carry candidates across a long gap (the coin hidden for minutes: a cutscene, C-up closed through rooms with other

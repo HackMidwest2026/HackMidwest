@@ -278,7 +278,7 @@ const ENDGAME = [
     { text: 'T2: Power Bomb', steps: [] } ] },
   { h: 'Jr. Troopa', turns: [
     { text: 'T1: Charge; Bomb', steps: [{ label: 'Bomb', cat: 'K' }] },
-    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka', cat: 'M', turn: 'jr_whacka', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
+    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka (wait for the hand on Mario, then A)', cat: 'M', turn: 'jr_whacka', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
     { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb', turn: 'jr_bomb_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
     { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup', turn: 'jr_syrup_cc', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
     { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing', turn: 'jr_nothing_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
@@ -370,7 +370,11 @@ function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '
 // freeze) or a quick room load (a few extra fast frames): the frame count is known to within -2..+8
 const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 1, FLICKER = 3500;
 // hid = how long the coin was hidden: a short dropout (detection flicker, no room load) leaves the frame count exact
-function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= 1200 ? [Math.max(24, E - 2), E + 2] : hid != null && hid <= FLICKER ? [Math.max(24, E - 2), E + 8] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+// low side: on a real console a room load takes wall-clock time without game frames (a run log had a 1.9 s load
+// measure 7 frames long), so the game can be up to ~12 frames behind the clock; any window narrower than 24 frames
+// still holds at most one possible draw frame, so this costs almost nothing
+function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= 1200 ? [Math.max(24, E - 12), E + 2] : hid != null && hid <= FLICKER ? [Math.max(24, E - 14), E + 8] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+// (the coin draws every 24 frames, so a window under 24 frames wide still leaves about one choice: the cost stays small)
 const gapCost = hid => hid != null && hid <= 1200 ? Math.log2(4 / 24 + 1) : hid != null && hid <= FLICKER ? Math.log2(10 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 const chainCost = () => st.chain.slice(1).reduce((a, c) => a + gapCost(c.hid), 0) + (st.chain.length ? gapCost(seg().hid) : 0);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
@@ -693,7 +697,7 @@ async function findChain() {
   const hids = st.chain.map(c => c.hid).slice(1).concat([cur.hid]);
   const segs = list.map((taps, i) => { const g = { pattern: pat(taps).pattern }; if (i) [g.lo, g.hi] = gapWin(list[i - 1][list[i - 1].length - 1], taps[0], hids[i - 1]); return g; });
   let anchor = 0; segs.forEach((g, i) => { if (bits(g.pattern) > bits(segs[anchor].pattern)) anchor = i; });
-  const token = cur.taps, nChain = st.chain.length;
+  const token = cur.taps, nChain = st.chain.length; st.searchKind = 'chain';
   const r = await searchAll(null, { segs, anchor });
   if (st.wcarryPending && st.wcarryPending.token === token) {          // the stretch ended in a long gap while this search ran
     const W = st.wcarryPending; st.wcarryPending = null;
@@ -1172,6 +1176,12 @@ function coinBack(hiddenMs) {
   s.taps = []; s.raw = []; s.probedAt = 0; s.auto = true; s.hid = hiddenMs; st.cands = null; st.carryC0 = 0; st.msg = null; render();
 }
 function autoAfterShine() {
+  // this stretch alone is (nearly) enough: search it by itself (about 1 s) instead of waiting on a slow chain search
+  // that a cutscene or a missed shine may have broken; candidates from 30 bits on, the lock still needs 38
+  if (!st.prevLock && !st.lock && !st.cands && seg().taps.length >= 8 && bits(pat(seg().taps).pattern) >= 30 && (!st.searching || st.searchKind === 'chain')) {
+    if (st.searching) { stopWorkers(); st.searching = false; slog('chainSearchStopped', {}); }
+    st.chain = []; st.carry = null; st.searchKind = 'single'; find(); return;
+  }
   if (!st.prevLock && st.chain.length && !st.lock && !st.cands && !st.carry && !st.searching && seg().taps.length >= 2 &&
       chainBits() + bits(pat(seg().taps).pattern) - chainCost() >= 26 && bits(pat(seg().taps).pattern) < 38) findChain();
   else if (!st.prevLock && !st.lock && !st.cands && !st.searching && seg().taps.length >= 12 && bits(pat(seg().taps).pattern) >= 38) { st.chain = []; st.carry = null; find(); }   // this stretch alone is enough

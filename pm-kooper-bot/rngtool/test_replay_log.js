@@ -15,7 +15,7 @@ const { chromium } = require('playwright'); const log = require(require('path').
       if (e.ev === 'shine') { setNow(e.at + 200); T.addShine(e.at, true); lastShine = e.at; await wait(); }
       if (e.ev === 'coinBack') {
         const next = events.slice(i + 1).find(x => x.ev === 'shine'); const gap = next && lastShine ? next.at - lastShine : 0;
-        const hid = gap < 6000 ? 800 : 6000;                     // estimate: short gaps were dropouts, long ones C-up closed
+        const hid = e.hiddenMs != null ? e.hiddenMs : gap < 6000 ? 800 : 6000;                     // estimate: short gaps were dropouts, long ones C-up closed
         setNow(e.t); T.coinBack(hid); await wait();
       }
       if (T.st.lock && !locked) { locked = { atShineTime: (lastShine / 1000).toFixed(1), seed: (T.st.lock.seed >>> 0).toString(16) }; res.push(locked); }
