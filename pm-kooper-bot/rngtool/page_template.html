@@ -278,14 +278,14 @@ const ENDGAME = [
     { text: 'T2: Power Bomb', steps: [] } ] },
   { h: 'Jr. Troopa', turns: [
     { text: 'T1: Charge; Bomb', steps: [{ label: 'Bomb', cat: 'K' }] },
-    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Whacka (wait for the hand on Mario, then A)', cat: 'M', turn: 'jr_whacka', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
-    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb', turn: 'jr_bomb_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
-    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup', turn: 'jr_syrup_cc', pre: [{ cat: 'K', id: 'jr_bomb' }] }] },
-    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing', turn: 'jr_nothing_cc', pre: [{ cat: 'M', id: 'jr_charge' }] }] },
+    { text: 'T2: Bomb; Whacka [Up 1]', steps: [{ label: 'Wait in this turn\'s first menu until Locked; then Bomb, and Whacka as fast as you like (the bar hiding counts it)', cat: 'M', turn: 'jr_whacka', pre: [{ cat: 'K', id: 'jr_bomb' }], hud: true }] },
+    { text: 'T3: Charge; Bomb - Life Shroom', steps: [{ label: 'Bomb → Close Call', cat: 'K', prof: 'jrcc_bomb', turn: 'jr_bomb_cc', pre: [{ cat: 'M', id: 'jr_charge' }], hud: true }] },
+    { text: 'T4: Bomb; Maple Syrup [Down 1]', steps: [{ label: 'Maple Syrup → Close Call', cat: 'M', prof: 'jrcc_syrup', turn: 'jr_syrup_cc', pre: [{ cat: 'K', id: 'jr_bomb' }], hud: true }] },
+    { text: 'T5: Charge; Do Nothing - Life Shroom', steps: [{ label: 'Do Nothing → Close Call', cat: 'S', prof: 'jrcc_nothing', turn: 'jr_nothing_cc', pre: [{ cat: 'M', id: 'jr_charge' }], hud: true }] },
     { text: 'T6: Bounce x6; Bomb if 5 capped', steps: [{ label: 'Bounce → 6, 5+ either side', cat: 'K', prof: 'jrpb5' }] },
     { text: 'T7: Star Storm if 4 capped / Shooting Star [Down 5] if 4 capped', steps: [] } ] },
   { h: 'Hallway Bowser', turns: [
-    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Spiny Flip', cat: 'B', turn: 'hw_spiny', pre: [{ cat: 'M', id: 'hw_charge' }], imps: Array.from({ length: 33 }, (_, i) => 138 + i) }] },
+    { text: 'T1: Charge; Spiny Flip [3, 6] [47] - Danger', steps: [{ label: 'Spiny Flip', cat: 'B', turn: 'hw_spiny', pre: [{ cat: 'M', id: 'hw_charge' }], hud: true, imps: Array.from({ length: 33 }, (_, i) => 138 + i) }] },
     { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }] },
     { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [] },
     { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [] },
@@ -407,17 +407,29 @@ function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0);
  * attack landed changes his draws; the page sees neither. Every
  * candidate (st.hyp) is simulated; candidates that end in the same RNG state are the same for planning; each shine in
  * T2's menu keeps only the candidates that predicted it. */
+/* The same machinery covers an input whose confirm frame is only known to a frame or two (e.shifts: the press readout
+ * on a capture card, or a confirm seen only by the status bar hiding): each shift is a candidate (hyp = (shift + 8) * 2),
+ * and most shifts end in the same RNG state anyway (only a coin draw between the two frames tells them apart). */
 const evCache = new Map();
+const evKey = () => st.turnEv.map(e => e.f + e.id + (e.imp != null ? ':' + e.imp + (e.guard ? 'g' : '') : '')).join();
 function evFor(imp) {
-  const k = st.turnEv.map(e => e.f + e.id).join() + '|' + imp;
-  if (!evCache.has(k)) { if (evCache.size > 400) evCache.clear(); evCache.set(k, R.buildEv(st.turnEv.map(e => e.imps ? Object.assign({ imp: imp >> 1, guard: !!(imp & 1) }, e) : e))); }
+  const k = evKey() + '|' + imp;
+  if (!evCache.has(k)) { if (evCache.size > 400) evCache.clear(); evCache.set(k, R.buildEv(st.turnEv.map(e => e.shifts ? (imp != null ? { f: e.f + (imp >> 1) - 8, id: e.id } : e) : e.imps ? Object.assign({ imp: imp >> 1, guard: !!(imp & 1) }, e) : e))); }
   return evCache.get(k);
+}
+// a new uncertain input while an older one is still open: settle the older one on the biggest group's candidate
+function fixHyps() {
+  if (!st.hyp || !st.hyp.length) return;
+  let h = st.hyp[0];
+  if (st.clock) { baseState(); const g = st.groupCache && st.groupCache.g; if (g && g[0] && g[0].imps.length) h = g[0].imps[0]; }
+  st.turnEv = st.turnEv.map(e => e.shifts ? { f: e.f + (h >> 1) - 8, id: e.id } : e.imps ? { f: e.f, id: e.id, imp: h >> 1, guard: !!(h & 1) } : e);
+  slog('hypFixed', { h }); st.hyp = null; st.groupCache = null;
 }
 const hypsAlive = () => (st.hyp && st.hyp.length ? st.hyp : [null]);
 function evNow() { return evFor(hypsAlive()[0]); }
 const baseCache = new Map();
 function baseFor(imp) {
-  const C = st.clock, lastF = C.frames[C.frames.length - 1], k = C.seed + ':' + lastF + ':' + st.turnEv.map(e => e.f + e.id).join() + '|' + imp;
+  const C = st.clock, lastF = C.frames[C.frames.length - 1], k = C.seed + ':' + lastF + ':' + evKey() + '|' + imp;
   if (!baseCache.has(k)) { if (baseCache.size > 400) baseCache.clear(); baseCache.set(k, R.baseAfter(C.seed, evFor(imp), lastF)); }
   return baseCache.get(k);
 }
@@ -429,16 +441,19 @@ function baseState() {   // plan frame 0: the last tapped shine, or the first co
     const bs = hypsAlive().map(imp => [imp, baseFor(imp)]).filter(x => x[1]), groups = new Map();
     const nowF = Math.floor((performance.now() - C.t0) / C.rate), Fc = Math.max(nowF, ...bs.map(x => x[1].F));
     const gk = hypsAlive().join() + '@' + (Fc >> 5);
-    if (st.groupCache && st.groupCache.k === gk && bs.length) { const g0 = st.groupCache.g; return { seedBL: g0[0].seed, baseF: g0[0].F, tLast: C.t0 + g0[0].F * C.rate, carried: true, ambiguous: g0.length > 1 ? g0.length : 0, branch: g0.length === 1 ? g0[0].branch : null }; }
+    if (st.groupCache && st.groupCache.k === gk && bs.length) { const g0 = st.groupCache.g; return { seedBL: g0[0].seed, baseF: g0[0].F, tLast: C.t0 + g0[0].F * C.rate, carried: true, ambiguous: g0.length > 1 && hypKind() !== 'frame' ? g0.length : 0, alts: g0.length - 1, branch: g0.length === 1 ? g0[0].branch : null }; }
     for (const [imp, b] of bs) {
       const S = { s: b.seed >>> 0, nc: b.F, inst: [] }; let f = b.F;
       while (!(f >= Fc && f === S.nc)) { R.frameEv(S, f, null); f++; }
       const k = S.s + ':' + f;
       if (!groups.has(k)) groups.set(k, { seed: S.s, F: f, branch: b.branch, imps: [] }); groups.get(k).imps.push(imp);
     }
-    const g = [...groups.values()].sort((a, b) => b.imps.length - a.imps.length);
+    // Spiny Flip candidates: the biggest group, and no plan while they disagree. A confirm frame known to +-2 frames: the
+    // group of the frame read from the video (or the nearest one still alive) plans, the others stay for the shines to check
+    const order = new Map(hypsAlive().map((h, i) => [h, i])), frameKind = hypKind() === 'frame';
+    const g = [...groups.values()].sort(frameKind ? (a, b) => Math.min(...a.imps.map(h => order.get(h))) - Math.min(...b.imps.map(h => order.get(h))) : (a, b) => b.imps.length - a.imps.length);
     st.groupCache = { k: gk, g };
-    if (g.length) return { seedBL: g[0].seed, baseF: g[0].F, tLast: C.t0 + g[0].F * C.rate, carried: true, ambiguous: g.length > 1 ? g.length : 0, branch: g.length === 1 ? g[0].branch : null };
+    if (g.length) return { seedBL: g[0].seed, baseF: g[0].F, tLast: C.t0 + g[0].F * C.rate, carried: true, ambiguous: g.length > 1 && !frameKind ? g.length : 0, alts: g.length - 1, branch: g.length === 1 ? g[0].branch : null };
   }
   const sbl = st.lock && st.lock.torch ? R.seedBeforeLastDrawTorch(C.seed, C.pattern, st.lock.torch[0]) : R.seedBeforeLastDraw(C.seed, C.pattern);
   return { seedBL: sbl, baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
@@ -460,9 +475,21 @@ function logInput(tObs, cat, id, modeled) {
   if (st.inputs.length > 40) st.inputs.shift();
 }
 function unmodeledAfter(tBase) { return (st.inputs || []).find(x => !x.modeled && x.tc > tBase - 0.5 * FRAME); }
-// candidates = impact frame x (guard landed or not), encoded imp * 2 + guard
-function addTurn(f, id, why, imps) {
-  slog('turn', { f, id, cands: imps ? imps.length * 2 : null }); st.turnEv.push(imps ? { f, id, imps } : { f, id }); if (imps) st.hyp = imps.flatMap(i => [i * 2 + 1, i * 2]); st.note = null; V.turnNote = why; }
+// candidates = impact frame x (guard landed or not), encoded imp * 2 + guard; or confirm frame f + shift, (shift + 8) * 2
+function addTurn(f, id, why, imps, shifts, src) {
+  if (shifts) { if (src !== 'press') shifts = shifts.slice().sort((a, b) => Math.abs(a) - Math.abs(b) || a - b); if (shifts.length === 1 && shifts[0] === 0) shifts = null; }
+  if (imps || shifts) fixHyps();
+  slog('turn', { f, id, cands: imps ? imps.length * 2 : shifts ? shifts.length : null, shifts: shifts || undefined });
+  st.turnEv.push(imps ? { f, id, imps } : shifts ? { f, id, shifts, src: src || 'read' } : { f, id });
+  if (imps) st.hyp = imps.flatMap(i => [i * 2 + 1, i * 2]);
+  if (shifts) st.hyp = shifts.map(d => (d + 8) * 2);
+  st.note = null; V.turnNote = why; }
+// a press read off the video: its frame is known to about +-2 frames (capture cards read the screen closing a frame or
+// two off; run 3: all 4 Duplighosts copied on a press read 1.7 frames early). Every working frame that close is a candidate.
+const PRESS_TOL = 2, SHIFTS = [-2, -1, 0, 1, 2];
+function nearWorking(seedBL, f, prof) { const out = []; for (let d = -PRESS_TOL; d <= PRESS_TOL; d++) if (R.works(seedBL, 0, f + d, 0, prof)) out.push(d); return out; }
+// which uncertain input the open candidates belong to (for the messages)
+function hypKind() { const e = [...st.turnEv].reverse().find(x => x.imps || x.shifts); return e && e.imps ? 'spiny' : 'frame'; }
 // an input before the planned one (Charge, Bomb): its target screen closed at tObs
 function preConfirm(pr, tObs) {
   slog('preConfirm', { id: pr.id, at: Math.round(tObs) });
@@ -472,7 +499,7 @@ function preConfirm(pr, tObs) {
   logInput(tObs, pr.cat, pr.id, true);
   const b = baseState(), vanish = pr.cat === 'K' ? R.PROFILES.jrcc_bomb.vanish : R.PROFILES.jrcc_syrup.vanish;
   const f = b.baseF + Math.round((tObs - b.tLast - num('vlag')) / st.clock.rate - vanish - num('pfix'));
-  addTurn(f, pr.id, 'Seen: ' + pr.id.replace('jr_', '') + ' confirmed; its random numbers are simulated.'); render();
+  addTurn(f, pr.id, 'Seen: ' + pr.id.replace('jr_', '') + ' confirmed; its random numbers are simulated.', null, SHIFTS); render();
 }
 // draw frames of each tapped shine, relative to the first tapped draw of the pattern
 function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
@@ -651,7 +678,7 @@ function makePlan() {
     st.msg = 'The seed is being carried, but the page did not see this turn\'s ' + stp0.pre.map(pr => pr.id.replace('jr_', '')).join(' / ') + ' confirm (its target screen is not saved, or was not recognized). Show a few shines to find the seed again.'; render(); return;
   }
   const C = st.clock, B = baseState();
-  if (B.ambiguous) { st.msg = 'Waiting for shines to tell when the Spiny Flip landed (' + B.ambiguous + ' possibilities left; each shine in this menu cuts them down).'; render(); return; }
+  if (B.ambiguous) { st.msg = hypKind() === 'spiny' ? 'Waiting for shines to tell when the Spiny Flip landed (' + B.ambiguous + ' possibilities left; each shine in this menu cuts them down).' : 'Waiting for a shine or two: the last confirm\'s exact frame is not certain from the video, and ' + B.ambiguous + ' of the possible frames lead to different seeds.'; render(); return; }
   const um = unmodeledAfter(B.tLast);
   if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
   const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
@@ -708,7 +735,11 @@ function addShine(t, auto) {
   if (auto && st.lock && (st.turnEv.length || st.lock.flick) && st.clock && st.lock.seg === st.segs.length - 1) {
     const C = st.clock, f = (t - C.t0 - 6 * C.rate - num('vlag')) / C.rate;
     const keep = hypsAlive().filter(imp => predictedShineNear(f, evFor(imp)));
-    if (keep.length) { if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1; render(); return; }
+    if (keep.length) {
+      const before = st.hyp ? st.hyp.length : 0; if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1;
+      // the shine ruled out the confirm frame a running plan was made from: plan again from the one that is left
+      if (before > keep.length && st.plan && st.plan.carried && st.plan.tPress > performance.now() + 300 && baseState().seedBL !== st.plan.seedBL) { slog('replanAfterShine', { left: keep.length }); cancelPlan(); makePlan(); }
+      render(); return; }
     if (st.lock.flick && !st.turnEv.length && !st.lock.shifted) {     // after a dropout: maybe a quick room load ran a few fast frames (once per dropout)
       const g = predictedShineIn(f - 2.5, f + 8.5, evNow());           // the predicted shine this one is: shift the clock exactly onto it
       if (g != null) { const d = g - f; C.t0 -= d * C.rate; st.lock.shifted = true; st.carryOk = (st.carryOk || 0) + 1; slog('clockShift', { frames: +d.toFixed(2) }); render(); return; }
@@ -858,7 +889,7 @@ function render() {
     cn.hidden = !(n || st.needResync);
     const Bn = n && st.clock ? baseState() : null;
     cn.textContent = st.needResync ? 'The last Close Call did not land as planned: the page needs a few shines to find the seed again.'
-      : 'Seed carried through ' + n + ' input' + (n > 1 ? 's' : '') + ' since the last shines (' + st.turnEv.map(e => e.id.replace('jr_', '').replace('_cc', '★')).join(', ') + '). ' + (Bn && Bn.ambiguous ? 'The Spiny Flip\'s landing frame and whether your guard landed are not visible, so ' + Bn.ambiguous + ' possibilities are tracked; a few shines in the next menu settle it.' : 'The next plan is ready without new shines; any shine you show is checked against it' + (st.carryOk ? ' (' + st.carryOk + ' checked so far, all where expected).' : '.')) + (Bn && Bn.branch ? ' Bowser: ' + Bn.branch + '.' : ''); }
+      : 'Seed carried through ' + n + ' input' + (n > 1 ? 's' : '') + ' since the last shines (' + st.turnEv.map(e => e.id.replace('jr_', '').replace('_cc', '★')).join(', ') + '). ' + (Bn && Bn.ambiguous ? (hypKind() === 'spiny' ? 'The Spiny Flip\'s landing frame and whether your guard landed are not visible, so ' + Bn.ambiguous + ' possibilities are tracked; a few shines in the next menu settle it.' : 'The last confirm\'s exact frame is not certain from the video (' + Bn.ambiguous + ' possibilities with different seeds); a shine or two in the next menu settles it.') : 'The next plan is ready without new shines; any shine you show is checked against it' + (st.carryOk ? ' (' + st.carryOk + ' checked so far, all where expected).' : '.') + (Bn && Bn.alts && hypKind() === 'frame' ? ' The plan uses the confirm frame read from the video; ' + Bn.alts + ' frame' + (Bn.alts > 1 ? 's' : '') + ' next to it would mean a different seed, and a shine in the next menu tells them apart.' : '')) + (Bn && Bn.branch ? ' Bowser: ' + Bn.branch + '.' : ''); }
   drawStrip();
 }
 
@@ -1073,6 +1104,25 @@ function threshold() {
   if (V.shinePeaks.length >= 2 && shine > normal * 1.5) return (normal + shine) / 2;
   return Math.max(0.02, normal * 2.5 + 0.005);
 }
+/* A confirm the target screens missed. A fast confirm never shows the hand: Whacka's Bump with A on the item and A again
+ * within ~8 frames shows no name box at all (emulator: the box only matches from 10 frames). But an action confirm starts
+ * hiding the status bar a fixed number of frames later (emulator, every confirm of a Jr. Troopa run: Mario's actions 3,
+ * Bombette's Bomb 4; Bombette doing nothing does not hide it). On a turn whose inputs are all listed (step.hud: the pre
+ * inputs, then the step), a hide that no target screen explains is the turn's next input. */
+const HUD_HIDE = { jr_charge: 3, hw_charge: 3, jr_whacka: 3, jr_syrup_cc: 3, jr_bomb: 4, jr_bomb_cc: 4 };
+function hudWatch(t, present) {
+  if (present) { if (!V.hudUp) V.hudUp = t; V.hudGone = 0; return; }
+  if (V.hudUp) { V.hudGone = t; V.hudWasUp = t - V.hudUp; V.hudUp = 0; V.hudDone = false; }      // first frame without the bar
+  if (!V.hudGone || V.hudDone || t - V.hudGone < 8 * FRAME) return;                                  // gone for 8 frames: not a flicker
+  V.hudDone = true;
+  const stp = isRoute() && RT()[routeStep];
+  if (!stp || !stp.hud || V.hudWasUp < 600) return;                                                  // the bar was up for a menu
+  if (V.lastClose && V.lastClose > V.hudGone - 12 * FRAME) return;                                   // a target screen closed: already counted
+  const rate = st.clock ? st.clock.rate : FRAME, k = (stp.pre || []).findIndex((pr, i) => !(V.preDone && V.preDone[routeStep + ':' + i]));
+  if (k >= 0) { const pr = stp.pre[k], h = HUD_HIDE[pr.id]; if (h == null) return;
+    V.preDone = V.preDone || {}; V.preDone[routeStep + ':' + k] = true; slog('hudConfirm', { id: pr.id, at: Math.round(V.hudGone) }); preConfirm(pr, V.hudGone - (h - (VAN[pr.cat] || VAN.M)()) * rate); }
+  else { const h = HUD_HIDE[stp.turn]; if (h == null) return; slog('hudConfirm', { id: stp.turn, at: Math.round(V.hudGone) }); checkPress(V.hudGone - (h - (VAN[stp.cat] || VAN.M)()) * rate); }
+}
 function onFrame(t) {
   if (!dims()[0]) return;
   V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
@@ -1090,7 +1140,7 @@ function onFrame(t) {
   const present = gold > 0.3;
   if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
   else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(V.presentSince - V.absentSince); } }
-  V.present = present;
+  V.present = present; hudWatch(t, present);
   const steady = present && !V.wasGone && V.presentSince && t - V.presentSince > 1000;   // shines count only on a steady coin
   // per-loop maxima of the flash level, for the automatic threshold
   if (t - V.winStart > 24 * FRAME) { if (present && !V.inShine) V.peaks.push(V.winMax); if (V.peaks.length > 60) V.peaks.shift(); V.winMax = 0; V.winStart = t; }
@@ -1111,7 +1161,7 @@ function onFrame(t) {
     // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
     const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
     // an item on Mario confirmed quickly shows the hand screen only for a moment: count it from one frame (cat M)
-    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && RT()[routeStep].cat === 'M' ? 20 : 200)) checkPress(t);   // the target screen just closed (after being up for a moment)
+    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && RT()[routeStep].cat === 'M' ? 20 : 200)) { V.lastClose = t; checkPress(t); }   // the target screen just closed (after being up for a moment)
     // an optional step that does not happen: if the next step's screen shows up instead, skip to it
     if (isRoute() && RT()[routeStep] && RT()[routeStep].optional && routeStep + 1 < RT().length && !on) {
       const N = targets['jr_' + RT()[routeStep + 1].cat];
@@ -1129,7 +1179,7 @@ function onFrame(t) {
       for (let i = 0, j = 0; i < g3.length; i += 4, j++) d3 += Math.abs((g3[i] + g3[i + 1] + g3[i + 2]) / 3 - T.ref[j]);
       const sc = 1 - d3 / (24 * 16 * 255), P = V.pre[key] = V.pre[key] || { on: false, onFor: 0, lastT: t };
       const pon = P.on ? sc >= num('tmatch') - 0.04 : sc >= num('tmatch');
-      if (P.on && !pon && P.onFor > 200) { V.preDone[key] = true; preConfirm(pr, t); }
+      if (P.on && !pon && P.onFor > 200) { V.preDone[key] = true; V.lastClose = t; preConfirm(pr, t); }
       P.onFor = pon ? P.onFor + (t - P.lastT) : 0; P.lastT = t; P.on = pon;
     });
     V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
@@ -1224,6 +1274,10 @@ function coinBack(hiddenMs) {
   // locked, and the coin was only gone for a moment (no room load): keep the lock; the next shines are checked against
   // where the locked seed puts its shines (some may have been missed during the dropout)
   if (st.lock && st.lock.seg === st.segs.length - 1 && !st.lock.torch && hiddenMs != null && hiddenMs <= FLICKER) { st.lock.flick = true; st.lock.shifted = false; return; }
+  // carrying the seed through battle inputs: the status bar hides during every action and attack (5-10 s), and the turn
+  // simulation covers that time, so the lock stays; each new shine is checked against the simulated ones (addShine).
+  // (v60 started a new segment here, so in the emulator every turn needed a fresh 20-40 s relock.)
+  if (st.lock && st.lock.seg === st.segs.length - 1 && st.turnEv.length && !st.needResync) { slog('carryThroughHide', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), inputs: st.turnEv.length }); return; }
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
@@ -1276,7 +1330,7 @@ function checkPress(tObs) {
   const stp = isRoute() && RT()[routeStep], n0 = st.turnEv.length;
   if (stp && stp.turn && !PROF().rolls.length && st.lock && st.clock && !st.needResync && !unmodeledAfter(baseState().tLast)) {
     const B = baseState(), f = B.baseF + Math.round((tObs - B.tLast - num('vlag')) / st.clock.rate - (VAN[stp.cat] || VAN.M)() - num('pfix'));
-    addTurn(f, stp.turn, 'Carrying the seed through this turn.', stp.imps);
+    if (stp.imps) addTurn(f, stp.turn, 'Carrying the seed through this turn.', stp.imps); else addTurn(f, stp.turn, 'Carrying the seed through this turn.', null, SHIFTS);
   }
   checkPress_(tObs);
   if (stp) logInput(tObs, stp.cat, stp.turn || stp.label, st.turnEv.length > n0);
@@ -1290,10 +1344,10 @@ function checkPress_(tObs) {
   if (st.lock && st.clock) {
     const C = st.clock, B = baseState(), seedBL = B.seedBL, tLast = B.tLast;
     const f = Math.round((tObs - tLast - num('vlag')) / C.rate - VANISH_() - num('pfix'));
-    const ok = R.works(seedBL, 0, f, 0, PROF());
+    const ok = R.works(seedBL, 0, f, 0, PROF()), near = nearWorking(seedBL, f, PROF());
     const stp = isRoute() && RT()[routeStep];
-    if (stp && stp.turn && !unmodeledAfter(B.tLast)) { if (ok) addTurn(B.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
-    V.pressNote = 'No beep plan was running. You confirmed on a frame where ' + PROF().short + ': ' + (ok ? 'YES' : 'no') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
+    if (stp && stp.turn && !unmodeledAfter(B.tLast)) { if (near.length) addTurn(B.baseF + f, stp.turn, 'Carrying the seed through this turn.', null, near, 'press'); else { st.needResync = true; st.turnEv = []; } }
+    V.pressNote = 'No beep plan was running. You confirmed on a frame where ' + PROF().short + ': ' + (ok ? 'YES' : near.length ? 'probably (not on the frame read from the video, but on one within ' + PRESS_TOL + ' frames)' : 'no') + '. (A plan starts by itself about half a second after the target screen is recognized.)';
   } else V.pressNote = 'The target screen closed, but no seed was locked yet, so the press could not be checked.';
   showPresses();
 }
@@ -1304,11 +1358,14 @@ function measurePress(tObs) {
   const onBeeps = Math.abs(err) <= 3;                                      // only presses made on the beeps calibrate the offsets
   if (onBeeps) { presses.push(err); while (presses.length > 8) presses.shift(); }
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
-  const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF());
-  P.measured = { frame: f, c, err, inWin, works, tObs, onBeeps };
-  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, onBeeps }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF()), likely = !works && nearWorking(P.seedBL, f, PROF()).length > 0;
+  // candidates for the carry, most likely first: the beeps put the press on the aimed frame (emulator: every press on the
+  // ideal frame), while the video read can be off by a frame or two on a capture card (run 3: 1.7 frames early)
+  const near = nearWorking(P.seedBL, f, PROF()).sort((a, b) => Math.abs(f + a - P.target) - Math.abs(f + b - P.target) || Math.abs(a) - Math.abs(b));
+  P.measured = { frame: f, c, err, inWin, works, likely, tObs, onBeeps };
+  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, likely, near, onBeeps }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
-  if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (works) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.'); else { st.needResync = true; st.turnEv = []; } }
+  if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (near.length) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.', null, near, 'press'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
 }
 function showPresses() {
@@ -1320,16 +1377,19 @@ function showPresses() {
   const avg = presses.length ? presses.reduce((a, b) => a + b, 0) / presses.length : 0;
   const spread = presses.length ? Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length) : 0;
   const dir = x => Math.abs(x) < 0.5 ? 'on time' : (Math.abs(r(x)) + ' frames ' + (x > 0 ? 'late' : 'early'));
-  const head = P && !P.onBeeps ? 'Pressed ' + Math.abs(Math.round(P.err)) + ' frames ' + (P.err < 0 ? 'before' : 'after') + ' the beeps: ' + (P.works ? 'a working frame' : 'a failing frame') : 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window' : ' (outside the window') + (P.works ? ', a working frame)' : ', a failing frame)') : '');
+  const fr = q => q.works ? 'a working frame' : q.likely ? 'a failing frame by the video, but a working one is within ' + PRESS_TOL + ' frames' : 'a failing frame';
+  const head = P && !P.onBeeps ? 'Pressed ' + Math.abs(Math.round(P.err)) + ' frames ' + (P.err < 0 ? 'before' : 'after') + ' the beeps: ' + fr(P) : 'Last press: ' + dir(last) + (P ? (P.inWin ? ' (inside the window, ' : ' (outside the window, ') + fr(P) + ')' : '');
   let s = '';
+  const lq = P || st.lastPress;
+  if (lq && lq.likely) s += 'The page counts it as worked (the next shines check it). Did the outcome come out right (all 4 copied, the Close Call dodged)? Then your capture reads presses about ' + Math.abs(r(lq.err)) + ' frames ' + (lq.err < 0 ? 'early' : 'late') + ': set Press check correction to ' + (Math.round((num('pfix') + lq.err) * 2) / 2) + ' (now ' + num('pfix') + '). ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
   if (ready) s += 'Only if it has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
   $('press-apply').hidden = $('press-apply-v').hidden = !ready;
   $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
-  const lp = P || st.lastPress, good = lp ? lp.works : null;
+  const lp = P || st.lastPress, good = lp ? (lp.works ? true : lp.likely ? null : false) : null;
   const col = good === true ? 'var(--run3)' : good === false ? 'var(--run1)' : 'var(--ink)';
-  $('press-msg').innerHTML = '<span style="color:#fff; background:' + col + '; font-weight:700; font-size:1.25em; display:inline-block; padding:4px 10px; border-radius:6px; margin-bottom:4px">' + head + (good === true ? ' ✓' : good === false ? ' ✗' : '') + '</span><br>' + s;
+  $('press-msg').innerHTML = '<span style="color:' + (good === null ? 'var(--bg)' : '#fff') + '; background:' + col + '; font-weight:700; font-size:1.25em; display:inline-block; padding:4px 10px; border-radius:6px; margin-bottom:4px">' + head + (good === true ? ' ✓' : good === false ? ' ✗' : lp && lp.likely ? ' ?' : '') + '</span><br>' + s;
 }
 function applyPress(id, btn) { $(id).value = $(btn).dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); }
 $('press-apply').onclick = () => applyPress('s-off', 'press-apply');

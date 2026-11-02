@@ -28,7 +28,9 @@ const { chromium } = require('playwright');
     r.unseenBomb = { plan: !!T.st.plan, msg: (T.st.msg || '').slice(0, 60) };
     // now it was seen, but the press lands on a failing frame after the window -> carry stops
     T.V.preDone[T.step() + ':0'] = true; T.preConfirm({ cat: 'K', id: 'jr_bomb' }, T0 + (gT + 402 + pfix) * FR + vlag); T.st.msg = null; T.makePlan(); P = T.st.plan;
-    let k = P.w.end + 1; while (R.works(P.seedBL, 0, k, 0, R.PROFILES.jrcc_syrup)) k++;
+    // (a readout within 2 frames of a working frame counts as worked: capture cards read presses a frame or two off)
+    const nearOk = k => [-2, -1, 0, 1, 2].some(d => R.works(P.seedBL, 0, k + d, 0, R.PROFILES.jrcc_syrup));
+    let k = P.w.end + 1; while (nearOk(k)) k++;
     const g4 = Math.round((P.tLast - T0) / FR) + k; r.missFrame = k - P.target;
     T.checkPress(T0 + (g4 + 2 + pfix) * FR + vlag);
     r.afterMiss = { needResync: T.st.needResync, carried: T.st.turnEv.length, note: document.getElementById('carry-note').textContent.slice(0, 60) };

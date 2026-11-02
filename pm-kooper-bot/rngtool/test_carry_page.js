@@ -9,9 +9,9 @@ const PAGE = 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f8
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
   await p.goto(PAGE);
   for (const seed0 of [0x2468ace1, 0x13579bdf, 0x0f1e2d3c]) {
-    const out = await p.evaluate(async ([seed0, SHINES]) => {
+    const out = await p.evaluate(async ([seed0, SHINES, RB, DBG]) => {
       const T = window.__tot, R = T.R, FR = R.FRAME_MS, num = id => +document.getElementById('s-' + id).value;
-      document.getElementById('reset').click(); T.setStep(0);
+      document.getElementById('reset').click(); T.setStep(0); window.__dbg = DBG;
       const vlag = num('vlag'), pfix = num('pfix'), wait = async c => { for (let i = 0; i < 600 && !c(); i++) await new Promise(r => setTimeout(r, 50)); };
       // the game
       const G = { S: { s: seed0 >>> 0, nc: 5, inst: [] }, g: 0, ev: [], shines: [] };
@@ -30,19 +30,19 @@ const PAGE = 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f8
         T.setStep(stepOf(turnId));
         // the turn's other input first (its target screen closes `vanishPre` frames after the confirm)
         G.ev.push({ f: gPre, id: preId }); run(gPre + 2); setNow(gPre + 3);
-        T.preConfirm({ cat: preCat, id: preId }, T0 + (gPre + vanishPre + pfix) * FR + vlag);
+        T.preConfirm({ cat: preCat, id: preId }, T0 + (gPre + vanishPre + pfix + RB) * FR + vlag);
         run(gPlan);
         if (SHINES) { const from = G.shines.length; for (const g of G.shines.slice(from)) T.addShine(tShine(g), true); }
         setNow(gPlan); T.makePlan(); const P = T.st.plan; if (!P) return { step: turnId, error: 'no plan: ' + T.st.msg };
         const gT = T.st.clock && Math.round((P.tLast - T0) / FR) + P.target;      // the planned frame in game frames
         G.ev.push({ f: gT, id: turnId }); const roll = rollAt(gT + rollOff);
-        setNow(gT + vanish + 3); T.checkPress(T0 + (gT + vanish + pfix) * FR + vlag);
+        setNow(gT + vanish + 3); T.checkPress(T0 + (gT + vanish + pfix + RB) * FR + vlag);
         return { step: turnId, carried: P.carried, window: P.w.length, roll, landed: roll < 30, carriedNow: T.st.turnEv.length };
       }
       // T2 (simulated, nothing planned): Bomb on Jr. Troopa's screen, then Whacka's Bump on Mario's
       T.setStep(T.RT().findIndex(s => s.turn === 'jr_whacka'));
-      G.ev.push({ f: 1560, id: 'jr_bomb' }); run(1562); setNow(1563); T.preConfirm({ cat: 'K', id: 'jr_bomb' }, T0 + (1560 + 2 + pfix) * FR + vlag);
-      G.ev.push({ f: 1840, id: 'jr_whacka' }); run(1842); setNow(1843); T.checkPress(T0 + (1840 + 2 + pfix) * FR + vlag);
+      G.ev.push({ f: 1560, id: 'jr_bomb' }); run(1562); setNow(1563); T.preConfirm({ cat: 'K', id: 'jr_bomb' }, T0 + (1560 + 2 + pfix + RB) * FR + vlag);
+      G.ev.push({ f: 1840, id: 'jr_whacka' }); run(1842); setNow(1843); T.checkPress(T0 + (1840 + 2 + pfix + RB) * FR + vlag);
       log.push({ afterT2: T.st.turnEv.map(e => e.id).join(',') });
       run(2100);
       if (SHINES) { const n0 = T.st.segs.length; for (const g of G.shines.filter(g => g > 1900)) T.addShine(tShine(g), true); log.push({ shinesAfterT2: 'segments ' + n0 + ' -> ' + T.st.segs.length + ', lock ' + !!T.st.lock }); }
@@ -52,8 +52,8 @@ const PAGE = 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f8
       log.push(await planned('jr_syrup_cc', 'jrcc_syrup', 'jr_bomb', 'K', G.g + 100, G.g + 350, 163, 2, 2));
       run(G.g + 300);
       log.push(await planned('jr_nothing_cc', 'jrcc_nothing', 'jr_charge', 'M', G.g + 100, G.g + 400, 26, 2, 3));
-      return { lockedShines, log, segments: T.st.segs.length, note: document.getElementById('carry-note').textContent.slice(0, 90) };
-    }, [seed0, +process.env.SHINES || 0]);
+      return { lockedShines, log, segments: T.st.segs.length, note: document.getElementById('carry-note').textContent.slice(0, 90), dbg: window.__dbg ? T.SLOG.filter(x => /turn|read|hyp|replan|press/.test(x.ev)) : undefined };
+    }, [seed0, +process.env.SHINES || 0, +process.env.READBIAS || 0, !!process.env.DBG]);   // READBIAS: the video reads every confirm this many frames off (a capture card)
     console.log(seed0.toString(16), JSON.stringify(out));
   }
   console.log('errors', errs); await b.close();

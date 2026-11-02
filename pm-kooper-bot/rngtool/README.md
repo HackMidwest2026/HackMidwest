@@ -253,3 +253,50 @@ Emulator end to end (`speedrun/`, SR_START=kpa40_e1.st, 7 maze rooms 8 s each, k
 60 s; Xvfb 800x600): 28 of 29 showable shines detected, no false ones; the maze looks gave only 1-2 shines each (no
 candidates), so the lock came from the Duplighost room alone via the torch search: true lock 47 s after the first shine
 there (plus ~2 min of search time). The page before these changes did not lock at all there.
+
+## Fight "speedrun": Duplighosts -> Jr. Troopa, closed loop (Nov 2)
+
+`speedrun/sr_fight.py` plays the fights in the emulator with the page in the loop: every game frame's video goes into
+the page (`speedrun/sr_live.js`, simulated 29.97 fps clock, settings from the runner's log but vlag 0 / off 0 since the
+emulator video has no capture delay), the runner saves each target screen the first time it shows (box on the name box,
+or the Strategies panel), waits on the target screen for the beeps and presses A on the frame of the final beep. Truth:
+every frame's RNG and rand_int call (debug core), and the game's outcome (Duplighost copy rolls, Mario's HP after Jr.
+Troopa's attack, Jr. Troopa's HP after the bounces). DIAGNOSTIC: each fight's starting seed is written (an unknown run);
+the overworld between the fights is not played (black frames; with JRX the Jr. Troopa seed continues the Duplighost
+fight's RNG by GAP + JRX steps). `speedrun/sr_fight_video.py` overlays the page's view on the run.
+
+Findings and page changes:
+- Duplighosts (seed 2468ace0): lock 52 s into the fight (19 shines, waiting on Bombette's Strategies screen); the final
+  beep fell on the ideal frame (ideal = the frame the model needs, from the RNG truth), the press read back as -0.01
+  frames, all 4 copied. So the page's press readout is exact in the emulator; run 3's -1.68 (all 4 copied, but read as a
+  failing frame: the 4-copy frames were 154-156, read 153.3) is the capture chain reading the panel's disappearance
+  ~1-2.5 frames early relative to the shines.
+- Press readout tolerance: a press read within 2 frames of a working frame counts as worked ("a failing frame by the
+  video, but a working one is within 2 frames"), and the readout suggests the Press check correction (run 3: about
+  -1.5). For a carried turn every working frame within 2 frames is a candidate (`shifts`), the aimed frame first.
+- Confirm frames read off the video (Bomb, Charge, Whacka) carry +-2-frame candidates too; most end in the same seed,
+  the read frame's group plans and the shines in the next menu drop the others.
+- Fast Whacka (emulator, `explore_whacka`): after A on the item the target state starts 3 frames later and a confirm
+  is taken from the next frame; the name box only matches from ~10 frames (score <= 0.83 before), so a fast runner
+  never shows the target screen (the user's run 3). The status bar starts hiding a fixed number of frames after every
+  action confirm (Mario's actions 3, Bombette's Bomb 4, measured on every confirm of a Jr. Troopa run; Bombette doing
+  nothing does not hide it). Steps whose turn inputs are all listed (`hud: true`: Jr. T2-T5, Hallway T1) count a hide
+  that no target screen explains as the next input (`hudWatch`). `test_hud_confirm.js`.
+- Carry through the bar hiding: v60 started a new segment whenever the bar was gone > 3.5 s while locked, which in a
+  fight is every action (5-10 s). The carried turns were thrown away each turn and every Close Call waited 20-40 s for
+  a relock (emulator baseline). A lock carrying inputs now stays through the hide; each new shine is checked against the
+  simulation (a miss still starts a new segment).
+- Results (emulator, closed loop; the runner presses on the final beep):
+  - Duplighosts: 2 runs, every press on the ideal frame, 4 of 4 copied both times.
+  - Jr. Troopa on v60 (seed 13579bdf): T2 lock after 40 s in T2's menu; the fast Whacka was not seen, so T3's Charge
+    was taken as the Whacka; the lock dropped every turn and each Close Call waited 21-37 s for a relock; T3/T4/T5
+    Close Calls and the 6-bounce landed only because the runner waited on each target screen.
+  - Jr. Troopa with these changes (same seed): the lock carried from T2 through T3 and T4 with no relock (Whacka counted
+    from the bar), T3 press 16 s and T4 press 27 s sooner than v60, both Close Calls landed.
+  - Full run (Duplighosts, 40 s of black, Jr. Troopa with the RNG continued by 12000 extra steps): T2 relock from the
+    Duplighost lock after 25.6 s (768 frames) instead of 40 s fresh; T3 and T4 Close Calls landed on beeps (presses on
+    the ideal frame). Not solved: T5 got no plan (the route had already moved to T6; the T5 Close Call landed by chance
+    on an unplanned press) and T6 got no plan before the run hit its time limit. The fights are now played without the
+    page, so this was not chased further.
+- Scripts: `speedrun/sr_fight.py`, `sr_live.js`, `sr_fight_video.py`, `sr_whacka.py` (fast Whacka), `sr_hudcheck.py`
+  (bar hide delay per confirm).
