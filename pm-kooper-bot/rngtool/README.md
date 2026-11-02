@@ -193,3 +193,10 @@ Long C-up-closed gaps (the ~2-minute quiz cutscene): a lock carries across them 
 steps) instead of being dropped. Dropouts under 1.2 s cost little (+-2 frames) and, while locked, no longer start a
 re-sync: the next shines just have to land where the locked seed puts its shines. `test_wide.js` (lava ride with
 dropouts, 2-minute quiz, short stretches after): locks during the ride in 4/4 and re-finds the true seed after the quiz.
+
+Item pickups: the status-bar coin icon is never disabled (`inventory.c`), and HUD scripts ignore the item-get time
+freeze, so the coin keeps drawing while the bar is hidden for a "You got ..." message; an item block gives its item a
+fixed direction, so the pickup itself draws nothing. Dropouts up to 3.5 s therefore keep a lock: under 1.2 s the frame
+count is exact (+-2), up to 3.5 s it may include a quick room load (-2..+8; the first shine after it shifts the clock
+exactly onto the predicted shine). `test_pickup_lock.js`: a 2 s pickup and a 2.5 s load with 5 fast frames keep the lock
+(no re-sync, shift measured as 5).

@@ -366,10 +366,12 @@ function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '
 /* First lock across gaps: before a lock, each stretch of visible coin is kept (st.chain) instead of thrown away. The
  * coin keeps drawing while it is hidden (measured through Castle room loads), so a gap only leaves the exact frame
  * count open: E (from the tap times) -30..+60 frames, worth about 2 bits. Lock needs 38 bits plus that per gap. */
-const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 1, FLICKER = 1200;
+// FLICKER: the coin gone this briefly (a detection dropout, an item pickup message: the coin keeps spinning under the
+// freeze) or a quick room load (a few extra fast frames): the frame count is known to within -2..+8
+const GAP_LO = 30, GAP_HI = 60, CHAIN_MIN = 1, FLICKER = 3500;
 // hid = how long the coin was hidden: a short dropout (detection flicker, no room load) leaves the frame count exact
-function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= FLICKER ? [Math.max(24, E - 2), E + 2] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
-const gapCost = hid => hid != null && hid <= FLICKER ? Math.log2(4 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
+function gapWin(tPrev, tNext, hid) { const E = Math.round((tNext - tPrev) / FRAME); return hid != null && hid <= 1200 ? [Math.max(24, E - 2), E + 2] : hid != null && hid <= FLICKER ? [Math.max(24, E - 2), E + 8] : [Math.max(48, E - GAP_LO), E + GAP_HI]; }
+const gapCost = hid => hid != null && hid <= 1200 ? Math.log2(4 / 24 + 1) : hid != null && hid <= FLICKER ? Math.log2(10 / 24 + 1) : Math.log2((GAP_LO + GAP_HI) / 24 + 1);
 const chainCost = () => st.chain.slice(1).reduce((a, c) => a + gapCost(c.hid), 0) + (st.chain.length ? gapCost(seg().hid) : 0);
 function chainBits() { return st.chain.reduce((a, c) => a + bits(pat(c.taps).pattern), 0); }
 function chainShines() { return st.chain.reduce((a, c) => a + c.taps.length, 0); }
@@ -415,6 +417,11 @@ function baseState() {   // plan frame 0: the last tapped shine, or the first co
   }
   const sbl = st.lock && st.lock.torch ? R.seedBeforeLastDrawTorch(C.seed, C.pattern, st.lock.torch[0]) : R.seedBeforeLastDraw(C.seed, C.pattern);
   return { seedBL: sbl, baseF: lastF, tLast: C.t0 + lastF * C.rate, carried: false };
+}
+function predictedShineIn(a, b, ev) {        // the predicted shine frame in [a, b] closest to the middle of the tolerance (0 shift first)
+  const S = { s: st.lock.seed >>> 0, nc: 0, inst: [] }, mid = a + 2.5; let best = null;
+  for (let g = 0; g <= b; g++) { const r = R.frameEv(S, g, ev); if (r && g >= a && (best === null || Math.abs(g - mid) < Math.abs(best - mid))) best = g; }
+  return best;
 }
 function predictedShineNear(f, ev) {
   ev = ev || evNow(); const S = { s: st.lock.seed >>> 0, nc: 0, inst: [] };
@@ -653,6 +660,10 @@ function addShine(t, auto) {
     const C = st.clock, f = (t - C.t0 - 6 * C.rate - num('vlag')) / C.rate;
     const keep = hypsAlive().filter(imp => predictedShineNear(f, evFor(imp)));
     if (keep.length) { if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1; render(); return; }
+    if (st.lock.flick && !st.turnEv.length && !st.lock.shifted) {     // after a dropout: maybe a quick room load ran a few fast frames (once per dropout)
+      const g = predictedShineIn(f - 2.5, f + 8.5, evNow());           // the predicted shine this one is: shift the clock exactly onto it
+      if (g != null) { const d = g - f; C.t0 -= d * C.rate; st.lock.shifted = true; st.carryOk = (st.carryOk || 0) + 1; slog('clockShift', { frames: +d.toFixed(2) }); render(); return; }
+    }
     newSegment(); seg().taps.push(t); seg().raw = [t]; seg().auto = true; evaluate(); return;      // the carried turns went differently
   }
   if (auto && st.lock && st.lock.torch && st.lock.seg === st.segs.length - 1) {
@@ -1138,7 +1149,7 @@ function coinBack(hiddenMs) {
   slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
   // locked, and the coin was only gone for a moment (no room load): keep the lock; the next shines are checked against
   // where the locked seed puts its shines (some may have been missed during the dropout)
-  if (st.lock && st.lock.seg === st.segs.length - 1 && !st.lock.torch && hiddenMs != null && hiddenMs <= FLICKER) { st.lock.flick = true; return; }
+  if (st.lock && st.lock.seg === st.segs.length - 1 && !st.lock.torch && hiddenMs != null && hiddenMs <= FLICKER) { st.lock.flick = true; st.lock.shifted = false; return; }
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
