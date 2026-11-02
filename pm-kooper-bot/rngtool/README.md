@@ -200,3 +200,5 @@ fixed direction, so the pickup itself draws nothing. Dropouts up to 3.5 s theref
 count is exact (+-2), up to 3.5 s it may include a quick room load (-2..+8; the first shine after it shifts the clock
 exactly onto the predicted shine). `test_pickup_lock.js`: a 2 s pickup and a 2.5 s load with 5 fast frames keep the lock
 (no re-sync, shift measured as 5).
+After Jr. Troopa (STORY 95 states, `kpa_roomsteps.py`): kpa_83, kpa_121, osr_02 (outside Peach's castle) and Peach's
+castle kkj_10/11/12/14/15/16/17/18/19/22 are all clean.
