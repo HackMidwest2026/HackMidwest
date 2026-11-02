@@ -32,6 +32,79 @@ press it beeps the frame that is best over whatever candidates are left, or says
 - The biggest one holds 52% of the candidates (median).
 - With the guard known: 4 futures (3-6).
 
+## Update: B held makes the hallway scene exact
+
+The user reports that the scene, and all text in the game, is consistent when B is held.
+
+**Scene (kkj_13).** `zw_scene.py kkj13_e0.st 8 -1`, 8 seeds, B held:
+- 346 frames from the scene to the battle, every time.
+- 124 extra draws beyond the per-frame step and the coin.
+- The 124/125 my per-frame counter printed was the coin landing on a burst frame, not a variable count.
+
+**The draws.** All are `rand_int(15)` from the same caller 0x8012978c (debug core, `zw_callers.py ... -1`). The battle
+intro's 16 extra draws come from that caller too. They come in bursts of 10-12 a frame while a text box fills, so they
+are most likely one per printed character; the caller is not identified in the source.
+
+`zw_sched.py` gives the exact schedule, in frames from the scene start:
+
+| frame | 138 | 139 | 140 | 141 | 147 | 152 | 153 | 158 | 159 | 199 | 286 | 287 | 288 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| draws | 7 | 11 | 12 | 2 | 10 | 12 | 11 | 12 | 10 | 5 | 12 | 12 | 8 |
+
+**The model is exact.** `zw_schedcheck.py` checks that seed, plus the per-frame step, plus the coin on its normal 24/48
+schedule, plus these draws before the coin in the frame, reproduces the emulator's seed on every frame of the scene:
+8 of 8 seeds.
+
+**Battle intro with B held** (`boss_2302_route_start.st`): the T1 menu opens 42 frames in, with 60-61 RNG steps (the
+coin). That is fixed for 8 seeds, with or without an A every 20 frames.
+
+**Not measured:**
+- **Jr. Troopa's kpa_83 scene:** my redirect into kpa_83 with the scene flag cleared did not trigger. The walk never
+  reached an exit, so no savestate of that scene.
+- **Jr. Troopa's post-battle text with B held:** not measured. It isn't needed for this plan: the lock is found during
+  the walk after it.
+
+**Simulation with the scene modelled exactly.** `zw_sim.js ... EXACT=1`, `zw_gridX.sh` -> `zw_gridX.txt`, 200 runs each.
+- **What is carried:** the walk's candidates (lock or up to 64 seeds) go through the scene with only the console lag at
+  the battle start unknown (0-8 frames enumerated).
+- **Then:** T1 menu draws, T1 x 66 Spiny Flip candidates, T2 menu draws, best guess.
+- **Base:** 60 s walk, 5 s T1 menu, 3 s T2 menu, 0.5 s lead, 1 s window, press 25/50/25.
+
+| case | P(Time Out) | blind, same runs | beeped | when beeped: shown / in game | delay when beeped |
+|---|---|---|---|---|---|
+| base (60 s walk) | 70.8% | 32.4% | 89% | 75% / 74% | 29 frames (1 s) |
+| 45 s walk | 32.4% | 29.4% | 7% | 66% / 67% | |
+| 80 s walk | 73.9% | 31.0% | 99% | 76% / 75% | |
+| short menus (2 s each) | 60.0% | 32.9% | 82% | 63% / 67% | |
+| window 0 (0.5 s lead only) | 39.5% | 32.4% | 28% | 56% / 55% | 15 frames |
+| window 0.33 s | 58.5% | 32.4% | 82% | 64% / 63% | 20 frames |
+| press +-2 frames | 61.3% | 31.8% | 87% | 65% / 65% | |
+| missed / false walk shine | 32.3% | 32.4% | 23% | 69% / 31% | |
+| 1-5 unmodelled draws in the scene | 69.1% | 27.4% | 87% | 73% / 75% | |
+| 1-5 unmodelled draws in T1 | 38.1% | 28.5% | 76% | 75% / 42% | |
+
+Percentiles of the realised chance per run (10/25/50/75/90): base 0.25 / 0.5 / 0.75 / 1 / 1; 45 s walk 0 / 0 / 0.25 /
+0.5 / 0.75.
+
+What the table says:
+- - **With B held but the old generic re-sync** (`zw_gridB.txt`: the window narrowed to 118-131 steps), the base is only
+  41.0% against 29.9% blind. Most of the gain needs the exact carry.
+- **The gain against the A-pace scene** (35% base) comes from carrying the lock through the scene. Afterwards the
+  menus only have to pick among 0-8 lag frames x the Spiny Flip outcomes, instead of 45-125 unknown steps.
+- **Unmodelled draws in the scene** are absorbed by the lag hypotheses: an extra step looks like a lag frame.
+- **Unmodelled draws in T1** are not absorbed. The shown chance is then far too high (75% shown, 42% real), though the
+  run still beats blind.
+- **A missed or false walk shine** gives blind with a wrong shown chance, as before.
+
+**The page needs three things for these numbers. None is built yet:**
+1. **The scene as a carried event.** A `TURNS` entry with this schedule, placed where the page sees the cutscene take
+   the status bar away, with a few lag shifts as candidates. The existing `shifts` mechanism does this for one input at
+   a time.
+2. **Candidate sets carried through events.** Today only a single lock is carried. Without it the walk must reach a full
+   38-bit lock, which takes about 80 s of C-up walk at about 0.5 bits/s.
+3. **Several open candidate kinds at once.** Lag shifts and the Spiny Flip are both open in T2; today `fixHyps()`
+   settles the older one when the next opens.
+
 ## The page change (built): best guess at Time Out
 - **When it applies:** the page is locked through T1, but the Spiny Flip outcomes still disagree in T2's menu.
 - **What it does:** instead of waiting for shines, it scores every confirm frame in the next "best-guess window" (Timing
@@ -170,8 +243,11 @@ window and +-1 frame presses: 6+ 59%, 7+ 27%.
 
 | file | what it is |
 |---|---|
-| `zw_scene.py` | scene RNG probe (A pace: fixed or human-like) |
-| `zw_callers.py` | rand_int callers, debug core; did not finish here |
+| `zw_scene.py` | scene RNG probe (A pace: fixed, human-like, or B held) |
+| `zw_sched.py`, `zw_schedcheck.py` | the B-held scene schedule and its frame-by-frame check |
+| `zw_kpa83.py` | attempt at the kpa_83 Jr. Troopa scene (redirect did not trigger) |
+| `zw_gridB.sh`, `zw_gridX.sh` | grids: B held with the generic re-sync, and with the exact scene |
+| `zw_callers.py` | rand_int callers, debug core (finished with B held, through frame 159) |
 | `zw_groups.js` | Spiny Flip futures |
 | `zw_sim.js` | zero-wait simulation |
 | `zw_grid.sh`, `zw_grid.txt` | the grid above |
@@ -183,5 +259,4 @@ window and +-1 frame presses: 6+ 59%, 7+ 27%.
 - The kpa_83 after-battle cutscene, the battle exit and any level-up in the emulator. The decomp shows messages, NPC moves
   and camera pans only.
 - Console load frames.
-- What draws in the hallway scene.
 - An emulator end-to-end run of the zero-wait route: no savestate chain from Jr. Troopa through the walk to the hallway.

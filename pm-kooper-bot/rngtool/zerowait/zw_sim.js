@@ -62,7 +62,14 @@ function oneRun() {
   runTo(T, 0, WALKF);
   // scene: hidden HID +-60 frames, X extra steps spread over it
   const H = P.HID + ri(-60, 60), X = P.ERR === 'scene_x' ? P.XHI + ri(10, 40) : ri(P.XT_LO, P.XT_HI);
-  const extra = new Map(); for (let i = 0; i < X; i++) { const g = WALKF + ri(30, H - 30); extra.set(g, (extra.get(g) || 0) + 1); }
+  // B held through the scene (EXACT=1): the scene's draws are a fixed schedule (rand_int(15) x 124 on frames 138-288 of the
+  // 346-frame scene, measured with B held) starting where the page sees the cutscene take the bar away (frame WALKF + 30 here);
+  // only the console lag L (0-6 frames at the battle start, after the scene) is unknown to the page
+  const SCHED = []; for (const [o, n] of Object.entries({ 138: 7, 139: 11, 140: 12, 141: 2, 147: 10, 152: 12, 153: 11, 158: 12, 159: 10, 199: 5, 286: 12, 287: 12, 288: 8 })) for (let k = 0; k < n; k++) SCHED.push(+o);   // zw_sched.py, checked frame by frame (zw_schedcheck.py)
+  const L = P.EXACT ? ri(0, 6) : 0, sceneStart = WALKF + 30;
+  const extra = new Map();
+  if (P.EXACT) { for (const o of SCHED) { const g = sceneStart + o; extra.set(g, (extra.get(g) || 0) + 1); } if (P.ERR === 'scene_x') { const g = sceneStart + 200; extra.set(g, (extra.get(g) || 0) + ri(1, 5)); } }
+  else for (let i = 0; i < X; i++) { const g = WALKF + ri(30, H - 30); extra.set(g, (extra.get(g) || 0) + 1); }
   runTo(T, WALKF, WALKF + H, extra);
   const m1a = WALKF + H, m1b = m1a + P.M1;
   runTo(T, m1a, m1b);
@@ -122,6 +129,35 @@ function oneRun() {
   const v2 = visible(m2a, m2b);
   const hidE = m1a - anchor.f;                         // what the clock says (no load inside the scene here)
   const nDrawsLo = Math.floor(hidE / 48), nDrawsHi = Math.ceil(hidE / 24) + 1;
+  if (P.EXACT) {
+    // carried candidates through the modelled scene: for each walk candidate and lag hypothesis l (0..8), simulate the
+    // scene exactly and require the T1 menu's draws; then T1 x 66 and the T2 menu as below. Hypothesis frames are the
+    // truth's shifted by o = L - l.
+    const gks = P.GUARD === 'known' ? [guard] : [true, false]; const groups = new Map(); let h1 = 0;
+    for (const c of walkCands) for (let l = 0; l <= 8; l++) {
+      const o = L - l, S = { s: c >>> 0, nc: anchor.f };
+      for (let gg = anchor.f; gg < m1a + o; gg++) plainFrame(S, gg, extra);
+      let ok = true; const S1 = { s: S.s, nc: S.nc }, startS = { s: S.s, nc: S.nc };
+      for (let gg = m1a + o; gg < m1b + o; gg++) { const isD = gg === S1.nc; const r = plainFrame(S1, gg); const tf = gg - o;
+        if (isD && tf >= m1a + 30 && tf < m1b - 4) { const td = v1.find(d => d.f === tf); if (!td || td.sh !== r) { ok = false; break; } }
+        else if (!isD && v1.some(d => d.f === tf)) { ok = false; break; } }
+      if (!ok) continue; h1++;
+      for (let im = 138; im <= 170; im++) for (const gd of gks) {
+        const ev = R.buildEv([{ f: cF + o, id: 'hw_charge' }, { f: sF + o, id: 'hw_spiny', imp: im, guard: gd }]);
+        const S2 = { s: startS.s, nc: startS.nc, inst: [] }; let gg = m1a + o;
+        for (; gg < m2a + o; gg++) R.frameEv(S2, gg, ev);
+        if (S2.nc < m2a + o || S2.inst.length || (S2.extra && S2.extra.size)) continue;
+        const S3 = { s: S2.s, nc: S2.nc }; let Sm = null, seen = 0, ok2 = true;
+        for (gg = m2a + o; gg < m2b + o; gg++) { if (gg === m2b - 5 + o) Sm = { s: S3.s, nc: S3.nc }; const isD = gg === S3.nc; const r = plainFrame(S3, gg); const tf = gg - o;
+          if (isD && tf >= m2a + 30 && tf < m2b - 4) { seen++; const td = v2.find(d => d.f === tf); if (!td || td.sh !== r) { ok2 = false; break; } } }
+        if (!ok2 || seen !== v2.length) continue;
+        const k = Sm.s + ':' + (Sm.nc - o); const gr = groups.get(k); if (gr) gr.w++; else groups.set(k, { st: { s: Sm.s, nc: Sm.nc - o, f: m2b - 5 }, w: 1 });
+      }
+    }
+    out.h1 = h1; out.groups = groups.size; out.path = 'exact';
+    if (!groups.size) return finish(null, 'inconsistent after the scene (no candidate fits the battle menus)');
+    return finish([...groups.values()]);
+  }
   if (taps1.length) {
     const t0 = taps1[0]; const pat = v1.slice(v1.indexOf(t0)).map(d => d.sh ? 'S' : '.').join('');
     const span = t0.f - anchor.f;                      // frames from the anchor draw to the first T1-menu tap

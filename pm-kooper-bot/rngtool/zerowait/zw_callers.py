@@ -11,7 +11,7 @@ e.load('states/' + st); e.step(0, 0, 0, 2); e.dbg_events()
 s = random.getrandbits(32); e.w32(SEED, s); e.w32(SEED2, s)        # DIAGNOSTIC
 byf = []
 for f in range(MAXF):
-    e.step(A if f % AE == 3 else 0, 0, 0, 2)
+    e.step(B if AE < 0 else (A if f % AE == 3 else 0), 0, 0, 2)
     ev = [x for x in e.dbg_events() if x['ra'] not in (0x800269ac, 0x80146d54)]
     if ev: print(f, dict(collections.Counter((hex(x['ra']), x['a0']) for x in ev)), flush=True)
     if e.s16(GAME_MODE) not in (GM_WORLD, GM_CHANGE_MAP, GM_ENTER_WORLD): break

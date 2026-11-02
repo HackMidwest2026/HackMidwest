@@ -1,0 +1,28 @@
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440
+runs 200 | mean P(Time Out) 0.410 | blind (same runs) 0.299 | quartiles 0.00 0.00 0.50 0.75 0.75
+beeped 87 | mean shown P when beeped 0.536 | realised when beeped 0.560 | mean delay (frames) 31.1 | walk bits median 29.8
+modes {"no edge":55,"beep":87,"diffuse walk":27,"diffuse in T2":6,"diffuse after the scene":6,"no shine in either battle menu":19}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 WALK=45
+runs 200 | mean P(Time Out) 0.306 | blind (same runs) 0.297 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 2 | mean shown P when beeped 0.426 | realised when beeped 0.875 | mean delay (frames) 35.0 | walk bits median 21.7
+modes {"diffuse walk":189,"diffuse after the scene":2,"no edge":7,"beep":2}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 WALK=80
+runs 200 | mean P(Time Out) 0.550 | blind (same runs) 0.329 | quartiles 0.00 0.25 0.50 0.75 1.00
+beeped 174 | mean shown P when beeped 0.596 | realised when beeped 0.579 | mean delay (frames) 28.4 | walk bits median 39.1
+modes {"beep":174,"no edge":8,"no shine in either battle menu":18}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 M1=60 M2=60
+runs 200 | mean P(Time Out) 0.345 | blind (same runs) 0.331 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 24 | mean shown P when beeped 0.476 | realised when beeped 0.552 | mean delay (frames) 30.0 | walk bits median 29.8
+modes {"no shine in either battle menu":92,"beep":24,"diffuse walk":27,"diffuse in T2":11,"no edge":38,"diffuse after the scene":8}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 WMAX=0
+runs 200 | mean P(Time Out) 0.324 | blind (same runs) 0.299 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 19 | mean shown P when beeped 0.488 | realised when beeped 0.526 | mean delay (frames) 15.0 | walk bits median 29.8
+modes {"no edge":123,"beep":19,"diffuse walk":27,"diffuse in T2":6,"diffuse after the scene":6,"no shine in either battle menu":19}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 ERR=walk_miss
+runs 200 | mean P(Time Out) 0.304 | blind (same runs) 0.299 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 75 | mean shown P when beeped 0.529 | realised when beeped 0.290 | mean delay (frames) 29.9 | walk bits median 29.8
+modes {"no edge":34,"no seed fits the walk":37,"diffuse walk":27,"diffuse in T2":6,"beep":75,"diffuse after the scene":6,"no shine in either battle menu":15}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 XT_LO=124 XT_HI=125 XLO=118 XHI=131 HID=440 ERR=turn_steps
+runs 200 | mean P(Time Out) 0.350 | blind (same runs) 0.273 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 108 | mean shown P when beeped 0.531 | realised when beeped 0.444 | mean delay (frames) 29.3 | walk bits median 30.2
+modes {"no shine in either battle menu":17,"beep":108,"no edge":38,"diffuse walk":29,"diffuse after the scene":5,"diffuse in T2":2,"inconsistent in T2":1}

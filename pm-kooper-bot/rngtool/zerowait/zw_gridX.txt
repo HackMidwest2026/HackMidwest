@@ -1,0 +1,40 @@
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1
+runs 200 | mean P(Time Out) 0.708 | blind (same runs) 0.324 | quartiles 0.25 0.50 0.75 1.00 1.00
+beeped 177 | mean shown P when beeped 0.745 | realised when beeped 0.744 | mean delay (frames) 29.1 | walk bits median 29.9
+modes {"beep":177,"diffuse walk":22,"no edge":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 WALK=45
+runs 200 | mean P(Time Out) 0.324 | blind (same runs) 0.294 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 13 | mean shown P when beeped 0.664 | realised when beeped 0.673 | mean delay (frames) 30.1 | walk bits median 22
+modes {"diffuse walk":187,"beep":13}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 WALK=80
+runs 200 | mean P(Time Out) 0.739 | blind (same runs) 0.310 | quartiles 0.50 0.50 0.75 1.00 1.00
+beeped 198 | mean shown P when beeped 0.760 | realised when beeped 0.745 | mean delay (frames) 28.4 | walk bits median 38.9
+modes {"beep":198,"no edge":1,"diffuse walk":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 M1=60 M2=60
+runs 200 | mean P(Time Out) 0.600 | blind (same runs) 0.329 | quartiles 0.00 0.25 0.75 0.75 1.00
+beeped 163 | mean shown P when beeped 0.629 | realised when beeped 0.672 | mean delay (frames) 29.5 | walk bits median 29.9
+modes {"beep":163,"diffuse walk":22,"no edge":15}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 WMAX=0
+runs 200 | mean P(Time Out) 0.395 | blind (same runs) 0.324 | quartiles 0.00 0.25 0.50 0.50 0.75
+beeped 56 | mean shown P when beeped 0.559 | realised when beeped 0.554 | mean delay (frames) 15.0 | walk bits median 29.9
+modes {"no edge":122,"diffuse walk":22,"beep":56}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 WMAX=10
+runs 200 | mean P(Time Out) 0.585 | blind (same runs) 0.324 | quartiles 0.25 0.50 0.50 0.75 1.00
+beeped 164 | mean shown P when beeped 0.641 | realised when beeped 0.633 | mean delay (frames) 19.6 | walk bits median 29.9
+modes {"beep":164,"diffuse walk":22,"no edge":14}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 ERR=walk_miss
+runs 200 | mean P(Time Out) 0.323 | blind (same runs) 0.324 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 46 | mean shown P when beeped 0.688 | realised when beeped 0.310 | mean delay (frames) 25.7 | walk bits median 29.9
+modes {"inconsistent after the scene":92,"diffuse walk":22,"beep":46,"no seed fits the walk":40}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 ERR=scene_x
+runs 200 | mean P(Time Out) 0.691 | blind (same runs) 0.274 | quartiles 0.25 0.50 0.75 1.00 1.00
+beeped 173 | mean shown P when beeped 0.731 | realised when beeped 0.746 | mean delay (frames) 28.7 | walk bits median 29.7
+modes {"beep":173,"diffuse walk":27}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 ERR=turn_steps
+runs 200 | mean P(Time Out) 0.381 | blind (same runs) 0.285 | quartiles 0.00 0.00 0.25 0.75 0.75
+beeped 152 | mean shown P when beeped 0.748 | realised when beeped 0.421 | mean delay (frames) 29.3 | walk bits median 29.7
+modes {"beep":152,"diffuse walk":27,"inconsistent after the scene":19,"no edge":2}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 HID=440 EXACT=1 PRESS=wide
+runs 200 | mean P(Time Out) 0.613 | blind (same runs) 0.318 | quartiles 0.30 0.50 0.70 0.80 0.80
+beeped 174 | mean shown P when beeped 0.651 | realised when beeped 0.647 | mean delay (frames) 29.6 | walk bits median 29.9
+modes {"beep":174,"diffuse walk":22,"no edge":4}

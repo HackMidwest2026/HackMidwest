@@ -1,7 +1,7 @@
 """Zero-wait study: RNG use in a scene from a savestate until the next battle or player control.
 usage: python3 zw_scene.py STATE NSEEDS [AEVERY] [maxframes]
 Per frame: RNG steps; the per-frame step (1) and a coin draw (+1, rand_int(100) uses 1 step) are expected, anything
-else is listed. A is pressed every AEVERY frames (message advance); AEVERY=0: random 10-35 frames between presses. Stops when the game mode leaves the world
+else is listed. A is pressed every AEVERY frames (message advance); AEVERY=0: random 10-35 frames between presses; -1: B held throughout; -N: B held plus A every N frames. Stops when the game mode leaves the world
 (battle) or after maxframes. DIAGNOSTIC: a random seed is written at the start (stands for an unknown run)."""
 import sys, os, random
 os.chdir('/tmp/claude-0/pm/bot1'); sys.path.insert(0, '/tmp/claude-0/pm/bot1')
@@ -18,7 +18,9 @@ for run in range(N):
     if run == 0: print(st, where(e), 'story', e.s8(STORY), 'GF 0x1FA', flag(0x1FA), 'mode', e.s16(GAME_MODE))
     odd = []; n = 0; extra = 0; ph = rnd.randrange(max(1, AE)); nxt = [rnd.randint(0, 20)]
     for f in range(MAXF):
-        if AE > 0: b = A if (f + ph) % AE == 0 else 0
+        if AE == -1: b = B
+        elif AE < -1: b = B | (A if (f + ph) % (-AE) == 0 else 0)
+        elif AE > 0: b = A if (f + ph) % AE == 0 else 0
         else:
             b = A if f >= nxt[0] else 0
             if b: nxt[0] = f + rnd.randint(10, 35)
