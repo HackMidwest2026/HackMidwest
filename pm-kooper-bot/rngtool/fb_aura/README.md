@@ -176,3 +176,54 @@ Every DIAGNOSTIC RAM write is labelled in the code:
   - any carry past the Peach Beam (not modelled);
   - `fb2model` in a state after the Peach Beam (it was matched in `fb2_t7like_pb`);
   - glide64 versus real RDP star rendering (the clip looks the same to the eye).
+
+## 7. Real footage, Nov 2 (three console clips; not committed)
+Clips: A = 14:57 (17 s, Peach Beam turn), B = 15:00 (36 s, Peach Beam turn then Bowser's turn and two more turns,
+input display), C = 15:24 (39 s, about 15 s still in the menu, then the Peach Beam turn). New scripts:
+`aura_detect.py` (star blobs, tracks, joint fit; long-stretch mode with a rolling median and a mask of Bowser's body),
+`aura_realobs.py` / `aura_parts.py` (restarts from tracks; clustering into the 16 parts), `aura_relock.c` (seed search
+that needs no frame bookkeeping, see its header), `clip_timeline.py` (status bar on/off, game frames), `clip_bolts.py`
+(sky-bolt onsets).
+
+**Result: no real lock.** What was tried and why it fails so far:
+- **Detection.** Stars are found as bright blobs against a per-pixel median. Over Bowser's body that is mostly junk:
+  his colour cycling and idle animation make bright edges. With his body masked out (clip C, 448 game frames) the
+  tracker keeps 92 tracks (5+ frames), and 58 of them fit the motion model within 4 px. That is about 16% of the
+  ~358 restarts in the stretch.
+- **The tracks do follow the model.** Track starts cluster in 20-frame phase (residues 7-14 and 16-19 hold most;
+  3-5 are empty), and the earlier clip still gives the -2 deg/frame fit. But per-track speed and restart frame
+  trade off in the fit (v scatters about 0.4). So the (phase, speed) clusters that would identify the 16 parts get
+  only 1-4 restarts each instead of about 22, and the frame-exact model cannot be set up from this footage yet.
+- **Search without bookkeeping** (`aura_relock.c`): each restart (frame, angle) is placed at an LCG offset of about
+  1.84 x its frame difference from the anchor, +-(6 + df/8), angle +-6 deg, and k must rise with frame
+  consistently.
+  - Synthetic check: 15 observations (half the restarts kept, +-3 deg, +-1 frame) gave the true seed the top
+    score, 15/15, tied only with the same stream shifted 2 steps.
+  - On real data (clip C's densest 70-frame window: 19 restarts; clip A's still stretch: 19) the best chain is
+    17/19. That is the same as with the observed angles replaced by random ones (two null runs: 17/19 and 17/19).
+  - **So the real readings carry no detectable seed information at this precision.** The likely error sources: the
+    frame of each restart (+-1 or more), the angle bias from the sprite offset and the camera fit (ky came out 4.4-5.1
+    against 5.35 from the registration), and the junk tracks that survive.
+- **Needed next:** a detector that matches the star sprite (template, size class) instead of blobs; the restart
+  frame from the alpha ramp (first visible frame); and a full 20-frame part table from a longer still stretch, so the
+  frame-exact `aura_lock.c` can be used with wildcards for unseen restarts.
+
+**Confirmed on console without a lock:**
+- **Sky lightning schedule** (`clip_bolts.py`, clip C still stretch): onsets at game frames 11, 72, 133, 142, 230,
+  289, 361 are the 60/60/10/90/60/(60 missed)/10 waits of the 220 loop within 1-2 frames (frame counting is by
+  content, so lag frames or static frames shift it). There are two extra onsets (275, 404), probably low-loop bolts
+  showing.
+- **Peach Beam turn length:** bar off (target confirm) -> bar back up (partner menu) is **13.450, 13.450 and 13.467 s**
+  in clips A, B and C (403-404 frames at 29.97 Hz; 389-392 frames counted by content). The emulator run with A every
+  25 frames for the text takes 448 frames from the A press to the partner menu. The difference fits the remark text
+  being advanced faster by the runner.
+- **Aura end:** the beam column hits Bowser at about 29.0 s in clip C (bar off at 19.0 s), and the star outlines are
+  gone from about 29.5 s (fade 16 frames). That is about +315 frames by time after the bar went off, against +295
+  after the A press in the emulator. The two are consistent only to within the confirm-versus-bar offset and lag,
+  which were not measured.
+- **Post-beam gap in steps:** in the emulator, aura end -> partner menu is always 153 frames and **4,034-4,201 RNG
+  steps** (8 seeds). The Peach Beam itself is 4,980-5,079 steps from the A press to the aura's end. The sparkles
+  (`misc_particles`) draw about 17 times per frame, nothing of which is readable. On console only the frame length
+  can be measured (above); the step count needs a lock on both sides, which was not achieved.
+- **Clip B later turns** (bar timeline): bar up 14.85-24.13 s (partner turn and Bowser's turn start), off to 29.90,
+  up to 31.90, off to 35.02. Bowser's attack choice could not be checked against a prediction (no lock).
