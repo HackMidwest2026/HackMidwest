@@ -49,3 +49,112 @@ Returning to the title does not run `boot_main`, so the seed just continues. Not
 - Whether the status bar coin can be shown right after the file loads, and the walk from the osr_02 Save Block
   (no savestate of that room).
 - Reset-button timing on hardware (pre-NMI to NMI ≈ 0.5 s).
+
+## First real-console boot clip (Nov 2, S-Video → GV-USB2 → OBS, 60 fps, 48.4 s)
+
+**Bottom line: the clip can't give the console's boot Count, so the Count spread is still unmeasured.** It holds one
+boot, not five. There is no pause menu in it: after the file loads, Mario stands in the field for 37 s with the
+status-bar coin showing. The room is kzn_03 (Mt. Lava Lava, Save Block room), where three Spike Tops and a Putrid
+Piranha draw from gRandSeed about twice a second. That breaks the coin model, so no seed can be locked from this footage.
+
+### What is in the clip (`boot_clip.py`, video frame numbers at 60 fps)
+| Video frame | Time | What |
+|---|---|---|
+| 0–107 | 0–1.8 s | GV-USB2 blue screen (no signal) |
+| 108 | 1.80 s | Signal appears (grey). The console has started its video by now. |
+| 142 | 2.37 s | N64 logo starts fading in |
+| ~295 | 4.9 s | Title screen. The logos were skipped with a button press (JP only). |
+| ~330–575 | 5.5–9.6 s | File select and load |
+| 588–639 | 9.8–10.7 s | Black screen while the file loads |
+| 643 | 10.7 s | kzn_03 fades in; Mario is at the Save Block |
+| 695–2905 | 11.6–48.4 s | Status bar up (36.9 s), Mario standing still, coin always visible |
+
+- **Boots: 1.** The other clips uploaded that day are star-spirit and Bowser scenes, not boots.
+- **Time in the pause stats tab: 0 s.** The pause menu is never opened.
+- **Coin:** 13 shines, all at the regular cadence (48 + 24k game frames apart, ±1). The draw pattern from the first
+  shine is `SS...S..S..SSS.SS...SS..S.S`, with up to 6 plain spins before it. That is ≈ 33 draws, ≈ 32 bits if the
+  room were clean.
+- **Seed line in video frames:** by the emulator's Count, the seed line comes about 13–17 VIs before the logos'
+  game mode starts (`boot_anchor.py`), so it falls at about video frame 125 ± 5. Power-on to field control took
+  ≈ 8.6 s ≈ 259 ± 6 game frames, faster than the emulator's 462 because the JP build lets a button skip the logos.
+
+### Q1: Do the room's NPCs and enemies draw while the game is paused? No.
+- Decomp (`state_pause.c`): for the first ~5 frames after Start (state 0 plus a 4-frame delay), the game still calls
+  `update_npcs()`. After that, `clear_script_list()`, `clear_npcs()` and `clear_worker_list()` remove every
+  NPC, enemy AI and map script, and the map is rebuilt on unpause. Only the per-frame step and the HUD coins run while
+  paused.
+- Emulator (`kzn03_draws.py`, kzn_03 made with the same warp as `make_state_kpa.py`, 4 seeds): over 260–860 paused
+  frames, the only calls are the frame step and the coin (two coin streams, one draw per ~16 frames in all). In 2 of 4
+  seeds, one Spike Top wander group (3 draws) landed in the first 40 frames after Start, during the frames
+  before the clear.
+- So once the menu is up, a pause-coin stretch is clean in any room.
+
+### Q2: kzn_03 before the pause, and the unwind
+- Field, Mario standing still, 1800 frames, 4 seeds: besides the frame step and the coin there were 55–66
+  `rand_int` calls from the wander AI (callers 0x80049298/2b8, 0x8004978c/83c/85c, 0x80049aa8; ranges 31, 60, 1000,
+  180). They come in groups of 1, 2 or 3, every ~40–60 frames, at seed-dependent times. That is ≈ 2 draws/s
+  (1–5 per second, varying), and the count over 30 s changes by ±10 % with the seed. Kolorado's walk is a fixed lerp
+  and draws nothing.
+- **Field coin in kzn_03: unusable.** Each 24-frame coin interval gets 0–5 unknown extra steps. That costs more bits
+  than a coin roll gives (≤ 0.88 bits), so neither the page's lock nor a boot-prior search can work. Checked on this
+  clip: `boot_search` with an emulator-like window (C 0x01A70000–0x01A9FFFF, n0 280–420, 0.005 chance fits expected)
+  finds no fit. That is the expected result when the model is wrong.
+- **Pause coin after a kzn_03 load: usable, but worse.** The steps from boot to the lock become frames + 15..16 +
+  field coin draws + E, where E ≈ 2 per second spent in the field before the menu is cleared (unknown, seed-dependent).
+  An unwind then has to scan a step window about ±(E + video timing) wide. Expected false hits = window × (Count
+  window) / 2³²: with a 2²⁵ Count window (0x01000000–0x02FFFFFF), 20 steps give 0.16 per boot, and 60 steps (about
+  10 s in the field) give 0.5. Pausing within ~2 s of control keeps it near 0.1. Several boots then check each other,
+  because true Counts cluster and false hits spread over the whole window. The pause also has a second, hidden
+  coin stream with an unknown phase, which needs ~6 more bits than one stream. So a full ~38-bit lock (≈ 40 s
+  in the menu) is the realistic route there.
+- **Is a no-enemy room needed?** It isn't strictly needed for the pause method, but it is much better. In a clean
+  room the field status-bar coin is one stream with no unknown steps, so the boot-prior forward search
+  (`boot_search.c`) works straight from the video. It doesn't need a full lock.
+
+### Clean rooms with a Save Block on the route
+Emulator, Mario standing. "Clean" means only the frame step and the coin draw. Checked with `kzn03_draws.py`
+(per caller) and the existing `../kpa_roomsteps.py` (steps per frame; 600 frames standing, then walking).
+| Room | Result | Note |
+|---|---|---|
+| osr_02 (outside Peach's castle, STORY 95 state) | 0 odd frames in 1200 (`kpa_roomsteps`) | clean; the reset idea's own Save Block |
+| kpa_63 (Save Block room after door 1) | 0 other calls in 1200 frames; pause clean too | clean |
+| kpa_33 (stair hall, Save Block) | 0 odd frames in 667 (left the room) | clean |
+| kzn_03 (this clip) | 55–66 wander-AI calls per 1800 frames | not clean |
+
+`kzn03_draws.py` (debugger core) stalls on the osr_02 and kpa_33 states, so those two have only the step-count check.
+- The coin model in `boot_search.c` (draw = rand_int(100), then the frame step; next draw 24 frames later, 48 after a
+  shine) reproduces all 50 draws (frames and shines) in kpa_63 from the seed before the first draw
+  (`coin_model_check.py`).
+
+### Q3/Q4: Count per boot and spread
+- **Recovered: none.** The clip has one boot, the room is not clean, and there is no pause stretch. The console's
+  Count spread compared with the emulator's ~13 k ticks stays **unmeasured**, and the reset idea stays undecided.
+- `boot_search` self-tests (synthetic boots, C window 0x01000000–0x02FFFFFF = 2²⁵):
+  - C = 0x01A86000, n0 = 600 ± 8, 33 draws ≈ 31.6 bits (2^29.1 candidates, 0.17 chance fits expected): it finds
+    the true (C, n0) and nothing else, in ~20 s. A clean-room clip as long as this one would have been enough.
+  - C = 0x01B3C5A7, n0 = 1234 ± 25, 45 draws ≈ 41.5 bits: it finds the true fit **and an alias**, C = 0x01DD1339 at
+    n0 = 1212, with the **same seed at the first draw**. The LCG path from the true boot passes through 1 + 0x01DD1339
+    22 steps later. More coin doesn't help with this: the seed is right, but the split into (C, n0) is ambiguous. Expected
+    aliases per boot = Count window × n0 window / 2³² (0.39 here; 0.13 for ±8 steps). This is the unwind's
+    false-hit rate from Q2. Only a tighter n0 (good video anchors) or a tighter Count window removes it. Across boots
+    the true Counts cluster and aliases scatter over the whole window, so 3–5 boots settle it.
+
+### What to record next
+1. **Room:** a Save Block room with no enemies, saved with Mario at the block. Use osr_02 (outside Peach's castle,
+   the reset idea's own Save Block) if the file is there; otherwise kpa_63 or kpa_33. Don't use kzn_03.
+2. **Per boot:** turn the power on with the capture already running, so the blue no-signal screen and the logo fade
+   are in the clip. Press A through to the file (skipping the logos is fine). After the file loads, **do not touch the
+   controller and do not pause**. Stand for **≥ 45 s** with the status bar up. That gives ≈ 40 bits: enough for
+   `boot_search` with a wide Count window and for the page's ordinary lock as a cross-check. 60 s gives margin.
+3. **Boots:** 5 (3 is the minimum for a spread). Power-cycle each time. Also do 2 with the reset button, since the
+   emulator separates the two. One file per boot, or one long file with a gap between boots.
+4. Per boot, run `boot_clip.py` (pattern + video frames), then
+   `boot_search 01000000 02FFFFFF NLO NHI PATTERN` with n0 = (draw video frame − logo frame + 13..17) / 2 + 15..16
+   + coin draws between field control and that draw. Use ± 8 if the anchors are clear and ± 25 if not; the alias rate goes up with the window.
+   Fits that share one first-draw seed are one seed. Count spread = max − min of the fitted C. In the emulator it is ≈ 13 k ticks.
+   If the console stays within ~10⁴–10⁵ ticks, the reset idea is worth building. If the fits scatter by 10⁶ or more,
+   drop it.
+
+Files: `boot_clip.py` (video timeline + coin pattern), `boot_anchor.py` (emulator VI anchors around the seed line),
+`boot_search.c` (boot-prior forward search; `gcc -O2 -fopenmp -o boot_search boot_search.c -lm`),
+`make_state_kzn03.py`, `kzn03_draws.py` (per-caller RNG draws, field and pause), `coin_model_check.py`.
