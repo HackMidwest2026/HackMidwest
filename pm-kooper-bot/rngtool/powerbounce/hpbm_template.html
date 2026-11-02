@@ -1,0 +1,683 @@
+<title>High Power Bounce Manipulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Same look as the Time Out Timer (same capture and coin code): one working column, the countdown and the target count on
+   top, the step-up table, then the try log with the calibration it produces. */
+:root {
+  --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
+  --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
+  --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+main { max-width: 900px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.5rem, 5vw, 2.1rem); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h1 span { color: var(--gold); }
+.tag { font-family: var(--mono); font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
+h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+@media (max-width: 620px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.phase { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-family: var(--mono); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.on { background: var(--gold-soft); border-color: var(--gold); color: var(--ink); }
+.chip.ok { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
+#headline { font-family: var(--display); font-weight: 600; font-size: clamp(1.2rem, 3.6vw, 1.55rem); line-height: 1.25; margin: 0; text-wrap: balance; }
+#detail { color: var(--muted); margin: 0; max-width: 64ch; }
+.big { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.count { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: clamp(2.6rem, 9vw, 3.8rem); font-weight: 700; line-height: 1; color: var(--gold); }
+.count small { font-size: .32em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+.kbox { display: flex; align-items: center; gap: 8px; }
+.kval { font-family: var(--display); font-size: 2.2rem; font-weight: 700; min-width: 2.2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button.b { font-family: var(--body); font-weight: 500; font-size: .9rem; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+button.b:hover { border-color: var(--muted); }
+button.b.primary { border-color: var(--gold); background: var(--gold-soft); }
+button.b kbd { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-left: 6px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: default; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+label.f { display: grid; gap: 4px; font-size: .86rem; color: var(--muted); }
+label.f input, label.f select { font-family: var(--mono); font-size: .95rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box; }
+label.c { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
+.note { font-size: .84rem; color: var(--muted); max-width: 72ch; margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; width: 100%; }
+th, td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { color: var(--muted); font-weight: 500; }
+th:first-child, td:first-child { text-align: left; }
+tr.cur td { background: var(--gold-soft); }
+tr.far td { color: var(--muted); }
+.result { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; padding: 10px; border: 2px solid var(--gold); border-radius: 8px; }
+.result input { font-family: var(--mono); font-size: 1.3rem; width: 5ch; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+textarea { width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: .78rem; min-height: 4.5em; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 6px; }
+.cam { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 700px) { .cam { grid-template-columns: minmax(0, 1fr); } }
+#preview { width: 100%; height: auto; aspect-ratio: 4 / 3; max-width: 100%; background: #000; border-radius: 6px; cursor: crosshair; touch-action: none; }
+.read { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-family: var(--mono); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.read dt { color: var(--muted); } .read dd { margin: 0; }
+.meter { height: 8px; border-radius: 4px; background: var(--bad); overflow: hidden; position: relative; }
+.meter > i { position: absolute; inset: 0 auto 0 0; background: var(--gold); }
+.meter > b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--gold-soft); }
+.box-coin { color: var(--gold); } .box-bolt { color: #a04fd8; }
+details summary { cursor: pointer; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 72ch; }
+</style>
+
+<main>
+  <header>
+    <h1>High Power Bounce <span>Manipulator</span></h1>
+    <div class="tag">Paper Mario (JP) · Power Bounce · step up one bounce at a time</div>
+  </header>
+
+  <section class="panel stage" aria-live="polite">
+    <div style="display:grid; gap:10px; min-width:0">
+      <div class="phase">
+        <span class="chip" id="p-watch">Coin</span>
+        <span class="chip" id="p-lock">Seed</span>
+        <span class="chip" id="p-plan">Beeps</span>
+      </div>
+      <p id="headline">Stand on the Power Bounce target screen with the status bar up.</p>
+      <p id="detail">The page reads the coin, finds the seed (about 25–40 s from scratch), then counts down to the next confirm frame that gives at least your target.</p>
+      <div class="row">
+        <button class="b primary" id="plan">Plan now<kbd>P</kbd></button>
+        <button class="b" id="cancel">Stop beeps</button>
+        <button class="b" id="reset">Reset seed</button>
+      </div>
+      <div class="result" id="result" hidden>
+        <label class="f" style="flex:0 0 auto">Bounces you got<input id="actual" type="number" min="0" max="99" inputmode="numeric"></label>
+        <button class="b primary" id="actual-ok">Log try<kbd>Enter</kbd></button>
+        <p class="note" id="result-note" style="flex:1 1 220px"></p>
+      </div>
+    </div>
+    <div class="big">
+      <div class="kbox"><button class="b" id="k-down" aria-label="Target one lower">−</button><div><div class="note" style="text-align:center">target</div><div class="kval" id="kval">10</div></div><button class="b" id="k-up" aria-label="Target one higher">+</button></div>
+      <div class="count" id="count">–<small> s</small></div>
+      <div class="note mono" id="plan-note"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h2 style="margin:0">How far up it goes</h2>
+      <span class="note" id="table-note"></span>
+    </div>
+    <div class="tbl-wrap"><table id="ladder"><thead><tr><th>bounces</th><th>per frame</th><th>usual wait</th><th>long wait (90%)</th><th>next frame now</th></tr></thead><tbody></tbody></table></div>
+    <p class="note" style="margin-top:8px" id="ladder-foot"></p>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h2 style="margin:0">Tries and calibration</h2>
+      <div class="row"><button class="b" id="cal-copy">Copy calibration</button><button class="b" id="tries-clear">Clear tries</button><button class="b" id="dl-log">Download session log</button></div>
+    </div>
+    <p class="note" id="cal-summary">After each try, type how many bounces you got. The page works out which frame you really confirmed on (the beep aims at the planned one) and averages that into a beep offset for this page and for the Time Out Timer.</p>
+    <div class="tbl-wrap" style="margin-top:8px"><table id="tries"><thead><tr><th>#</th><th>fight</th><th>target</th><th>planned</th><th>got</th><th>confirm offset</th><th>beep offset used</th><th>jitter</th></tr></thead><tbody></tbody></table></div>
+    <textarea id="cal-json" readonly aria-label="Calibration JSON" hidden></textarea>
+  </section>
+
+  <section class="panel">
+    <details id="settings-d" open>
+      <summary>Fight and timing</summary>
+      <div class="grid2">
+        <label class="f">Fight<select id="s-fight"><option value="blooper">Blooper</option><option value="fb2">Final Bowser, phase 2</option></select></label>
+        <label class="f">Enemy HP left (each hit costs it HP; the chain stops at the kill)<input id="s-hp" type="number" min="1" max="200" value="30"></label>
+        <label class="f">First hit damage (later hits 1 less each, at least 1)<input id="s-dmg0" type="number" min="1" max="20" value="1"></label>
+        <label class="f">Dodge Master equipped<select id="s-dm"><option value="0">No</option><option value="1">Yes</option></select></label>
+        <label class="f">Beep offset (frames, + = later)<input id="s-off" type="number" step="0.5" value="0"></label>
+        <label class="f">Video lag (ms)<input id="s-vlag" type="number" step="5" value="50"></label>
+        <label class="f">Lead time before the earliest planned confirm (s)<input id="s-lead" type="number" step="0.5" min="1" value="3"></label>
+        <label class="f">Longest wait to plan for (minutes)<input id="s-horizon" type="number" step="1" min="1" value="20"></label>
+        <label class="f">Countdown beeps<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
+        <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
+        <label class="f">Re-find range after a turn (RNG steps)<input id="s-range" type="number" step="500" value="6000"></label>
+        <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
+        <label class="f">Seed search threads<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label class="c"><input type="checkbox" id="s-auto" checked> Plan as soon as the seed is found (stand on the target screen first)</label>
+        <label class="c"><input type="checkbox" id="s-bbeep" checked> Beep for every bounce press</label>
+      </div>
+      <p class="note" id="fight-note" style="margin-top:10px"></p>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>How to use it</h2>
+    <ol class="steps">
+      <li><b>Once.</b> Save for OBS mode and open that file in Chrome or Edge (the camera is blocked inside claude.ai). Pick the OBS projector window (or the OBS Virtual Camera), press Start watching and drag the gold box tightly around the status-bar coin. If you set the box up in the Time Out Timer file in the same browser, it is already there.</li>
+      <li><b>Each try.</b> In the fight, pick Power Bounce and stand on its target screen. The coin keeps spinning there; after about 25–40 s the page has the seed and starts the countdown. Confirm with A on the last (high) beep, then press A on each short beep for the bounces.</li>
+      <li><b>Log it.</b> Type how many bounces you got. A hit moves the target up one. Blooper only has 30 HP and every bounce costs 1, so a try for K needs at least K HP left: reload your save between rungs, or make the try for the remaining HP the last one.</li>
+      <li><b>Where to stop.</b> The table shows how long the next rung usually takes. Without Dodge Master Blooper tops out around 20–21 (22 takes 20+ minutes of standing), Final Bowser phase 2 around 8–9.</li>
+      <li><b>Calibration.</b> A one-frame miss gives an unrelated count, so until your offset is measured each rung above the easy ones lands about half the time. Once a few tries agree, press Copy calibration and paste it into the Time Out Timer (Timing settings → Use calibration); opened as files in the same browser it reads it by itself.</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Watch the game (OBS)</h2>
+    <div class="cam">
+      <div style="display:grid; gap:8px; min-width:0">
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box"></canvas>
+        <div class="row">
+          <span class="seg" role="group" aria-label="Box to draw">
+            <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Coin box</button>
+            <button class="b" id="draw-bolt" aria-pressed="false"><span class="box-bolt">■</span> Lightning box (Final Bowser)</button>
+          </span>
+          <button class="b" id="cap-target" hidden disabled>(unused)</button>
+        </div>
+      </div>
+      <div style="display:grid; gap:10px; min-width:0">
+        <label class="f">Video source<select id="cam-sel"><option value="window">A window (OBS projector, no Virtual Camera)</option><option value="">OBS Virtual Camera</option></select></label>
+        <div class="row">
+          <button class="b primary" id="cam-start">Start watching</button>
+          <button class="b" id="cam-stop" disabled>Stop</button>
+          <button class="b" id="test-beep">Test beeps</button>
+          <button class="b" id="save-standalone" hidden>Save for OBS mode</button>
+        </div>
+        <p class="note" id="cam-msg">Reads the game from an OBS projector window or the OBS Virtual Camera. Works when the page is opened from a file in Chrome or Edge; inside claude.ai use Save for OBS mode first.</p>
+        <dl class="read">
+          <dt>Coin</dt><dd id="r-coin">–</dd>
+          <dt>Flash level</dt><dd><div class="meter"><i id="r-wbar" style="width:0"></i><b id="r-thr" style="left:0"></b></div></dd>
+          <dt>Shines seen</dt><dd id="r-shines">0</dd>
+          <dt>Pattern</dt><dd id="r-pat" style="word-break:break-all">–</dd>
+          <dt>Bolts seen</dt><dd id="r-bolts">–</dd>
+          <dt>Video frames</dt><dd id="r-fps">–</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script id="core-src">/*CORE*/</script>
+<script>
+(function () {
+'use strict';
+const coreText = document.getElementById('core-src').textContent;
+const R = (new Function('self', coreText + '\nreturn self.PMRNG;'))({});
+const BL = (function () { const module = undefined;
+/*BLMODEL*/
+return { blBounces, chances }; })();
+const FB = (function () { const module = undefined;
+/*FB2MODEL*/
+return { fb2Bounces, lightAt, TH }; })();
+const FRAME = R.FRAME_MS;
+const $ = id => document.getElementById(id);
+
+/* ---------- settings ---------- */
+const SET = ['fight', 'hp', 'dmg0', 'dm', 'off', 'vlag', 'lead', 'horizon', 'beeps', 'gapms', 'range', 'wthr', 'cpu'];
+const DEF = { blooper: { hp: 30, dmg0: 1, k: 10 }, fb2: { hp: 99, dmg0: 13, k: 6 } };
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('hpbm-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); if (s.auto !== undefined) $('s-auto').checked = s.auto; if (s.bbeep !== undefined) $('s-bbeep').checked = s.bbeep; if (s.k) K = s.k; } catch (e) {} }
+function saveSettings() { try { const s = { auto: $('s-auto').checked, bbeep: $('s-bbeep').checked, k: K }; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('hpbm-settings', JSON.stringify(s)); } catch (e) {} }
+const num = k => parseFloat($('s-' + k).value) || 0;
+const fight = () => $('s-fight').value;
+let K = 10;
+
+/* ---------- state ---------- */
+// taps: shine times (ms) of the current look; lock: {seed (before the first tapped draw), ph (Final Bowser lightning
+// phases)}; prev: the last known RNG state, for re-finding the seed after a turn without a full search
+const st = { taps: [], cands: null, lock: null, clock: null, plan: null, prev: null, prevTried: false, searching: false, searchKey: null, msg: null, bolts: [], tries: [] };
+const SLOG = [];
+function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
+try { st.tries = JSON.parse(localStorage.getItem('hpbm-tries') || '[]'); } catch (e) { st.tries = []; }
+
+/* ---------- audio (shared with the Time Out Timer) ---------- */
+/*@include shared/beeps.js*/
+
+/* ---------- boss models ----------
+ * Frame 0 = the frame whose start seed is known. bounces(seed, coinNext, phases) = the count for a confirm on frame 0.
+ * Hits the enemy cannot survive end the chain: kmax from its HP and the per-hit damage (first hit dmg0, then 1 less each,
+ * at least 1). Blooper: blmodel.js (emulator-matched 150/150, Dodge Master 60/60); Final Bowser phase 2: fb2model.js
+ * (113/113, lightning before the roll on a shared frame). */
+function hitsToKill(hp, dmg0) { let n = 0, d = 0; while (d < hp && n < 200) { d += Math.max(1, dmg0 - n); n++; } return n; }
+function opts() { const kill = hitsToKill(Math.max(1, num('hp')), Math.max(1, num('dmg0'))); return { dm: num('dm') > 0, dmg0: Math.max(1, num('dmg0')), kmax: Math.max(1, kill - 2) }; }
+function countAt(fg, seed, nc, ph, o) {
+  if (fg === 'blooper') return Math.min(BL.blBounces(seed, 0, { coinNext: nc, dm: o.dm, dmg0: o.dmg0, kmax: o.kmax }), o.kmax + 2);
+  return Math.min(FB.fb2Bounces(seed, 0, { p130: ph.p130, p220: ph.p220, coinNext: nc, dmg0: o.dmg0 }), o.kmax + 2);
+}
+// one menu frame: (Final Bowser: lightning draws), the coin draw if due, the per-frame step
+function menuStep(fg, x, ph) {
+  let s = x.s;
+  if (fg === 'fb2') for (let i = FB.lightAt(x.f, ph.p130, ph.p220); i > 0; i--) s = R.randInt(s, 359)[0];
+  if (x.f === x.nc) { const r = R.randInt(s, 100); s = r[0]; x.nc += r[1] >= 70 ? 48 : 24; }
+  x.s = R.adv(s); x.f++;
+}
+/* Scan confirm frames d in [from, to) from the frame-0 state: for each count, the first frame that reaches it, and the
+ * count at every frame near the chosen one (for the calibration). */
+function scan(fg, base, from, to, o, want) {
+  const x = { s: base.seed >>> 0, nc: base.nc, f: 0 }, ph = base.ph ? { p130: base.ph.p130, p220: base.ph.p220 } : null;
+  while (x.f < from) menuStep(fg, x, ph);
+  const first = {}; let best = 0, bestF = -1;
+  for (; x.f < to; ) {
+    const p2 = ph ? { p130: (ph.p130 + x.f) % 130, p220: (ph.p220 + x.f) % 220 } : null;
+    const c = countAt(fg, x.s, x.nc - x.f, p2, o);
+    if (c > best) { best = c; bestF = x.f; }
+    for (let k = 2; k <= c; k++) if (first[k] === undefined) first[k] = x.f;
+    if (want && first[want] !== undefined && first[want + 2] !== undefined) break;
+    menuStep(fg, x, ph);
+  }
+  return { first, best, bestF, scanned: x.f - from };
+}
+function countsNear(fg, base, d, o, span) {
+  const x = { s: base.seed >>> 0, nc: base.nc, f: 0 }, ph = base.ph ? { p130: base.ph.p130, p220: base.ph.p220 } : null, out = {};
+  while (x.f < d - span) menuStep(fg, x, ph);
+  for (; x.f <= d + span; menuStep(fg, x, ph)) { const p2 = ph ? { p130: (ph.p130 + x.f) % 130, p220: (ph.p220 + x.f) % 220 } : null; out[x.f - d] = countAt(fg, x.s, x.nc - x.f, p2, o); }
+  return out;
+}
+
+/* ---------- step-up table: README powerbounce, ladder.c (2000 locked states each; no Dodge Master unless marked) ---------- */
+const LADDER = {
+  blooper: [[13, '24%', '0.1 s', '0.3 s'], [15, '6.4%', '0.4 s', '1.3 s'], [17, '1.1%', '2.3 s', '8.9 s'], [18, '0.37%', '7 s', '24 s'], [19, '0.11%', '23 s', '77 s'],
+    [20, '0.032%', '73 s', '4.2 min'], [21, '0.0079%', '4.8 min', '16.5 min'], [22, '0.0017%', '22 min', '72 min'], [23, '3.3e-6', '2 h', '6.5 h'], [24, '5.5e-7', '12 h', '–']],
+  blooperDM: [[22, '100%', 'now', 'now'], [30, '31%', 'now', 'now']],
+  fb2: [[6, '8.1%', '0.3 s', '0.9 s'], [7, '1.3%', '1.9 s', '6.5 s'], [8, '0.13%', '18 s', '64 s'], [9, '0.0076%', '5.5 min', '17.5 min'], [10, '3.2e-6', '2 h', '6.7 h'], [11, '7.2e-8', '3.7 days', '–']],
+  fb2DM: [[6, '21%', '0.1 s', '0.3 s'], [7, '5.6%', '0.4 s', '1.4 s'], [8, '1.0%', '2.5 s', '8.5 s'], [9, '0.12%', '21 s', '68 s'], [10, '0.0093%', '4.2 min', '14 min'], [11, '4.8e-6', '80 min', '4.5 h']],
+};
+function renderLadder() {
+  const key = fight() + (num('dm') > 0 ? 'DM' : ''), rows = (LADDER[key] || []).slice(), live = st.live || {};
+  const ks = rows.map(r => r[0]); [K, K + 1, K + 2].forEach(k => { if (!ks.includes(k)) rows.push([k, '', '', '']); });
+  rows.sort((a, b) => a[0] - b[0]);
+  $('ladder').tBodies[0].innerHTML = rows.map(r => {
+    const f = live[r[0]], liveT = f === undefined ? (st.live ? 'not in the next ' + num('horizon') + ' min' : '–') : fmtT(f);
+    return '<tr class="' + (r[0] === K ? 'cur' : '') + '"><td>' + r[0] + (r[0] === K ? ' ◀ target' : '') + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td>' + liveT + '</td></tr>';
+  }).join('');
+  $('table-note').textContent = fight() === 'blooper' ? (num('dm') > 0 ? 'Blooper, Dodge Master' : 'Blooper, no Dodge Master') : (num('dm') > 0 ? 'Final Bowser phase 2, Dodge Master' : 'Final Bowser phase 2, no Dodge Master');
+  $('ladder-foot').textContent = 'Usual / long wait: from a fresh lock to the first confirm frame with at least that many (median and 90th percentile, simulated). "Next frame now" is the live scan of your locked seed (time from now, including the ' + num('lead') + ' s lead). The enemy\'s HP caps the count: ' + (opts().kmax + 2) + ' bounces kill it with the HP and damage set below.';
+}
+function fmtT(ms) { const s = ms / 1000; return s < 90 ? s.toFixed(1) + ' s' : (s / 60).toFixed(1) + ' min'; }
+
+/* ---------- seed search in workers ----------
+ * Blooper: the plain coin search of the Time Out Timer (the menu and the target screen draw nothing but the coin and the
+ * step). Final Bowser: the coin chain with the lightning draws in between, over the lightning-phase hypotheses: the 220
+ * cycle from the bolts seen (draw frame = onset - 2), the 130 cycle on the same 5-frame grid (26 values); the pattern
+ * fixes every coin-draw frame, so each hypothesis is one sequence of RNG steps between draws and the search walks a trie
+ * of them (like the torch-room search). */
+let workers = [];
+function stopWorkers() { workers.forEach(w => w.terminate()); workers = []; }
+const FBSEARCH = `
+  const A130 = [78, 83, 113, 118], A220 = [18, 78, 88, 178];
+  function lightAt(f, p130, p220) { const a = ((f + p130) % 130 + 130) % 130, b = ((f + p220) % 220 + 220) % 220; return A130.filter(x => x === a).length + A220.filter(x => x === b).length; }
+  function fbTrie(pattern, hyps) {
+    const fr = [0]; for (let i = 0; i < pattern.length - 1; i++) fr.push(fr[i] + (pattern.charCodeAt(i) === 83 ? 48 : 24));
+    const root = { kids: new Map(), hyps: [] };
+    hyps.forEach((h, hi) => { let n = root; for (let i = 1; i < pattern.length; i++) { let c = 0; for (let f = fr[i - 1] + 1; f <= fr[i]; f++) c += lightAt(f, h.p130, h.p220); const g = fr[i] - fr[i - 1] + c; if (!n.kids.has(g)) n.kids.set(g, { kids: new Map(), hyps: [] }); n = n.kids.get(g); } n.hyps.push(hi); });
+    return root;
+  }
+  function searchFb(pattern, hyps, lo, hi, cap) {
+    const R = self.PMRNG, MUL = R.MUL, SH = R.SHINE_MIN; const JA = new Uint32Array(64), JC = new Uint32Array(64); JA[0] = 1;
+    for (let i = 1; i < 64; i++) { JA[i] = Math.imul(JA[i - 1], MUL) >>> 0; JC[i] = (Math.imul(JC[i - 1], MUL) + 1) >>> 0; }
+    const root = fbTrie(pattern, hyps), out = [];
+    const want = []; for (let i = 0; i < pattern.length; i++) want.push(pattern.charCodeAt(i) === 83);
+    function rec(v, n, i) {           // v: value of draw i-1 (after its advance); n: trie node for draws < i
+      if (i === pattern.length) { return n.hyps; }
+      let found = null;
+      for (const [g, m] of n.kids) { const s = (Math.imul(v, JA[g]) + JC[g]) >>> 0, d = (Math.imul(s, MUL) + 1) >>> 0;
+        if ((d >= SH) === want[i]) { const r = rec(d, m, i + 1); if (r && r.length) found = (found || []).concat(r); } }
+      return found;
+    }
+    lo = Math.max(lo, SH); hi = Math.min(hi, 4294967296);
+    for (let t = lo; t < hi; t++) { const r = rec(t >>> 0, root, 1); if (r) { out.push({ seed: R.back(t >>> 0), hyps: r }); if (out.length >= cap) break; } }
+    return out;
+  }`;
+function searchAll(pattern, hyps) {
+  stopWorkers(); st.searching = true;
+  const n = Math.max(1, Math.min(Math.floor((navigator.hardwareConcurrency || 4) / 2), Math.round(num('cpu')) || 2));
+  const lo = R.SHINE_MIN, span = Math.ceil((4294967296 - lo) / n);
+  const src = coreText + FBSEARCH + `
+  self.onmessage = e => { const { pattern, hyps, lo, hi } = e.data; const R = self.PMRNG; const out = []; const CH = 1 << 23;
+    for (let a = lo; a < hi; a += CH) { const b = Math.min(hi, a + CH); out.push(...(hyps ? searchFb(pattern, hyps, a, b, 64) : R.searchShineStart(pattern, a, b, 64).map(s => ({ seed: s })))); self.postMessage({ progress: b - lo }); }
+    self.postMessage({ done: out }); };`;
+  const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+  const prog = new Array(n).fill(0), total = 4294967296 - lo; let done = 0; const found = []; const t0 = performance.now();
+  return new Promise(res => {
+    for (let i = 0; i < n; i++) {
+      const w = new Worker(url); workers.push(w);
+      const a = lo + i * span, b = Math.min(4294967296, lo + (i + 1) * span);
+      w.onmessage = e => {
+        if (e.data.progress !== undefined) { prog[i] = e.data.progress; st.searchPct = prog.reduce((x, y) => x + y, 0) / total; st.searchSec = (performance.now() - t0) / 1000; render(); }
+        if (e.data.done) { found.push(...e.data.done); if (++done === n) { stopWorkers(); URL.revokeObjectURL(url); st.searching = false; res(found); } }
+      };
+      w.postMessage({ pattern, hyps: hyps || null, lo: a, hi: b });
+    }
+  });
+}
+
+/* ---------- lightning (Final Bowser phase 2): the 220-frame cycle is visible as purple bolts ---------- */
+const P220 = [18, 78, 88, 178];
+// bolt onsets (page ms) -> 220-phase hypotheses relative to the first tapped shine's draw frame (tap - 6 frames): the
+// phase p with ((F + p) mod 220) in P220 for every bolt draw frame F (onset - 2 frames), +-1 frame for rounding
+function fbHyps() {
+  if (!st.taps.length) return null;
+  const t0 = st.taps[0] - 6 * FRAME, B = st.bolts.filter(b => b > st.taps[0] - 9000).map(b => Math.round((b - t0) / FRAME) - 2);
+  if (B.length < 2) return null;
+  const ok = [];
+  for (let p = 0; p < 220; p++) { const good = B.every(F => P220.some(a => Math.abs(((F + p) % 220 + 220) % 220 - a) <= 1)); if (good) ok.push(p); }
+  if (!ok.length || ok.length > 12) return null;
+  const hyps = []; ok.forEach(p220 => { for (let q = 0; q < 130; q++) if (((q - p220) % 5 + 5) % 5 === 0) hyps.push({ p130: q, p220 }); });
+  return hyps;
+}
+
+/* ---------- logic ---------- */
+const BITS_S = -Math.log2(310 / 1010), BITS_N = -Math.log2(700 / 1010);
+function bits(pattern) { let b = 0; for (const c of pattern) b += c === 'S' ? BITS_S : BITS_N; return b; }
+function pat(taps) { return taps.length ? R.patternFromTaps(taps) : { pattern: '' }; }
+function matchesPh(seed, pattern, ph) {
+  if (!ph) return R.matches(seed, pattern);
+  let s = seed >>> 0, f = 0;
+  for (let i = 0; i < pattern.length; i++) {
+    s = R.adv(s); const sh = s >= R.SHINE_MIN; if (sh !== (pattern.charCodeAt(i) === 83)) return false;
+    const g = sh ? 48 : 24; let c = 0; for (let k = f + 1; k <= f + g; k++) c += FB.lightAt(k, ph.p130, ph.p220);
+    for (let k = 0; k < g + c; k++) s = R.adv(s); f += g;
+  }
+  return true;
+}
+// seed at the start of the last tapped shine's draw frame (frame 0 of the plans): the coin draw comes first that frame,
+// except on Final Bowser where that frame's lightning comes before it (kept in the walk below)
+function frame0(seed, pattern, ph) {
+  let s = seed >>> 0, f = 0;
+  for (let i = 0; i < pattern.length - 1; i++) {
+    s = R.adv(s); const g = s >= R.SHINE_MIN ? 48 : 24; let c = 0;
+    if (ph) for (let k = f + 1; k <= f + g; k++) c += FB.lightAt(k, ph.p130, ph.p220);
+    for (let k = 0; k < g + c; k++) s = R.adv(s); f += g;
+  }
+  if (ph) { let n = FB.lightAt(f, ph.p130, ph.p220); while (n-- > 0) s = R.back(s); }   // back over this frame's bolts
+  return { seed: s, fLast: f };
+}
+function fitRate(taps, f) {
+  const n = taps.length; if (n < 6 || f[n - 1] - f[0] < 600) return null;
+  let mf = 0, mt = 0; for (let i = 0; i < n; i++) { mf += f[i]; mt += taps[i]; } mf /= n; mt /= n;
+  let sff = 0, sft = 0; for (let i = 0; i < n; i++) { sff += (f[i] - mf) * (f[i] - mf); sft += (f[i] - mf) * (taps[i] - mt); }
+  const r = sft / sff; return Math.abs(r / FRAME - 1) < 0.05 ? r : null;
+}
+function shineFrames(pattern) { const f = []; let t = 0; for (const c of pattern) { if (c === 'S') { f.push(t); t += 48; } else t += 24; } return f; }
+function updateClock() {
+  const p = pat(st.taps).pattern, f = shineFrames(p), taps = st.taps;
+  const fr = fitRate(taps, f); if (fr) st.rate = fr; const rate = st.rate || FRAME;
+  let sum = 0; for (let i = 0; i < taps.length; i++) sum += taps[i] - f[i] * rate;
+  const t0 = sum / taps.length;
+  let ss = 0; for (let i = 0; i < taps.length; i++) { const e = taps[i] - (t0 + f[i] * rate); ss += e * e; }
+  const z = frame0(st.lock.seed, p, st.lock.ph);
+  st.clock = { t0: t0 - 6 * rate - num('vlag'), rate, jitter: Math.sqrt(ss / taps.length), pattern: p };
+  st.base = { seed: z.seed, nc: 0, ph: st.lock.ph ? { p130: ((st.lock.ph.p130 + z.fLast) % 130 + 130) % 130, p220: ((st.lock.ph.p220 + z.fLast) % 220 + 220) % 220 } : null, t: st.clock.t0 + z.fLast * rate, bits: bits(p) };
+}
+function setLock(seed, ph, how) {
+  st.lock = { seed: seed >>> 0, ph: ph || null }; st.cands = null; st.prev = null; st.prevTried = false; updateClock();
+  slog('lock', { seed: st.lock.seed, ph: st.lock.ph, how, taps: st.taps.length, bits: +bits(pat(st.taps).pattern).toFixed(1) });
+  st.msg = null; render(); if ($('s-auto').checked && !st.plan && !st.awaiting) makePlan();
+}
+function evaluate() {
+  const P = pat(st.taps); if (P.error) { st.taps = st.taps.slice(-1); render(); return; }
+  const b = bits(P.pattern), fg = fight();
+  // re-find from the last known state: a turn (the bounces, the enemy's turn) moved the RNG by an unknown amount
+  if (st.prev && !st.lock && st.taps.length >= 3) {
+    const E = Math.round((st.taps[0] - 6 * FRAME - num('vlag') - st.prev.t) / FRAME), lo = Math.max(0, E - 30), hi = E + Math.max(100, num('range'));
+    const need = Math.log2(hi - lo + 1) + 10;
+    if (b >= need) {
+      let r;
+      if (fg === 'fb2') { r = []; let s = st.prev.seed >>> 0; for (let i = 0; i < lo; i++) s = R.adv(s);
+        for (let n = lo; n <= hi && r.length < 3; n++) { for (const dp of [-1, 0, 1]) { const ph = { p130: ((st.prev.ph.p130 + E + dp) % 130 + 130) % 130, p220: ((st.prev.ph.p220 + E + dp) % 220 + 220) % 220 }; if (matchesPh(s, P.pattern, ph)) r.push({ n, seed: s, ph }); } s = R.adv(s); } }
+      else r = R.resync(st.prev.seed, P.pattern, hi, 3, lo);
+      slog('refind', { E, lo, hi, found: r.length, bits: +b.toFixed(1) });
+      if (r.length === 1) { setLock(r[0].seed, r[0].ph, 'refind'); return; }
+      if (!r.length) { st.prev = null; st.msg = 'The shines do not continue from the last known seed (more happened than the re-find range covers); finding it from scratch.'; }
+    }
+  }
+  if (st.cands) {
+    st.cands = st.cands.filter(c => matchesPh(c.seed, P.pattern, c.ph));
+    if (!st.cands.length) { slog('candsDead', {}); st.cands = null; st.taps = st.taps.slice(-1); st.msg = 'No seed fits these shines (a missed or false shine). Starting again from the last one.'; render(); return; }
+    if (st.cands.length === 1 && b >= 38) { setLock(st.cands[0].seed, st.cands[0].ph, 'search'); return; }
+  } else if (!st.searching && !st.prev && st.taps.length >= 8 && b >= 30) find();
+  render();
+}
+async function find() {
+  const fg = fight(), P = pat(st.taps); if (P.error) return;
+  let hyps = null;
+  if (fg === 'fb2') { hyps = fbHyps(); if (!hyps) { st.msg = 'Final Bowser: waiting for at least 2 lightning bolts in the lightning box to know the 220-frame cycle.'; render(); return; } }
+  const key = st.taps[0]; st.searchKey = key; slog('search', { pattern: P.pattern, hyps: hyps ? hyps.length : 0 });
+  const found = await searchAll(P.pattern, hyps);
+  if (st.searchKey !== key || !st.taps.length || st.taps[0] !== key) { slog('searchStale', {}); render(); return; }
+  const cands = [];
+  for (const x of found) { if (hyps) x.hyps.forEach(hi => cands.push({ seed: x.seed, ph: hyps[hi] })); else cands.push({ seed: x.seed, ph: null }); }
+  st.cands = cands; slog('searchDone', { n: cands.length }); evaluate();
+}
+function addShine(t, auto) {
+  if (st.taps.length) {                                 // a real shine lands 48 + 24k frames after the previous one
+    const g = (t - st.taps[st.taps.length - 1]) / FRAME, k = Math.round((g - 48) / 24);
+    if (k < 0 || Math.abs(g - (48 + 24 * k)) > Math.max(3, 0.01 * g)) { slog('rejected', { at: Math.round(t), off: +(g - (48 + 24 * k)).toFixed(1) }); return; }
+  }
+  if (st.lock) {
+    const p2 = pat(st.taps.concat([t])).pattern;
+    if (matchesPh(st.lock.seed, p2, st.lock.ph)) { st.taps.push(t); updateClock(); slog('shine', { at: Math.round(t), locked: true }); render(); return; }
+    slog('lockMismatch', { at: Math.round(t) }); keepPrev(); st.lock = null; st.clock = null; st.taps = [];
+  }
+  st.taps.push(t); slog('shine', { at: Math.round(t), locked: false }); evaluate();
+}
+function keepPrev() { if (st.base) { st.prev = { seed: st.base.seed, t: st.base.t, ph: st.base.ph }; st.prevTried = false; } }
+// the coin came back after being hidden (an action, the enemy's turn): the seed moved, re-find it from the next shines
+function coinBack(hiddenMs) {
+  slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), locked: !!st.lock, taps: st.taps.length });
+  if (st.lock) keepPrev();
+  if (st.plan && performance.now() < st.plan.tPress - 200) cancelPlan();
+  stopWorkers(); st.searching = false; st.searchKey = null;
+  st.lock = null; st.clock = null; st.cands = null; st.taps = []; render();
+}
+function hudWatch() {}
+
+/* ---------- plans ---------- */
+function cancelPlan() { cancelBeeps(); if (st.plan) slog('planCancelled', {}); st.plan = null; render(); }
+function makePlan() {
+  if (!st.lock || !st.base) { st.msg = 'No seed yet: stand on the target screen with the coin in view.'; render(); return; }
+  const fg = fight(), o = opts(), B = st.base, rt = st.clock.rate, nowF = (performance.now() - B.t) / rt;
+  const from = Math.max(1, Math.ceil(nowF + num('lead') * 1000 / rt + 1)), to = from + Math.round(num('horizon') * 60000 / rt);
+  const kk = Math.min(K, o.kmax + 2);
+  const sc = scan(fg, B, from, to, o, kk);
+  st.live = {}; for (const k in sc.first) st.live[k] = B.t + sc.first[k] * rt - performance.now();
+  const d = sc.first[kk];
+  if (d === undefined) { st.msg = 'No frame in the next ' + num('horizon') + ' minutes gives ' + kk + ' (best ' + sc.best + ' at ' + fmtT(B.t + sc.bestF * rt - performance.now()) + '). Lower the target or raise the longest wait.'; renderLadder(); render(); return; }
+  const near = countsNear(fg, B, d, o, 6), count = near[0];
+  const tPress = B.t + (d - 0.5 + num('off')) * rt;
+  cancelBeeps();
+  st.plan = { tMade: performance.now(), fight: fg, K: kk, d, count, near, tPress, base: B, rate: rt, off: num('off'), vlag: num('vlag'), jitter: st.clock.jitter, bits: B.bits, nextUp: sc.first[kk + 1] !== undefined ? B.t + sc.first[kk + 1] * rt - tPress : null };
+  const nb = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
+  for (let i = 0; i < nb; i++) beepAt(tPress - (nb - 1 - i) * g, i === nb - 1 ? 1320 : 880, i === nb - 1 ? 0.12 : 0.06);
+  if ($('s-bbeep').checked) {
+    const L = fg === 'blooper' ? n => 50 + 26 * (n - 1) : n => 44 + 27 * (n - 1);
+    for (let n = 1; n <= count; n++) beepAt(B.t + (d + L(n) - 0.5 + num('off')) * rt, 660, 0.05);
+  }
+  slog('plan', { K: kk, d, count, tPress: Math.round(tPress), near, fight: fg, o });
+  st.msg = null; renderLadder(); render();
+}
+
+/* ---------- tries and calibration ---------- */
+function logTry(actual) {
+  const P = st.awaiting; if (!P) return;
+  const impl = Object.keys(P.near).map(Number).filter(e => P.near[e] === actual).sort((a, b) => Math.abs(a) - Math.abs(b) || a - b);
+  const tr = { n: st.tries.length + 1, date: new Date().toISOString(), fight: P.fight, K: P.K, planned: P.count, actual, implied: impl, off: P.off, vlag: P.vlag, jitter: Math.round(P.jitter), bits: +P.bits.toFixed(1) };
+  st.tries.push(tr); try { localStorage.setItem('hpbm-tries', JSON.stringify(st.tries)); } catch (e) {}
+  slog('try', tr);
+  if (P.fight === fight()) { const hp = num('hp') - dmgFor(actual); $('s-hp').value = Math.max(0, hp); }
+  if (actual >= P.K) { K = P.K + 1; }
+  st.awaiting = null; $('result').hidden = true; $('actual').value = '';
+  saveSettings(); writeCal(); renderTries(); renderLadder(); render();
+}
+function dmgFor(n) { let d = 0; for (let i = 0; i < n; i++) d += Math.max(1, num('dmg0') - i); return d; }
+function calibration() {
+  const u = st.tries.filter(t => t.implied.length === 1);
+  if (!u.length) return null;
+  const ofs = u.map(t => t.implied[0] + (t.off - u[u.length - 1].off));     // offsets as if every try used the latest beep offset
+  const mean = ofs.reduce((a, b) => a + b, 0) / ofs.length, sd = Math.sqrt(ofs.reduce((a, b) => a + (b - mean) * (b - mean), 0) / ofs.length);
+  const last = u[u.length - 1], jit = st.tries.reduce((a, t) => a + (t.jitter || 0), 0) / st.tries.length;
+  return { source: 'High Power Bounce Manipulator', recommendedOffFrames: Math.round((last.off - mean) * 2) / 2, vlagMs: last.vlag, pressOffsetFrames: +mean.toFixed(2), pressSd: +sd.toFixed(2),
+    captureJitterMs: +jit.toFixed(1), tries: st.tries.length, unique: u.length, hits: st.tries.filter(t => t.actual >= t.K).length, date: new Date().toISOString().slice(0, 10) };
+}
+function writeCal() { const c = calibration(); if (c) { try { localStorage.setItem('pm-calibration', JSON.stringify(c)); } catch (e) {} } }
+function renderTries() {
+  $('tries').tBodies[0].innerHTML = st.tries.slice().reverse().map(t => '<tr><td>' + t.n + '</td><td>' + (t.fight === 'blooper' ? 'Blooper' : 'Bowser 2') + '</td><td>' + t.K + '</td><td>' + t.planned + '</td><td>' + t.actual + (t.actual >= t.K ? ' ✓' : ' ✗') + '</td><td>' +
+    (t.implied.length === 1 ? (t.implied[0] > 0 ? '+' : '') + t.implied[0] : t.implied.length ? t.implied.map(e => (e > 0 ? '+' : '') + e).join(' / ') + ' (unclear)' : 'none within ±6') + '</td><td>' + t.off + '</td><td>' + t.jitter + ' ms</td></tr>').join('');
+  const c = calibration();
+  if (!st.tries.length) { $('cal-summary').textContent = 'After each try, type how many bounces you got. The page works out which frame you really confirmed on (the beep aims at the planned one) and averages that into a beep offset for this page and for the Time Out Timer.'; $('cal-json').hidden = true; return; }
+  const hits = st.tries.filter(t => t.actual >= t.K).length;
+  $('cal-summary').textContent = hits + ' of ' + st.tries.length + ' tries reached their target. ' + (c ? 'Your confirm lands ' + (Math.abs(c.pressOffsetFrames) < 0.25 ? 'on the planned frame' : Math.abs(c.pressOffsetFrames).toFixed(2) + ' frames ' + (c.pressOffsetFrames > 0 ? 'late' : 'early')) + ' on average (spread ±' + c.pressSd.toFixed(2) + ' frames, ' + c.unique + ' tries with a clear offset). Recommended beep offset: ' + c.recommendedOffFrames + ' frames' + (c.recommendedOffFrames !== num('off') ? ' (now ' + num('off') + '; set it to land on the frame)' : '') + '. Coin timing jitter about ' + c.captureJitterMs + ' ms.' : 'No try has a clear confirm offset yet (a common count fits several frames); rarer counts pin it down.');
+  $('cal-json').hidden = !c; if (c) $('cal-json').value = JSON.stringify(c);
+}
+
+/* ---------- render ---------- */
+function setText(h, d) { $('headline').textContent = h; $('detail').textContent = d; }
+function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
+function render() {
+  $('kval').textContent = K;
+  const P = pat(st.taps), b = bits(P.pattern || '');
+  chip('p-watch', V.present ? 'ok' : ''); chip('p-lock', st.lock ? 'ok' : st.taps.length ? 'on' : ''); chip('p-plan', st.plan ? 'on' : '');
+  $('r-pat').textContent = P.pattern ? P.pattern.slice(-60) + ' (' + b.toFixed(0) + ' bits)' : '–';
+  if (st.awaiting) { setText('How many bounces did you get?', 'Planned ' + st.awaiting.count + ' (target ' + st.awaiting.K + '). Type the count and press Enter; the page logs it and finds the seed again from the next shines.'); return; }
+  if (st.plan) {
+    const left = st.plan.tPress - performance.now();
+    setText((left > 0 ? 'Confirm on the last high beep: ' : 'Bouncing: ') + st.plan.count + ' bounces planned', 'Target ' + st.plan.K + '. Confirm A on frame ' + st.plan.d + ' after the last shine' + ($('s-bbeep').checked ? ', then A on each short beep (one frame before each landing).' : '.') + (st.plan.nextUp != null ? ' The next frame giving ' + (st.plan.K + 1) + ' is ' + fmtT(st.plan.nextUp) + ' after this one.' : ''));
+    return;
+  }
+  if (st.lock) { setText('Seed found', st.msg || ($('s-auto').checked ? 'Planning…' : 'Press Plan now (P) when you are on the target screen.')); return; }
+  if (st.searching) { setText('Searching all 4.3 billion seeds…', Math.round((st.searchPct || 0) * 100) + '% · ' + (st.searchSec || 0).toFixed(1) + ' s' + (fight() === 'fb2' ? ' (Final Bowser: with the lightning phases, slower)' : '')); return; }
+  if (st.prev && st.taps.length) { setText('Re-finding the seed after the turn…', st.msg || st.taps.length + ' shines; usually a few more (about ' + Math.ceil(Math.log2(num('range')) + 10) + ' bits needed, ' + b.toFixed(0) + ' so far).'); return; }
+  if (st.cands) { setText(st.cands.length + ' seeds fit; a few more shines…', st.msg || b.toFixed(0) + ' of 38 bits.'); return; }
+  setText(st.taps.length ? 'Reading the coin: ' + st.taps.length + ' shines' : 'Stand on the Power Bounce target screen with the status bar up.',
+    st.msg || (st.taps.length ? b.toFixed(0) + ' of about 30 bits before the search starts (25–40 s from scratch).' : 'The page reads the coin, finds the seed, then counts down to the next confirm frame that gives at least your target.'));
+}
+function tick() {
+  const P = st.plan, now = performance.now();
+  if (P) {
+    const left = P.tPress - now; $('count').innerHTML = (left > 0 ? (left / 1000).toFixed(1) : '0.0') + '<small> s</small>';
+    $('plan-note').textContent = 'frame +' + P.d + ' · ' + P.count + ' planned';
+    const end = P.tPress + ((fight() === 'blooper' ? 76 + 26 * P.count : 71 + 27 * P.count) * P.rate) + 800;
+    if (now > end) { st.awaiting = P; st.plan = null; $('result').hidden = false; $('result-note').textContent = 'Planned ' + P.count + '. A one-frame miss gives a different count; that difference is what calibrates your offset.'; $('actual').focus(); render(); }
+    else if (left > -100 && Math.floor(now / 100) % 2 === 0) render();
+  } else { $('count').innerHTML = '–<small> s</small>'; $('plan-note').textContent = st.live && st.live[K] !== undefined ? '' : ''; }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- capture (shared with the Time Out Timer) ---------- */
+const V = { stream: null, video: document.createElement('video'), small: document.createElement('canvas'), draw: 'coin',
+  boxes: { coin: { x: 0.795, y: 0.005, w: 0.055, h: 0.09 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 }, bolt: { x: 0.0, y: 0.15, w: 1.0, h: 0.48 } },
+  present: false, absentSince: 0, wasGone: false, inShine: false, lastOnset: -1e9, below: 0, shines: 0,
+  winMax: 0, winStart: 0, peaks: [], shinePeaks: [], ref: null, score: 0, frames: 0, fpsT: performance.now(), fps: 0, boltOn: false };
+V.video.muted = true; V.video.playsInline = true; V.small.width = 64; V.small.height = 48;   // 64x48: room for the lightning sample (the coin uses 32x32 of it)
+const sctx = V.small.getContext('2d', { willReadFrequently: true });
+try { const b = JSON.parse(localStorage.getItem('tot-boxes') || 'null'); if (b && b.coin) V.boxes.coin = b.coin; const c = JSON.parse(localStorage.getItem('hpbm-boxes') || 'null'); if (c && c.bolt) V.boxes.bolt = c.bolt; if (c && c.coin) V.boxes.coin = c.coin; } catch (e) {}
+function saveBoxes() { try { localStorage.setItem('hpbm-boxes', JSON.stringify({ coin: V.boxes.coin, bolt: V.boxes.bolt })); const t = JSON.parse(localStorage.getItem('tot-boxes') || 'null') || {}; t.coin = V.boxes.coin; localStorage.setItem('tot-boxes', JSON.stringify(t)); } catch (e) {} }
+/*@include shared/capture.js*/
+function onFrame(t) {
+  if (!dims()[0]) return;
+  V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
+/*@include shared/coin_detect.frag.js*/
+  // Final Bowser: purple lightning bolts in the sky (emulator: r > 150, b > 170, g 40 below both; first visible 2 frames
+  // after the draw). Only the 220-frame cycle shows; an onset = the first frame over 0.3% of the box, sampled at 64x48 (a
+  // bolt is thin: averaged down to 32x32 it loses its colour). Emulator video: 0 on frames without a bolt, 0.4-1.5% with
+  // one; the bolt drawn 10 frames after another one (cycle phase 88 after 78) often reads as the same onset, which the
+  // phase fit allows (every onset must sit on some bolt phase; not every bolt must be seen).
+  if (fight() === 'fb2') {
+    const g = sample(V.boxes.bolt, 64, 48); let pu = 0;
+    for (let i = 0; i < g.length; i += 4) { const r = g[i], gg = g[i + 1], b = g[i + 2]; if (r > 150 && b > 170 && gg < r - 40 && gg < b - 40) pu++; }
+    const on = pu / 3072 > 0.003;
+    if (on && !V.boltOn && t - (V.lastBolt || -1e9) > 6 * FRAME) { V.lastBolt = t; st.bolts.push(t); if (st.bolts.length > 40) st.bolts.shift(); slog('bolt', { at: Math.round(t) }); }
+    V.boltOn = on;
+  }
+  if (V.frames % 2 === 0) {
+    $('r-coin').textContent = present ? 'visible' : 'hidden';
+    $('r-wbar').style.width = Math.min(100, white / 0.08 * 100) + '%'; $('r-thr').style.left = Math.min(100, thr / 0.08 * 100) + '%';
+    $('r-shines').textContent = V.shines; $('r-bolts').textContent = fight() === 'fb2' ? String(st.bolts.length) : 'only for Final Bowser';
+    $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + dims().join('×') + (V.src ? ' · background' : '');
+    if (!document.hidden) drawPreview();
+  }
+}
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function boxes(c, cv) {
+  const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
+  box(V.boxes.coin, css('--gold')); if (fight() === 'fb2') box(V.boxes.bolt, '#a04fd8');
+}
+function drawPreview() {
+  const cv = $('preview'), [vw, vh] = dims();
+  if (vw && vh) { const h = Math.round(640 * vh / vw); if (cv.height !== h) { cv.width = 640; cv.height = h; cv.style.aspectRatio = vw + ' / ' + vh; } }
+  const c = cv.getContext('2d'); c.drawImage(V.src || V.video, 0, 0, cv.width, cv.height); boxes(c, cv);
+}
+function drawIdlePreview() {
+  const cv = $('preview'), c = cv.getContext('2d'); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = '#9aa'; c.font = '16px ' + css('--body'); c.fillText('Camera preview appears here', 20, 40); boxes(c, cv);
+}
+(function () {
+  const cv = $('preview'); let p0 = null;
+  const pt = e => { const r = cv.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
+  cv.addEventListener('pointerdown', e => { p0 = pt(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!p0) return; const q = pt(e); V.boxes[V.draw] = { x: Math.min(p0.x, q.x), y: Math.min(p0.y, q.y), w: Math.max(0.01, Math.abs(q.x - p0.x)), h: Math.max(0.01, Math.abs(q.y - p0.y)) }; if (!V.stream) drawIdlePreview(); });
+  cv.addEventListener('pointerup', () => { if (!p0) return; p0 = null; saveBoxes(); V.peaks = []; V.shinePeaks = []; });
+})();
+function setDraw(k) { V.draw = k; $('draw-coin').setAttribute('aria-pressed', k === 'coin'); $('draw-bolt').setAttribute('aria-pressed', k === 'bolt'); }
+$('draw-coin').onclick = () => setDraw('coin'); $('draw-bolt').onclick = () => setDraw('bolt');
+$('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
+
+/* ---------- controls ---------- */
+function applyFight(changed) {
+  const fg = fight();
+  if (changed) { const d = DEF[fg]; $('s-hp').value = d.hp; $('s-dmg0').value = d.dmg0; K = d.k; coinBack(null); st.prev = null; st.bolts = []; }
+  $('fight-note').textContent = fg === 'blooper'
+    ? 'Blooper: 30 HP. With 1 damage per bounce (no power-ups) every bounce takes 1 HP, so 30 bounces kill it and end the chain whatever the rolls. The battle menu and the target screen draw nothing but the coin, so the seed is found from the coin alone.'
+    : 'Final Bowser phase 2: lightning draws random numbers about 1.5 times a second. Put the purple Lightning box over the sky (everything between the status bar and the floor): the page needs 2 or more bolts to know the 220-frame cycle, and searches the other (invisible) 130-frame cycle with the seed, so the search is slower. Not handled: the extra effect at the very start of phase 2 (a 20-frame cycle seen in one savestate); if the seed is never found there, try again a turn later. First hit damage depends on your boots and charge.';
+  drawIdlePreviewIf(); renderLadder(); render();
+}
+function drawIdlePreviewIf() { if (!V.stream) drawIdlePreview(); }
+$('s-fight').addEventListener('change', () => { saveSettings(); applyFight(true); });
+SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); renderLadder(); render(); }));
+['s-auto', 's-bbeep'].forEach(id => $(id).addEventListener('change', saveSettings));
+$('k-up').onclick = () => { K = Math.min(99, K + 1); saveSettings(); if (st.plan) { cancelPlan(); makePlan(); } renderLadder(); render(); };
+$('k-down').onclick = () => { K = Math.max(3, K - 1); saveSettings(); if (st.plan) { cancelPlan(); makePlan(); } renderLadder(); render(); };
+$('plan').onclick = () => { cancelPlan(); makePlan(); };
+$('cancel').onclick = () => cancelPlan();
+$('reset').onclick = () => { coinBack(null); st.prev = null; st.msg = null; render(); };
+$('actual-ok').onclick = () => { const v = parseInt($('actual').value, 10); if (v >= 0) logTry(v); };
+$('actual').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('actual-ok').click(); } });
+$('tries-clear').onclick = () => { st.tries = []; try { localStorage.setItem('hpbm-tries', '[]'); } catch (e) {} renderTries(); };
+$('cal-copy').onclick = async () => {
+  const c = calibration(); if (!c) { $('cal-summary').textContent = 'Nothing to copy yet: no try has a clear confirm offset.'; return; }
+  writeCal(); $('cal-json').hidden = false; $('cal-json').value = JSON.stringify(c); $('cal-json').select();
+  try { await navigator.clipboard.writeText(JSON.stringify(c)); $('cal-summary').textContent += ' Copied.'; } catch (e) { $('cal-summary').textContent += ' Select the text below and copy it.'; }
+};
+$('dl-log').onclick = () => {
+  const o = {}; SET.forEach(k => o[k] = $('s-' + k).value);
+  const blob = new Blob([JSON.stringify({ version: 1, page: 'hpbm', saved: new Date().toISOString(), settings: o, K, tries: st.tries, events: SLOG })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hpbm-log-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+};
+document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return; if (e.key === 'p' || e.key === 'P') $('plan').click(); });
+$('test-beep').onclick = () => {
+  const a = audio(); if (!a) { camMsg('This browser has no Web Audio.'); return; }
+  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms'), t = performance.now() + 500;
+  for (let i = 0; i < n; i++) beepAt(t + i * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  for (let i = 1; i <= 3; i++) beepAt(t + (n - 1) * g + (50 + 26 * (i - 1)) * FRAME, 660, 0.05);
+  camMsg('Playing ' + n + ' countdown beeps and 3 bounce beeps (audio ' + a.state + ').');
+};
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
+(async function () {
+  const src = document.getElementById('standalone'); if (!src || !window.claude || !window.claude.use) return;
+  const dl = await window.claude.use('downloads'); if (!dl) return;
+  const btn = $('save-standalone'); btn.hidden = false;
+  btn.onclick = async () => {
+    try { const html = new TextDecoder().decode(Uint8Array.from(atob(src.textContent.trim()), c => c.charCodeAt(0))); await dl.save({ filename: 'high-power-bounce-manipulator.html', data: html }); camMsg('Saved. Open high-power-bounce-manipulator.html in Chrome or Edge, then press Start watching.'); }
+    catch (e) { if (e && e.code !== 'declined') camMsg('Could not save the file (' + (e && e.code || 'error') + ').'); }
+  };
+})();
+loadSettings(); applyFight(false); renderTries(); drawIdlePreview(); requestAnimationFrame(tick);
+window.__hpbm = { st, V, R, BL, FB, onFrame, addShine, coinBack, makePlan, logTry, calibration, scan, countsNear, opts, setK: k => { K = k; renderLadder(); render(); }, getK: () => K, SLOG, frame0, matchesPh, fbHyps, searchAll };   // for testing
+})();
+</script>

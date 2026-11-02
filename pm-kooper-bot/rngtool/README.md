@@ -310,3 +310,18 @@ game 74%, no shines needed). Simulated zero-wait runs (`zerowait/zw_sim.js`): +1
 walk after Jr. Troopa, +19 with 80 s, none with 45 s. Those numbers need a candidate-set re-sync after the hallway
 scene that the page does not have yet. Final Bowser phase 2: no edge without standing (about 15-25 bits against 43
 needed). Details and the model-error runs: `zerowait/README.md`.
+
+## Shared code with the High Power Bounce Manipulator (Nov 2): `shared/`
+The capture (`shared/capture.js`: camera / window capture, background frame reading, frame timestamps, box sampling,
+automatic flash threshold), the coin detector (`shared/coin_detect.frag.js`, inlined into each page's `onFrame`) and the
+beeps (`shared/beeps.js`) now live in `shared/` and are inlined by `shared/inline.py` into both this page
+(`build_page.py`) and `powerbounce/hpbm_template.html` (`powerbounce/build_hpbm.py`). The move alone builds this page
+byte for byte identical to before (checked with `cmp` on both built files).
+
+One addition here: Timing settings → **Use calibration**. It reads the calibration the High Power Bounce Manipulator
+measures (localStorage key `pm-calibration` when both are opened as files in the same browser, or its Copy calibration
+text pasted in the box) and sets Beep offset (`recommendedOffFrames`) and Video lag (`vlagMs`). Nothing changes until
+it is clicked.
+
+`run_suite.sh` runs the page tests one at a time plus both user log replays (see the script for the list; `ONLY=...`
+runs a subset).

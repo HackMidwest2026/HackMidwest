@@ -179,6 +179,11 @@ details[open] summary { margin-bottom: 10px; }
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
       </div>
+      <div class="row" style="margin-top:12px; align-items:flex-end">
+        <label class="f" style="flex:1; min-width:220px">Calibration from the High Power Bounce Manipulator (paste its Copy calibration text; empty = read it from this browser)<input id="cal-json" type="text" placeholder='{"recommendedOffFrames": …}'></label>
+        <button class="b" id="cal-apply">Use calibration</button>
+      </div>
+      <p class="note" id="cal-msg" style="margin:6px 0 0"></p>
     </details>
   </section>
 
@@ -308,6 +313,16 @@ const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)
 loadSettings(); $('s-prof').value = 'endgame';   // one route for every fight
 SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
 // a new beep offset applies right away: beeps still to come are re-scheduled for the same aimed frame
+/* calibration measured on the High Power Bounce Manipulator (same capture, coin and beep code): its tries give the frame the
+ * runner really confirms on when beeped, so its recommended beep offset and the video lag it used carry over. Only on click. */
+$('cal-apply').onclick = () => {
+  let c = null; const txt = $('cal-json').value.trim();
+  try { c = JSON.parse(txt || localStorage.getItem('pm-calibration') || 'null'); } catch (e) { c = null; }
+  if (!c || typeof c.recommendedOffFrames !== 'number') { $('cal-msg').textContent = txt ? 'That text is not a calibration from the High Power Bounce Manipulator.' : 'No calibration in this browser: open the High Power Bounce Manipulator here (or paste its Copy calibration text).'; return; }
+  $('s-off').value = c.recommendedOffFrames; if (typeof c.vlagMs === 'number') $('s-vlag').value = c.vlagMs;
+  saveSettings(); $('s-off').dispatchEvent(new Event('input')); if (st.lock) updateClock();
+  $('cal-msg').textContent = 'Beep offset ' + c.recommendedOffFrames + ' frames, video lag ' + c.vlagMs + ' ms (from ' + (c.tries || 0) + ' tries, press spread ±' + (c.pressSd != null ? c.pressSd.toFixed(2) : '?') + ' frames' + (c.date ? ', ' + c.date : '') + ').';
+};
 $('s-off').addEventListener('input', () => {
   saveSettings(); const P = st.plan; if (!P || P.tPress < performance.now()) return;
   P.tPress = P.tLast + (P.target - 0.5 + num('off')) * P.rate; cancelBeeps();
@@ -322,18 +337,7 @@ const st = { segs: [{ taps: [] }], chain: [], carry: null, turnEv: [], needResyn
 const seg = () => st.segs[st.segs.length - 1];
 
 /* ---------- audio ---------- */
-let ac = null;
-function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
-function beepAt(perfMs, freq, dur) {
-  const a = audio(); if (!a) return;
-  const t = a.currentTime + (perfMs - performance.now()) / 1000; if (t < a.currentTime) return;
-  const o = a.createOscillator(), g = a.createGain(); o.frequency.value = freq; o.type = 'square';
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
-  beeps.push(o);
-}
-let beeps = [];
-function cancelBeeps() { if (beeps.length && typeof slog === 'function') slog('beepsCancelled', { n: beeps.length }); beeps.forEach(o => { try { o.stop(); } catch (e) {} }); beeps = []; }
+/*@include shared/beeps.js*/
 
 /* ---------- seed search in workers ---------- */
 let workers = [];
@@ -1058,89 +1062,7 @@ if (!targets.jr_S && targets.dup4 && targets.dup4.ref) targets.jr_S = targets.du
 function storeTarget() { targets[TKEY()] = { box: V.boxes.target, ref: V.ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} }
 function useTarget() { const T = targets[TKEY()] || {}; V.boxes.target = T.box || Object.assign({}, DEFAULT_TARGET); V.ref = T.ref || null; V.wasOn = false; V.matchSince = 0; }
 function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.boxes)); } catch (e) {} storeTarget(); }
-function camMsg(t) { $('cam-msg').textContent = t; }
-async function listCams() {
-  try {
-    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); const sel = $('cam-sel'), cur = sel.value;
-    const obs = ds.filter(d => /obs/i.test(d.label));
-    sel.innerHTML = '<option value="window">A window (OBS projector, no Virtual Camera)</option>' +
-      (obs.length ? obs.map(d => '<option value="' + d.deviceId + '">' + d.label.replace(/</g, '&lt;') + '</option>').join('') : '<option value="">OBS Virtual Camera</option>');
-    sel.value = [...sel.options].some(o => o.value === cur) ? cur : (cur === '' && obs.length ? obs[0].deviceId : 'window');
-  } catch (e) {}
-}
-const VIDEO = { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 60 } };
-async function openCamera(id) {
-  // only ever keep the OBS Virtual Camera open: a capture card opened here would be taken away from OBS
-  let s = await navigator.mediaDevices.getUserMedia({ video: Object.assign({}, VIDEO, id ? { deviceId: { exact: id } } : {}) });
-  const label = s.getVideoTracks()[0].label || '';
-  if (/obs/i.test(label)) return s;
-  s.getTracks().forEach(t => t.stop());
-  const obs = (await navigator.mediaDevices.enumerateDevices()).find(d => d.kind === 'videoinput' && /obs/i.test(d.label));
-  if (!obs) throw { name: 'NoObsCamera', message: label };
-  s = await navigator.mediaDevices.getUserMedia({ video: Object.assign({}, VIDEO, { deviceId: { exact: obs.deviceId } }) });
-  return s;
-}
-async function startCam() {
-  audio();
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camMsg('This browser view has no camera access. Use Save for OBS mode, then open the saved file in Chrome.'); return; }
-  const id = $('cam-sel').value, win = id === 'window';
-  try {
-    V.stream = win ? await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 60 } }, audio: false, selfBrowserSurface: 'exclude', surfaceSwitching: 'exclude' })
-                   : await openCamera(id);
-  } catch (e) {
-    V.stream = null;
-    if (e && e.name === 'NoObsCamera') camMsg('Chrome opened "' + e.message + '", which is not the OBS Virtual Camera, so it was closed again. In OBS press Start Virtual Camera, then try again, or use the window source.');
-    else if (e && e.name === 'NotReadableError') camMsg('The camera is busy or would not start. Start Virtual Camera in OBS first, or use the window source.');
-    else camMsg((win ? 'Window capture' : 'Camera') + ' blocked or cancelled (' + (e && e.name || 'error') + '). Inside claude.ai this is expected: use Save for OBS mode and open the file in Chrome.');
-    return;
-  }
-  const track = V.stream.getVideoTracks()[0];
-  track.addEventListener('ended', stopCam);
-  V.video.srcObject = V.stream; await V.video.play().catch(() => {});
-  $('cam-start').disabled = true; $('cam-stop').disabled = false; $('cap-target').disabled = false;
-  const st0 = track.getSettings ? track.getSettings() : {};
-  camMsg('Watching ' + (track.label || (win ? 'a window' : 'the camera')) + (st0.width ? ' (' + st0.width + '×' + st0.height + (st0.frameRate ? ' at ' + Math.round(st0.frameRate) + ' fps' : '') + ')' : '') + '. Drag the boxes on the preview if they are not on the coin and the target name.');
-  if (!win) listCams();
-  V.lastVfc = performance.now(); schedule(); startBackground(track);
-}
-// Chrome stops video callbacks when this window is hidden or covered (e.g. behind OBS). Read frames straight from the
-// track as a fallback so detection keeps running there.
-function startBackground(track) {
-  if (typeof MediaStreamTrackProcessor === 'undefined') return;
-  let rd;
-  try { V.bgTrack = track.clone(); rd = new MediaStreamTrackProcessor({ track: V.bgTrack }).readable.getReader(); } catch (e) { return; }
-  (async () => {
-    for (;;) {
-      let r; try { r = await rd.read(); } catch (e) { break; }
-      if (r.done) break;
-      const fr = r.value;
-      try { if (V.force === 'bg' || performance.now() - V.lastVfc > 150) { V.src = fr; onFrame(performance.now()); V.bgFrames = (V.bgFrames || 0) + 1; } }
-      finally { V.src = null; fr.close(); }
-    }
-  })();
-}
-function stopCam() { if (V.stream) V.stream.getTracks().forEach(t => t.stop()); if (V.bgTrack) V.bgTrack.stop(); V.stream = null; V.bgTrack = null; $('cam-start').disabled = false; $('cam-stop').disabled = true; camMsg('Stopped.'); }
-// frame timestamp on the performance.now() clock (the beeps are scheduled on it). Some capture sources report
-// captureTime on another clock; anything more than a second away from now is not trusted.
-function frameTime(now, meta) {
-  const pn = performance.now(), ok = x => typeof x === 'number' && x > 0 && Math.abs(x - pn) < 1000;
-  return ok(meta.captureTime) ? meta.captureTime : ok(meta.expectedDisplayTime) ? meta.expectedDisplayTime : now;
-}
-function schedule() {
-  if (!V.stream) return;
-  if (V.video.requestVideoFrameCallback) V.video.requestVideoFrameCallback((now, meta) => { if (V.force !== 'bg') { V.lastVfc = performance.now(); onFrame(frameTime(now, meta)); } schedule(); });
-  else requestAnimationFrame(() => { V.lastVfc = performance.now(); onFrame(performance.now()); schedule(); });
-}
-function dims() { return V.src ? [V.src.displayWidth, V.src.displayHeight] : [V.video.videoWidth, V.video.videoHeight]; }
-function region(b) { const [w, h] = dims(); return [b.x * w, b.y * h, Math.max(1, b.w * w), Math.max(1, b.h * h)]; }
-function sample(b, ow, oh) { sctx.drawImage(V.src || V.video, ...region(b), 0, 0, ow, oh); return sctx.getImageData(0, 0, ow, oh).data; }
-function median(a) { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; }
-function threshold() {
-  const manual = num('wthr'); if (manual > 0) return manual;
-  const normal = median(V.peaks.slice(-30)), shine = median(V.shinePeaks.slice(-10));
-  if (V.shinePeaks.length >= 2 && shine > normal * 1.5) return (normal + shine) / 2;
-  return Math.max(0.02, normal * 2.5 + 0.005);
-}
+/*@include shared/capture.js*/
 /* A confirm the target screens missed. A fast confirm never shows the hand: Whacka's Bump with A on the item and A again
  * within ~8 frames shows no name box at all (emulator: the box only matches from 10 frames). But an action confirm starts
  * hiding the status bar a fixed number of frames later (emulator, every confirm of a Jr. Troopa run: Mario's actions 3,
@@ -1163,33 +1085,7 @@ function hudWatch(t, present) {
 function onFrame(t) {
   if (!dims()[0]) return;
   V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
-  // coin box: gold fraction (is the coin there?) and white fraction (the shine flash)
-  const d = sample(V.boxes.coin, 32, 32); let gold = 0, white = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i], g = d[i + 1], b = d[i + 2];
-    if (r > 200 && g > 200 && b > 190) white++;
-    else if (r > 140 && g > 95 && b < 120 && r > b + 60 && g > 0.6 * r) gold++;
-  }
-  gold /= 1024; white /= 1024;
-  // the coin counts as on screen only with the status bar's tan (and the coin's gold) around it: white alone is a
-  // speech bubble (the quiz door's text sat in the coin box for ~2 minutes and looked like a coin that never shone),
-  // and orange without green (g > 0.6 r) is lava glow
-  const present = gold > 0.3;
-  if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
-  else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(V.presentSince - V.absentSince); } }
-  V.present = present; hudWatch(t, present);
-  const steady = present && !V.wasGone && V.presentSince && t - V.presentSince > 1000;   // shines count only on a steady coin
-  // per-loop maxima of the flash level, for the automatic threshold
-  if (t - V.winStart > 24 * FRAME) { if (present && !V.inShine) V.peaks.push(V.winMax); if (V.peaks.length > 60) V.peaks.shift(); V.winMax = 0; V.winStart = t; }
-  if (present) V.winMax = Math.max(V.winMax, white);
-  const thr = threshold();
-  if (steady && !V.inShine && white > thr && t - V.lastOnset > 40 * FRAME) {
-    V.inShine = true; V.lastOnset = t; V.below = 0; V.curPeak = white; V.shines++;
-    (V.hist = V.hist || []).push(t); addShine(t, true);
-  } else if (V.inShine) {
-    V.curPeak = Math.max(V.curPeak, white);
-    if (white < thr * 0.6) { if (++V.below >= 3) { V.inShine = false; V.shinePeaks.push(V.curPeak); if (V.shinePeaks.length > 20) V.shinePeaks.shift(); } } else V.below = 0;
-  }
+/*@include shared/coin_detect.frag.js*/
   // target screen
   if (V.ref) {
     const g = sample(V.boxes.target, 24, 16); let diff = 0;

@@ -200,7 +200,7 @@ The press column is 50-52% for all FB2 K >= 7 (the one-frame-off outcome is almo
 What the ±1 column means for the user: until the press offset is calibrated, every rung is a coin flip even with a
 perfect lock; with the offset known and the user's spread under a frame, it approaches the per-frame-planned 100%.
 
-### Page spec: the High Power Bounce Manipulator (separate page and artifact; not built yet)
+### Page spec: the High Power Bounce Manipulator (separate page and artifact; built Nov 2, see the next section)
 A page of its own, `powerbounce/hpbm_template.html` with its own build step (`powerbounce/build_hpbm.py`), titled
 **High Power Bounce Manipulator**, published as its own artifact. The speedrun page (`page_template.html`) is not
 changed by it.
@@ -244,3 +244,52 @@ FB2 lock, plus a couple of step-up rungs each, checking the predicted count agai
 
 Not verified here: the page (not built), the user's Blooper damage and HP, the FB2 bolt detector on GV-USB2 footage,
 the FB2 lock time, and whether a human press can hold a 1-frame offset (that is what the calibration measures).
+
+### Built (Nov 2): `hpbm_template.html`, `build_hpbm.py`; artifact "High Power Bounce Manipulator"
+Built as specified above, from the same shared sources as the Time Out Timer (`../shared/`: capture, coin detector,
+beeps; `../pmrng_core.js`) plus `blmodel.js` and `fb2model.js`. Differences from the spec:
+- **Lock:** stand on the Power Bounce target screen; with "Plan as soon as the seed is found" on (default) the
+  countdown starts at the lock. No target-screen detection (nothing to save): the page assumes you are on the screen.
+- **After a try** the coin hides (the bounces, the enemy's turn); when it is back the page re-finds the seed from the
+  plan's frame-0 state over `Re-find range` RNG steps (default 6000; needs about log2(range) + 10 bits, ~23) before
+  falling back to a full search. Reloading a save gives an unrelated seed: the re-find fails and the full search runs.
+- **HP cap:** the count is capped at the hit that kills (Enemy HP left, first-hit damage, -1 per hit, at least 1);
+  after each logged try the page lowers Enemy HP left by that try's damage. Blooper (30 HP, 1 per hit): 30 kills.
+- **Final Bowser:** the lightning box (purple bolts, 64x48 sample, onset over 0.3%; the 32x32 sample the coin uses
+  missed every bolt in the emulator video) fixes the 220-cycle phase to within +-1 frame; the search then covers those
+  220 phases x the 26 130-cycle phases on the same 5-frame grid (a trie of RNG-step sequences, one per hypothesis). The
+  extra early-phase-2 effect (0xE00D6838) is not modelled.
+- **Calibration:** per try, the implied confirm offsets are the e in -6..+6 whose count from the lock equals the count
+  typed in; only tries with one such e enter the average. Exported as `{recommendedOffFrames, vlagMs,
+  pressOffsetFrames, pressSd, captureJitterMs, tries, unique, hits, date}` (Copy calibration and localStorage
+  `pm-calibration`); the Time Out Timer's Timing settings -> Use calibration applies the first two. Capture latency is
+  not measurable from the coin alone (a constant lag moves the lock's clock and the beeps together), so the export
+  carries the video lag the tries used, and the press offset absorbs any error in it.
+
+Tests:
+- `../test_hpbm.js` (synthetic: a known seed's shines fed at their display times, the plan's count against the model
+  from the true seed on the absolute confirm frame, and a try logged 1 frame late must imply +1): Blooper 5/5 seeds,
+  FB2 2/2 (lock after 1547 and 3302 frames).
+- **Emulator, closed loop** (`hpbm_run.py` + `hpbm_live.js`; emulator video frame by frame into the page on a simulated
+  clock, confirm on the final beep, A one frame before each landing, count from the enemy's HP in RAM; DIAGNOSTIC: a
+  random seed per rung, action commands on). Blooper (`blooper_pb.st`, 30 HP), seed 1234abcd, run twice with the same
+  result:
+
+  | target | offset | lock (video) | planned | got | implied offset |
+  |---|---|---|---|---|---|
+  | 12 | 0 | 50.7 s | 12 | 12 | 0 or +6 |
+  | 15 | 0 | 45.0 s | 16 | 16 | 0 |
+  | 18 | 0 | 43.4 s | 20 | 20 | 0 |
+  | 15 | +1 (late) | 44.2 s | 16 | 11 | +1 or +3 (unclear, not averaged) |
+
+  Calibration from these: press offset 0.00 +- 0.00 frames from 2 clear tries, recommended beep offset 0 (the harness
+  presses exactly on the beep frame, so this checks the arithmetic, not a human). Final Bowser phase 2
+  (`fb2_t7like_pb.st`, seed 5eed0fb2, target 7): locked after 100 s of video (the first search's 79 candidates all died
+  on later shines; the second, with one 220 phase, locked), planned 7, got 7, implied offset 0. **Each Final Bowser
+  search took about 12 minutes on 2 threads** (the harness pauses the game during searches, so the video times above
+  exclude search time; a Blooper search took 10-17 s).
+- `hpbm_video.py` makes the overlay video of a rung.
+
+Not verified: a human's press (the harness presses on the beep frame), the bolt detector on GV-USB2 footage, Final
+Bowser states with the early-phase-2 effect, first-hit damage other than 13 on Bowser, the re-find after a real enemy
+turn (each emulator rung reloaded a state), and Dodge Master in the page (model only).
