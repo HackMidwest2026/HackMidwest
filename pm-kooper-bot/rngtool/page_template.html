@@ -1022,10 +1022,13 @@ function onFrame(t) {
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     if (r > 200 && g > 200 && b > 190) white++;
-    else if (r > 140 && g > 95 && b < 120 && r > b + 60) gold++;
+    else if (r > 140 && g > 95 && b < 120 && r > b + 60 && g > 0.6 * r) gold++;
   }
   gold /= 1024; white /= 1024;
-  const present = gold + white > 0.3;
+  // the coin counts as on screen only with the status bar's tan (and the coin's gold) around it: white alone is a
+  // speech bubble (the quiz door's text sat in the coin box for ~2 minutes and looked like a coin that never shone),
+  // and orange without green (g > 0.6 r) is lava glow
+  const present = gold > 0.3;
   if (!present) { if (V.present) V.absentSince = t; V.presentSince = 0; if (t - V.absentSince > 400) V.wasGone = true; }
   else { if (!V.presentSince) V.presentSince = t; if (V.wasGone && t - V.presentSince > 1000) { V.wasGone = false; coinBack(V.presentSince - V.absentSince); } }
   V.present = present;

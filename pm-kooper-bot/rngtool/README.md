@@ -215,3 +215,17 @@ by itself (stopping a running chain search). Replaying the Duplighost-room stret
 page does not feed them yet.
 First lock: C-up closed up to 15 s (CHAIN_GAP) keeps the coin chain with the wide gap window instead of restarting it.
 A hand-on-Mario step (cat M, e.g. the Whacka) counts from one frame of its target screen (a quick confirm).
+
+## Emulator "speedrun" of the dungeon C-up rooms (`speedrun/`)
+
+`sr_run.py` plays the Bowser's Castle route rooms in one continuous emulator session (real room loads; DIAGNOSTIC:
+each exit is redirected to the next route room and Mario is put back at the entry point before walking out; kpa_11
+ridden on Lakilester), presses C-up like a runner and records 640x480 video plus the RNG truth. `sr_crops.py` +
+`sr_feed.js` feed it to the page frame by frame on a simulated 29.97 fps clock (Chrome's fake camera ran ~3% slow,
+which would skew the page's frame counts); `sr_analyze.py` checks every detection and lock against the truth.
+Findings (Nov 2): C-up keeps the status bar up only ~220 frames (7.3 s) and a second press while it is up closes it, so
+every look is <= 7 s; detection: 35 of 38 steady shines, no false ones; no lock in the dungeon with the planned room
+times (about 1 bit of evidence per second of coin, and closed-C-up rooms restart the chain).
+Coin-present fix: the quiz door's speech bubble sat over the coin box and its white counted as "coin on screen" for the
+whole quiz (run 3: a 2-minute quiz looked like a 20 s gap with 117 s of coin and no shines). Present now needs the
+status bar's tan/gold (with g > 0.6 r, so lava glow does not count); `test_present.js` (emulator frames incl. the quiz).
