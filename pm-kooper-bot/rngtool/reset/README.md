@@ -214,3 +214,51 @@ the emulator's 0x01A84563–0x01A87874. One boot gives no spread.
   Once two boots agree, use C ± 2²⁰ around them: aliases drop to ~0.001.
 - Spread = max − min of the C values. If it is ≤ ~10⁵ ticks the reset idea is worth building; if it is ~10⁶ or more,
   drop it.
+
+## Boots 2 and 3 in trd_00 (Nov 2, 16:20 power-on, 16:21 reset button): spread so far
+
+**Result: three console boots, with Counts within 16.6 k ticks (0.35 ms) of each other. By the decision rule
+(≤ ~10⁵ ticks) the reset idea is worth building.**
+
+| Boot | Clip | C (boot Count) | n0 | Seed at first used draw | Pattern | Chance fits | Predicted n0 |
+|---|---|---|---|---|---|---|---|
+| 1, power-on | 16:02 | 0x02079874 | 306 | 0xD74B7923 | 40 draws, 38.9 bits | 0.004 | (calibration) |
+| 2, power-on | 16:20 (video 1) | **0x020792AD** | 262 | 0x26A64280 | 53 draws, 46.8 bits | 2e-5 | 263.5 |
+| 3, reset button | 16:21 (video 2) | **0x0207D37B** | 258 | 0xF1922282 | 48 draws, 46.7 bits | 2e-5 | 258 |
+
+- **Clips:** both are JP and in the same trd_00 Save Block room on the same file (measured clean above). The logos are
+  skipped, there is no pause, and the bar stays up without a gap from the load to the end: 55.0 s in video 1 and
+  51.9 s in video 2.
+- **Video 2:** it starts with ~1.5 s of field before the reset (no shine there). Then the picture dissolves
+  (pre-NMI, frames ~90–100), stays black from 102, and the N64 logo fades in at video frame 191. The short pre-reset
+  stretch has no shines and comes after an unrecorded gap, so it can't cross-check video 1's seed path.
+- **Search:** `boot_search 01000000 02FFFFFF` with n0 in 230–300 or 225–295 gives exactly one fit per clip.
+- **n0 is predictable from the video:** n0 ≈ (first-draw video frame − logo-fade frame) / 2 + K, where the first
+  draw is the shine onset − 13 video frames. Boot 1 gives K = 4.5. With that K, the predictions for boots 2 and 3
+  land within 1.5 steps of the fits, so lag and the extra steps are the same from boot to boot in this room.
+- **Aliases** (`unwind.py SEED 400 01000000 03000000`):
+  - Boot 2: none.
+  - Boot 3: n0 = 296 (C = 0x027999E9), 309, 121 and 76. All are far from the predicted 258 and from the other boots'
+    Counts.
+  - A false reading landing within 16.6 k ticks of another boot by chance has probability ≈ 2 × 16.6 k / 2²⁵ ≈ 0.001,
+    so the cluster confirms all three readings, including boot 1's.
+
+### Spread
+- **Power-on vs power-on:** 1,479 ticks (boot 2 − boot 1 = −1479).
+- **Reset vs power-on:** +15,111 / +16,590 ticks. The reset boot is slower, and so is the emulator's reset
+  (+5–13 k there).
+- **All three:** 16,590 ticks (0.35 ms).
+- **Emulator:** ~13 k pooled, but centred 6.2 M ticks lower (0x01A8xxxx). The console is as steady as the emulator,
+  just offset.
+
+### What it buys (estimate, from these 3 boots)
+- **Prior:** C ∈ 0x0207xxxx ± 2¹⁵ (65 k ticks covers both kinds of boot with margin). n0 is predicted to ± 2–3 from
+  the video's logo frame and first shine.
+- **Candidates:** 2¹⁶ × ~6 ≈ 2^18.6, so about 25 bits with a 6-bit margin, about 28 coin draws, about 25–30 s of coin.
+  The 38 bits of a fresh lock need 45+ s, so this saves about 15 s.
+- **Aliases** at this window: 2¹⁶ × 6 / 2³² ≈ 10⁻⁴, negligible.
+
+### Not verified
+- Only 3 boots on one console and cartridge. Another console, a warm vs cold console, or a different cartridge
+  might shift the centre. Before relying on it in a run, check 2–3 more boots, or another console.
+- The reset path to Hallway Bowser still needs the osr_02 file and the walk from there, as listed above.
