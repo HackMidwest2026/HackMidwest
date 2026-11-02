@@ -1,0 +1,30 @@
+RES seed 73cf256d death 90 menu_after 399 steps 972 light 19 coins [18, 42, 90, 114, 162, 210, 258, 282, 330, 354] hp 10
+RES seed dda1494c death 78 menu_after 403 steps 959 light 19 coins [6, 30, 78, 102, 150, 174, 198, 222, 270, 318, 342, 366, 390] hp 10
+RES seed 8f4d3e27 death None menu_after None steps None light 0 coins [] hp 1
+RES seed db5b5fab death None menu_after None steps None light 0 coins [] hp 1
+RES seed ec99108d death 78 menu_after 403 steps 957 light 19 coins [6, 54, 78, 126, 174, 222, 246, 270, 294, 342, 366, 390] hp 10
+RES seed c7fde805 death None menu_after None steps None light 0 coins [] hp 1
+RES seed 7734d7c1 death 90 menu_after 399 steps 974 light 19 coins [18, 66, 90, 114, 138, 162, 186, 234, 258, 282, 306, 354] hp 10
+RES seed 73ab4876 death 85 menu_after 399 steps 953 light 19 coins [47, 95, 119, 143, 167, 191, 239, 263, 287, 311, 359] hp 10
+RES seed 8201e2bd death 78 menu_after 403 steps 959 light 19 coins [30, 54, 78, 102, 150, 174, 198, 222, 246, 270, 294, 318, 366, 390] hp 10
+RES seed dae44550 death 90 menu_after 399 steps 976 light 19 coins [18, 42, 66, 90, 114, 162, 210, 234, 258, 282, 306, 330, 354, 378] hp 10
+RES seed 965eda32 death 78 menu_after 403 steps 959 light 19 coins [30, 54, 78, 102, 126, 150, 174, 198, 222, 246, 294, 318, 342, 390] hp 10
+RES seed 309d6b79 death 90 menu_after 399 steps 974 light 19 coins [42, 66, 90, 114, 138, 162, 186, 210, 234, 258, 306, 330, 354] hp 10
+RES seed 2f45e678 death 90 menu_after 399 steps 974 light 19 coins [18, 42, 90, 114, 138, 162, 186, 210, 258, 282, 306, 330, 378] hp 10
+RES seed cdcc6929 death 85 menu_after 399 steps 954 light 19 coins [47, 95, 119, 143, 167, 191, 239, 263, 311, 359, 383] hp 10
+RES seed 830c71c2 death None menu_after None steps None light 0 coins [] hp 1
+RES seed 79cb9e86 death 85 menu_after 399 steps 953 light 19 coins [47, 71, 95, 143, 191, 239, 263, 287, 311, 335, 359, 383] hp 10
+RES seed a13ffe79 death 90 menu_after 399 steps 975 light 19 coins [18, 42, 66, 90, 114, 162, 186, 210, 258, 282, 306, 354, 378] hp 10
+RES seed 9d2c67ed death 85 menu_after 399 steps 957 light 19 coins [47, 71, 95, 119, 143, 167, 215, 239, 263, 287, 311, 335, 359, 383] hp 10
+RES seed cb008853 death 85 menu_after 399 steps 955 light 19 coins [23, 47, 71, 95, 119, 143, 167, 191, 215, 263, 287, 335, 359, 383] hp 10
+RES seed 2fa91425 death 78 menu_after 403 steps 960 light 19 coins [6, 30, 54, 78, 102, 150, 174, 198, 222, 246, 270, 318, 342, 366, 390] hp 10
+RES seed 18187993 death None menu_after None steps None light 0 coins [] hp 1
+RES seed 7253edc6 death 78 menu_after 403 steps 956 light 19 coins [6, 30, 54, 102, 126, 174, 222, 270, 294, 342, 390] hp 10
+RES seed 4dabb481 death None menu_after None steps None light 0 coins [] hp 1
+RES seed 244caf9c death 78 menu_after 403 steps 960 light 19 coins [6, 30, 54, 78, 126, 150, 174, 198, 222, 246, 270, 294, 318, 342, 366] hp 10
+RES seed 17362f25 death None menu_after None steps None light 0 coins [] hp 1
+RES seed 89e7d15f death None menu_after None steps None light 0 coins [] hp 1
+RES seed cf44dd3f death 78 menu_after 403 steps 959 light 19 coins [6, 30, 54, 78, 102, 150, 174, 198, 222, 246, 270, 318, 366] hp 10
+RES seed e3eff9c0 death 90 menu_after 399 steps 973 light 19 coins [18, 42, 66, 90, 138, 186, 234, 258, 282, 306, 354] hp 10
+RES seed b1852f27 death 78 menu_after 403 steps 960 light 19 coins [6, 30, 54, 78, 102, 126, 150, 174, 222, 246, 294, 318, 366, 390] hp 10
+RES seed a26b7f62 death None menu_after None steps None light 0 coins [] hp 1

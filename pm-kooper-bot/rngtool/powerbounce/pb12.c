@@ -1,7 +1,9 @@
 /* Final Bowser phase 2 Power Bounce: search all 2^32 seeds (written at frame 0 of states/fb2_t7like_pb.st) x confirm
  * delays d for long bounce chains. Schedule (emulator-measured): lightning draws on fixed frames (before the coin),
  * coin first at frame 3 then +24/+48, per bounce k: firework stars at d+45+27(k-1) (count by damage 13,12,...: 11 for
- * 9+, 10 for 5-8, 8 for 3-4, 6 for 1-2), roll k at d+71+27(k-1) vs 120,72,43,25,15,9,5,3,1,0,0,0 (bounces = 2 + passes). */
+ * 9+, 10 for 5-8, 8 for 3-4, 6 for 1-2), roll k at d+71+27(k-1) vs 120,72,43,25,15,9,5,3,1,0,0,0 (bounces = 2 + passes).
+ * Fixed: on a frame with lightning the lightning draws come before the roll (the old code put the roll first, which made
+ * delay 2 / seed 29531ef7 predict 12 where the emulator gives 7). */
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -53,7 +55,8 @@ int main(int argc, char **argv) {
     int cnt[800] = {0}, roll[800]; for (int f = 0; f < 800; f++) roll[f] = -1;
     for (int i = 0; i < (int)(sizeof LIGHT / sizeof *LIGHT); i++) cnt[LIGHT[i]]++;
     for (int k = 1; k <= 13; k++) { int dmg = 13 - (k - 1); if (dmg < 1) dmg = 1; int n = dmg >= 9 ? 11 : dmg >= 5 ? 10 : dmg >= 3 ? 8 : 6; cnt[d + 45 + 27 * (k - 1)] += n; }
-    for (int k = 0; k < NR; k++) { int f = d + 71 + 27 * k; ROLLF[d][k] = f; ROLLOFF[d][k] = 0; roll[f] = k; }   // the roll is the frame's first draw
+    int lc[800] = {0}; for (int i = 0; i < (int)(sizeof LIGHT / sizeof *LIGHT); i++) lc[LIGHT[i]]++;
+    for (int k = 0; k < NR; k++) { int f = d + 71 + 27 * k; ROLLF[d][k] = f; ROLLOFF[d][k] = lc[f]; roll[f] = k; }   // lightning first, then the roll (fb2model.py)
     int acc = 0; for (int f = 0; f < 800; f++) { Fs[d][f] = acc; PRE[d][f] = cnt[f] + (roll[f] >= 0); acc += cnt[f] + (roll[f] >= 0) + 1; }
   }
   pthread_t th[8]; job J[8]; uint64_t step = (hi - lo) / T;
