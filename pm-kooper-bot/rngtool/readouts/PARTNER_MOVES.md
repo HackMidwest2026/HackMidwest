@@ -11,7 +11,10 @@ Scope: the three moves up to Super rank for each partner. Ultra-rank moves are c
   but each launch track is clean, so expect ~80-120 bits per Surge (emulator diff + real S-Video clip checked).
 - **Cloud Nine (Lakilester, 4 FP)** is the cleanest one: always exactly 20 draws, one puff per frame for 10 frames.
   Each puff's centre is a `RandInt(40)`, `RandInt(30)` offset from Mario. The count is fixed even when the action
-  command fails.
+  command fails. **But on a real S-Video clip only 3 of the 10 puffs are cleanly measurable** (the rest are born on
+  Mario's white cloud or on earlier puffs): ~32 raw bits, ~26 after the unknown aura/bolt draws in between. That is
+  not enough to lock a 32-bit seed alone; use it to confirm a seed from another readout (see the Cloud Nine
+  real-console section).
 - **Goombario's Charge (1 FP)** is the same effect pair as Mario's Charge: 2 x `energy_in_out` type 6, 45 frames,
   about 110 ray-angle draws. It carries the same information as the current best readout, from a closer camera.
 - **Sushie's Water Block** has the most draws: 5 sparkle bursts of 32 draws, then a **persistent** bubble effect
@@ -44,7 +47,7 @@ discount on the theoretical value. A lock needs ~38 bits (see README).
 |---|---|---|---|---|---|---|---|
 | 1 | **Lakilester Spiny Surge** (4) | 4 per spiny (`rand_int(140)`, `(80)`, `(360)`, `(10)`), 10 spinies at full mash = 40, + hit firework 6-11 | each spiny's rest point (x, y) and spin angle/speed | ~17-22 per spiny / ~8-12 per spiny: **~80-120 per Surge** | ~2.5 s (throws every 6 frames, each flies 30 frames) | No: spinies = mash; but each one is visible, so countable | draws + screenshot diff: emulator; real S-Video clip |
 | 2 | **Goombario Charge** (1) | 2 x 21 init + ~70 respawn `rand_int(359)` (same as Mario's Charge) | long light rays, angle = draw | hundreds / 150-200 (README) | ~1.5 s | Yes (fixed 45-frame effect) | code-read; Mario's version emulator-verified in README |
-| 3 | **Lakilester Cloud Nine** (4) | exactly 20: 10 x (`RandInt(40)`, `RandInt(30)`) | each puff's centre, x +-20, y +-15 units from Mario | ~10 per puff = 103 / ~40-60 | 10 frames of spawning, each puff lives 20 | **Yes** (thread runs even on a failed AC) | draws + screenshot diff: emulator |
+| 3 | **Lakilester Cloud Nine** (4) | exactly 20: 10 x (`RandInt(40)`, `RandInt(30)`) | each puff's centre, x +-20, y +-15 units from Mario | ~10 per puff = 103 / **~32 measured on S-Video** (3 clean dots ~7 each, 7 hidden ~1.7 each) | 10 frames of spawning, each puff lives 20 | **Yes** (thread runs even on a failed AC) | draws + screenshot diff: emulator; real FB2 clip (no lock) |
 | 4 | Sushie Water Block (3) | 1 + 12 + 5 x 32 = 173 at the cast, then ~4 per bubble cycle while the block lasts | sparkle positions (40 sparkles, staggered 2 frames apart); bubbles' size, drift, speed, respawn delay | ~10 per sparkle / ~4-6 per sparkle; bubbles ~10 per cycle (low contrast) | cast ~1 s; bubbles for 1-3 turns | Cast: yes if the AC succeeds (fails: none). Bubbles: seed-determined | code-read only |
 | 5 | Lakilester Spiny Flip (0) | `energy_in_out` type 0 aim glow (21 init + ~1 per frame), hit firework | faint short streaks, firework | see README | ~2-3 s | No (aim time) | emulator (README) |
 | 6 | Sushie Squirt (3) | `water_splash` type 0 on a damaging hit: 20 droplets x 3 `rand_int(10)` = 60 | droplet velocities (screen x/y) | ~6.9 per droplet / ~1-3 per droplet (faint refraction blobs) | ~10-15 frames | Yes (if it hits) | code-read |
@@ -221,6 +224,41 @@ is ignored below).
     `EFFECT_BIG_SMOKE_PUFF` (`effect_rand_int(6)`). **Neither touches gRandSeed.** What does is the Duplighost's
     decision in `EVS_TakeTurn`: `RandInt(1000) < 600` to copy the partner. That is a visible ~1 bit per
     Duplighost turn (copy or attack).
+
+## Cloud Nine on a real console (Final Bowser phase 2, S-Video 60 fps; clip not committed)
+Scripts: `cloud9_calib.py` (emulator truth), `cloud9_prep.py` (capture masks), `cloud9_search.c` (seed search),
+`cloud9_score.py` (ranks candidates).
+- **Same camera as the emulator.** The Hallway Bowser state's frames, scaled onto the capture, line up with
+  Lakilester, the clouds and the pillar (frame 225 is capture frame 42 of the 7.3 s cut, then 2 capture frames per
+  game frame, no lag). So the puff projection measured in the emulator carries over:
+  - emulator, 5 seeds with gRandSeed logged every frame: birth dot (age 1) at u = 307.2 + 2.63 dx,
+    v = 326.5 - 2.58 dy (640x480), residual < 0.5 px for every dot found;
+  - capture: x = 773.8 + 4.313 dx, y = 503.5 - 4.18 (dy + 0.6 (age - 1)).
+  - x is calibrated by the HUD and the sprites to ~0.5 unit. y comes from sprite edges only (the HUD scale doesn't
+    carry to the 3D scene in glide64), good to ~1 unit.
+- **What's visible.** Each puff is born as a ~7 px (capture) white dot, then grows to ~60 px in 2 frames.
+  - Clean births, new white on a dark or blue background: puff 0 (-14.6, -14.4), puff 1 (-2.8, 7.5), puff 2
+    (9.7, -13.8), in units.
+  - Puffs 3-9 are born on white: Mario's Cloud Nine cloud (which falls through the area during the 10 frames) or
+    the already-grown puffs 0-2. Their dots can't be seen; they show only as grown disks that partly overlap.
+- **Real bits per puff.**
+  - A clean dot is ~6.7-7.1 bits (12 or 9 of 1271 cells pass at +-1.6 units), out of 10.3. The tolerance is set by
+    the y calibration, not the S-Video blur.
+  - A hidden puff is ~1.6-1.8 bits (~360-430 cells pass the white-disk test). The test is lenient because sprites
+    occlude puffs: in the emulator truth, only ~96% of true puffs are white at 3 of ages 1-4.
+  - Total ~32 bits. The skips between puffs are 1 + the aura's draws (20-frame pattern `21010201310011101010`,
+    phase unknown, 4.3 bits), plus up to 1-2 extra draws (bolt or coin). That costs ~6 bits, leaving ~26.
+    **The 40-60 bit estimate was too high for this camera**: it assumed every puff is seen.
+- **Seed search: no lock.** With 2 extra draws allowed, 730 seeds fit (178 with 1). The best one under the
+  white-disk IoU model is `171ec648` (phase 6) by 0.0027 over the 2nd, at +2.7 sd over the median. That is what
+  the best of 730 random fits looks like, so it is not a lock.
+  - The aura stars can't be cross-checked: no seed was found, and Bowser is off-screen during the puffs.
+- **Use instead:** as a confirmation readout. Given a seed locked earlier (the aura) and the draw count up to the
+  puffs, the 3 clean dots alone give ~20 bits of check (~1e-6 false-accept), and the rest add ~12.
+- Possible improvements:
+  - Exact per-puff rendering in the emulator for each candidate, forcing each puff's state with a DIAGNOSTIC seed
+    write per frame, then comparing to the capture.
+  - A camera angle where Mario's cloud doesn't cover the spawn box.
 
 ## Not verified
 - Goombario's Charge and Tattle in the emulator (Goombario is in the party at level 0 in this save, so it has no
