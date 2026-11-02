@@ -238,3 +238,113 @@ the emulator's "1 draw into the frame" (`shimmer_probe.py`) the frame-start seed
 
 Coin detector: the `shared/coin_detect` colour tests on a fixed box (1080,48,44x48 in this 1280x720 layout); flash
 onset = white share above max(2%, 4x its 97th percentile); visibility = gold share > 30%.
+
+
+# Charge rays -> gRandSeed on real S-Video captures (charge_*.py)
+
+**Result: the seed locks from the Charge rays alone, from one 1.6 s Charge, on 8 of 10 real-console Charges tried.**
+On the route (Hallway Bowser, Super Charge, Lakilester) the locked seed, carried through T1 with the page's model,
+predicted the Time Out result at the real confirm frame correctly in 5 of 5 locked clips (4 fails, 1 works).
+
+## Model (verified in the emulator)
+- Each Charge (Mario's Charge / Super Charge, Goombario's Charge) creates two `energy_in_out(6)` effects on frames 0
+  and 3 (frame 0 = Charge confirm + 13; Goombario: his confirm + 13 too), scale 1.2 and 0.8, life 45. Draws, in frame
+  order: script (creation: `rand_int(360)`, then per part `rand_int(10)` speed and `rand_int(10)` phase), the status-bar
+  coin, effect updates (each part redraws `rand_int(359)` when its 10-frame counter wraps), the per-frame
+  `rand_int(1)`. `charge_model.py`; `charge_verify.py` checks it against `charge_probe.py` logs (every draw, the
+  per-frame seed and every part's angle / counter / position / alpha in RAM): **15 of 15 runs exact** (Mario's Super
+  Charge with Goombario and with Lakilester, Goombario's Charge; random seeds and confirm delays).
+- Geometry: each ray is a 128 x 10 quad (display list `D_09000688`, read from JP RAM) along local x, scaled by the
+  part's scale on x, translated by `pos.x + 20`, rotated by `unk_3C` about the effect's local z, under the effect's
+  scale and (camera yaw = 0) no rotation: world distance `scale0 * [pos.x + 20, pos.x + 20 + 128 * scale_i]` from the
+  centre along `(cos t, sin t, 0)`. Screen = row vector times `gCameras[1].mtxPerspective` (JP 0x800B1D60 + 0x558 +
+  0xD4), viewport 296x200 at (12, 20). The image after frame f shows the state of frame f - 1. Checked by overlaying
+  RAM-predicted rays on emulator frames (all visible rays on their predicted lines).
+- The camera during the rays is the Charge camera (static from frame ~-2 to ~33, then back to the default camera);
+  per-frame matrices are taken from an emulator reference run (`data/charge_cams_*.json`), so no camera model is
+  needed. The big yellow burst is a separate `radial_shimmer(12)` effect (no `rand_int`), removed by subtracting an
+  emulator render of the same frame with the rays made zero length (DIAGNOSTIC write of the parts' scale,
+  `NORAYS=1 charge_probe.py`).
+
+## Readout and search
+- `charge_obs.py`: capture -> 640x480 game raster (map fitted by full-frame NCC against the emulator, 0.983; blur
+  1.29 px), robust fit of the background render, residual; then per frame, per integer angle (0..359) and per 4-unit
+  distance step a ridge response (luma on the projected ray minus beside it, +-2 px). Stored as prefix sums.
+- Capture timing: the 60 fps capture shows each game frame twice, with an OBS repeat every few seconds;
+  `charge_prep.game_frames` steps 2 capture frames per game frame and re-phases at repeats. The capture frame of
+  frame 0 comes from NCC of the capture against the background renders over 40 frames (`align3`-style, in the
+  session notes); it was unambiguous in every clip.
+- `charge_search.c` (C, OpenMP): stage 1 scores all 2^32 seeds on the initial rays of effect A (and B with
+  `STAGE1B=1`, 2 coin cases) with branch and bound, keeps the top 200k; stage 2 simulates both effects fully for each
+  survivor and each first-coin frame q in 0..47 (then the 24/48 rule) and sums the ridge response under every
+  visible ray (weighted by its alpha), 48 frames. ~1.5-5 min on 2-4 loaded cores. The STAGE1B bound is generous but
+  not a strict upper bound (it can drop a seed in theory; it did not on the clips).
+- Emulator end-to-end (rendered frames in, no seed given): true seed found, z 33 vs runner-up 5.9.
+
+## Real captures (60 fps, S-Video -> GV-USB2 -> OBS)
+| Clip | Charge | Seed at frame 0 | Score (z) | Runner-up (z) |
+|---|---|---|---|---|
+| Hallway Bowser, Goombario (14-25-20) | Mario, Super Charge | b19d479e | 11107 (37.4) | 2847 (7.4) |
+| same | Goombario's Charge | 8cf08d2e | 7848 (29.5) | 2506 (7.1) |
+| route 15-15-06 | Mario, Super Charge (Lakilester) | cf5894f0 | 8574 (31.1) | 2367 (6.2) |
+| route 15-16-08 | same (STAGE1B) | 6d3b7b2b | 9787 (34.6) | 2541 (6.1) |
+| route 15-17-02 | same | b3fb9c3b | 8768 (34.4) | 2129 (6.3) |
+| route 15-18-30 | same | 2d5dd210 | 9624 (36.2) | 2349 (6.2) |
+| route 15-20-15 | same | 306686e9 | 10668 (35.0) | 4509 (12.9) |
+| route 15-14-09, 15-19-21 | same | **not found** | - | - |
+| Koopatrol room (14-24-35) | Mario, Goombario | not run | - | - |
+
+- **Cross-check (Hallway clip):** Mario's seed stepped forward with only the per-frame step and the coin reaches
+  Goombario's seed exactly, at frame 124 after Mario's frame 0 (76 LCG steps after Mario's window); the capture puts
+  the two Charges 248 capture frames (~124 game frames) apart. Independent locks, exact agreement.
+- **Why 2 route clips fail:** their yellow burst does not match the emulator background at any frame offset
+  (residual 2x the other clips). `radial_shimmer` draws `numParts` parts but only initialises part 0; the other parts'
+  scroll values are left over in the heap, so the burst depends on what ran before. The background subtraction then
+  leaves the burst in, and the search finds nothing (z 6-7). A live page would need the burst fitted (or masked)
+  instead of subtracted.
+- The first-coin frame q is poorly set by the rays when the coin falls late (scores within 0.1% for q 36-47); the
+  coin shines decide it (below).
+
+## Route carry: Charge seed -> Time Out (charge_hud.py, charge_route.py, charge_carry.js, charge_qback.py)
+- `charge_hud.py`: per capture frame, the status-bar coin box (white flash = shine, on draw +6/+7) and the input
+  display's A icon. The Charge confirm read from the A icon lands on frame -13 (+-0.5) in every clip, so the A icon
+  is on the confirm frame. Spiny Flip and Time Out confirms: the A on the target screen (the クッパ box shows on
+  that frame).
+- `charge_carry.js` runs the page's own model (`pmrng_core.js`: `hw_charge`, `hw_spiny`, `bowserT1`,
+  `PROFILES.timeout`, `R.works`) from the Charge seed. Nuisance: Spiny Flip impact frame (the runner throws with A,
+  so +40..+175 instead of the page's +138..+170), guard, Spiny confirm +-1, q. `charge_route.py` keeps the hypotheses
+  whose coin draws explain every flash and non-flash in each window where the coin is on screen (each window may slip
+  -3..+3 frames, for console lag), then evaluates Time Out at the confirm read in the T2 menu's clock.
+- Bowser's T1 attack is visible in the footage: Claw Swipe guarded (15-15-06, 15-16-08, 15-18-30) or Fire Breath
+  (15-17-02, 15-20-15). Results (user: 6 fail, 1 works; 15-20-15 shows Bowser stopped, so it is the success):
+
+| Clip | Fitting outcomes with the seen attack | Predicted at the real confirm | Actual | Frames that would have worked (rel. confirm) |
+|---|---|---|---|---|
+| 15-15-06 | 2 (q 18/19), claw guarded | fails (both) | fails | q19: -12, -4, +6, +11; q18: -5, +5, +10, +14 |
+| 15-16-08 | 1 (q 46), claw guarded | fails | fails | -12..-9, -5, -3, -1, +2, +10 |
+| 15-17-02 | 4 (q 17-19), fire breath | fails (all) | fails | -11..-9, -1, +1, +2, +9, +13 (q18) |
+| 15-18-30 | claw guarded: q 41/42/44 fail; q 38 works but needs a 3-frame clock slip | fails (ray-best q 42) | fails | q42: -12, -7, -3, +4, +9, +11 |
+| 15-20-15 | fire breath: q 16 works (both shine variants); q 14/15 fail | **works** (ray-best q 16, margin 330 over q 17/18) | **works** | -6, **0**, +3..+6, +11, +15 |
+
+- Coin check before the Charge (`charge_qback.py`, stepping the LCG back through the T1 menu): consistent for
+  15-15-06 (q 19), 15-16-08 (q 46 among 38/39/41/46), 15-20-15 (q 16 among 14/16/18/19). **Inconsistent** for
+  15-18-30 (only q 36/37/40 fit before the Charge, and none of those fits after it) and 15-17-02 (no q explains the
+  flash at frame -24 in the T1 menu). Something there is not modelled (a lag frame or an extra draw around the
+  Charge confirm); those two predictions rest on the forward fit only.
+
+## Not verified / open
+- Koopatrol clip and the 30 fps clips (14-16-56, 14-17-34): need a background render of that room (the battle state
+  for that stage could not be built here: the setup emulator crashed); not run. Final Bowser clip: not run (aura draws
+  every frame would be a nuisance stream between Charge frames).
+- Goombario's Charge was only tested on the Hallway clip.
+- Which Spiny Flip impact frame happened is not resolved (many fit, all with the same Time Out answer in 4 of 5 clips).
+- `hw_spiny` was measured without A during the aim; real runs throw with A ("Nice"). The fits say the draws are the
+  same apart from timing, but that is not checked in the emulator.
+
+## What a live readout on the page needs
+- Per-fight data: background renders of the 48 Charge frames (the burst + scene; ~48 small images per arena and
+  partner), the camera table (`data/charge_cams_*.json`), and the burst problem solved (fit the shimmer's scroll
+  parameters or mask it) for the runs where the heap leftovers differ.
+- Video: 48 game frames of rays (1.6 s, starting 13 frames after the Charge confirm); ridge maps are cheap (36k samples
+  per frame). The search is the heavy part: 2^32 x ~25 draws in stage 1. In a browser that is minutes on 4 workers,
+  not seconds; a page would want the coin-shine lock first and use the rays to confirm it, or a GPU (WebGPU) stage 1.
