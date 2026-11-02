@@ -325,3 +325,21 @@ it is clicked.
 
 `run_suite.sh` runs the page tests one at a time plus both user log replays (see the script for the list; `ONLY=...`
 runs a subset).
+
+## Zero-wait tracker (Nov 2, B held)
+
+**Where the shines come from:**
+- Walking from the end of the Jr. Troopa fight to the Hallway Bowser cutscene, with C-up re-pressed (about 60 s of coin,
+  time spent anyway).
+- The turn-1 and turn-2 menus.
+
+**What the page does:**
+- It carries the walk's seed, or up to 64 candidates, through the B-held hallway scene, which is exact: 346 frames,
+  124 x rand_int(15) on fixed frames.
+- The lag (0-8 frames) and the Spiny Flip (33 impact frames x guard) stay open together as particles.
+- On Time Out's target screen it beeps the best frame or says "no edge".
+
+**Results:**
+- `test_zw_hallway.js`: P(Time Out) 60.4% against 27.5% blind (60 runs).
+- The real added wait is the lead plus up to the 1 s beep window: a median of 29 game frames at a 0.5 s lead.
+- Error cases and units: `zerowait/README.md`.

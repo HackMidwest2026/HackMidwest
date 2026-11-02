@@ -3,6 +3,22 @@
 The runner never stops for the page. It only uses the coin during time the run spends anyway. At the RNG-critical
 press it beeps the frame that is best over whatever candidates are left, or says "no edge, press normally".
 
+## Units used below
+
+**Time the run spends anyway (no standing):**
+- **"Walk"** means overworld walking from the end of the Jr. Troopa fight to the Hallway Bowser cutscene, re-pressing
+  C-up to keep the coin up. "60 s walk" is 60 s of that walking, with the coin up most of the time.
+- **"T1 menu"** is the time on the Hallway Bowser turn-1 menu: the battle intro and choosing a move. 5 s by default.
+- **"T2 menu"** is the time on the turn-2 menu before reaching Time Out's target screen. 3 s by default.
+
+**Real time added to the run:**
+- **"Lead":** the wait on Time Out's target screen before the beep window opens. The simulations use 0.5 s. The page
+  default is 4 s; set it to about 1.5-2 s, which a 4-beep countdown at 500 ms needs.
+- **"Window":** the most the page may add on top to pick a better frame. 1 s = up to 30 game frames (30 fps).
+- **"Delay":** what was actually added, lead + chosen offset, in game frames (30 = 1 s).
+
+"Blind" is the same runs confirming Time Out the moment the target screen is reached (expected 30.7%).
+
 ## What the emulator showed (JP)
 
 ### Hallway scene (kkj_13)
@@ -68,7 +84,9 @@ coin). That is fixed for 8 seeds, with or without an A every 20 frames.
 - **What is carried:** the walk's candidates (lock or up to 64 seeds) go through the scene with only the console lag at
   the battle start unknown (0-8 frames enumerated).
 - **Then:** T1 menu draws, T1 x 66 Spiny Flip candidates, T2 menu draws, best guess.
-- **Base:** 60 s walk, 5 s T1 menu, 3 s T2 menu, 0.5 s lead, 1 s window, press 25/50/25.
+- **Base:** 60 s of walking from the Jr. Troopa fight to the Hallway Bowser cutscene, 5 s on the turn-1 menu, 3 s on the
+  turn-2 menu (all time spent anyway); 0.5 s lead + up to a 1 s beep window (= up to 45 game frames of real added
+  wait); press 25/50/25.
 
 | case | P(Time Out) | blind, same runs | beeped | when beeped: shown / in game | delay when beeped |
 |---|---|---|---|---|---|
@@ -96,7 +114,7 @@ What the table says:
   run still beats blind.
 - **A missed or false walk shine** gives blind with a wrong shown chance, as before.
 
-**The page needs three things for these numbers. None is built yet:**
+**The page needs three things for these numbers. All are now built; see the next section:**
 1. **The scene as a carried event.** A `TURNS` entry with this schedule, placed where the page sees the cutscene take
    the status bar away, with a few lag shifts as candidates. The existing `shifts` mechanism does this for one input at
    a time.
@@ -104,6 +122,83 @@ What the table says:
    38-bit lock, which takes about 80 s of C-up walk at about 0.5 bits/s.
 3. **Several open candidate kinds at once.** Lag shifts and the Spiny Flip are both open in T2; today `fixHyps()`
    settles the older one when the next opens.
+
+## Built in the page (Nov 2): the zero-wait tracker
+
+The tracker is `zw*` in page_template.html.
+
+**When it starts:**
+- The coin comes back after 10 s or more hidden, while the route is at or before the Hallway Bowser T1 step. That is the
+  battle's status bar after the scene.
+- It needs one of:
+  - a lock from the walk;
+  - the last lock (prevLock);
+  - the current look's candidate seeds (up to 64, each checked against the look's shines).
+- It moves the route to the Hallway T1 step.
+
+**What a particle is:** one walk candidate x one read of the bar-up frame (+-4 frames) x one console lag (0-8 game
+frames lost in the room load before the scene).
+- Each is simulated frame by frame in clock frames: the B-held scene schedule, then Charge.
+- At the Spiny Flip confirm, each splits into 33 impact frames x guard or not.
+- So the lag and Spiny Flip candidates stay open together.
+
+**Pruning:**
+- **Shines:** each shine the page sees must be a shine of the particle (+-1.5 frames).
+- **Plain spins:** while the coin was steady (from 1 s after it came back to 4 frames before it hid or the confirm), a
+  shine the particle predicts must have been seen.
+- **Merging:** particles in the same RNG state merge.
+
+**On Time Out's target screen:**
+- It scores the next "best-guess window" seconds after the lead, with the press 25/50/25 over -1/0/+1 frames.
+- It beeps the best frame and shows the chance, or says "No edge".
+- **The two no-edge cases:** nothing fits what it saw, or the best frame works for under 40% of the particles.
+
+**Walk counter (sidebar, and "walk" in the session log).**
+- **When it runs:** from the coin's return after a long gap (10 s or more hidden: the end of Jr. Troopa's text) to the next
+  long gap (the hallway cutscene taking the bar away).
+- **What it shows:** real-time seconds with the coin on screen ("coin visible"), real-time seconds since the walk started
+  ("walked"), and the bits of evidence so far against the ~38 a lock needs, or "locked".
+  - Live: `coin visible 27.5 s of 30.0 s walked (real time) | 21 of ~38 bits`.
+  - Logged when the walk ends, and shown as "Last walk": `Walk: coin visible 36.7 s of 40.0 s walked (real time) | 30
+    of ~38 bits`, with the number of candidate seeds when there are several.
+- **Test:** `test_walk_counter.js`, 40 s of 220-frame looks with 25-frame dropouts. Both numbers are within 0.3 s of the
+  truth, and the log entry and "Last walk" appear at the long gap.
+- **Caveat:** it starts at any long gap, so before Jr. Troopa it also counts other stretches. It is meant to be read
+  between the Jr. Troopa fight and the hallway.
+
+**Page-driven test** (`test_zw_hallway.js`):
+- The game is simulated independently in the test, with the lag as clock frames with no game step.
+- The walk lock is from one look, the battle as above, and the press lands 25/50/25.
+- Real added wait: lead 0.5 s + window up to 1 s.
+
+| case | runs | P(Time Out) | blind, same runs | beeped | when beeped: shown / in game |
+|---|---|---|---|---|---|
+| 60 s of coin on the walk, no errors | 60 | **60.4%** | 27.5% | 53 | 63% / 66% |
+| 30 s of coin on the walk (one look) | 40 | blind in 38 runs: no seed, the tracker did not start | | 2 | |
+| one turn-1-menu shine missed | 40 | 35.6% | 26.3% | 15 | 63% / 65% (23 runs: no edge, inconsistent) |
+| a false shine in the turn-1 menu | 40 | 26.3% | 26.3% | 0 | all 40: no edge, inconsistent |
+| lag 12 frames (model allows 0-8) | 40 | 28.1% | 28.1% | 1 | 37 runs: no edge, inconsistent |
+| 20 extra draws in the scene (text not held with B) | 40 | 26.9% | 22.5% | 11 | 62% / 32% (29 runs: no edge) |
+| 3 unmodelled draws in turn 1 | 40 | 48.1% | 30.6% | 34 | 62% / 50% |
+
+The delay actually added when it beeped (no-error case): a median of 29 game frames (1 s), at most 44, at a 0.5 s lead.
+With the page's default 4 s lead it would be 4 s more.
+
+What the table says:
+- **Against the simulation's 70.8%:** the page is lower (60%). It keeps more hypotheses (+-4 frames of bar-up reading
+  x 0-8 frames of lag, 81 per walk seed, against the simulation's 9) and uses the turn-1 menu's plain spins only up to the
+  Charge confirm.
+- **Errors mostly show up as "no edge":** the consistency check catches nearly every false shine and every lag outside
+  the model, and stays at blind for them.
+- **Unmodelled draws are the weak spot.** A scene without B held, or unmodelled draws in turn 1, can still beep with a
+  shown chance far above the real one (62% shown, 32% or 50% real). The mean still stays at or above blind, but the
+  shown chance is not trustworthy then.
+
+**Not verified:**
+- The anchor (the bar-up 450 frames after the scene starts) is from one emulator run (`zw_barvis.py`).
+- The coin detector's "back" time on a GV-USB2 capture, and real console load lags.
+- The candidate-set start only runs when the walk left up to 64 candidates. A single 30 s look left none.
+- No emulator end-to-end run of the whole route through the page.
 
 ## The page change (built): best guess at Time Out
 - **When it applies:** the page is locked through T1, but the Spiny Flip outcomes still disagree in T2's menu.
@@ -144,8 +239,9 @@ The page model it simulates:
 
 The realised chance is the true trajectory's Time Out at the chosen frame, averaged over the press error.
 
-200 runs each. The base case: 60 s of C-up walk after Jr. Troopa, 5 s of T1 menu including the battle intro, 3 s of T2
-menu, a 0.5 s lead and a 1 s window. "Blind" is the same runs pressed on reaching the target screen (expected 30.7%).
+200 runs each. The base case: 60 s of walking from the Jr. Troopa fight to the Hallway Bowser cutscene with the coin up
+(spent anyway), 5 s on the turn-1 menu including the battle intro and 3 s on the turn-2 menu (spent anyway), then a
+0.5 s lead and up to a 1 s beep window (real added wait: up to 45 game frames). "Blind" is the same runs pressed on reaching the target screen (expected 30.7%).
 
 | case | P(Time Out) | blind, same runs | gain | beeped | when beeped: shown / in game | delay when beeped |
 |---|---|---|---|---|---|---|
@@ -252,6 +348,9 @@ window and +-1 frame presses: 6+ 59%, 7+ 27%.
 | `zw_sim.js` | zero-wait simulation |
 | `zw_grid.sh`, `zw_grid.txt` | the grid above |
 | `../test_zw_mix.js` | page test of the best guess |
+| `../test_zw_hallway.js` | page-driven test of the zero-wait tracker, with error cases |
+| `../test_walk_counter.js` | the walk counter |
+| `zw_barvis.py` | when the status bar is on screen around the scene (bar back 450 frames after the scene starts) |
 
 ## Not measured
 - The real post-Jr.-Troopa walk time with C-up up (60 s assumed; 45 s gives nothing, 80 s gives +19).
