@@ -33,3 +33,16 @@ clean room.
 
 Not measured: the battle end, Peach/cutscenes, rooms and loads between Jr. Troopa and Hallway Bowser; deaths on other
 turns; whether the target screens keep the status bar up (the page's HUD-hide model says confirms hide it).
+
+## Carry from Jr. Troopa to Hallway Bowser (partial)
+
+- `ls_hwintro.py N`: Hallway Bowser's battle start (`boss_2302_route_start.st`, a DIAGNOSTIC battle start) to T1's menu,
+  A every 20 frames: 86 frames, 106 RNG steps in both seeds tried; extra draws only 16 x caller 0x8012978c, the same
+  count each time. Without A the intro waits on its message with only the step and the coin (3000 frames, 12 seeds).
+  So the battle intro is fixed apart from when the player presses A, which the page sees as frames.
+- `ls_exit.py OUT N`: Jr. Troopa's end from `jr_t6_pb_target.st`. NOT the route's room: the boss_0207/jr_* states are
+  DIAGNOSTIC battles started from a Koopa Village map (`where` = area 6), so the overworld after the battle there draws
+  ~5-7 extra numbers a frame from that map's effects; it says nothing about kpa_83. In the decomp, kpa_83's after-battle
+  script (`EVS_NpcDefeat_JrTroopa`) is messages, NPC moves and camera pans with no PlayEffect; the rooms after it (kpa_83,
+  kpa_121, osr_02, kkj_*) were measured clean before. Not measured: the real kpa_83 after-battle cutscene, the battle
+  exit fade, any level-up screen, Hallway Bowser's pre-battle scene in the hallway, and the room loads' frame counts.
