@@ -1,0 +1,56 @@
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30
+runs 200 | mean P(Time Out) 0.352 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 85 | mean shown P when beeped 0.490 | realised when beeped 0.512 | mean delay (frames) 28.9 | walk bits median 30.3
+modes {"beep":85,"no edge":61,"diffuse walk":23,"no shine in either battle menu":18,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WALK=45
+runs 200 | mean P(Time Out) 0.334 | blind (same runs) 0.334 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 0 | mean shown P when beeped 0.000 | realised when beeped 0.000 | mean delay (frames) 0.0 | walk bits median 21.9
+modes {"diffuse walk":190,"diffuse after the scene":6,"diffuse in T2":2,"no shine in either battle menu":2}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WALK=80
+runs 200 | mean P(Time Out) 0.487 | blind (same runs) 0.302 | quartiles 0.00 0.25 0.50 0.75 1.00
+beeped 156 | mean shown P when beeped 0.536 | realised when beeped 0.561 | mean delay (frames) 29.5 | walk bits median 38.6
+modes {"beep":156,"no edge":25,"no shine in either battle menu":18,"diffuse walk":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 M1=60 M2=60
+runs 200 | mean P(Time Out) 0.292 | blind (same runs) 0.263 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 15 | mean shown P when beeped 0.444 | realised when beeped 0.500 | mean delay (frames) 31.0 | walk bits median 30.3
+modes {"beep":15,"no edge":33,"diffuse after the scene":12,"no shine in either battle menu":108,"diffuse walk":23,"diffuse in T2":9}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WMAX=0
+runs 200 | mean P(Time Out) 0.269 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 12 | mean shown P when beeped 0.450 | realised when beeped 0.500 | mean delay (frames) 15.0 | walk bits median 30.3
+modes {"no edge":134,"diffuse walk":23,"no shine in either battle menu":18,"beep":12,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WMAX=10
+runs 200 | mean P(Time Out) 0.318 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 62 | mean shown P when beeped 0.481 | realised when beeped 0.492 | mean delay (frames) 19.8 | walk bits median 30.3
+modes {"beep":62,"no edge":84,"diffuse walk":23,"no shine in either battle menu":18,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WMAX=60
+runs 200 | mean P(Time Out) 0.379 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.75 0.75
+beeped 99 | mean shown P when beeped 0.502 | realised when beeped 0.530 | mean delay (frames) 44.6 | walk bits median 30.3
+modes {"beep":99,"no edge":47,"diffuse walk":23,"no shine in either battle menu":18,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 GUARD=known
+runs 200 | mean P(Time Out) 0.350 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 88 | mean shown P when beeped 0.507 | realised when beeped 0.506 | mean delay (frames) 27.6 | walk bits median 30.3
+modes {"beep":88,"no edge":58,"diffuse walk":23,"no shine in either battle menu":18,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 ERR=walk_miss
+runs 200 | mean P(Time Out) 0.250 | blind (same runs) 0.251 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 64 | mean shown P when beeped 0.489 | realised when beeped 0.281 | mean delay (frames) 27.7 | walk bits median 30.3
+modes {"beep":64,"no edge":41,"diffuse walk":23,"no seed fits the walk":48,"no shine in either battle menu":11,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 ERR=scene_x
+runs 200 | mean P(Time Out) 0.335 | blind (same runs) 0.291 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 84 | mean shown P when beeped 0.484 | realised when beeped 0.390 | mean delay (frames) 28.5 | walk bits median 30
+modes {"beep":84,"diffuse walk":23,"no shine in either battle menu":23,"no edge":51,"diffuse in T2":7,"diffuse after the scene":12}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 ERR=impact
+runs 200 | mean P(Time Out) 0.390 | blind (same runs) 0.259 | quartiles 0.00 0.25 0.25 0.50 0.75
+beeped 85 | mean shown P when beeped 0.494 | realised when beeped 0.521 | mean delay (frames) 29.1 | walk bits median 30.3
+modes {"no edge":61,"beep":85,"diffuse walk":23,"no shine in either battle menu":17,"diffuse after the scene":12,"diffuse in T2":2}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 ERR=turn_steps
+runs 200 | mean P(Time Out) 0.319 | blind (same runs) 0.275 | quartiles 0.00 0.00 0.25 0.50 0.75
+beeped 87 | mean shown P when beeped 0.497 | realised when beeped 0.405 | mean delay (frames) 31.4 | walk bits median 30
+modes {"beep":87,"no shine in either battle menu":16,"no edge":56,"diffuse walk":21,"diffuse in T2":6,"diffuse after the scene":14}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 PRESS=wide
+runs 200 | mean P(Time Out) 0.337 | blind (same runs) 0.257 | quartiles 0.00 0.20 0.30 0.50 0.70
+beeped 64 | mean shown P when beeped 0.475 | realised when beeped 0.506 | mean delay (frames) 29.3 | walk bits median 30.3
+modes {"beep":64,"no edge":82,"diffuse walk":23,"no shine in either battle menu":18,"diffuse after the scene":12,"diffuse in T2":1}
+== WALK=60 M1=150 M2=90 LEAD=15 WMAX=30 WALK=80 M1=150 M2=90 CAP=4096
+runs 200 | mean P(Time Out) 0.497 | blind (same runs) 0.311 | quartiles 0.00 0.25 0.50 0.75 1.00
+beeped 156 | mean shown P when beeped 0.538 | realised when beeped 0.569 | mean delay (frames) 29.9 | walk bits median 38.6
+modes {"beep":156,"no edge":24,"no shine in either battle menu":19,"diffuse after the scene":1}

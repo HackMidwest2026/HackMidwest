@@ -300,3 +300,13 @@ Findings and page changes:
     page, so this was not chased further.
 - Scripts: `speedrun/sr_fight.py`, `sr_live.js`, `sr_fight_video.py`, `sr_whacka.py` (fast Whacka), `sr_hudcheck.py`
   (bar hide delay per confirm).
+
+## Zero-wait (Nov 2): `zerowait/`
+The runner never stands for the page. The hallway scene (kkj_13) draws 55-110 extra RNG steps depending on the text pace
+(`zerowait/zw_scene.py`), so a lock carried into it has to be re-found after it. New on the page: when the lock survives
+T1 but the Spiny Flip's outcomes (7 on median) still disagree in T2's menu, it beeps the frame that is best over all of
+them (best-guess window, default 1 s; "no edge" under 40%) and shows the chance (`test_zw_mix.js`: shown 62%, in the
+game 74%, no shines needed). Simulated zero-wait runs (`zerowait/zw_sim.js`): +10 points of Time Out with a 60 s C-up
+walk after Jr. Troopa, +19 with 80 s, none with 45 s. Those numbers need a candidate-set re-sync after the hallway
+scene that the page does not have yet. Final Bowser phase 2: no edge without standing (about 15-25 bits against 43
+needed). Details and the model-error runs: `zerowait/README.md`.

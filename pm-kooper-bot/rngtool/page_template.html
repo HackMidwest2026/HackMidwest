@@ -167,6 +167,8 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
         <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
+        <label class="f">Best-guess window when Spiny Flip outcomes disagree (s; 0 = wait for shines instead)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"></label>
+        <label class="f">Best guess: beep only if it works at least (0–1; a blind press is 0.31)<input id="s-zwedge" type="number" step="0.01" value="0.4"></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
         <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
         <label class="f">Video lag, camera mode (ms; moves beeps and visual together)<input id="s-vlag" type="number" step="5" value="50"></label>
@@ -238,7 +240,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Pull out the C-up in:</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The lava room after the jail with the island Life Shroom (first lock here)</li><li>The Blockless lava room</li><li>The Save Block room after door 1</li><li>Both flood rooms</li><li>The cannon room</li><li>The room after the Dry Bones block push</li><li>The Heart Block room</li><li>The room after the Hammer Bros block push</li><li>The room after you get the block-push key</li><li>The quiz room</li><li>The Save Block room after door 2</li><li>The 7 maze rooms (press C-up again each time the bar hides: these looks carry through the next room into the Duplighost room)</li><li>The Duplighost room: stand still with the bar up until it locks (about 25 s after a good maze, 45-50 s without)</li></ol><b>Do not pull it out:</b> inside the jail, or in any room with moving enemies. The lock survives those rooms.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li>Hallway Bowser: mash the text as usual. The coin is on screen in T1's and T2's menus anyway; the page uses whatever shines it sees there.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep costs at most the lead time plus the best-guess window (Timing settings).</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -670,6 +672,40 @@ function updateClock() {
   st.clock = { t0: sum / taps.length - latency, pattern: p, seed: L.seed, frames: f, rate };
   st.example = false;
 }
+/* Zero-wait best guess (Hallway T2): the Spiny Flip left several RNG futures (impact frame / guard not visible) and the
+ * runner is not going to stand in the menu for the shines that would tell them apart. Score every confirm frame in the
+ * next zwwin seconds after the lead by sum over groups (weight = how many impact/guard candidates ended there) of the
+ * chance Time Out works with a press 1 frame early 25%, on time 50%, 1 late 25%; beep the best one if it reaches zwedge.
+ * The choice uses only the page's own candidates, so when the model is wrong the press is as good as a blind one (31%),
+ * not worse; the only cost is the wait to the chosen frame (at most the lead + zwwin). zerowait/README.md has the numbers. */
+const PRESS_ERR = [[-1, 0.25], [0, 0.5], [1, 0.25]];
+function mixScores(g, F0, from, W) {
+  const tot = g.reduce((a, x) => a + x.imps.length, 0);
+  const tabs = g.map(x => R.timeOutTable(x.seed, from - 1 + F0 - x.F, from + W + 1 + F0 - x.F, PROF()));
+  const sc = [];
+  for (let k = 0; k <= W; k++) { let v = 0; g.forEach((x, i) => { for (const [d, p] of PRESS_ERR) v += x.imps.length * p * (tabs[i][k + 1 + d] ? 1 : 0); }); sc.push(v / tot); }
+  return sc;
+}
+function mixPlan(C) {
+  const g = st.groupCache && st.groupCache.g; if (!g || g.length < 2) return false;
+  const rt = C.rate, F0 = g[0].F, tLast = C.t0 + F0 * rt, nowF = (performance.now() - tLast) / rt;
+  const from = Math.max(2, Math.ceil(nowF + num('lead') * 1000 / rt + 1)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rt));
+  if (g.some(x => from - 1 + F0 - x.F < 1)) return false;
+  const sc = mixScores(g, F0, from, W); let k = 0; for (let i = 1; i < sc.length; i++) if (sc[i] > sc[k] + 1e-9) k = i;
+  const best = sc[k], n = g.reduce((a, x) => a + x.imps.length, 0);
+  if (best < num('zwedge')) {
+    st.msg = 'No edge: ' + g.length + ' Spiny Flip outcomes are still possible and no frame in the next ' + num('zwwin') + ' s works for enough of them (best ' + Math.round(best * 100) + '%; a blind press is 31%). Press Time Out normally, or show a shine or two in this menu and it plans again.';
+    slog('mixNoEdge', { groups: g.length, best: +best.toFixed(3) }); render(); return true;
+  }
+  const target = from + k, tPress = tLast + (target - 0.5 + num('off')) * rt, first = Math.floor(nowF), last = target + 400;
+  cancelBeeps();
+  st.plan = { tMade: performance.now(), w: { start: target, end: target, length: 1 }, target, aim4: false, tPress, tLast, rate: rt, seedBL: g[0].seed, baseF: F0, carried: true, from, to: from + W, first, prof: PROF().id,
+    tab: R.timeOutTable(g[0].seed, first, last, PROF()), tab4: null, mix: { p: best, groups: g.length, top: g[0].imps.length / n } };
+  const nb = Math.max(1, Math.round(num('beeps'))), gm = num('gapms');
+  for (let i = 0; i < nb; i++) beepAt(tPress - (nb - 1 - i) * gm, i === nb - 1 ? 1320 : 880, i === nb - 1 ? 0.12 : 0.06);
+  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, target, tPress: Math.round(tPress), carried: true });
+  render(); return true;
+}
 function makePlan() {
   if (!st.lock || !PROF().rolls.length) return;
   if (st.needResync) { st.msg = 'The last Close Call did not go as planned, so the seed has to be found again from a few shines.'; render(); return; }
@@ -678,6 +714,7 @@ function makePlan() {
     st.msg = 'The seed is being carried, but the page did not see this turn\'s ' + stp0.pre.map(pr => pr.id.replace('jr_', '')).join(' / ') + ' confirm (its target screen is not saved, or was not recognized). Show a few shines to find the seed again.'; render(); return;
   }
   const C = st.clock, B = baseState();
+  if (B.ambiguous && hypKind() === 'spiny' && PROF().id === 'timeout' && num('zwwin') > 0 && mixPlan(C)) return;
   if (B.ambiguous) { st.msg = hypKind() === 'spiny' ? 'Waiting for shines to tell when the Spiny Flip landed (' + B.ambiguous + ' possibilities left; each shine in this menu cuts them down).' : 'Waiting for a shine or two: the last confirm\'s exact frame is not certain from the video, and ' + B.ambiguous + ' of the possible frames lead to different seeds.'; render(); return; }
   const um = unmodeledAfter(B.tLast);
   if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
@@ -738,7 +775,7 @@ function addShine(t, auto) {
     if (keep.length) {
       const before = st.hyp ? st.hyp.length : 0; if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1;
       // the shine ruled out the confirm frame a running plan was made from: plan again from the one that is left
-      if (before > keep.length && st.plan && st.plan.carried && st.plan.tPress > performance.now() + 300 && baseState().seedBL !== st.plan.seedBL) { slog('replanAfterShine', { left: keep.length }); cancelPlan(); makePlan(); }
+      if (before > keep.length && st.plan && st.plan.carried && st.plan.tPress > performance.now() + 300 && (st.plan.mix || baseState().seedBL !== st.plan.seedBL)) { slog('replanAfterShine', { left: keep.length }); cancelPlan(); makePlan(); }
       render(); return; }
     if (st.lock.flick && !st.turnEv.length && !st.lock.shifted) {     // after a dropout: maybe a quick room load ran a few fast frames (once per dropout)
       const g = predictedShineIn(f - 2.5, f + 8.5, evNow());           // the predicted shine this one is: shift the clock exactly onto it
@@ -865,7 +902,7 @@ function render() {
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
   else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : st.plan.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep', 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
+  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : st.plan.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep', st.plan.mix ? 'Best guess: ' + st.plan.mix.groups + ' Spiny Flip outcomes are still possible; this frame works for ' + Math.round(st.plan.mix.p * 100) + '% of them, counting a press 1 frame off (a blind press: 31%). A shine in this menu replans.' : 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
