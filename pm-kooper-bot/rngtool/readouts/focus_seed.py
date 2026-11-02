@@ -17,8 +17,9 @@ Pipeline (numpy + ffmpeg only, plus the C brute force focus_search.c):
     and prefix early rejection; walk the winner back to the state before particle 0;
  6. checks: a search on the first half of the particles only, and the held-out cost of the other half vs random seeds.
 
-usage: python3 focus_seed.py CLIP --onset N [--out result.json]
+usage: python3 focus_seed.py CLIP [--onset N|auto] [--which I] [--out result.json]
   N = 1-based frame number (ffmpeg numbering) of the first capture frame that shows the shimmer star, +-2 is fine.
+  auto (default): find_onsets() scans the clip for shimmer bursts and uses the I-th (default: the last one).
 Tested on one real N64 -> S-Video -> GV-USB2 -> OBS 1280x720 60 fps clip (README, "Focus shimmer on hardware")."""
 import argparse, json, os, subprocess, sys, tempfile
 import numpy as np
@@ -75,6 +76,24 @@ def read_frames(clip, first, count):
                                    '-f', 'rawvideo', '-pix_fmt', 'yuv444p', '-'])
     a = np.frombuffer(raw, np.uint8).reshape(-1, 3, h, w)
     return a.astype(np.float32)
+
+def find_onsets(clip, w=640, h=360):
+    """1-based frame numbers where a shimmer burst starts: the share of bright pastel pixels (Y > 170, 6 <= |U-128| +
+    |V-128| <= 30) in the top 45% of the picture rises from < 2% to > 2% and at least doubles within 8 frames (the star
+    growing). Menus and message boxes are pastel too but appear at a flat level, so they fail the doubling test."""
+    p = subprocess.Popen(['ffmpeg', '-v', 'error', '-i', clip, '-vf', 'scale=%d:%d' % (w, h), '-f', 'rawvideo',
+                          '-pix_fmt', 'yuv444p', '-'], stdout=subprocess.PIPE)
+    v = []
+    while True:
+        b = p.stdout.read(w * h * 3)
+        if len(b) < w * h * 3: break
+        a = np.frombuffer(b, np.uint8).reshape(3, h, w).astype(np.int16)[:, :int(h * 0.45)]
+        c = np.abs(a[1] - 128) + np.abs(a[2] - 128)
+        v.append(((a[0] > 170) & (c >= 6) & (c <= 30)).mean())
+    v = np.array(v); out = []
+    for i in range(1, len(v) - 8):
+        if v[i] > 0.02 and not (v[max(0, i - 30):i] > 0.02).any() and v[i + 1:i + 9].max() > 2 * v[i]: out.append(i + 1)
+    return out
 
 def distinct(frames, first, thr=0.5):
     """indices (into frames) of distinct game frames: drop frames whose luma barely differs from the last kept one"""
@@ -192,18 +211,25 @@ def cost(A, sig, meas, sJ, js, cap=12.0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('clip'); ap.add_argument('--onset', type=int, required=True)
+    ap.add_argument('clip'); ap.add_argument('--onset', default='auto'); ap.add_argument('--which', type=int, default=-1)
     ap.add_argument('--sig', default='8,3.5,3.5', help='Y,U,V tolerance (levels) for the search')
     ap.add_argument('--out', default=None)
     ap.add_argument('--exe', default=os.path.join(tempfile.gettempdir(), 'focus_search'))
     a = ap.parse_args()
     if not os.path.exists(a.exe):
         subprocess.run(['gcc', '-O3', '-march=native', '-fopenmp', '-o', a.exe, os.path.join(HERE, 'focus_search.c')], check=True)
-    first = a.onset - 4
+    if a.onset == 'auto':
+        ons = find_onsets(a.clip)
+        print('shimmer onsets found (capture frames):', ons)
+        if not ons: sys.exit('no shimmer found')
+        onset = ons[a.which]
+    else:
+        onset = int(a.onset)
+    first = onset - 4
     F = read_frames(a.clip, first, 64)
     keep = distinct(F, first)
     # start the game-frame list at the onset guess (first distinct frame at or after it)
-    i0 = next(i for i, k in enumerate(keep) if k + first >= a.onset)
+    i0 = next(i for i, k in enumerate(keep) if k + first >= onset)
     G = [F[k] for k in keep[i0:i0 + 20]]; gnum = [k + first for k in keep[i0:i0 + 20]]
     print('distinct game frames from the onset guess (capture frame numbers):', gnum[:14])
     geo = fit_geometry(G)

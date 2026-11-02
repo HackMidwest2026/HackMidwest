@@ -193,3 +193,48 @@ by the script and could be reused as a fixed calibration for the same capture ch
   the search (2^32 states with early rejection: ~2.5 min of CPU natively here, so it wants either
   several workers or a narrower candidate set from the page's tracker), shimmer onset detection (the bar reappearing
   plus the star), and the geometry fit cached per capture layout. Only useful if the route uses Focus at all.
+
+## Independent check: coin shines after the shimmer (`focus_coin_check.py`)
+
+Clip 15-22-35 ("focus + stall", 60 fps, same capture chain): two Focuses at non-full star power, then the bar stays
+up on a menu for ~12 s. `focus_seed.py CLIP` (onset now found automatically: `find_onsets()` -> capture frames 259
+and 922; `--which 0` for the first) recovers both shimmers:
+
+| shimmer (capture frame) | state before particle 0 | full search | half search (5..29) | held-out 30..55 vs random |
+|---|---|---|---|---|
+| 259 | 0x236E46CE | 1 survivor in 2^32, cost 143.7 | unique, 60.3 | 83.5 vs mean 257.6 / best-of-400 206.7 |
+| 922 | 0x97E5AAD6 | 1 survivor in 2^32, cost 150.5 | unique, 71.9 | 78.6 vs mean 252.9 / best-of-400 192.6 |
+
+(Costs are higher than the first clip's 60 - the seed-free gains came out different, residuals Y/U/V 4.4/3.4/2.4 and
+6.0/5.0/3.7 - but each search still leaves exactly one seed.)
+
+1. **The two seeds are 696 LCG draws apart** (0x236E46CE stepped forward 696 times = 0x97E5AAD6). Two unrelated
+   seeds would be ~2^31 apart; landing within 696 by chance is ~2e-7. The count fits the model exactly: 163
+   (shimmer 1) + 72 (`fx_sparkles` type 0) + 120 (`fx_stars_shimmer` type 5) + 330 frame steps + 11 coin draws, with
+   the coin's 24/48 schedule from shimmer 1 arriving at shimmer 2 on the same phase the coin check below finds
+   (next draw 10 frames after shimmer 2). The video says 331.1 game frames between the shimmers (frame timing +-1).
+   The two effects' exact frames are not pinned by this (many placements give the same count).
+2. **Coin shines after shimmer 2:** stepping 0x97E5AAD6 through the shimmer's 164 draws, then 1 step per frame and the
+   coin's rand_int(100) every 24/48 frames, predicts 12 coin draws while the coin is visible (432 game frames):
+
+   | draw (game frame after shimmer) | 10 | 34 | 58 | 106 | 130 | 154 | 178 | 226 | 274 | 322 | 370 | 418 |
+   |---|---|---|---|---|---|---|---|---|---|---|---|---|
+   | rand_int(100) | 26 | 6 | **91** | 31 | 63 | 3 | **77** | **74** | **71** | **87** | **82** | 55 |
+   | predicted flash (capture frame) | | | 1050-52 | | | | 1290-92 | 1386-88 | 1482-84 | 1578-80 | 1674-76 | |
+   | seen (coin-box white flash onset) | - | - | 1050 | - | - | - | 1291 | 1387 | 1484 | 1580 | 1675 | - |
+
+   **6 of 6 shines on the predicted frames, 0 false, 0 missed** (6 non-shine draws correctly quiet). Draw-to-flash lag
+   5.9, 6.3, 6.3, 6.7, 6.7, 6.1 game frames (README's draw + 6/7): consistent, no drift beyond +-1 frame.
+   Of the 192 hypotheses (coin phase 0..47, step/coin order around the shimmer), 4 match, and they are the same
+   draw sequence with the frame boundary labelled differently. The same search on random seeds: 1 of 2000 matches.
+3. Shimmer 1 (coin visible 229 frames): 2 of 2 shines predicted (capture 423-425 seen 423, 663-665 seen 664),
+   6 quiet draws quiet; weak on its own (73 of 1000 random seeds also match), but it is chained to shimmer 2 by (1).
+
+**Frame-start seed / "1 draw into the frame":** the coin data fix the *sequence* of draws after the shimmer (exactly
+one step per frame, plus the coin; no other per-frame draws on the menu) but not where the frame boundary sits
+relative to the shimmer: "[step, coin?, shimmer]" and "[coin?, shimmer, step]" give identical draw sequences. With
+the emulator's "1 draw into the frame" (`shimmer_probe.py`) the frame-start seeds are 0xB71482B1 (shimmer 2) and
+0x8E917B49 (shimmer 1); without it they are the states above. Not resolved on hardware.
+
+Coin detector: the `shared/coin_detect` colour tests on a fixed box (1080,48,44x48 in this 1280x720 layout); flash
+onset = white share above max(2%, 4x its 97th percentile); visibility = gold share > 30%.
