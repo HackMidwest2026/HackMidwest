@@ -129,3 +129,118 @@ Lightning keeps the same phases through whole turns (KO and revive included), so
 re-finding. Which effect 0xE00D6838 is, when it stops in phase 2, and where its draws fall in the frame order relative to
 the roll (assumed before the coin, after the roll/stars) are not verified; the Power Bounce model was only checked in the
 state without it.
+
+## High Power Bounce Manipulator (non-speedrun): models, step-up table, page spec
+
+Goal: lock while standing still in the battle (allowed here), then the page counts down to the nearest confirm frame that
+gives at least K bounces; the user tries, then steps K up by one until the wait for the next K is unrealistic. Each try
+doubles as a calibration test of the lock, the capture timing and the user's press, for the speedrun page.
+
+### Blooper model (verified)
+`blmodel.py` / `blmodel.js` (identical on 300 random cases incl. Dodge Master and other damages). Emulator checks
+(`_blorder.py`, debug core, DIAGNOSTIC: seed written, action commands on, Blooper HP 127 so long chains fit, Dodge Master
+equipped in the 2nd badge slot for the DM run):
+- 150 of 150 random (seed, d 0-127) pairs: every roll value and frame identical; plus the verified 29 (1c08132d, d 2).
+- 60 of 60 with Dodge Master (value 97), chains up to 37 rolls (39 bounces).
+- Frame order on a shared frame: stars or roll, then the coin, then the step (seen: roll+coin, stars+coin).
+- `_blidle.py`: the Blooper battle menu and the Power Bounce target screen draw nothing but the coin and the step (2000
+  frames each). So a plain coin lock works here (no lightning, unlike FB2).
+- Timing: stars for hit k at d+51+26(k-1) (n by that hit's damage; 1 damage -> 6), roll k at d+76+26(k-1), continue if
+  value <= c_k, c = 200, c = c*v/100 per roll, v = 90 (+7 Dodge Master, `power_bounce.c`).
+- Action command: from about bounce 6 on, A must land 1 or 2 frames before the HP drop (d+51+26(k-1)); 3 early ends the
+  chain at bounce 7 (measured on the 29 seed: leads 1-2 give all 28 rolls, lead 3 gives 5). Pressing on the drop fails.
+  Within the window the press frame does not change the rolls; only the confirm frame d does.
+- **HP cap.** Real Blooper has 30 HP. The verified state does 1 damage per hit, so 30 bounces kill it and the chain ends
+  there whatever the rolls. Not checked: the user's Blooper damage (boots, other badges). More damage means fewer hits
+  to the kill and different star counts on the early hits (`dmg0` parameter).
+
+### Step-up table (`ladder.c`, 2000 random locked states each, 2 h of confirm frames scanned per state, first try at
+least 3 s after the lock; game frames, 30 per second; full output in `ladder_tables.txt`)
+"wait" = time from the lock (+3 s) until the first confirm frame with >= K, median / 90th percentile. "press" = chance
+of still getting >= K when the press lands on the planned frame 50%, one early 25%, one late 25% (a 1-frame miss is a
+fresh, unrelated outcome, so it is about 50% + 50% x the per-frame chance). Waits beyond the 2 h scan are from the
+measured per-frame rate (geometric).
+
+Blooper, no Dodge Master (v 90). 8 is guaranteed (the first 6 chances are >= 100):
+
+| K | per frame | wait median | wait 90% | press ±1 |
+|---|---|---|---|---|
+| 13 | 24% | 0.1 s | 0.3 s | 59% |
+| 15 | 6.4% | 0.4 s | 1.3 s | 52% |
+| 17 | 1.1% | 2.3 s | 8.9 s | 51% |
+| 18 | 0.37% | 7 s | 24 s | 50% |
+| 19 | 0.11% | 23 s | 77 s (**> 1 min**) | 50% |
+| 20 | 3.2e-4 | 73 s | 4.2 min | 50% |
+| 21 | 7.9e-5 | 4.8 min | 16.5 min (**> 5 / 15 min**) | 50% |
+| 22 | 1.7e-5 | 22 min | 72 min (**> 60 min**) | 50% |
+| 23 | 3.3e-6 | 2 h | 6.5 h | 50% |
+| 24 | 5.5e-7 | 12 h | — | — |
+
+So the realistic Blooper top is 20-21; 22 is a long session; the searched 29 needs a seed 2^32-search away, out of
+reach by waiting. **With Dodge Master (v 97)** every chance stays >= 100 for the first 20 rolls: 22 bounces is guaranteed and 30
+(= the kill at 1 damage) comes 31% of frames, so the HP cap is reached at once (table to 41 in `ladder_tables.txt`
+with HP 127).
+
+Final Bowser phase 2 (v 60, first hit 13 damage, lightning phases random with the mod-5 assumption):
+
+| K | no Dodge Master: per frame / median / 90% | Dodge Master (v 67): per frame / median / 90% |
+|---|---|---|
+| 6 | 8.1% / 0.3 s / 0.9 s | 21% / 0.1 s / 0.3 s |
+| 7 | 1.3% / 1.9 s / 6.5 s | 5.6% / 0.4 s / 1.4 s |
+| 8 | 0.13% / 18 s / 64 s (**> 1 min**) | 1.0% / 2.5 s / 8.5 s |
+| 9 | 7.6e-5 / 5.5 min / 17.5 min (**> 5 / 15 min**) | 0.12% / 21 s / 68 s (**> 1 min**) |
+| 10 | 3.2e-6 / 2 h / 6.7 h (**> 60 min**) | 9.3e-5 / 4.2 min / 14 min (**> 5 min**) |
+| 11 | 7.2e-8 / 3.7 days | 4.8e-6 / 80 min / 4.5 h (**> 60 min**) |
+| 12 | 2.3e-9 / ~4 months | 1.2e-7 / 2.3 days |
+
+The press column is 50-52% for all FB2 K >= 7 (the one-frame-off outcome is almost always lower). Realistic FB2 top:
+8 (9 with patience); with Dodge Master 9-10. Bowser's remaining HP caps it too (cumulative damage from 13: 8 bounces 76,
+10 85).
+
+What the ±1 column means for the user: until the press offset is calibrated, every rung is a coin flip even with a
+perfect lock; with the offset known and the user's spread under a frame, it approaches the per-frame-planned 100%.
+
+### Page spec: the High Power Bounce Manipulator (separate page and artifact; not built yet)
+A page of its own, `powerbounce/hpbm_template.html` with its own build step (`powerbounce/build_hpbm.py`), titled
+**High Power Bounce Manipulator**, published as its own artifact. The speedrun page (`page_template.html`) is not
+changed by it.
+
+**Shared code, not copies.** Both pages must be built from the same sources: `pmrng_core.js` (LCG, coin model, seed
+search), and the capture, coin detector, frame-timing and beep-scheduler code. Today the latter live inline in
+`page_template.html`, so the first step is to move them into shared files (`capture.js`, `coin_detect.js`,
+`beeps.js`) that `build_page.py` and `build_hpbm.py` both inline, with `page_template.html` keeping identical behaviour
+(its tests and both log replays must still pass). This refactor touches `page_template.html`, so it waits until the
+speedrun work there is committed (check `git status`). Then the boss models are inlined too: `blmodel.js`,
+`fb2model.js`.
+
+**Flow.**
+1. Pick the fight: Blooper or Final Bowser phase 2; settings: Dodge Master on/off, first-hit damage, enemy HP left.
+2. Lock: stand on the Power Bounce target screen with the status bar up until the coin lock (Blooper: plain coin
+   search; FB2: coin + bolt-detector 220 phase + 26-way 130-phase search, see section 4 above).
+3. **Step-up mode.** Target K selector (starts at the lowest K not guaranteed, e.g. Blooper 9, FB2 5; buttons
+   K-1 / K+1). The page scans confirm frames from now + lead (3 s default) with the model and shows: the next frame with
+   >= K, the countdown, the expected count on that frame, and the expected wait for K+1 (from the table above / the
+   live scan), so the user sees when the next rung becomes unrealistic.
+4. Beeps: countdown beeps to the confirm A on the planned frame d, then one beep per bounce at the press frame (1 frame
+   before each landing: Blooper d+50+26(n-1), FB2 d+44+27(n-1)), stopping at the planned count.
+5. After the try, the user enters the count they got (or the page reads it if feasible: Blooper/Bowser HP drops from the
+   enemy HP bar, or counting hit flashes). Then the page re-tracks the seed from the coin (the battle keeps the bar up)
+   for the next try.
+
+**Calibration output (the log, per try):** lock time and bits; the planned frame d and its predicted count; the actual
+count; the **implied confirm offset**: the offsets e in -6..+6 for which the model with the lock gives the actual count
+at d + e (unique for counts that are rare; ambiguous ones logged as a set); shine-detection latency (detected flash time
+minus the model's shine frame, per shine, after the lock) and the capture's frame-timing jitter (spread of frame
+timestamps / presentation times). Summary: **press offset mean ± sd in frames** (from tries with a unique implied
+offset), **capture latency mean ± sd in ms**, and the hit rate per K.
+
+**Export.** A "Copy calibration" button (JSON: `{pressOffsetFrames, pressSd, captureLatencyMs, captureJitterMs,
+tries, date}`) and the same object in `localStorage` under a shared key `pm-calibration`; the speedrun page reads it
+(when both pages are opened from the same origin, i.e. the standalone files, or by pasting the JSON) and applies it to
+its beep offset (`s-off`) and video lag (`s-vlag`).
+
+**Tests before publishing:** the speedrun harness on emulator video (`speedrun/sr_feed.js`) at a Blooper lock and an
+FB2 lock, plus a couple of step-up rungs each, checking the predicted count against the emulator's.
+
+Not verified here: the page (not built), the user's Blooper damage and HP, the FB2 bolt detector on GV-USB2 footage,
+the FB2 lock time, and whether a human press can hold a 1-frame offset (that is what the calibration measures).
