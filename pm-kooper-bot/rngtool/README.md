@@ -213,3 +213,5 @@ the game ran (console load time without game frames). Changes: room-load gap win
 by itself (stopping a running chain search). Replaying the Duplighost-room stretch now locks at 655.7 s instead of 665.3 s.
 `test_edges_core.js` covers optional m1/m2 gap constraints in the core (draws seen without a shine at a gap's edges); the
 page does not feed them yet.
+First lock: C-up closed up to 15 s (CHAIN_GAP) keeps the coin chain with the wide gap window instead of restarting it.
+A hand-on-Mario step (cat M, e.g. the Whacka) counts from one frame of its target screen (a quick confirm).

@@ -1048,7 +1048,8 @@ function onFrame(t) {
     V.score = 1 - diff / (24 * 16 * 255);
     // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
     const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
-    if (V.wasOn && !on && V.onFor > 200) checkPress(t);   // the target screen just closed (after being up for a moment)
+    // an item on Mario confirmed quickly shows the hand screen only for a moment: count it from one frame (cat M)
+    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && RT()[routeStep].cat === 'M' ? 20 : 200)) checkPress(t);   // the target screen just closed (after being up for a moment)
     // an optional step that does not happen: if the next step's screen shows up instead, skip to it
     if (isRoute() && RT()[routeStep] && RT()[routeStep].optional && routeStep + 1 < RT().length && !on) {
       const N = targets['jr_' + RT()[routeStep + 1].cat];
@@ -1148,6 +1149,10 @@ $('cam-start').onclick = startCam; $('cam-stop').onclick = stopCam;
 /* hiddenMs: how long the coin was gone. A short gap (a room load with C-up held) cannot hide other random numbers;
  * a long one (C-up closed through a room with enemies, a battle, a cutscene) can. */
 const SHORT_GAP = 4000;
+// first lock: C-up closed for a few seconds in a clean room (or a room that failed to open it) only leaves the frame
+// count open (the wide -30..+60 window), so the chain keeps going; past this it restarts. A chain that does not connect
+// drops its oldest stretch, so a dirty gap heals itself.
+const CHAIN_GAP = 15000;
 function coinBack(hiddenMs) {
   if (!seg().taps.length) return;
   slog('coinBack', { hiddenMs: hiddenMs == null ? null : Math.round(hiddenMs), taps: seg().taps.length, locked: !!st.lock, chain: st.chain.length, rcarry: !!st.rcarry, cands: st.cands ? st.cands.length : null });
@@ -1157,7 +1162,7 @@ function coinBack(hiddenMs) {
   if (st.lock && st.lock.seg === st.segs.length - 1) { newSegment(); return; }
   // not locked: keep this stretch for the chain (first lock across gaps) and start a new one
   const s = seg(), P = pat(s.taps);
-  if (!st.prevLock && hiddenMs != null && hiddenMs > SHORT_GAP) {
+  if (!st.prevLock && hiddenMs != null && hiddenMs > CHAIN_GAP) {
     // C-up was closed (a cutscene, enemies, a battle): the coin-continuation chain cannot connect, but a near-lock's few
     // candidates can be carried across with the same wide search a lock uses after a gap
     if (st.cands && st.cands.length && st.cands.length <= 5000 && !P.error)

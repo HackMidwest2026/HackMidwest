@@ -12,3 +12,5 @@ Emulator scripts (run from the emulator's bot1/ dir) and C seed searches. Every 
   (35 seeds), 25 (334), 24 (2042). fc75ed54 and f535f83f verified at 26 in the emulator (Blooper 30 -> 4 HP).
 - Blooper, more confirm delays (all 2^32 seeds each): d0 best 27 (3 seeds), d1 27 (1), d2 **29** (1: 1c08132d,
   verified in the emulator, Blooper 30 -> 1 HP, video), d3 26 (35), d4 28 (2). 30 (a one-cycle kill) not found yet.
+- Final Bowser phase 2: the delay 64-127 run found **13 bounces**, seed 038c7d04 at delay 119 (verified in the emulator,
+  video). Blooper delays 5-8: best 27, 27, 26, 27.
