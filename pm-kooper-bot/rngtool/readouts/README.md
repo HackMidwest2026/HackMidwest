@@ -124,7 +124,72 @@ than the 38 bits a lock needs, inside an action the route already does. Not yet 
 ## Not verified
 - The ray-angle readout on real S-Video footage; the screen angle = `unk_3C` mapping (rotation about the effect's
   local Z, then camera); occlusion by Mario/Lakilester; how the Hough step copes with 20 overlapping rays.
-- The shimmer's actual colours on hardware (no accurate RDP renderer here; glide64 shows white).
+- The shimmer's actual colours on hardware (no accurate RDP renderer here; glide64 shows white). Since checked on a
+  real capture: see "Focus shimmer on hardware" below.
 - Whether Final Bowser's early phase-2 effect at 0xE00D6838 (16 draws per 20 frames, see powerbounce/README.md) is the
   same `energy_in_out` ray effect - the same caller address suggests it; if so it is a continuous readout there too.
 - Jr. Troopa and the FB phases were not re-checked for Charge-like effects.
+
+# Focus shimmer on hardware: gRandSeed recovered from a real capture (`focus_seed.py`, `focus_search.c`)
+
+**Result: one real console clip, one seed, large margin.** Clip: Hallway Bowser, Mario uses Focus (star power not
+full), real N64 -> S-Video -> GV-USB2 -> OBS, 1280x720 **60 fps** h264 (game image at x 310..1280, scale ~3.25 x 3.30
+capture px per N64 px). The status-bar shimmer is the 5-point star of 56 pastel diamonds that bursts out of the bar
+when it comes back after the Focus animation (capture frames 280-330, ffmpeg 1-based numbering). Two earlier clips
+(14-16-56, 14-17-34) were Super Jump Charge (スーパーチャージ, 4 FP) with a full bar: no shimmer in them.
+
+| | |
+|---|---|
+| state before particle 0's draws | **0x3017E5F3** (15 draws before particle 5 = 0x4D63A67A, the state the search enumerates) |
+| frame-start seed, if the shimmer starts 1 draw into the frame as in the emulator | 0xEA03640A (not verified for this battle frame) |
+| full search, 51 particles (5..55) | cost **60.2**; runner-up 298.2 (best of the 511 seeds whose running cost stayed < 10 + 6.5/particle) |
+| tight search (< 6 + 4.5/particle) | exactly 1 survivor in 2^32: the same seed |
+| half search, particles 5..29 only | same seed, cost 27.2; runner-up 106.8 |
+| held-out check: particles 30..55 scored with that seed | cost 33.4; random seeds mean 243.9, best of 400 random 187.5 |
+
+Cost = sum over particles of min(12, chi-square over Y,U,V) with tolerances 8 / 3.5 / 3.5 levels. The held-out half
+is the sanity check: its 26 colours were not used to find the seed and match it about as well as the fitted half.
+
+**How (`python3 focus_seed.py CLIP --onset 279`, ~3 min on 1-2 free cores):**
+1. Decode ~60 frames as YUV 4:4:4 (no RGB round trip). Keep only distinct frames: the 60 fps capture shows every
+   game frame exactly twice here (frame diffs 0.03-0.15 vs 1.6-5); no blends, no extra repeats in the shimmer.
+2. Geometry: correlate luma with the exact float32 particle tracks (InitialVelocities, `*0.92` per frame) over scale,
+   emitter position and animTime offset. The first frame with the star (280) is animTime 0.
+3. Colour: per particle, the 5x5 mean YUV at its (refined) centre, median over the frames where the centre is clear
+   of neighbours (51 of 56 particles; 0-4 fly off the top before they separate). Frame-to-frame scatter 1-3 levels.
+4. Seed-free calibration: model centre colour `min(255, 192 + raw)` per channel -> BT.709 limited YCbCr, then a gain
+   and offset per channel so that the measured mean and variance over all particles equal the model prior's (no seed
+   used). Gains Y 0.71, U 0.65, V 0.58; the means matched to < 1 level before any fitting.
+5. Brute force in C (OpenMP) over the state before particle 5, prefix early rejection; walk back to particle 0.
+
+**What the hardware colours look like vs the model:** clearly pastel pink / green / blue / lilac / cream diamonds,
+readable by eye. With the seed known, a least-squares affine fit on `min(255, base + raw)` leaves residuals
+Y 3.2, U 2.8, V 1.8 levels; base 184-192 fits best (160: Y 3.9 / V 2.2, 128 unclipped: 4.1 / 2.9 / 2.5, 224:
+4.4 / 4.0 / 3.9), so the decoded combiner model (centre = 192 + raw, clipped) holds on hardware. Chroma comes out at
+~0.6x the nominal amplitude at the centre (S-Video chroma blur, 4:2:0, and the white shade-alpha falloff around the
+centre all dilute it); the fitted U/V rows are closer to BT.601 weights than to BT.709. The fitted matrix is printed
+by the script and could be reused as a fixed calibration for the same capture chain.
+
+**Focus's other sparkles (decomp, not tested on video):** both draw on gRandSeed through `rand_int`.
+- `SpawnStarSparkleFX` = `fx_sparkles(FX_SPARKLES_0, .., 40)`: 36 particles x `rand_int(40000)` twice = 72 draws,
+  but type 0 never uses them (fixed star outline), so they only advance the seed - nothing to read.
+- `SpawnWishSparkleFX` = `fx_stars_shimmer(5, .., 50, 50, 40, 30)`: 40 particles, all drawn at spawn: angle
+  `9*i + rand_int(359)`, then `rand_int(10)` start speed and `rand_int(10)` rise acceleration = 120 draws in one
+  frame. These are the white sparkles rising around Mario: x = sin(angle) * radius (fixed per i), constant, y rising
+  with the two random terms; particle i appears on frame i. A real second readout (~10 bits per sparkle) but it needs
+  the 3D battle camera (BTL_CAM_PLAYER_WISH) projected into the capture; the draws between it and the bar shimmer
+  (frames of per-frame consumers) are not counted here.
+
+**Not verified / limits:**
+- One clip, one seed. No emulator replay of that seed: the battle state at that frame is not reproducible here, so
+  the check is internal (held-out particles), not an independent later event. No later gRandSeed visual in the clip
+  was predicted (nothing random is visible after the shimmer before the clip ends).
+- 0xEA03640A as the frame seed assumes the emulator's "1 draw into the frame"; other consumers in the battle frame
+  may come first.
+- `--onset` must be given (+-2 frames); the script does not find the shimmer by itself.
+- Tolerances were set from the measured scatter (1-3 levels) and confirmed by the residuals, not fitted inside the
+  search; particles that are partly covered (the early frames) are excluded rather than modelled.
+- Live readout (speedrun page): needs the page's capture to keep YUV or a known RGB conversion, a WASM/worker port of
+  the search (2^32 states with early rejection: ~2.5 min of CPU natively here, so it wants either
+  several workers or a narrower candidate set from the page's tracker), shimmer onset detection (the bar reappearing
+  plus the star), and the geometry fit cached per capture layout. Only useful if the route uses Focus at all.
