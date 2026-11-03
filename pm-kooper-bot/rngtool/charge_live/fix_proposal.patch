@@ -1,0 +1,17 @@
+--- a/pm-kooper-bot/rngtool/charge_live/charge_live.js
++++ b/pm-kooper-bot/rngtool/charge_live/charge_live.js
+@@ -332,9 +332,13 @@
+   // what the coin did while the seed was searched
+   for (const t of CHG.taps) zwTap(t);
+   let up = null;
++  // a stretch ends 6 frames before the coin went: a shine drawn on frame f flashes at about f + 6 on this clock (zwTap),
++  // so one drawn later never showed. The same end as zwInput's (c - 4, c = the bar hiding - 2). With - 4, a lock that
++  // landed after the Spiny Flip confirm killed the true seed on a shine drawn 5 frames before the bar hid (live log
++  // 1793735643131, charge_live/test_fix_proposal.js).
+   for (const [t, p] of CHG.pres) {
+     if (p && up == null) up = t;
+-    else if (!p && up != null) { const a = zwF(up + 1000, 0), b = zwF(t, 0) - 4; if (b > a) zw.vis.push([a, b]); up = null; }
++    else if (!p && up != null) { const a = zwF(up + 1000, 0), b = zwF(t, 0) - 6; if (b > a) zw.vis.push([a, b]); up = null; }
+   }
+   if (up != null) { zw.visFrom = zwF(up + 1000, 0); zw.visTo = null; }
+   slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs });
