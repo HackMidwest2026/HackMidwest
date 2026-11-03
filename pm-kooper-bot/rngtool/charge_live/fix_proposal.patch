@@ -1,6 +1,63 @@
 --- a/pm-kooper-bot/rngtool/charge_live/charge_live.js
 +++ b/pm-kooper-bot/rngtool/charge_live/charge_live.js
-@@ -332,9 +332,13 @@
+@@ -42,8 +42,15 @@
+ const CHG_BRIGHT_FB2 = [11, 16.2, 22.4, 28.4, 33.8, 38.7, 42.2, 42.8, 43.7, 46.3, 47.6, 47.7, 49.4, 50.3, 50, 49.9, 47.6, 48.1, 46.1, 44.2, 43.2, 39.9,
+   37.8, 34.7, 27.5, 20.7, 14, 9.6, 5.4, 1.5, 2.4, -1.4, -5.2, -6.9, -7.1, -7, -7.1, -7.1, -7, -6.9, -6.9, -7, -6.9];   // frames 3..45
+ const CHG_PROF = {
+-  hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 16, tol: () => 1.5 },
+-  fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb) } };
++  hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 16, tol: () => 1.5, trigMin: 250, trigMax: 1000 },
++  fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 } };
++/* the burst's first picture (frame 3) comes 13 game frames after the bar hides for the Charge confirm: 433-478 ms on the
++ * 7 route clips and the first live attempt. hw: the trigger only counts trigMin..trigMax ms after a hide that ended a
++ * real bar-up (600+ ms, as hudWatch's barHide); a flicker of the coin box never arms it, and a hide with no burst in
++ * that window says "Charge not seen" and waits for the next real hide (live log 1793736599276: armed on the hallway's
++ * hide, triggered 2 s later on something else, re-armed on a flicker and captured the battle intro 10 s later while
++ * the real Charge went by). */
++const CHG_NCC_MIN = 0.5;     // Mario on frame 0 (route clips and live 0.94, FB2 0.85; a capture with no Charge 0.09)
+ const CHG_EARLY_N = 23;      // stage 1 and the joint stage need frames 0..21 (A's initial rays on 0..18, B's on 3..21)
+ const CHG_K = 16384, CHG_K_FB2 = 65536, CHG_M2 = 300, CHG_IMPS = Array.from({ length: 136 }, (_, i) => 40 + i);   // Spiny Flip thrown with A: impact +40..+175
+ const CHG_LAGS = [[0, 0.75], [1, 0.25]], CHG_QMAX = 6;                  // console lag frames after the rays (weights); most q kept
+@@ -72,21 +79,23 @@
+   if (V.frames % 15 === 0) chgShow();
+   if (!chgEnabled() || !CHG_WASM || CHG_WASM.length < 100) return;
+   if (CHG.trig && chgP().id === 'fb2' && typeof fb2Frame === 'function') fb2Frame(t, present);   // FB2: the popup and the coin from the trigger on
+-  if (CHG.state !== 'idle' && CHG.state !== 'armed' && CHG.state !== 'capture') { chgCoin(t, present); return; }
++  if (CHG.state !== 'idle' && CHG.state !== 'notseen' && CHG.state !== 'armed' && CHG.state !== 'capture') { chgCoin(t, present); return; }
+   if (!chgStepActive()) { if (CHG.state !== 'idle') chgReset(); return; }
+   if (present && V.presentSince) CHG.menuSince = V.presentSince;            // the turn-1 menu's coin (for the q check)
+   CHG.presN = present ? (CHG.presN || 0) + 1 : 0;
+   if (present && CHG.state !== 'capture' && (CHG.state !== 'armed' || CHG.presN > 15)) { if (CHG.state === 'armed') { CHG.state = 'idle'; CHG.ring = []; CHG.means = []; } CHG.hideT = null; return; }   // the burst can flicker the coin box: only a bar back for 1/4 s disarms
++  if (CHG.hideT == null && !present && chgProfNow().trigMin && !(V.hudGone === t && V.hudWasUp > 600)) { CHG.hideT = -1e12; return; }   // not a confirm: the bar was not up
+   if (CHG.hideT == null && !present) { CHG.hideT = t; CHG.menu = CHG.menuSince ? { from: CHG.menuSince + 1000, to: t - 4 * FRAME, taps: (V.hist || []).filter(x => x > CHG.menuSince + 1000 && x < t) } : null; }
+-  if (CHG.state === 'idle') { if (t - CHG.hideT > 4000) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = chgProfNow(); }
++  if (CHG.state === 'idle' || CHG.state === 'notseen') { if (t - CHG.hideT > chgProfNow().trigMax) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = chgProfNow(); }
+   const g = sample(chgGame(), 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
+   const tg = performance.now(), last = CHG.state === 'capture' ? CHG.frames[CHG.frames.length - 1] : CHG.ring[CHG.ring.length - 1];
+   const rep = chgP().id === 'fb2' && last && Math.abs(last.m - m) < 0.02;     // FB2: a repeated picture (same coarse brightness) reuses the raster: half the grabs
+   const fr = { t, m, Y: rep ? last.Y : chgGrab() }; if (!rep) CHG.grabMs = (CHG.grabMs || 0) * 0.9 + 0.1 * (performance.now() - tg);
+   if (CHG.state === 'armed') {
+     CHG.ring.push(fr); if (CHG.ring.length > 16) CHG.ring.shift(); CHG.means.push(m); if (CHG.means.length > 12) CHG.means.shift();
+-    if (t - CHG.hideT > 4000) { CHG.state = 'idle'; CHG.ring = []; return; }
+-    if (CHG.means.length >= 8) {
++    const P0 = CHG.prof || CHG_PROF.hw;
++    if (t - CHG.hideT > P0.trigMax) { CHG.state = P0.trigMin ? 'notseen' : 'idle'; CHG.ring = []; CHG.frames = []; if (P0.trigMin) { CHG.why = 'Charge not seen: no burst ' + P0.trigMin + '-' + P0.trigMax + ' ms after the bar hid'; slog('chargeNotSeen', { hideAt: Math.round(CHG.hideT), why: 'no burst' }); chgShow(); } return; }
++    if (CHG.means.length >= 8 && t - CHG.hideT >= P0.trigMin) {
+       const base = CHG.means.slice(0, -1).sort((a, b) => a - b)[CHG.means.length >> 1];
+       const P = CHG.prof || CHG_PROF.hw;
+       if (m > base + P.trigLo && m < base + P.trigHi) { CHG.state = 'capture'; CHG.trig = { t, base, i: CHG.ring.length - 1 }; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); }
+@@ -267,6 +276,10 @@
+   try {
+     const t0 = performance.now(), G = chgGameFrames();
+     const E = CHG.early && CHG.early.give ? CHG.early : null, c = E ? E.c : chgCentre(G), sh = c.sh, dxw = c.dxw, cen = c.cen;
++    if (!E && chgP().trigMin && !(sh.ncc >= CHG_NCC_MIN)) {     // no Mario where the Charge has him: not the Charge, do not search it
++      CHG.frames = []; CHG.state = 'notseen'; CHG.why = 'Charge not seen: Mario not found on the captured frames (NCC ' + (+sh.ncc).toFixed(2) + ')';
++      slog('chargeNotSeen', { why: 'no Mario', mario: +(+sh.dx).toFixed(1), marioNcc: +(+sh.ncc).toFixed(2) }); chgShow(); return;
++    }
+     const maps = chgMaps(G, cen, CHG_N, E && E.prev), t1 = performance.now();
+ if (window.__chgDebug) {
+     CHG.dbg = G.map(f => { if (!f) return null; const a = []; for (let y = 4; y < 480; y += 8) for (let x = 4; x < 640; x += 8) a.push(f.Y[y * 640 + x]); return [Math.round(f.t - CHG.trig.t), a]; });
+@@ -422,9 +435,13 @@
    // what the coin did while the seed was searched
    for (const t of CHG.taps) zwTap(t);
    let up = null;
@@ -15,3 +72,28 @@
    }
    if (up != null) { zw.visFrom = zwF(up + 1000, 0); zw.visTo = null; }
    slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs });
+@@ -434,10 +451,10 @@
+ function chgShow() {
+   const el = $('chg-status'); if (!el) return;
+   const s = CHG.state, I = CHG.info || {};
+-  const lock = s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' ? 'no' : '–';
++  const lock = s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' || s === 'notseen' ? 'no' : '–';
+   const t = I.lockAfterRaysMs != null ? (I.lockAfterRaysMs / 1000).toFixed(1) + ' s after the rays' : s === 'search' && CHG.tSearch ? (Math.round((performance.now() - CHG.tSearch) / 100) / 10) + ' s so far' : '–';
+   const h = chgHyps();
+-  el.innerHTML = '<b>Charge lock: ' + lock + '</b>' + (s === 'nolock' || s === 'failed' ? ' (' + (CHG.why || '') + ')' : '') +
++  el.innerHTML = '<b>Charge lock: ' + lock + '</b>' + (s === 'nolock' || s === 'failed' || s === 'notseen' ? ' (' + (CHG.why || '') + ')' : '') +
+     '<br>Time to lock: ' + t + (I.searchMs != null ? ' (search ' + (I.searchMs / 1000).toFixed(1) + ' s, ' + (CHG.res ? CHG.res.workers : '?') + ' threads)' : '') +
+     '<br>Hypotheses left: ' + (h != null ? h + (zw.dead ? ' (none fit: No edge)' : '') : '–') +
+     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
+--- a/pm-kooper-bot/rngtool/page_template.html
++++ b/pm-kooper-bot/rngtool/page_template.html
+@@ -1455,6 +1455,9 @@
+ // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
+ function checkPress(tObs) {
+   { const z = isRoute() && RT()[routeStep];
++    // the hide the Charge capture armed on is the Charge confirm itself (its pre was used up by an earlier hide, e.g. the
++    // step set before the battle): not the Spiny Flip, so the step stays
++    if (z && z.turn === 'hw_spiny' && (CHG.state === 'armed' || CHG.state === 'capture') && Math.abs(tObs - CHG.hideT) < 3 * FRAME) { slog('chargeConfirmAsTurn', { at: Math.round(tObs) }); return; }
+     if (z && z.turn === 'hw_spiny' && (CHG.state === 'search' || CHG.state === 'maps')) { CHG.spiny = tObs; slog('chargeSpinyHeld', { at: Math.round(tObs) }); }   // the Charge lock adds it when it lands
+     if (zw.on && z && z.turn === 'hw_spiny') zwInput('hw_spiny', tObs, VAN.B(), zw.imps || z.imps); }
+   slog('screenClosed', { at: Math.round(tObs), step: routeStep, plan: st.plan ? { tPress: Math.round(st.plan.tPress), target: st.plan.target, w: st.plan.w.length, tMade: Math.round(st.plan.tMade || 0) } : null });
