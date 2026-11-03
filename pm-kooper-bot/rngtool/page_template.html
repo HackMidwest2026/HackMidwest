@@ -807,7 +807,11 @@ function zwStart(hiddenMs) {
 function zwCoinBack(hiddenMs) {      // the coin was hidden (an action, a confirm) and is back: close the visible stretch
   if (hiddenMs == null) return;
   const now = performance.now(), hideF = zwF(now - 1000 - hiddenMs, 0);
-  if (zw.visFrom != null && hideF - 4 > zw.visFrom) zw.vis.push([zw.visFrom, hideF - 4]);
+  // the stretch ends 6 frames before the coin went (a shine drawn later never flashed, see chgStartTracker), and never
+  // after a confirm that already closed it (zwInput: visTo): a coin box flickering after the confirm (the Charge burst)
+  // must not make the hidden frames after it look visible
+  const end = Math.min(zw.visTo != null ? zw.visTo : Infinity, hideF - 6);
+  if (zw.visFrom != null && end > zw.visFrom) zw.vis.push([zw.visFrom, end]);
   zw.visFrom = zwF(now, 0); zw.visTo = null;
 }
 function zwTap(t) { zw.taps.push(zwF(t, 6)); }
@@ -1261,7 +1265,7 @@ function walkEnd(hiddenMs) {          // a long gap: the walk (if any) ended whe
 function hudWatch(t, present) {
   walkWatch(t, present);
   if (present) { if (!V.hudUp) V.hudUp = t; V.hudGone = 0; return; }
-  if (V.hudUp) { V.hudGone = t; V.hudWasUp = t - V.hudUp; V.hudUp = 0; V.hudDone = false; if (V.hudWasUp > 600) slog('barHide', { at: Math.round(t), upMs: Math.round(V.hudWasUp) }); }      // first frame without the bar
+  if (V.hudUp) { V.hudGone = t; V.hudWasUp = t - V.hudUp; V.hudUp = 0; V.hudDone = false; if (V.hudWasUp > 600) { slog('barHide', { at: Math.round(t), upMs: Math.round(V.hudWasUp) }); if (st.hwLeft) st.hwLeft.hides++; } }      // first frame without the bar
   if (!V.hudGone || V.hudDone || t - V.hudGone < 8 * FRAME) return;                                  // gone for 8 frames: not a flicker
   V.hudDone = true;
   const stp = isRoute() && RT()[routeStep];
@@ -1269,7 +1273,9 @@ function hudWatch(t, present) {
   if (V.lastClose && V.lastClose > V.hudGone - 12 * FRAME) return;                                   // a target screen closed: already counted
   const rate = st.clock ? st.clock.rate : FRAME, k = (stp.pre || []).findIndex((pr, i) => !(V.preDone && V.preDone[routeStep + ':' + i]));
   if (k >= 0) { const pr = stp.pre[k], h = HUD_HIDE[pr.id]; if (h == null) return;
-    V.preDone = V.preDone || {}; V.preDone[routeStep + ':' + k] = true; slog('hudConfirm', { id: pr.id, at: Math.round(V.hudGone) }); preConfirm(pr, V.hudGone - (h - (VAN[pr.cat] || VAN.M)()) * rate); }
+    V.preDone = V.preDone || {}; V.preDone[routeStep + ':' + k] = true; const tc = V.hudGone - (h - (VAN[pr.cat] || VAN.M)()) * rate;
+    if (typeof chgPend === 'function' && chgPend(pr, tc, routeStep + ':' + k)) { slog('hudConfirm', { id: pr.id, at: Math.round(V.hudGone), held: true }); return; }   // the Charge: counted when its burst is seen
+    slog('hudConfirm', { id: pr.id, at: Math.round(V.hudGone) }); preConfirm(pr, tc); }
   else { const h = HUD_HIDE[stp.turn]; if (h == null) return; slog('hudConfirm', { id: stp.turn, at: Math.round(V.hudGone) }); checkPress(V.hudGone - (h - (VAN[stp.cat] || VAN.M)()) * rate); }
 }
 function onFrame(t) {
@@ -1369,7 +1375,9 @@ function applyProfile() {
   render();
 }
 function setStep(i) {
-  slog('step', { to: i }); const was = routeStep; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && CHG.state !== 'search' && CHG.state !== 'maps') chgReset(); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+  slog('step', { to: i }); const was = routeStep; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
+  if (RT()[was] && /^Hallway Bowser/.test(RT()[was].t || '') && !/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '') && routeStep > was) st.hwLeft = { at: performance.now(), hides: 0 };
+  else if (/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) st.hwLeft = null; if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
@@ -1391,8 +1399,16 @@ const SHORT_GAP = 4000;
 // count open (the wide -30..+60 window), so the chain keeps going; past this it restarts. A chain that does not connect
 // drops its oldest stretch, so a dirty gap heals itself.
 const CHAIN_GAP = 15000;
+/* a long gap on Hallway T2, or soon after the route left the Hallway by itself (fewer than 3 real bar hides since: the
+ * fight did not go on), is a retry (a reload walked back into the hallway): back to T1 without a manual step change */
+function hwRetry(hiddenMs) {
+  if (!isRoute() || hiddenMs == null || hiddenMs < ZW_GAP) return;
+  const hi = RT().findIndex(x => x.turn === 'hw_spiny'), s = RT()[routeStep]; if (hi < 0 || routeStep <= hi) return;
+  if (!(/^Hallway Bowser/.test(s.t || '') || (st.hwLeft && st.hwLeft.hides < 3))) return;
+  slog('stepBackToHallway', { from: routeStep, to: hi, hiddenMs: Math.round(hiddenMs) }); zw.on = false; st.hwLeft = null; setStep(hi);
+}
 function coinBack(hiddenMs) {
-  if (hiddenMs != null && hiddenMs >= ZW_GAP) walkEnd(hiddenMs);
+  if (hiddenMs != null && hiddenMs >= ZW_GAP) { walkEnd(hiddenMs); hwRetry(hiddenMs); }
   if (zw.on) zwCoinBack(hiddenMs); else if (zwStart(hiddenMs)) return;
   if (!seg().taps.length) {          // a look with no shine: the gap to the next shine now spans both dropouts
     const s = seg(); if (hiddenMs != null) { s.vis0 = performance.now(); if (s.hid != null) s.hid += hiddenMs; } else s.vis0 = null;
@@ -1455,6 +1471,9 @@ const presses = (function () { try { return JSON.parse(localStorage.getItem('tot
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
 function checkPress(tObs) {
   { const z = isRoute() && RT()[routeStep];
+    // the hide the Charge capture armed on is the Charge confirm itself (its pre was used up by an earlier hide, e.g. the
+    // step set before the battle): not the Spiny Flip, so the step stays
+    if (z && z.turn === 'hw_spiny' && (CHG.state === 'armed' || CHG.state === 'capture') && Math.abs(tObs - CHG.hideT) < 3 * FRAME) { slog('chargeConfirmAsTurn', { at: Math.round(tObs) }); return; }
     if (z && z.turn === 'hw_spiny' && (CHG.state === 'search' || CHG.state === 'maps')) { CHG.spiny = tObs; slog('chargeSpinyHeld', { at: Math.round(tObs) }); }   // the Charge lock adds it when it lands
     if (zw.on && z && z.turn === 'hw_spiny') zwInput('hw_spiny', tObs, VAN.B(), zw.imps || z.imps); }
   slog('screenClosed', { at: Math.round(tObs), step: routeStep, plan: st.plan ? { tPress: Math.round(st.plan.tPress), target: st.plan.target, w: st.plan.w.length, tMade: Math.round(st.plan.tMade || 0) } : null });

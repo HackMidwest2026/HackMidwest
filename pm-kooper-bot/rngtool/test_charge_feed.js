@@ -6,7 +6,7 @@
  * test_charge_clips.js: lock, time to lock after the rays end, seed, q, the Spiny Flip confirm, the states left, the Time
  * Out confirm (bar hiding - 3 frames), the share of states for which Time Out works there (-1/0/+1) and the frame the
  * page would beep (lead 1.5 s, window 1 s).
- * usage: node test_charge_feed.js URLBASE DIR NFRAMES   (URLBASE/tot.html, URLBASE/DIR/f%05d.jpg; serve on 127.0.0.1)
+ * usage: [STEP=t2] node test_charge_feed.js URLBASE DIR NFRAMES   (STEP=t2: start on Hallway T2 instead of T1)   (URLBASE/tot.html, URLBASE/DIR/f%05d.jpg; serve on 127.0.0.1)
  *   frames: ffmpeg -i CLIP.mkv -q:v 3 -start_number 0 DIR/f%05d.jpg */
 const { chromium } = require('playwright');
 (async () => {
@@ -17,7 +17,8 @@ const { chromium } = require('playwright');
     localStorage.setItem('tot-boxes', JSON.stringify({ coin: { x: 1080 / 1280, y: 40 / 720, w: 40 / 1280, h: 52 / 720 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } }));
   });
   await p.goto(base + '/tot.html');
-  await p.evaluate(() => { const T = window.__tot; T.setStep(T.RT().findIndex(s => s.turn === 'hw_spiny')); document.getElementById('s-lead').value = '1.5'; });
+  // STEP=t2: the page sits on Hallway T2 (as the runner after a retry); the burst must set it back to T1 and lock
+  await p.evaluate(st2 => { const T = window.__tot, hi = T.RT().findIndex(s => s.turn === 'hw_spiny'); T.setStep(st2 ? hi + 1 : hi); document.getElementById('s-lead').value = '1.5'; }, process.env.STEP === 't2');
   const res = await p.evaluate(async ({ base, dir, nf }) => {
     const T = window.__tot, live = {};
     const watch = () => {     // test_charge_clips.js: as soon as the bar hides for Time Out
@@ -43,7 +44,7 @@ const { chromium } = require('playwright');
     }
     const S = T.SLOG, ev = n => S.filter(x => x.ev === n), C = T.CHG, I = C.info || {};
     const out = { state: C.state, why: C.why, info: Object.assign({}, I, { gaps: undefined }), qs: C.qs, late, shines: +document.getElementById('r-shines').textContent };
-    out.spiny = ev('zwInput').map(x => x.c); out.trigger = ev('chargeTrigger');
+    out.spiny = ev('zwInput').map(x => x.c); out.trigger = ev('chargeTrigger'); out.stepSet = ev('chargeStepSet'); out.notSeen = ev('chargeNotSeen');
     Object.assign(out, live); out.zwDead = T.zw.dead; return out;
   }, { base, dir, nf });
   res.errors = errs.slice(0, 5); console.log(dir, JSON.stringify(res));

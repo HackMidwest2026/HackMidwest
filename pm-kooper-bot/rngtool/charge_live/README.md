@@ -121,6 +121,58 @@ On Hallway Bowser turn 1 the page reads gRandSeed from Mario's (Super) Charge ra
 through Lakilester's Spiny Flip and Bowser's attack with the zero-wait tracker, and on turn 2 beeps the best Time Out
 confirm frame (or says No edge). Nothing here makes the runner wait: the only added time is the beep window.
 
+## The runner's first live attempts (2026-11-03) and what changed
+Logs timeout-timer-log-1793735643131 / -1793736599276 / -1793737154078 / -1793737237152 / -1793737413564 /
+-1793737579773 and clips 2026-11-03_15-18-39, 15-19-56, 15-22-53, 15-25-30. Test: `node charge_live/test_fix_proposal.js`
+(node only, against git afeaa5f as "before"); `test_charge_feed.js` on the clips; `test_hw_steps.js`.
+
+- **Attempt 1: a correct lock and a dead carry.** The lock was ed937d1f q 21 (score 6835, 3.41x). It landed after the
+  Spiny Flip confirm, so `chgStartTracker` rebuilt the menu's visible stretch from `CHG.pres` and ended it 4 frames
+  before the bar hid. A shine drawn on frame f flashes at about f + 6 on this clock, and the true seed shines on frame
+  117 (lag 0) / 118 (lag 1) with the bar hiding at ~122. So both particles died at 120 (reproduced exactly). The stretch
+  now ends 6 frames before, as `zwInput` does (c - 4, c = hide - 2). With that, the seed survives all five turn-2 shines
+  (about 6% of random seeds do too). `zwCoinBack` had the same 4-frame end, and it also ignored a `visTo` that a confirm
+  had already set, so a coin box flickering after a confirm made hidden frames look visible. It now ends at
+  min(visTo, hide - 6).
+- **Attempts 2-6: the trigger fired on the wrong thing.** The cases were:
+  - a hallway / battle-entry bar hide taken as the Charge confirm (bar up 2-67 s while walking);
+  - a fade from black (base 2.4);
+  - the battle intro's brightening while the bar was still hidden;
+  - a coin-box flicker re-arming the capture 10 s later.
+
+  In each case the page captured something that was not the Charge (Mario NCC 0.06-0.09) and searched it, while the
+  real Charge went by. The real Charge's bar hide was then read as the Spiny Flip confirm, which shifted the route by
+  one ("skips the Spiny Flip turn"). Now (hw profile; FB2 keeps its old rules):
+  - arming needs a bar hide that ended a real bar-up of 600+ ms;
+  - the trigger only counts 250-1000 ms after that hide (the burst's frame 3 comes 433-484 ms after it on all 11
+    clips), and needs base >= 30;
+  - every picture of game frames 5-27 must sit on `CHG_BRIGHT` (within +-1.5 frames and 10 levels, at most 3 misses);
+  - a capture whose frame 0 has no Mario (NCC < 0.5) is not searched: "Charge not seen", and the page waits for the
+    next real hide;
+  - no burst in the window gives the same "Charge not seen".
+- **The confirm is anchored on the burst.** The bar hide that would count as the hw_charge pre is held (`chgPend`) until
+  the capture shows a real Charge. Otherwise it is dropped and the pre stays open, so a battle-entry hide never shifts
+  the route.
+- **Any Hallway step arms the Hallway Charge.** A Charge seen on T2 sets the route to T1 (`chargeStepSet`). A long gap
+  (10 s+, a reload) on Hallway T2, or on the next step right after the route left the Hallway by itself (fewer than 3
+  real bar hides since), sets the route back to T1 (`stepBackToHallway`).
+
+Frame-fed (`test_charge_feed.js`; the patched build; real time, 60-170 pictures dropped per clip). "At confirm" is the
+share of states for which Time Out works at the confirm (bar hide - 3 frames; -1 / 0 / +1):
+
+| Clip | Lock (seed, score/ratio) | Spiny c | States | At confirm | Runner's result |
+|---|---|---|---|---|---|
+| 15-14-09 .. 15-20-15 (7 route clips) | all 7 lock their known seeds | 103-107 | 6-72 | as before (e.g. 15-17-02 0.24/0.65/0.87) | - |
+| 15-18-39 (attempt 3) | dedb3e53 (7998, 3.98x); one T1 run said "no clear seed" (2094, 1.01x) | 105 | 595 | 0.44 / **0.10** / 0.13 | fails |
+| 15-19-56 (worked) | 517b7c30 | 104 | 2-3 | 0.74 / **0.58** / 0.42; from T2: 0.2 / **0.8** / 0.2 | **works** |
+| 15-22-53 (savestate fade) | d066fdbd | 102-103 | 3 | 0 / 0 / 0 (T2 was Focus) | - |
+| 15-25-30 (battle intro) | 180f546b (5042, 3.86x) | 104 | 2 | 0 / 0 / 0 | - |
+| 15-30-15 | ce0959dc (6169, 3.72x) | 103 | 0: No edge | - | - |
+
+Started on Hallway T2 (STEP=t2), the 5 runner clips lock the same seeds and set the route to T1. In 15-30-15 the
+tracker keeps 5 states through both turn-2 shines and loses them in the 6 s after, which show no flash. That is not
+explained (a missed draw in T1 or Bowser's turn, or a coin that did not show).
+
 ## What the page does
 
 1. **Arming.** On the route's Hallway T1 step, when the status bar hides (the Charge confirm hides it 3 frames after
