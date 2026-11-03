@@ -1,11 +1,14 @@
 /* The page's own ray maps (charge_live.js: chgMarioShift, chgMaps) from game-frame rasters, for the native harness.
- * usage: node jsmaps.js FRAMES.u8 OUT.bin   (FRAMES.u8 from gameframes.py: 50 x 480 x 640 uint8) */
+ * usage: [FB2=1] node jsmaps.js FRAMES.u8 OUT.bin   (FRAMES.u8 from gameframes.py: 50 x 480 x 640 uint8; FB2=1: the Final
+ * Bowser profile's camera table and Mario patch) */
 const fs = require('fs'), path = require('path'), D = path.join(__dirname, '..');
 const src = fs.readFileSync(path.join(D, 'charge_live.js'), 'utf8')
   .replace('/*CHG_CAMS*/null', fs.readFileSync(path.join(D, '..', 'readouts', 'data', 'charge_cams_mario_route.json'), 'utf8'))
-  .replace('/*CHG_MARIO*/null', fs.readFileSync(path.join(D, 'mario_ref.json'), 'utf8'));
+  .replace('/*CHG_MARIO*/null', fs.readFileSync(path.join(D, 'mario_ref.json'), 'utf8'))
+  .replace('/*CHG_CAMS_FB2*/null', fs.readFileSync(path.join(D, '..', 'readouts', 'data', 'charge_cams_mario_fb2.json'), 'utf8'))
+  .replace('/*CHG_MARIO_FB2*/null', fs.readFileSync(path.join(D, 'mario_ref_fb2.json'), 'utf8'));
 const stub = 'const $ = () => null, num = () => 0, slog = () => {}, FRAME = 1000 / 29.97, isRoute = () => false, RT = () => [], routeStep = 0, zw = {}, V = {}, R = {}, st = {};\n';
-const api = new Function(stub + src + '\nreturn { chgMaps, chgMarioShift, CHG_CAMS };')();
+const api = new Function(stub + src + '\nif (process.env.FB2) CHG.prof = CHG_PROF.fb2;\nreturn { chgMaps, chgMarioShift, CHG_CAMS: chgP().cams() };')();
 const buf = fs.readFileSync(process.argv[2]), G = [];
 for (let n = 0; n < 48; n++) G.push({ Y: new Uint8Array(buf.buffer, buf.byteOffset + n * 640 * 480, 640 * 480) });
 const fr = n => ({ Y: new Uint8Array(buf.buffer, buf.byteOffset + n * 640 * 480, 640 * 480) });

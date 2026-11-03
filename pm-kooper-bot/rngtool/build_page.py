@@ -10,6 +10,8 @@ H = os.path.dirname(os.path.abspath(__file__))
 t = t.replace('/*CHG_CAMS*/null', open(os.path.join(H, 'readouts', 'data', 'charge_cams_mario_route.json')).read().strip(), 1)
 t = t.replace('/*CHG_MARIO*/null', open(os.path.join(H, 'charge_live', 'mario_ref.json')).read().strip(), 1)
 t = t.replace('/*CHG_WASM*/', open(os.path.join(H, 'charge_live', 'kernel.wasm.b64')).read().strip(), 1)
+t = t.replace('/*CHG_CAMS_FB2*/null', open(os.path.join(H, 'readouts', 'data', 'charge_cams_mario_fb2.json')).read().strip(), 1)
+t = t.replace('/*CHG_MARIO_FB2*/null', open(os.path.join(H, 'charge_live', 'mario_ref_fb2.json')).read().strip(), 1)
 core = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pmrng_core.js')).read()
 assert '</script' not in core
 standalone = t.replace('/*CORE*/', core)

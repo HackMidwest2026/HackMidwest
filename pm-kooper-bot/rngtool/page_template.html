@@ -182,7 +182,8 @@ details[open] summary { margin-bottom: 10px; }
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
-        <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays on Hallway Bowser turn 1 (needs the OBS capture at 1280×720 as this route was recorded)</label>
+        <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays on Hallway Bowser turn 1 and Final Bowser turn 6 (needs the OBS capture at 1280×720 as this route was recorded)</label>
+        <label class="f">Final Bowser: Bowser's turn-5 attack (a Body Slam or Claw on T5 rules it out on T6)<select id="s-fb2t5"><option value="any">not set (all three)</option><option value="fire">Fire Breath</option><option value="claw">Claw Swipe</option><option value="slam">Body Slam</option></select></label>
       </div>
       <div class="row" style="margin-top:12px; align-items:flex-end">
         <label class="f" style="flex:1; min-width:220px">Calibration from the High Power Bounce Manipulator (paste its Copy calibration text; empty = read it from this browser)<input id="cal-json" type="text" placeholder='{"recommendedOffFrames": …}'></label>
@@ -250,7 +251,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the best-guess window (Timing settings; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1: the seed read from the Charge rays, and how many RNG states the page still keeps for the Time Out press"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the best-guess window (Timing settings; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -264,7 +265,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -301,7 +302,18 @@ const ENDGAME = [
     { text: 'T2: Time Out; Spiny Flip [3, 6] [44]', steps: [{ label: 'Time Out → STOP', cat: 'B', prof: 'timeout' }] },
     { text: 'T3: Bounce x3; Spiny Flip [3, 3] [23]', steps: [] },
     { text: 'T4: Bounce x3; Spiny Flip [3, 0] [11]', steps: [] },
-    { text: 'T5: Jump x2; Spiny Flip [3, 0] [0]', steps: [] } ] } ];
+    { text: 'T5: Jump x2; Spiny Flip [3, 0] [0]', steps: [] } ] },
+  // Final Bowser phase 2 (fb2_route/README.md). The T6 Super Charge locks the seed from its rays (the step below has it
+  // as its pre, as Hallway T1); the page then beeps the A that closes the "+3" popup (the Close Call lever), reads the
+  // frame it happened on from the popup closing, follows Bowser's turn with the coin, and beeps the Power Bounce A.
+  { h: 'Final Bowser', turns: [
+    { text: 'T1: Charge; Cloud Nine', steps: [] },
+    { text: 'T2: Charge (Lakilester: Do Nothing)', steps: [] },
+    { text: 'T3: Jammin\' Jelly (Laki: Do Nothing)', steps: [] },
+    { text: 'T4: Charge (Laki: Do Nothing) - block the wave', steps: [] },
+    { text: 'T5: Peach Beam at Danger', steps: [] },
+    { text: 'T6: Charge, then the popup A on the beep → Close Call', steps: [] },
+    { text: 'T7: Power Bounce x7', steps: [{ label: 'Power Bounce → 7 (T6: Super Charge, then close its +3 popup on the beep)', cat: 'B', turn: 'fb2_pb', pre: [{ cat: 'M', id: 'fb2_charge' }] }] } ] } ];
 const ENDGAME_STEPS = [];
 for (const f of ENDGAME) for (const tu of f.turns) for (const s of tu.steps) ENDGAME_STEPS.push(Object.assign({ t: f.h + ' ' + tu.text.split(':')[0] }, s));
 const ROUTES = { jr: JR, endgame: ENDGAME_STEPS };
@@ -850,7 +862,9 @@ function zwPlan() {
   st.msg = null; render(); return true;
 }
 /*@include charge_live/charge_live.js*/
+/*@include charge_live/fb2_live.js*/
 function makePlan() {
+  if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (FB2.t7) fb2PlanT7(); else { st.msg = FB2.plan && !FB2.kObs ? 'FB2: waiting for the T6 popup A (the page reads the frame from the popup closing).' : 'No edge: no FB2 states to plan with. Press Power Bounce normally.'; render(); } return; }
   if (zw.on && PROF().id === 'timeout' && zwPlan()) return;
   if (!st.lock || !PROF().rolls.length) return;
   if (st.needResync) { st.msg = 'The last Close Call did not go as planned, so the seed has to be found again from a few shines.'; render(); return; }
@@ -903,6 +917,7 @@ function makePlan() {
 /* ---------- input ---------- */
 function addShine(t, auto) {
   if (auto) chgTap(t);
+  if (auto && typeof fb2Tap === 'function') fb2Tap(t);
   if (auto && zw.on) zwTap(t);
   const s = seg();
   if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
@@ -1522,6 +1537,7 @@ $('test-beep').onclick = () => {
 // any click or key wakes the audio (browsers start it suspended until the page is used)
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
 function autoPlan() {
+  if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (st.plan && performance.now() < st.plan.tPress + 600) return; makePlan(); return; }
   if ((!st.lock && !zw.on) || st.searching || !PROF().rolls.length) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
   const again = !!st.plan; makePlan(); if (st.plan) st.plan.again = again;

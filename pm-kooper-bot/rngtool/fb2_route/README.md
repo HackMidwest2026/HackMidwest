@@ -165,9 +165,29 @@ popup A, then the partner confirm), so the effective window can be longer than o
 - **Lock latency**: the rays end at +60 and the popup window closes at +136: the search and plan must finish within
   ~1-2.5 s (the live page's WebAssembly search takes seconds; a K window starting at +100 leaves 1.3 s).
 
+## 6. Live on the page (Nov 3): `../charge_live/README.md`, top section
+The page's Final Bowser step (T7 Power Bounce, with the T6 Super Charge as its pre) reads the T6 Charge rays with the
+lightning as nuisance, beeps the popup A, reads K from the popup closing, prunes with the coin through Bowser's turn and
+beeps the T7 target A. Emulator renders through the capture simulation: 8/8 true locks, Close Call at the beeped frame
+5/8; the lock lands 1.6-2.6 s after the rays on this 4-core machine, which is too late for the popup window (see there).
+New scripts:
+| file | what |
+|---|---|
+| `t6_render.py` | T6 Charge (+ popup A at K, Bowser's turn, optional Power Bounce) with glide64 screenshots and every draw logged |
+| `t6_raycheck.py` | the Charge-ray model with the lightning against those logs (bolts first on their frame: 48/48 x 3 runs) |
+| `bolt_phase.py` | the lightning phases of a log |
+| `t6_cams.py`, `t6_marioref.py` | the page's FB2 camera table and Mario patch |
+| `t6_capsim.py` | renders -> simulated console capture at the Charge lock's OBS layout (time-based cadence, missing pictures, x264) |
+| `t6_truth.py` | a log's true seed / phases / state at +61 |
+| `t6_press.py` | presses a planned popup frame (and T7 target frame) in the emulator: Close Call, bounces |
+
+Note for the page's model: with no press the popup closes like K = 137, the first picture without it shows K + 2, and
+the status bar is back on K + 5 and stays up through Bowser's turn and the T7 menu (the coin is readable there).
+
 ## 5. Recordings that would validate it
 1. **T6 -> T7 (the main test)**: 5+ takes of T6 (Charge, popup A, Bowser's turn) through the T7 Power Bounce, input
-   display on, still camera. Check: Charge-ray lock; the A icon frame = K; predicted Bowser attack and Close Call vs seen;
+   display on, still camera, with 3-5 s in the T6 menu before the Charge (the lightning's purple onsets there are what
+   the page most needs next). Check: Charge-ray lock; the A icon frame = K; predicted Bowser attack and Close Call vs seen;
    then the T7 target A frame and the bounce count vs `t6model`.
 2. The same but pressing the popup A at different K (early / late / none), to confirm K+40 and the 77/137 limits on
    console.

@@ -1,3 +1,120 @@
+# Final Bowser phase 2, T6: the Charge lock -> the popup A (Close Call) -> T7 Power Bounce (Nov 3)
+
+**Bottom line.**
+- The page now has per-fight Charge profiles (`CHG_PROF` in `charge_live.js`): **hw** (Hallway T1, unchanged in what it
+  computes) and **fb2** (the Final Bowser route's T7 step, whose pre is the T6 Super Charge). The FB2 profile reads the
+  T6 Charge rays with the stage lightning as nuisance, keeps every RNG state the rays cannot tell apart, beeps the A
+  that closes the "+3" popup (the Close Call lever, `fb2_live.js`), reads the frame that A happened on from the popup
+  closing, follows the coin through Bowser's turn and beeps the T7 Power Bounce target A.
+- **Emulator renders through the capture simulation, fed to the page in headless Chromium:** 8 of 8 T6 Charges locked
+  the true seed (none wrong); pressing the beeped popup frame in the emulator gave **Close Call in 5 of 8** (the page
+  said 41-63% each; a press without a plan is about 30%).
+- **Time budget: not met on this machine.** The lock lands **1.6-2.6 s after the rays end** here (4 cores, 3 search
+  workers, the page and the frame feeder on the same cores), against ~1.0-1.3 s for the lock, the plan and a 0.6 s
+  countdown to fit before the window closes (+136). The plans above are therefore made "as if in time" (from frame
+  +100 on). What it costs and what fixes it: below.
+- **T7:** the page read the popup frame right in one of two phase-2 runs (off by 2 in the other); the coin during
+  Bowser's turn left 337 and 853 states, so the T7 plan is near blind (7+ bounces planned at 6-7%; the emulator gave 3
+  and 4 bounces). T7 needs the lightning phases pinned (see "Not done").
+- **Real FB2 footage (14-47-09, Mario's Super Charge with the aura up):** trigger, frames, Mario (17 px right, NCC 0.85)
+  and maps work; **no lock** (best 1871 at 1.05x the next), as expected: the aura's 16 draws per 20 frames sit between
+  the ray draws and the aura profile (T1/T2/T4) is not built.
+
+## The FB2 profile
+| | Hallway (hw) | Final Bowser T6 (fb2) |
+|---|---|---|
+| route step | `hw_spiny` (pre: the T1 Charge) | `fb2_pb` (pre: the T6 Super Charge) |
+| camera table | `readouts/data/charge_cams_mario_route.json` | `readouts/data/charge_cams_mario_fb2.json` (`fb2_route/t6_cams.py`, same method from an emulator T6 run; it equals the Hallway table to 0.000: same battle camera presets, Mario at (-85, 18, 0)) |
+| Mario patch | `mario_ref.json` (route clip 15-15-06) | `mario_ref_fb2.json` (`fb2_route/t6_marioref.py`: emulator frame -1 through the capture simulation) |
+| burst curve, trigger | `CHG_BRIGHT`, 5 above the menu | `CHG_BRIGHT_FB2` (capture simulation; frames 0-2 read 1.6/3.5/6.0, so the trigger is 7.5 above the menu, wider DP tolerance); the real FB2 clip's curve has the same shape (5.2, 9.4, 15.8 on frames 2-4) |
+| nuisance | none | the lightning: one rand_int(359) per bolt, **before everything else on its frame** (then the effect creation, the coin, the ray redraws, the step); `fb2_route/t6_raycheck.py`: 3 emulator runs, 48/48 frames exact each, including bolts on frames 0 and 3 |
+| stage 1 | effects A and B, K = 16384 | effect A only, K = 65536, started on frames 0..22 while the rays go on |
+| stage 2 | `qscores` over q | `fb2full`: every lightning window pattern (1281 patterns from the phase pairs with p130 = p220 mod 5) x q |
+| after the lock | the zero-wait tracker | the FB2 tracker / planner (`fb2_live.js`) |
+
+Kernel changes (`kernel.c`, both profiles):
+- **`stage1g`**: stage 1 by strides. For the part with the largest bound, both of its draws move by small constants
+  along s = lo + r + g t (g up to 2^18 chosen per part), so its (speed, phase) cell is constant over runs of ~40 seeds;
+  each run is scored once for that part and skipped whole when it cannot beat the threshold. **Same heaps as `stage1`**
+  (checked: identical top-16384 sets, both effects, on 15-15-06 and 15-20-15), 1.5-2x faster.
+- **Static dealing**: each worker gets its share of the bases (round-robin in bound order) in one message and runs
+  them with no round trips (a worker's heap is the exact top K of its bases, so the union's top K is exact). Before,
+  each chunk waited for the main thread, which stalls when the page is busy.
+- The joint stage does its LCG jumps in the workers (same numbers).
+- **FB2 stage 2** (`fb2variant`, `fb2full`, `fb2ub`, `fb2end`): all draws are single LCG steps, so a lightning pattern
+  only shifts the stream; the score is a sum over frames of g[n][k] (frame n's redrawn rays with k extra draws before
+  them), so each (pattern, q) costs one prefix-sum lookup per insertion. Effect B's creation moves with the bolts on
+  frames 1-3 and a coin on 0-2 (4 variants). With no bolts it equals `full()` to 0.001 (all q, Hallway clip).
+  Candidates are scored in decreasing upper bound until the next bound is below 1/1.8 of the best.
+
+Hallway after these changes (deterministic feed, `test_charge_feed.js`): 15-15-06 locks cf5894f0 q19 in 3.8 s (was
+5.5 s), at the Time Out confirm 0/0/0.02, beep +66 (61%), as before; 15-20-15 locks 306686e9 q16 in 3.6 s (was 5.2 s),
+beep +46 (75%). `run_suite.sh` (full, after these changes): all 24 tests and the torch maze rc 0, both log replays lock as before (1379.7 s, 655.7 s on 52467bd0).
+
+## After the lock (fb2_live.js)
+1. **States.** The rays pin the stream only where the bolt draws shifted it: insertions in the first ~9 frames (no
+   redraws yet) and the last ~7 (faded rays) barely change the score, so several end states fit (in the emulator run
+   r1 the true pattern scored 8216 against a best of 8218). The page keeps every (pattern, q) within 0.2% of the best,
+   each with every phase pair behind that pattern (and console lag 0 / 1 frame after the rays, 0.75 / 0.25): 85-4000
+   states in the runs below (an even sample of 4000 when more).
+2. **Popup plan.** For every state and every K in the rest of the window, Bowser's AI on K + 40 and the Close Call
+   roll (t6model.py, ported; Bowser's T5 attack from the new setting rules out Body Slam / Claw on T6). The beeped
+   frame maximises P(Close Call) over the states with presses 25/50/25 over -1/0/+1; among frames within 3 points of
+   the best, the one with the best P(Close Call and 7 bounces with the best T7 window) wins (sampled states). Three
+   beeps 0.3 s apart, the last on the press, timed as Time Out's.
+3. **K seen.** The popup (a bright box across the top middle) is up on frames 76..K+1; the first picture without it
+   shows frame K + 2 (emulator: K = 100 -> 102, 120 -> 122; no press: K = 137). Dropped pictures around the closing
+   widen it to a range of K, all carried. Fallback: the status bar comes back on K + 5.
+4. **Coin.** The status bar is up through Bowser's turn and the T7 menu: every shine seen must be a predicted one
+   (+-2, up to 3.5 late) and every predicted shine while the coin was steady must have been seen.
+5. **T7.** On the Power Bounce target screen (the step's B screen): the target-A frame in the beep window with the best
+   P(7 bounces) (the kill at 80 HP: 15 + 14 + ... + 9), 0.1 x P(6+) as tie-break; the page's usual lead, window, beeps.
+
+## Results (emulator T6 renders -> `fb2_route/t6_capsim.py` -> the page, `test_fb2_page.js`)
+Build b1 (`route_build.py 1234abcd`, T5 Fire Breath, so Body Slam and Claw allowed on T6), the page told "Fire Breath".
+Plans made as if the lock had landed by +100 (`KAT=100`); the emulator then pressed the beeped frame and its
+neighbours (`fb2_route/t6_press.py`).
+
+| seed (PRE) | bolts in the rays | lock | after the rays | states | beep K, P(CC) shown | CC at K-1 / K / K+1 |
+|---|---|---|---|---|---|---|
+| 0badc0de (60) | - | true | 1.6 s | 2382 | 136, 53% | no / **yes** / no |
+| a5a5f00d (60) | - | true | 2.3 s | 4000 | 104, 61% | yes / **yes** / no |
+| 13579bdf (60) | - | true | 2.0 s | 1137 | 133, 58% | yes / **yes** / no |
+| deadbeef (60) | - | true | 2.0 s | 1092 | 101, 56% | no / **yes** / no |
+| 5eed0fb2 (60) | - | true | 2.5-2.9 s | 4000 | 135, 56-59% | no / no / no |
+| 00000001 (60) | - | true (K = 65536; at 16384 its A score ranked below the cut: no lock) | 2.0 s | 1530 | 121, 63% | no / no / yes |
+| c0ffee11 (90) | 18 | true | 2.3-2.6 s | 85-169 | 127, 41% | no / no / no (true state kept, outvoted) |
+| feedf00d (100) | 8, 38, 43 | true | 2.0 s | 383 | 100, 58% | yes / **yes** / no |
+
+Close Call at the beeped frame: 5/8; with the 25/50/25 press error 0.44 on average (the page said 0.56). Lock scores
+5900-7800 at 3.4-5.1x the next (wrong ones ~1700); 8/8 right, 0 wrong.
+
+T7 (phase-2 renders with the popup pressed on a Close Call frame, through Bowser's turn to the target screen):
+| seed | K true / seen | states after the coin | beep d, P(7) / P(6+) shown | emulator d-1 / d / d+1 |
+|---|---|---|---|---|
+| a5a5f00d | 104 / 104 | 337 | 468, 7% / 25% | 4 / 3 / 3 bounces |
+| 13579bdf | 133 / 135 | 853 | 441, 7% / 27% | 4 / 4 / 3 bounces |
+
+**Time** (page in headless Chromium, 3 search workers, 4 cores shared with the page's own frame work and the feeder):
+stage 1 (A only, K = 65536) 1.5-2.2 s of wall time, of which only 0.1-0.3 s ran before the rays ended (the main thread,
+busy with the pictures, starts it late), the joint stage 0.1-0.4 s, stage 2 0.1-0.2 s, the plan 0.04-0.4 s. The search
+alone is ~1.4 CPU-s of WebAssembly (`node`, one thread), so with 7+ free cores and the early start on time it would
+end at about the rays' end and the lock would land ~0.4-0.6 s after them; on this machine it does not. The popup
+window closes 2.5 s after the rays and the plan needs ~0.8 s of it for the beeps.
+
+## Not done / not verified (FB2)
+- **The time budget** (above). Ways to fix it, in order of payoff: more cores (the search parallelises); the lightning
+  phases pinned before the Charge (the purple bolt onsets in the T6 menu: `fb_aura/clip_bolts.py` saw them on console)
+  so stage 2 and the plan have 1-4 states instead of hundreds; the ray maps in a worker (the main thread computes them,
+  ~0.2 s twice). Narrowing stage 1 with the T6 menu's coin does not work without the phases: the draws between the
+  menu's coin and the Charge depend on them.
+- **Lightning phases from the picture**: not read. That is also what limits the popup plan (5/8, the states outvote
+  the true one) and T7 (hundreds of states left).
+- The menu coin before the Charge (q, as chgQBack for Hallway): not used for FB2.
+- `CHG_BRIGHT_FB2` and the popup box are from glide64 renders through the simulation, not console T6 footage.
+- The beep timing for the popup and the T7 A is Time Out's relation (zwPlan), not measured on FB2.
+- The aura profile (T1/T2/T4: aura + lightning) is not built.
+
 # Charge lock: the seed from the Charge rays, live on the page (Nov 2)
 
 On Hallway Bowser turn 1 the page reads gRandSeed from Mario's (Super) Charge rays while the run goes on, carries it
@@ -57,6 +174,8 @@ Sidebar: "Charge lock: yes/no", time to lock after the rays end, the hypotheses 
 - `tools/gameframes.py` (clip -> game-frame rasters with the page's rule), `tools/jsmaps.js` (the page's own maps code
   in node), `tools/harness.c` (the kernel natively, single thread).
 - `../test_charge_clips.js`: the 7 route clips through the page in headless Chromium in real time.
+- `../test_charge_feed.js`: the same with the frames fed one by one at their real times (no video decoding).
+- `fb2_live.js`, `mario_ref_fb2.json`, `tools/harness_fb2.c`, `../test_fb2_page.js`: the Final Bowser profile (top section).
 
 ## Results
 
