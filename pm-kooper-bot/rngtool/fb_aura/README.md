@@ -22,6 +22,14 @@
 | `aura_carry.py` | Peach Beam -> Lakilester -> Bowser's turn -> T2 menu, every draw by caller, several seeds |
 | `aura_payoff.js` | bounce payoff of a lock / N candidates with `powerbounce/fb2model.js` |
 | `aura_clip.py` | real-console recording: star tracks fitted with the aura's motion |
+| `aura_tmpl.py`, `aura_tmpl.npz` | section 8: star-sprite coverage templates per size from glide64 single-star renders, sprite offsets |
+| `aura_mf.py` | section 8: game frames by content, kNN background, noise map, rotated templates, FFT matched filter |
+| `aura_table.py` | section 8: camera, restart likelihood table, missing logic frames, 16-part table, readings |
+| `aura_register.py` | section 8: emulator route camera registered onto a clip's background |
+| `aura_lock2.c` | section 8: frame-exact seed search with unread restarts (wildcards) and unordered same-frame draws |
+| `aura_confirm.py` | section 8: coin shines and lightning predicted from a lock vs the same footage |
+| `aura_capsim.py`, `aura_syncheck.py` | section 8: emulator renders -> simulated console capture; truth comparison |
+| `aura_run.sh` | section 8: the whole chain on one prepared stretch |
 
 Emulator scripts are run from `/tmp/claude-0/pm/bot1` (debug core `M64P_DBG=1`; glide64 on `DISPLAY` for renders).
 Every DIAGNOSTIC RAM write is labelled in the code:
@@ -227,3 +235,125 @@ that needs no frame bookkeeping, see its header), `clip_timeline.py` (status bar
   can be measured (above); the step count needs a lock on both sides, which was not achieved.
 - **Clip B later turns** (bar timeline): bar up 14.85-24.13 s (partner turn and Bowser's turn start), off to 29.90,
   up to 31.90, off to 35.02. Bowser's attack choice could not be checked against a prediction (no lock).
+
+## 8. Matched-filter detector and a real-footage lock (Nov 2)
+**Bottom line.**
+- **Clip C (15:24) locks.** The stretch is the menu at 0.5-18.4 s: 530 footage game frames, which are 535 logic
+  frames. The state after the aura draw of logic frame 1 (capture 0.533 s) is **`7a1af9b7`**, so gRandSeed at the end
+  of that frame is **`2422e234`**. Other values:
+  - sky-bolt phase 158, low-bolt phase 68, first coin draw on frame 15 (frame numbers as below);
+  - gRandSeed at the end of the stretch (logic frame 534, capture 18.37 s) is **`7ed76b7d`**.
+- **Scores.** The lock matches **396 of 412** read restarts (`aura_run.sh` from scratch). One hypothesis survives out of 83.5 M anchor states x
+  1.4 M phase hypotheses. With every reading replaced by a random angle, the same search scores at best **32 / 411** (80 anchor states x 1.4 M hypotheses each, scored over the whole stretch).
+  - Anchoring on logic frame 14 or 26 instead gives the same RNG stream.
+- **Confirmed independently by the coin.** The aura readings choose the coin's phase but never see a coin value.
+  - The lock predicts 18 coin draws, 4 of them shines (93, 78, 98, 77).
+  - All 4 flash in the HUD exactly 5 frames later, which is the lag calibrated in the emulator. No flash is unpredicted.
+  - 0 of 300 random states, each with its best coin phase, do that.
+- **The lightning fits.** The 9 predicted sky bolts all have a purple onset 2-3 frames later, and all 12 onsets are
+  explained by the predicted sky and low bolts (+2..4).
+  - The console lag is 2 frames shorter than glide64's +4.
+  - A random sky phase with its best lag window gets 9/9 in 2.9% of draws, so this check is weaker than the coin.
+- **Still footage needed.** With the whole chain, part table included, **4 s** locks (70/81 reads), 5 s also gives the
+  bolt phases, and 3 s does not lock. With a part table already known, 1 s of readings after the anchor is unique
+  (23/23 against at best 10/23).
+- **Secondary clips:**
+  - A (14:57) and B (15:00) have only about 1.3 s of aura menu before the Peach Beam turn. They do not lock: best
+    7/17 and 9/20, flat like random.
+  - D (14:47) has 1.2-1.5 s menus between Charges (other RNG, moving camera). Too few reads; no lock.
+
+### Pipeline (`sh aura_run.sh PRE [RENDER_DIR]` after `aura_table.py prep CLIP T0 T1 PRE`)
+1. **Game frames** (`aura_mf.prep`):
+   - A capture frame is a new game frame when its mean |diff| is > 1.2. The 2-3 copies of a game frame are averaged.
+   - **Encoder keyframes** (x264 GOP 250) re-encode a duplicate copy differently enough (|diff| about 1.5) to look
+     like a new frame. This happened twice in clip C. A keyframe that would start a 1-copy game frame is merged.
+2. **Background** (`aura_mf.background`):
+   - Per game frame: the per-pixel median of the 12 most similar other frames (trimmed |diff| over Bowser's box,
+     frames within ±3 excluded).
+   - Bowser's idle animation and colour cycle repeat about every 36 game frames, so the neighbours share pose and
+     colour phase, and the stars drop out.
+   - The noise sigma is the per-pixel MAD over time (high on the blue flames), floored per frame by a local robust
+     scale, which kills regions where the model failed (menu wheel turning).
+   - The SNR scale is calibrated on random positions (the capture noise is spatially correlated: x2.0-2.2).
+3. **Templates** (`aura_tmpl.py`):
+   - Single-star glide64 renders (other parts hidden by a labelled DIAGNOSTIC counter write), averaged in the
+     sprite's own frame, one per size.
+   - Two corrections to section 3:
+     - the glide64 screenshot after frame f shows frame f - 1;
+     - the sprite centre sits **5.88 x size units** further out along the radius than the model point (plus 0.82 x
+       size tangential): the display list's vertices are offset and scaled with the size.
+   - The route camera is exactly a plane homography: 0.000 px rms on 200 frames of RAM positions. In 320x240 terms it
+     is 1.594 / 1.580 px per unit with a small shear and pitch. Section 3's 1.70 / 1.61 came from centroids that
+     include the sprite offset.
+   - In the capture the templates are rotated in 4° bins (5-fold symmetric), blurred (sigma 1.4 x 1.2 px) and made
+     zero-mean over a disk, so broad blobs (colour-flash edges, menu bubble) give no response.
+4. **Matched filter.** Per frame, FFT correlations give for every size and rotation
+   N = sum c R (W - B) / sigma^2 and D = sum c^2 (W - B)^2 / sigma^2. The star is drawn as an alpha blend of white W
+   over the background B.
+5. **Restart table** (`aura_table.py table` / `terms`):
+   - Every hypothesis (restart frame f0, speed v in 0.6..2.6, size, draw A in 0..359) is scored over its 19 visible
+     frames, using the decomp's model: radius 10 + v (t+1), angle A - 2(t+1), sprite rotation = angle, alpha sin(9t).
+   - The per-frame term is a bounded GLRT: amplitude free within 0.4-1.6 x alpha x a per-size gain, capped at 2x a
+     perfect star's term, floored at -6.
+   - A fixed amplitude fails because the real sprite contrast is about 0.6 / 1.0-1.2 / 1.1-1.3 of the template for
+     sizes 1.0 / 0.7 / 0.4.
+6. **Camera** (`cam`, `scan`, `refine`, `aura_register.py`):
+   - Peak tracks give a first camera.
+   - The radius-vs-time fit trades the camera scale against the restart frame: a camera 5% small fits every star one
+     frame early with a faster speed, and on the synthetic run that wrong basin gave no lock. A scale scan on the
+     table evidence picks the basin.
+   - Refinement from the part table (sprite peaks, robust least squares, 6 camera parameters, integer f0, grid v)
+     settles it.
+   - On clip C the emulator's menu background, passed through the capture model, registers onto the clip's
+     background at **scale 1.00** (correlation 0.895), shifted (-1, -6) px. **The console camera is the emulator's
+     route camera.** The refinement got within 1.5% of it, and the lock uses the registered camera.
+7. **Missing logic frames** (`steps`). This was the cause of the earlier failure (section 7).
+   - On the console the 20-frame star cycle spans about 19.8 footage frames. Some logic frames never show as a picture
+     of their own: in clip C 5 of them in 535, before footage frames 60, 166, 273, 368 and 450 (one per 80-110 frames).
+   - The triple-copy frames do not mark them. They show only in the stars: every part's best restart frame drifts by
+     -1 at each one.
+   - First guess: a monotone step function (DP) on the drift. Then the positions are optimized on the table evidence,
+     with the per-frame terms stored once (`PRE_F.npy`), and the table is rebuilt on logic frames.
+   - Without this the part table comes out with duplicated stars and wrong sizes, and nothing locks.
+8. **Part table** (`parts`):
+   - Greedy picks on the median over cycles of the best restart score.
+   - A pick masks every hypothesis whose sprite path overlaps one of its restarts (12 px, ±6 frames).
+   - Size quota from the decomp: part i has scale 1 - (i mod 3) x 0.3, so 5 x 1.0, 6 x 0.7, 5 x 0.4.
+   - Clip C: 16 parts, restart pattern `01100012010210111121` (not the route state's: the phases are drawn at creation).
+9. **Search** (`aura_lock2.c`):
+   - Anchor: a frame with one read restart. Its ±3° interval gives 83.5 M states. Each is filtered on the next 8 reads
+     (6 must match at their nominal LCG offset plus 0-2 inserted bolt/coin draws).
+   - The survivors get every sky phase (220) x low phase (130) x coin frame (48), scored over the whole stretch.
+   - Restarts on one frame are matched as a set, since the part index order is not known.
+   - Unread restarts are wildcards: they draw but are not scored.
+
+### Validation on the emulator (known seed)
+- **Setup:**
+  - `boss_2304_route_menu.st`, seed 5eed0fb2, 560 frames rendered with glide64;
+  - `aura_capsim.py` (S-Video model of `readouts/shimmer_svideo.py`, the OBS layout, the console's 2/3/1-copy cadence,
+    x264);
+  - then the same chain with no truth input.
+- **Results:**
+  - camera (1027.3, 366.1, 5.194, 5.222) against the true (1027.5, 365.9, 5.203, 5.245);
+  - 16 / 16 parts (phase, speed, size);
+  - readings within ±1° for 90% (the rest are mostly off by > 10°: overlaps);
+  - the lock state is the emulator's seed (adv(e11eab6e) = 5bfe5c67 = the seed at the end of that frame);
+  - sky / low / coin phases 30 / 20 / 29 = the emulator's 29 / 19 / 28 + the one-frame screenshot lag;
+  - no missing logic frames found (there are none: the capture simulation shows every frame);
+  - 426 / 432 reads against at best 39 / 432 with random angles;
+  - coin 4 / 4 shines at +5, bolts at +4.
+- `aura_lock2.c` alone on readings taken from RAM (half the restarts, ±1°) gives the true state, 223 / 223.
+
+### Verified / not verified
+- **Verified on the console clip C:**
+  - a unique lock, with a 364-read margin over random angles;
+  - the same stream from three anchors;
+  - the coin shines (4 / 4, exact lag, no false or missed);
+  - the lightning (9 / 9 sky, 12 / 12 onsets explained, at a lag 2 frames shorter than glide64's);
+  - the console camera = the emulator's route camera.
+- **Not verified:**
+  - Why logic frames go missing on the console. The positions are fitted from the stars, not from anything in the
+    capture.
+  - The lock's bolt lag (+2..3) was not fixed in advance.
+  - The secondary clips do not lock: too little aura menu.
+  - Nothing after the Peach Beam (section 4's carry is still not modelled).
