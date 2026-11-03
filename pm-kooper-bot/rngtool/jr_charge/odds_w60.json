@@ -1,0 +1,44 @@
+{
+ "trials": 3000,
+ "win": 60,
+ "res": {
+  "T3 Bomb -> Close Call": {
+   "blind": 0.3067,
+   "pm1": 0.9233,
+   "exact": 1.0,
+   "wait_pm1": 20.1817,
+   "wait_exact": 2.3437,
+   "none_in_window": 0.0
+  },
+  "T4 Maple Syrup -> Close Call": {
+   "blind": 0.278,
+   "pm1": 0.9263,
+   "exact": 1.0,
+   "wait_pm1": 20.4417,
+   "wait_exact": 2.4823,
+   "none_in_window": 0.0
+  },
+  "T5 do nothing -> Close Call": {
+   "blind": 0.3053,
+   "pm1": 0.9224,
+   "exact": 1.0,
+   "wait_pm1": 20.0897,
+   "wait_exact": 2.3233,
+   "none_in_window": 0.0
+  },
+  "T6 Power Bounce": {
+   "blind": 0.0,
+   "pm1": 0.0,
+   "exact": 0.0,
+   "wait_pm1": 20.2957,
+   "wait_exact": 2.1837,
+   "none_in_window": 0.0,
+   "blind5": 0.656,
+   "blind6": 0.3147,
+   "pm1_5": 1.0,
+   "pm1_6": 0.9387,
+   "ex5": 1.0,
+   "ex6": 1.0
+  }
+ }
+}
