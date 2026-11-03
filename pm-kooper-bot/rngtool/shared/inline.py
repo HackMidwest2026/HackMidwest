@@ -7,6 +7,6 @@ def shared(name):
     s = open(os.path.join(ROOT, name)).read()
     return ''.join(l for l in s.splitlines(True) if not l.startswith('//@'))
 def inline(t):
-    out = re.sub(r'^/\*@include (shared/[\w.]+)\*/\n', lambda m: shared(m.group(1)), t, flags=re.M)
+    out = re.sub(r'^/\*@include ((?:shared|charge_live)/[\w.]+)\*/\n', lambda m: shared(m.group(1)), t, flags=re.M)
     assert '@include' not in out, 'unresolved include'
     return out

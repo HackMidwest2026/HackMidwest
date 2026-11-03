@@ -359,3 +359,14 @@ window and +-1 frame presses: 6+ 59%, 7+ 27%.
   and camera pans only.
 - Console load frames.
 - An emulator end-to-end run of the zero-wait route: no savestate chain from Jr. Troopa through the walk to the hallway.
+
+## Update: the Charge lock (charge_live/README.md)
+
+The tracker can now also start from the Charge rays on Hallway Bowser turn 1 (no walk lock needed): seed x q x lag 0-2
+particles at the Charge's frame 0. For that path the Spiny Flip window is +40..+175 (thrown with A) and its confirm,
+read from the bar hiding (`HUD_HIDE.hw_spiny`), is carried at -1/0/+1. Two changes affect every tracker run:
+- Spiny Flip particles merge once Bowser's AI has run (evMax = impact + 45; his attack's own draws are tracked in
+  `S.extra`), instead of 260 frames later. Same RNG states, fewer particles at the plan.
+- The plan starts by itself on Time Out's target screen when the tracker is on, even without a page lock (it needed
+  `st.lock` before, so a tracker started from candidate seeds never planned by itself).
+- The beep lead defaults to 1.5 s (a saved 4 s is moved to 1.5 s once).

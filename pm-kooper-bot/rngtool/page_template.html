@@ -165,7 +165,7 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Visual offset (frames, + = later; Move visual sets it)<input id="s-voff" type="number" step="0.5" value="0"></label>
         <label class="f">Press check correction (frames; raise it if presses that worked read as late)<input id="s-pfix" type="number" step="0.5" value="0"></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
-        <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="4"></label>
+        <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="1.5"></label>
         <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
         <label class="f">Best-guess window: extra wait on Time Out's target screen the page may add to pick a better frame (s; 1 s = up to 30 game frames; 0 = off)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"></label>
         <label class="f">Best guess: beep only if it works at least (0–1; a blind press is 0.31)<input id="s-zwedge" type="number" step="0.01" value="0.4"></label>
@@ -175,9 +175,11 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
         <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
+        <label class="f">Charge lock search threads (0 = all cores but one; it runs for a few seconds during turn 1)<input id="s-chgcpu" type="number" min="0" max="16" value="0"></label>
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
+        <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays on Hallway Bowser turn 1 (needs the OBS capture at 1280×720 as this route was recorded)</label>
       </div>
       <div class="row" style="margin-top:12px; align-items:flex-end">
         <label class="f" style="flex:1; min-width:220px">Calibration from the High Power Bounce Manipulator (paste its Copy calibration text; empty = read it from this browser)<input id="cal-json" type="text" placeholder='{"recommendedOffFrames": …}'></label>
@@ -245,7 +247,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the best-guess window (Timing settings; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the best-guess window (Timing settings; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1: the seed read from the Charge rays, and how many RNG states the page still keeps for the Time Out press"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -260,7 +262,7 @@ const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
 const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof'];
-function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
 // Jr. Troopa route: every target screen of the route in order. cat: which saved screen it looks like (M = target on
@@ -742,7 +744,7 @@ function zwStep(p, to) {      // simulate particle p up to frame `to`; false = i
     if (p.pause && p.g === p.pauseAt) { p.S.nc += p.pause; p.g += p.pause; continue; }   // console lag: clock runs, game does not
     const f = p.g, r = R.frameEv(p.S, f, p.ev); p.g++;
     if (r === null) continue;
-    const k = zw.taps.findIndex(x => Math.abs(x - f) <= 1.5);
+    const k = zw.taps.findIndex(x => x - f >= -1.5 && x - f <= (zw.tapLate || 1.5));   // tapLate: a dropped picture reads a flash late
     if (r) { if (k >= 0) p.m.add(k); else if (zwVisible(f)) return false; }   // a shine where the coin was steady and none was seen
     else if (k >= 0) return false;                                            // a seen shine where this particle has a plain spin
   }
@@ -776,7 +778,7 @@ function zwStart(hiddenMs) {
     for (const c of st.cands) if (R.matches(c, P.pattern)) bases.push({ s: c >>> 0, nc: 0, g: 0 });
   }
   if (!bases.length) return false;
-  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts: [], nBase: bases.length });
+  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts: [], nBase: bases.length, imps: null, shifts: null, tapLate: null, src: 'walk' });
   const tBack = performance.now() - 1000, Fup = Math.round(zwF(tBack, 2)); zw.f0 = Fup;
   for (const b of bases) for (let a = -ZW_SHIFT; a <= ZW_SHIFT; a++) for (let l = 0; l <= ZW_PAUSE; l++) {
     const s0 = Fup + a - ZW_UP, ev = zwSceneEv(s0);
@@ -802,9 +804,10 @@ function zwInput(id, tObs, vanish, imps) {
   if (!imps) { for (const p of zw.parts) { zwMerge(p.ev, ev); p.evMax = Math.max(p.evMax, ...ev.keys(), ...[...ev.values()].flatMap(e => e.eio.map(x => x[0]))); } }
   else {
     const out = [];
-    for (const p of zw.parts) for (const im of imps) for (const gd of [true, false]) {
-      const q = zwClone(p); q.w = p.w / (imps.length * 2); const e2 = R.buildEv([{ f: c, id, imp: im, guard: gd }]);
-      zwMerge(q.ev, e2); q.evMax = Math.max(q.evMax, c + im + 44 + 260); out.push(q);
+    const shs = zw.shifts || [[0, 1]];      // the Charge lock: the confirm read from the bar hiding is +-1 frame
+    for (const p of zw.parts) for (const [sh, ws] of shs) for (const im of imps) for (const gd of [true, false]) {
+      const q = zwClone(p); q.w = p.w * ws / (imps.length * 2); const e2 = R.buildEv([{ f: c + sh, id, imp: im, guard: gd }]);
+      zwMerge(q.ev, e2); q.evMax = Math.max(q.evMax, c + sh + im + 45); out.push(q);
     }
     zw.parts = out;
   }
@@ -843,6 +846,7 @@ function zwPlan() {
   slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, target, tPress: Math.round(tPress), zw: true });
   st.msg = null; render(); return true;
 }
+/*@include charge_live/charge_live.js*/
 function makePlan() {
   if (zw.on && PROF().id === 'timeout' && zwPlan()) return;
   if (!st.lock || !PROF().rolls.length) return;
@@ -895,6 +899,7 @@ function makePlan() {
 
 /* ---------- input ---------- */
 function addShine(t, auto) {
+  if (auto) chgTap(t);
   if (auto && zw.on) zwTap(t);
   const s = seg();
   if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
@@ -1010,7 +1015,7 @@ function maybeSwitchPlan() {
 }
 setInterval(maybeSwitchPlan, 250);
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
-function reset() { stopWorkers(); cancelBeeps(); zw.on = false; Object.assign(WALK, { start: null, vis: 0, lastT: null, last: null }); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, carry0: null, wtorch: null, wtry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
+function reset() { stopWorkers(); cancelBeeps(); zw.on = false; chgReset(); Object.assign(WALK, { start: null, vis: 0, lastT: null, last: null }); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, carry0: null, wtorch: null, wtry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
 $('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
 document.addEventListener('keydown', e => {
@@ -1203,7 +1208,7 @@ function saveBoxes() { try { localStorage.setItem('tot-boxes', JSON.stringify(V.
  * hiding the status bar a fixed number of frames later (emulator, every confirm of a Jr. Troopa run: Mario's actions 3,
  * Bombette's Bomb 4; Bombette doing nothing does not hide it). On a turn whose inputs are all listed (step.hud: the pre
  * inputs, then the step), a hide that no target screen explains is the turn's next input. */
-const HUD_HIDE = { jr_charge: 3, hw_charge: 3, jr_whacka: 3, jr_syrup_cc: 3, jr_bomb: 4, jr_bomb_cc: 4 };
+const HUD_HIDE = { jr_charge: 3, hw_charge: 3, jr_whacka: 3, jr_syrup_cc: 3, jr_bomb: 4, jr_bomb_cc: 4, hw_spiny: 2 };   // hw_spiny: route clips (A icon + 0-2 capture frames; the Charge lock carries -1..+1 around it)
 /* Walk counter (zero-wait): from the coin's return after a long gap (10 s or more hidden: the end of the Jr. Troopa
  * fight's text) to the next long gap (the Hallway Bowser cutscene taking the bar away). Counts real-time seconds with the
  * coin on screen ("coin visible") and real-time seconds walked, and the bits of evidence so far against the ~38 a lock
@@ -1238,7 +1243,7 @@ function walkEnd(hiddenMs) {          // a long gap: the walk (if any) ended whe
 function hudWatch(t, present) {
   walkWatch(t, present);
   if (present) { if (!V.hudUp) V.hudUp = t; V.hudGone = 0; return; }
-  if (V.hudUp) { V.hudGone = t; V.hudWasUp = t - V.hudUp; V.hudUp = 0; V.hudDone = false; }      // first frame without the bar
+  if (V.hudUp) { V.hudGone = t; V.hudWasUp = t - V.hudUp; V.hudUp = 0; V.hudDone = false; if (V.hudWasUp > 600) slog('barHide', { at: Math.round(t), upMs: Math.round(V.hudWasUp) }); }      // first frame without the bar
   if (!V.hudGone || V.hudDone || t - V.hudGone < 8 * FRAME) return;                                  // gone for 8 frames: not a flicker
   V.hudDone = true;
   const stp = isRoute() && RT()[routeStep];
@@ -1253,6 +1258,7 @@ function onFrame(t) {
   if (!dims()[0]) return;
   V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
 /*@include shared/coin_detect.frag.js*/
+  chgFrame(t, present);
   // target screen
   if (V.ref) {
     const g = sample(V.boxes.target, 24, 16); let diff = 0;
@@ -1261,7 +1267,7 @@ function onFrame(t) {
     // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
     const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
     // an item on Mario confirmed quickly shows the hand screen only for a moment: count it from one frame (cat M)
-    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && RT()[routeStep].cat === 'M' ? 20 : 200)) { V.lastClose = t; checkPress(t); }   // the target screen just closed (after being up for a moment)
+    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && (RT()[routeStep].cat === 'M' || RT()[routeStep].turn === 'hw_spiny') ? 20 : 200)) { V.lastClose = t; checkPress(t); }   // the target screen just closed (after being up for a moment)
     // an optional step that does not happen: if the next step's screen shows up instead, skip to it
     if (isRoute() && RT()[routeStep] && RT()[routeStep].optional && routeStep + 1 < RT().length && !on) {
       const N = targets['jr_' + RT()[routeStep + 1].cat];
@@ -1343,7 +1349,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) {
-  slog('step', { to: i }); routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
+  slog('step', { to: i }); const was = routeStep; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && CHG.state !== 'search' && CHG.state !== 'maps') chgReset(); if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
 $('route-prev').onclick = () => setStep(routeStep - 1); $('route-next').onclick = () => setStep(routeStep + 1); $('route-reset').onclick = () => setStep(0);
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || !isRoute()) return; if (e.key === '[') setStep(routeStep - 1); else if (e.key === ']') setStep(routeStep + 1); });
@@ -1428,7 +1434,9 @@ const presses = (function () { try { return JSON.parse(localStorage.getItem('tot
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
 function checkPress(tObs) {
-  { const z = isRoute() && RT()[routeStep]; if (zw.on && z && z.turn === 'hw_spiny') zwInput('hw_spiny', tObs, VAN.B(), z.imps); }
+  { const z = isRoute() && RT()[routeStep];
+    if (z && z.turn === 'hw_spiny' && (CHG.state === 'search' || CHG.state === 'maps')) { CHG.spiny = tObs; slog('chargeSpinyHeld', { at: Math.round(tObs) }); }   // the Charge lock adds it when it lands
+    if (zw.on && z && z.turn === 'hw_spiny') zwInput('hw_spiny', tObs, VAN.B(), zw.imps || z.imps); }
   slog('screenClosed', { at: Math.round(tObs), step: routeStep, plan: st.plan ? { tPress: Math.round(st.plan.tPress), target: st.plan.target, w: st.plan.w.length, tMade: Math.round(st.plan.tMade || 0) } : null });
   const stp = isRoute() && RT()[routeStep], n0 = st.turnEv.length;
   if (stp && stp.turn && !PROF().rolls.length && st.lock && st.clock && !st.needResync && !unmodeledAfter(baseState().tLast)) {
@@ -1509,7 +1517,7 @@ $('test-beep').onclick = () => {
 // any click or key wakes the audio (browsers start it suspended until the page is used)
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
 function autoPlan() {
-  if (!st.lock || st.searching || !PROF().rolls.length) return;
+  if ((!st.lock && !zw.on) || st.searching || !PROF().rolls.length) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
   const again = !!st.plan; makePlan(); if (st.plan) st.plan.again = again;
 }
@@ -1525,6 +1533,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
+window.__tot = { CHG, chgReset, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
 })();
 </script>

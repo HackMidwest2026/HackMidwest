@@ -14,7 +14,7 @@ const { chromium } = require('playwright');
   for (const [seed0, imp, guard, edge] of cases) {
     const out = await p.evaluate(async ([seed0, imp, guard, edge]) => {
       const T = window.__tot, R = T.R, FR = R.FRAME_MS, num = id => +document.getElementById('s-' + id).value;
-      document.getElementById('s-zwwin').value = '1'; document.getElementById('s-zwedge').value = String(edge);
+      document.getElementById('s-zwwin').value = '1'; document.getElementById('s-zwedge').value = String(edge); document.getElementById('s-lead').value = '4';   // the lead this test was written for (the page default is now 1.5 s)
       document.getElementById('reset').click();
       const vlag = num('vlag'), pfix = num('pfix'), wait = async c => { for (let i = 0; i < 600 && !c(); i++) await new Promise(r => setTimeout(r, 50)); };
       const G = { S: { s: seed0 >>> 0, nc: 5, inst: [] }, g: 0, ev: [], shines: [] }, T0 = performance.now() + 1000;

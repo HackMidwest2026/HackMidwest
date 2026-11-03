@@ -341,7 +341,13 @@ predicted the Time Out result at the real confirm frame correctly in 5 of 5 lock
 - `hw_spiny` was measured without A during the aim; real runs throw with A ("Nice"). The fits say the draws are the
   same apart from timing, but that is not checked in the emulator.
 
-## What a live readout on the page needs
+## Live on the page (Nov 2): see `../charge_live/README.md`
+The page now does this live: no emulator render (each angle's median over distance removes the burst), frame 0 from
+the burst's brightness, Mario's position measured (the two clips that failed here, 15-14-09 and 15-19-21, had Mario
+6 world units to the right; with the centre moved they lock: b400fca5 q7, ea113ee3 q19), and an exact top-K search by
+base angle in WebAssembly workers (seconds, not minutes). All 7 route clips lock.
+
+## What a live readout on the page needs (before Nov 2)
 - Per-fight data: background renders of the 48 Charge frames (the burst + scene; ~48 small images per arena and
   partner), the camera table (`data/charge_cams_*.json`), and the burst problem solved (fit the shimmer's scroll
   parameters or mask it) for the runs where the heap leftovers differ.
