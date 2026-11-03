@@ -176,6 +176,9 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
         <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
         <label class="f">Charge lock search threads (0 = all cores but one; it runs for a few seconds during turn 1)<input id="s-chgcpu" type="number" min="0" max="16" value="0"></label>
+        <label class="f">Charge area size (%; the purple frame on the camera preview should match the game picture)<input id="s-chgsc" type="number" step="0.2" value="100"></label>
+        <label class="f">Charge area shift right (px of a 1280×720 capture)<input id="s-chgdx" type="number" step="1" value="0"></label>
+        <label class="f">Charge area shift down (px of a 1280×720 capture)<input id="s-chgdy" type="number" step="1" value="0"></label>
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
@@ -212,7 +215,7 @@ details[open] summary { margin-bottom: 10px; }
     <h2>Watch the game automatically (OBS Virtual Camera)</h2>
     <div class="cam">
       <div style="display:grid; gap:8px; min-width:0">
-        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box and the Time Out hand box"></canvas>
+        <canvas id="preview" width="640" height="480" aria-label="Camera preview with the coin box, the Time Out hand box and the Charge area (purple, dashed)"></canvas>
         <div class="row">
           <span class="seg" role="group" aria-label="Box to draw">
             <button class="b" id="draw-coin" aria-pressed="true"><span class="box-coin">■</span> Draw coin box</button>
@@ -261,7 +264,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -313,7 +316,7 @@ let routeStep = 0; try { routeStep = Math.max(0, parseInt(localStorage.getItem('
 const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof ? R.PROFILES[RT()[Math.min(routeStep, RT().length - 1)].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
 const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
 loadSettings(); $('s-prof').value = 'endgame';   // one route for every fight
-SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); }));
+SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); if (!V.stream) drawIdlePreview(); }));
 // a new beep offset applies right away: beeps still to come are re-scheduled for the same aimed frame
 /* calibration measured on the High Power Bounce Manipulator (same capture, coin and beep code): its tries give the frame the
  * runner really confirms on when beeped, so its recommended beep offset and the video lag it used carry over. Only on click. */
@@ -1312,6 +1315,7 @@ function drawPreview() {
   const c = cv.getContext('2d'); c.drawImage(V.src || V.video, 0, 0, cv.width, cv.height);
   const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
   box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+  if (typeof chgFrameBox === 'function') { c.setLineDash([8, 6]); box(chgFrameBox(), '#a35bd6'); c.setLineDash([]); }
 }
 // drag on the preview to set the selected box
 (function () {
@@ -1329,6 +1333,7 @@ function drawIdlePreview() {
   c.fillStyle = '#9aa'; c.font = '16px ' + css('--body'); c.fillText('Camera preview appears here', 20, 40);
   const box = (b, col) => { c.strokeStyle = col; c.lineWidth = 3; c.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height); };
   box(V.boxes.coin, css('--gold')); box(V.boxes.target, '#3d7bd9');
+  if (typeof chgFrameBox === 'function') { c.setLineDash([8, 6]); box(chgFrameBox(), '#a35bd6'); c.setLineDash([]); }
 }
 function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
@@ -1533,6 +1538,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { CHG, chgReset, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
+window.__tot = { CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
 })();
 </script>

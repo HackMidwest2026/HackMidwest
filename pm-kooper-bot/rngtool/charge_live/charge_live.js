@@ -11,8 +11,19 @@
  * seed x q x console lag particles at frame 0; the Spiny Flip, Bowser's attack and the coin on the menus are carried
  * as before, and Time Out's target screen beeps the best frame or says No edge. */
 const CHG_CAMS = /*CHG_CAMS*/null, CHG_MARIO = /*CHG_MARIO*/null, CHG_WASM = '/*CHG_WASM*/';
-const CHG_N = 48, CHG_ND = 96, CHG_MAP = [3.2637, 272.82, 3.3221, -31.09];   // capture 1280x720 = S*x + O (x in 320 space)
-const CHG_GAME = { x: 0.273, y: 0.139, w: 0.703, h: 0.833 };              // the game picture in the capture (for the burst trigger)
+const CHG_N = 48, CHG_ND = 96, CHG_MAP0 = [3.2637, 272.82, 3.3221, -31.09];  // capture 1280x720 = S*x + O (x in 320 space), fitted on the route clips' OBS layout
+/* the runner's adjustment (Settings: Charge area size / shift), applied about the game picture's centre: the purple frame
+ * on the camera preview is the 320x240 game raster this map gives, so it can be lined up with the real game picture */
+function chgMap() {
+  const k = (num('chgsc') || 100) / 100, dx = num('chgdx'), dy = num('chgdy'), [SX, OX, SY, OY] = CHG_MAP0;
+  return [SX * k, OX + 160 * SX * (1 - k) + dx, SY * k, OY + 120 * SY * (1 - k) + dy];
+}
+/* the game area the burst trigger averages (320-space x 23.5..299.2, y 39.5..220: the old fixed box), in 0..1 capture units */
+function chgGame() { const [SX, OX, SY, OY] = chgMap(); return { x: (OX + 23.5 * SX) / 1280, y: (OY + 39.5 * SY) / 720, w: 275.7 * SX / 1280, h: 180.5 * SY / 720 }; }
+/* the purple frame on the preview: the game picture's edges as the route clips show them (320-space x 11.4..308.6,
+ * y 9.4..219.8; in the clips' layout the top and right edges are the capture's own, the left and bottom edges are the
+ * picture's), in 0..1 capture units. Lined up with the real picture, the Charge rays land where the page looks. */
+function chgFrameBox() { const [SX, OX, SY, OY] = chgMap(); return { x: (OX + 11.4 * SX) / 1280, y: (OY + 9.4 * SY) / 720, w: 297.2 * SX / 1280, h: 210.4 * SY / 720 }; }
 const CHG_BRIGHT = [7.2, 12.5, 19.4, 28, 35.9, 42.1, 47.6, 49.2, 50.4, 53.9, 56.4, 56.9, 58.8, 61.2, 61.2, 61.7, 60.7, 62.1, 59.9, 57.1, 55.5, 50, 45.4,
   40.7, 29.8, 20.3, 14.7, 8.3, 3.4, 2.2, 4.2, 6.5, 7.3, 6.9, 6.8, 6.6, 6.5, 6.3, 6.2, 6, 6, 6, 5.9];   // game area brightness above the menu, frames 3..45
 const CHG_K = 16384, CHG_M2 = 300, CHG_IMPS = Array.from({ length: 136 }, (_, i) => 40 + i);   // Spiny Flip thrown with A: impact +40..+175
@@ -27,7 +38,7 @@ let chgCv = null, chgCtx = null;
 function chgCanvas() { if (!chgCv) { chgCv = document.createElement('canvas'); chgCv.width = 640; chgCv.height = 480; chgCtx = chgCv.getContext('2d', { willReadFrequently: true }); } return chgCtx; }
 /* the capture frame -> the 640x480 game raster (2 px per 320-space unit), luma */
 function chgGrab() {
-  const c = chgCanvas(), [vw, vh] = dims(), [SX, OX, SY, OY] = CHG_MAP, kx = 1280 / vw, ky = 720 / vh;
+  const c = chgCanvas(), [vw, vh] = dims(), [SX, OX, SY, OY] = chgMap(), kx = 1280 / vw, ky = 720 / vh;
   c.setTransform(2 / SX * kx, 0, 0, 2 / SY * ky, 0.5 - 2 / SX * (0.5 + OX), 0.5 - 2 / SY * (0.5 + OY));
   c.fillStyle = '#000'; c.fillRect(-1e4, -1e4, 3e4, 3e4); c.drawImage(V.src || V.video, 0, 0, vw, vh); c.setTransform(1, 0, 0, 1, 0, 0);
   const d = c.getImageData(0, 0, 640, 480).data, Y = new Uint8Array(640 * 480);
@@ -46,7 +57,7 @@ function chgFrame(t, present) {
   if (present && CHG.state !== 'capture' && (CHG.state !== 'armed' || CHG.presN > 15)) { if (CHG.state === 'armed') { CHG.state = 'idle'; CHG.ring = []; CHG.means = []; } CHG.hideT = null; return; }   // the burst can flicker the coin box: only a bar back for 1/4 s disarms
   if (CHG.hideT == null && !present) { CHG.hideT = t; CHG.menu = CHG.menuSince ? { from: CHG.menuSince + 1000, to: t - 4 * FRAME, taps: (V.hist || []).filter(x => x > CHG.menuSince + 1000 && x < t) } : null; }
   if (CHG.state === 'idle') { if (t - CHG.hideT > 4000) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; }
-  const g = sample(CHG_GAME, 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
+  const g = sample(chgGame(), 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
   const tg = performance.now(), fr = { t, m, Y: chgGrab() }; CHG.grabMs = (CHG.grabMs || 0) * 0.9 + 0.1 * (performance.now() - tg);
   if (CHG.state === 'armed') {
     CHG.ring.push(fr); if (CHG.ring.length > 16) CHG.ring.shift(); CHG.means.push(m); if (CHG.means.length > 12) CHG.means.shift();
