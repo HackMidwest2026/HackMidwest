@@ -121,6 +121,102 @@ On Hallway Bowser turn 1 the page reads gRandSeed from Mario's (Super) Charge ra
 through Lakilester's Spiny Flip and Bowser's attack with the zero-wait tracker, and on turn 2 beeps the best Time Out
 confirm frame (or says No edge). Nothing here makes the runner wait: the only added time is the beep window.
 
+## The first live session on v68 (2026-11-03 evening) and what changed
+Log timeout-timer-log-1793757328924 (the same session as -1793757228704, extended to 986 s), clips 2026-11-03_20-53-09
+(the Charge at 856 s, Time Out worked) and 20-54-59 (the Charge at 966 s, "the thing doesn't load"). Clip times map to
+the log by the bar's hides: 20-53-09 = log - 849.35 s, 20-54-59 = log - 959.63 s. Real N64, OBS 1280x720 60 fps.
+
+| Charge (bar hide, s) | Lock | Seed, score, ratio | Time Out press err (frames) | Page: works | Actual |
+|---|---|---|---|---|---|
+| 218.9 | yes | f70bd8ab, 6948, 4.12x | +1.69 | no | ? |
+| 282.6 | no | best 1766, 1.04x | (no plan) | - | ? |
+| 348.1 | yes | de795e8e, 6776, 4.16x (Mario +16.5 px) | -3.27 | no | ? |
+| 447.2 | no | best 1812, 1.07x | (no plan) | - | ? |
+| 540.4 | yes | d815b1fa, 7518, 3.87x | -3.28 | no | ? |
+| 612.1 | no | best 1499, 1.02x | (no plan) | - | ? |
+| 659.3 | no | best 1988, 1.03x | (no plan) | - | ? |
+| 749.5 | yes | 7424190f, 7355, 4.70x | -1.27 | yes | ? |
+| 808.3 | no | best 1868, 1.13x | (no plan) | - | ? |
+| 856.5 | yes | 7dc894b3, 7698, 4.44x | +0.71 | yes | **works** (clip 20-53-09) |
+| 966.3 | yes | b59bef18, 7403, 4.13x | no beeps: target screen up 8 s | - | not pressed (clip 20-54-59) |
+
+The runner reset after every Time Out, so only the clipped outcome is known. Frame-fed, both clips lock the live seeds
+(7dc894b3 q 13, b59bef18 q 15); 20-53-09 gives 0.75 / 0.67 / 0.27 at the confirm (-1/0/+1).
+
+- **No beeps on the last attempt (20-54-59): a shine search blocked the plan.** The page plans when the target screen has
+  been seen for 300 ms (`autoPlan`), but `autoPlan` returned while any shine seed search ran. The turn-2 menu's coin
+  (one stretch already in the chain since 966.1 s) started a chain search on its 2nd shine (980.2 s, reproduced by
+  replaying the log's shines and coin returns through the page); the earlier one in this session took 11.5 s. The target
+  screen came up at ~980.6 s and stayed until the log was saved at ~988.7 s: no plan, and no zwInconsistent (the tracker
+  was never asked). Fed frame by frame with the target screen saved and a search running from the first turn-2 shine,
+  v68 makes no plan; this build makes them (0.94 at 22.5 s). The zero-wait plan needs no search: `autoPlan` now only waits
+  for a search when there is no tracker.
+- **The route went into Final Bowser after every Time Out.** On Time Out's screen closing the route moved to the next
+  step, which is now the Final Bowser step (FB2). A retry without a 10 s gap stayed there, and the next Charge was read
+  with the FB2 profile: at 478-489 s and 704-708 s (Mario NCC 0.11 against the FB2 patch; the FB2 profile arms on any hide
+  and triggered on the Time Out animation and later turns). The runner fixed the step by hand 7 times; replayed without
+  those, v68 would have read 13 of the session's triggers with the FB2 profile (charge_live/test_route_replay.js). Now:
+  - a target screen closing never moves the route from the Hallway into Final Bowser: after Time Out the route stays on
+    Hallway T2 and plans nothing more there (`st.hwDone`, "Time Out is done for this attempt");
+  - the arena is read at every arming of the Charge capture (`chgArena`): the band under the battle floor (320-space y
+    165-190) and the top of the picture (y 40-100). Hallway: luma 45-67, blue excess B - R +27..+64 at all 43 bar hides
+    of the 14 Hallway clips; Final Bowser: 114-116 and +4..+11 (clip 14-47-09). A black or faded picture is neither.
+    Mario's patch cannot tell them apart at the hide (NCC 0.08 with either). On the FB2 step a Hallway picture arms the
+    Hallway profile, and the burst sets the route to Hallway T1 (`chargeStepSet`). On a Hallway step a Final Bowser
+    picture sets the route to the FB2 step and arms the FB2 profile, so FB2 is entered when its battle shows.
+- **No lock on 5 of the 11 real Charges.** Mario 0.99 and 45-48 frames in all of them, and 612/659/808 had a clean
+  capture (one 33 ms gap). The best seed was 1.5-2.0k at 1.0-1.1x: nothing fit at all, so it was not q (stage 2 covers
+  q 0-47), Mario's position (dx 0) or the trigger (+7.4..+7.8 = frame 3 in all of them), and the move was the same (the
+  Charge's rays are the same two energy_in_out effects for every Jump Charge level in the decomp; the FP used is 4 in
+  both clips). What the clips show: the N64 sometimes runs a game frame with no picture of its own inside the rays (the
+  capture shows 2 pictures per game frame throughout, but the burst and the rays are one frame ahead after it). On
+  20-54-59 the brightness placement puts that skip at frame 17-18 and scores 7.2k; one picture per game frame scores 6.0k.
+  Where the burst is flat (frames 9-17) the placement can put the skip a few frames early, and then everything after it
+  is one frame off: a frame-fed run of 20-54-59 put it at frame 10 and gave "best 1684, 1.01x", the live no-lock's
+  signature (an earlier session's T1 run on 15-18-39 did the same, 2094 at 1.01x). Not proven to be the live cause: the
+  live pictures are not in the log. Two changes:
+  - **retry**: a real Charge with no clear seed is searched again with the next-best placement (the assignments around
+    each skip of the last one banned), at most twice (`chgRetry`, `CHG_ALTS`; 1.2-3.5 s per search live, Time Out's target
+    screen comes ~12 s after the rays). With the first placement forced to the early skip, 20-54-59 gives the live
+    signature (1713, 1.04x), and the retry locks b59bef18 (6987, 4.27x);
+  - **the evidence**: a no-lock with Mario seen keeps its game frames (the last 2, greyscale JPEG, about 2 MB each) and
+    Save log writes them (`chargeCaptures`); `tools/capture_u8.py` turns one into the rasters `tools/harness.c` reads. The
+    no-lock log line also carries each effect's stage-1 best and K-th score (`s1`): one effect clear and the other at
+    noise means its rays were read right and the draws between were not; both at noise means the pictures were placed
+    wrong. Tried and dropped: weighting the placement by the capture's clock (2 pictures per game frame) put the skip
+    late or nowhere and lowered every score (6.0-6.2k on 20-54-59).
+- **"Charge not seen" (264, 390, 396, 595, 788, 794, 836, 841, 932, 940 s) are harmless.** None was followed by a Spiny
+  Flip hide 3.8-4.0 s later, and each attempt's real Charge came 15-30 s after. Four (264, 595, 836, 932) are the battle
+  intro after a long bar-up (14-44 s while walking): a trigger 980-1010 ms after the hide at +6..7, then +29 within
+  0.3 s, which is the intro's brightening on both new clips (59 -> 88 in 0.3 s). Every real Charge of the session
+  triggered 439-514 ms after its hide. The others had no burst at all. test_fix_proposal.js section 4 runs both clips'
+  pictures after that prefix: the intro is rejected and the Charge still triggers 483 / 500 ms after its hide.
+- **Press timing.** Every plan was one frame (`w: 1`); Time Out's working frames come in runs of 0-2 for all states
+  left, so no window takes +-2-3 frames. The runner's presses on the beeps: +1.69, -3.27, -3.28, -1.27, +0.71 (mean -1.1,
+  rms 2.3); the page's own calibration dropped the two -3.3 ones (it only took |err| <= 3; now 5). zwPlan scored frames
+  with +-1 (25/50/25); it now uses the runner's own spread (a normal with the rms of the Press check presses, 0.7-3
+  frames, once 3 are in: `pressDist`). Replaying the 5 planned attempts through the tracker (test_session_plans.js; every
+  logged Spiny Flip frame and plan target reproduced), the chance Time Out works under the runner's spread goes from 0.50
+  to 0.54 on average (0.34 -> 0.45 on the 348 s attempt). The pressed frames that worked by the page (749, 856) are
+  the ones that worked in the replay; the three -3.3/+1.7 presses fell on failing frames.
+
+Settings for the runner: **Beep offset -5 -> -4** (the presses averaged 1.1 frames early; 5 presses, so recheck after
+10), Press check correction stays 0 (the one verified outcome, +0.71 at 856 s, read as working and worked).
+
+Frame-fed on this build (`test_charge_feed.js`, real time; the full suite passes): all 14 Hallway clips lock their
+known seeds from T1 (7 route clips b400fca5 ... 306686e9, the 5 earlier runner clips dedb3e53, 517b7c30, d066fdbd,
+180f546b, ce0959dc, and 7dc894b3 / b59bef18 for the two new ones), with the same Time Out shares at the confirm as
+before (e.g. 15-19-56 0.2 / 0.8 / 0.2, 20-53-09 0.75 / 0.67 / 0.27); the runner's 7 clips from T2 lock the same seeds
+and set T1; 20-53-09 and 20-54-59 from the FB2 step take the Hallway profile, lock and set T1 (v68: FB2 profile, Mario
+0.11-0.14, no lock); the FB2 clip from Hallway T2 moves the route to FB2 at its first bar hide and reads as from the
+FB2 step.
+
+Tests: `charge_live/test_route_replay.js` (log replay of the route: every trigger on a Hallway step, never the FB2 step;
+v68 reproduces the FB2 reads), `charge_live/test_session_plans.js`, `charge_live/test_fix_proposal.js` section 4,
+`test_charge_feed.js` with `STEP=fb2` (both new clips lock from the FB2 step and set Hallway T1; the FB2 clip from
+Hallway T2 moves the route to FB2 and reads as from the FB2 step), `REF=1300 BUSY=1` (the plan with a search running)
+and `BAN0` (a forced wrong first placement, for the retry).
+
 ## The runner's first live attempts (2026-11-03) and what changed
 Logs timeout-timer-log-1793735643131 / -1793736599276 / -1793737154078 / -1793737237152 / -1793737413564 /
 -1793737579773 and clips 2026-11-03_15-18-39, 15-19-56, 15-22-53, 15-25-30. Test: `node charge_live/test_fix_proposal.js`

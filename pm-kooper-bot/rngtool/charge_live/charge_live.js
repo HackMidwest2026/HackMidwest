@@ -62,6 +62,30 @@ function chgEnabled() { const el = $('s-chg'); return !el || el.checked; }
 const chgHallStep = s => !!(s && s.t && /^Hallway Bowser/.test(s.t));
 function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (chgHallStep(s)) return CHG_PROF.hw; for (const k in CHG_PROF) if (CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
 function chgStepActive() { return !!chgProfNow(); }
+/* Which arena the capture shows, read at a real bar hide (the menu just closed, battle camera): the band under the
+ * battle floor (320-space y 165-190) is the dark bushes in the Hallway (luma 45-67 at all 43 bar hides of the 14
+ * Hallway clips) and the lit stone floor in Final Bowser's arena (114-116 on the FB2 clip); the top of the picture
+ * (y 40-100) is the blue windows in the Hallway (B - R +27..+64) and the dark sky in Final Bowser's (+4..+11). Mario's
+ * reference patch does not tell them apart (at the hide he is not in the Charge pose: NCC 0.08 with either patch). */
+const CHG_ARENA_LOW = [30, 165, 300, 190], CHG_ARENA_TOP = [30, 40, 300, 100];
+function chgArenaBox(b) { const [SX, OX, SY, OY] = chgMap(); return { x: (OX + b[0] * SX) / 1280, y: (OY + b[1] * SY) / 720, w: (b[2] - b[0]) * SX / 1280, h: (b[3] - b[1]) * SY / 720 }; }
+function chgArena() {
+  const rgb = b => { const g = sample(chgArenaBox(b), 32, 8), n = g.length / 4; let r = 0, gr = 0, bl = 0; for (let i = 0; i < g.length; i += 4) { r += g[i]; gr += g[i + 1]; bl += g[i + 2]; } return [r / n, gr / n, bl / n]; };
+  const lo = rgb(CHG_ARENA_LOW), tp = rgb(CHG_ARENA_TOP), L = 0.299 * lo[0] + 0.587 * lo[1] + 0.114 * lo[2], br = tp[2] - tp[0];
+  return { a: L < 85 && br > 18 ? 'hw' : L > 95 && br < 18 && br > -15 ? 'fb' : null, L: +L.toFixed(1), br: +br.toFixed(1) };
+}
+/* the profile for a Charge armed on this hide: the step's, unless the picture is the other arena (a black or faded picture
+ * is neither). Final Bowser's arena is taken only at a real bar hide (the menu just closed): the Hallway's battle intro
+ * flashes white (luma 120) and reads like its lit floor. The Hallway is taken at any arming, as the FB2 profile arms on
+ * any hide (its dark bushes and blue windows do not occur in Final Bowser's arena). On the FB2 step
+ * (or past it) a Hallway picture is a Hallway retry: the Hallway profile, and the burst sets the route to Hallway T1
+ * (chgPendResolve). On a Hallway step a Final Bowser picture is that battle reached: the route goes to the FB2 step. */
+function chgArenaProf(P0, real) {
+  const A = chgArena(), fbI = RT().findIndex(x => x.turn === CHG_PROF.fb2.turn);
+  if (P0 === CHG_PROF.fb2 && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br }); return CHG_PROF.hw; }
+  if (P0 === CHG_PROF.hw && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br }); chgPendDrop('arena'); setStep(fbI); return CHG_PROF.fb2; }
+  return P0;
+}
 const chgP = () => CHG.prof || CHG_PROF.hw;
 /* The Hallway Charge confirm is anchored on the burst: the bar hide that would count as the hw_charge pre is held
  * (CHG.pend) until the capture shows a real Charge (shape and Mario); otherwise it is dropped and the pre stays open, so a
@@ -87,7 +111,7 @@ function chgPendResolve() {
   CHG.preUsed = CHG.trig.t; V.preDone = V.preDone || {}; V.preDone[hi + ':' + hidePre] = true;
   slog('chargeConfirm', { at: Math.round(tObs), from: P ? 'bar' : 'burst' }); preConfirm(hwPre, tObs);
 }
-function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
+function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null, armP: null, G: null, F0: null, skips: null, alt: 0 }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
 chgReset();
 let chgCv = null, chgCtx = null;
 function chgCanvas() { if (!chgCv) { chgCv = document.createElement('canvas'); chgCv.width = 640; chgCv.height = 480; chgCtx = chgCv.getContext('2d', { willReadFrequently: true }); } return chgCtx; }
@@ -110,10 +134,15 @@ function chgFrame(t, present) {
   if (!chgStepActive()) { if (CHG.state !== 'idle') chgReset(); return; }
   if (present && V.presentSince) CHG.menuSince = V.presentSince;            // the turn-1 menu's coin (for the q check)
   CHG.presN = present ? (CHG.presN || 0) + 1 : 0;
-  if (present && CHG.state !== 'capture' && (CHG.state !== 'armed' || CHG.presN > 15)) { if (CHG.state === 'armed') { CHG.state = 'idle'; CHG.ring = []; CHG.means = []; } CHG.hideT = null; return; }   // the burst can flicker the coin box: only a bar back for 1/4 s disarms
-  if (CHG.hideT == null && !present && chgProfNow().trigMin && !(V.hudGone === t && V.hudWasUp > 600)) { CHG.hideT = -1e12; return; }   // not a confirm: the bar was not up
-  if (CHG.hideT == null && !present) { CHG.hideT = t; CHG.menu = CHG.menuSince ? { from: CHG.menuSince + 1000, to: t - 4 * FRAME, taps: (V.hist || []).filter(x => x > CHG.menuSince + 1000 && x < t) } : null; }
-  if (CHG.state === 'idle' || CHG.state === 'notseen') { if (t - CHG.hideT > chgProfNow().trigMax) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = chgProfNow(); }
+  if (present && CHG.state !== 'capture' && (CHG.state !== 'armed' || CHG.presN > 15)) { if (CHG.state === 'armed') { CHG.state = 'idle'; CHG.ring = []; CHG.means = []; } CHG.hideT = null; CHG.armP = null; return; }   // the burst can flicker the coin box: only a bar back for 1/4 s disarms
+  if (CHG.hideT == null && !present) {
+    const real = V.hudGone === t && V.hudWasUp > 600, P = chgArenaProf(chgProfNow(), real);
+    // a capture the other arena's profile started (the FB2 profile arms on any hide) is not this Charge: drop it
+    if (CHG.state === 'capture' && CHG.prof && CHG.prof !== P) { slog('chargeArenaDrop', { prof: CHG.prof.id }); CHG.state = 'idle'; CHG.frames = []; CHG.ring = []; CHG.means = []; CHG.trig = null; CHG.early = null; if (CHG.workers) { CHG.workers.forEach(w => w.terminate()); CHG.workers = null; } if (typeof fb2Reset === 'function') fb2Reset(); }
+    if (P.trigMin && !real) { CHG.hideT = -1e12; CHG.armP = null; return; }   // not a confirm: the bar was not up
+    CHG.hideT = t; CHG.armP = P; CHG.menu = CHG.menuSince ? { from: CHG.menuSince + 1000, to: t - 4 * FRAME, taps: (V.hist || []).filter(x => x > CHG.menuSince + 1000 && x < t) } : null;
+  }
+  if (CHG.state === 'idle' || CHG.state === 'notseen') { const P = CHG.armP || chgProfNow(); if (t - CHG.hideT > P.trigMax) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = P; }
   const g = sample(chgGame(), 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
   const tg = performance.now(), last = CHG.state === 'capture' ? CHG.frames[CHG.frames.length - 1] : CHG.ring[CHG.ring.length - 1];
   const rep = chgP().id === 'fb2' && last && Math.abs(last.m - m) < 0.02;     // FB2: a repeated picture (same coarse brightness) reuses the raster: half the grabs
@@ -146,7 +175,7 @@ function chgCoin(t, present) { if (CHG.state === 'search' || CHG.state === 'maps
 function chgTap(t) { if (CHG.state === 'search' || CHG.state === 'maps') CHG.taps.push(t); }
 /* distinct game frames: frame 0 is 3 game frames before the first one 5 brighter than the menu (7 route clips);
  * out[CHG_N + 2], out[CHG_N + 3] = frames -2 and -1 (Mario's position) */
-function chgGameFrames() {
+function chgGameFrames(ban) {     // ban: Set of j * 64 + n, assignments an earlier placement used for a skipped frame
   const F = CHG.frames, out = new Array(CHG_N + 4).fill(null), ti = CHG.trig.i, tT = F[ti].t, NN = CHG_N + 2;
   const diff = (a, b) => { let s = 0; for (let y = 40; y < 440; y += 8) for (let x = 24; x < 616; x += 8) s += Math.abs(a[y * 640 + x] - b[y * 640 + x]); return s / (50 * 74); };
   const fresh = F.map((f, i) => i === 0 || diff(f.Y, F[i - 1].Y) > 0.8);
@@ -160,14 +189,19 @@ function chgGameFrames() {
   for (let j = 1; j < J.length; j++) {
     const d = F[J[j]].m - base, dt = F[J[j]].t - F[J[j - 1]].t;
     for (let n = 3; n < NN + 3; n++) {
-      const tb = BR[n - 3], cb = tb == null ? 0 : Math.min(25, ((d - tb) / TOL(tb)) ** 2);
+      if (ban && ban.has(j * 64 + n)) continue;
+      const tb = BR[n - 3], cb = (tb == null ? 0 : Math.min(25, ((d - tb) / TOL(tb)) ** 2));
       for (let st2 = 0; st2 <= 3; st2++) { const p = n - st2; if (p < 3 || cost[j - 1][p] >= INF) continue;
         const c = cost[j - 1][p] + cb + Math.min(9, ((dt - FRAME * st2) / 12) ** 2) + [3, 0, 2, 4][st2];
         if (c < cost[j][n]) { cost[j][n] = c; from[j][n] = p; } }
     }
   }
+  const path = new Array(J.length);
   if (J.length) { let n = 3; for (let k = 4; k < NN + 3; k++) if (cost[J.length - 1][k] < cost[J.length - 1][n]) n = k;
-    for (let j = J.length - 1; j >= 0; j--) { if (n < NN && (out[n] == null || j === 0 || from[j][n] !== n)) out[n] = J[j]; if (j) n = from[j][n]; } }
+    for (let j = J.length - 1; j >= 0; j--) { path[j] = n; if (n < NN && (out[n] == null || j === 0 || from[j][n] !== n)) out[n] = J[j]; if (j) n = from[j][n]; } }
+  // where this placement says a game frame had no picture of its own (or a picture was shown twice) inside the rays: the
+  // assignments a retry bans so that the next-best placement puts it elsewhere (chgRetry)
+  CHG.skips = []; for (let j = 1; j < J.length; j++) if (path[j] !== path[j - 1] + 1 && path[j] <= 36) CHG.skips.push(j * 64 + path[j]);
   // before it the picture barely changes: by time
   for (let n = -2; n <= 2; n++) { const want = tT + (n - 3) * FRAME; let bi = null;
     for (let i = 0; i < ti; i++) if (bi == null || Math.abs(F[i].t - want) < Math.abs(F[bi].t - want)) bi = i;
@@ -306,7 +340,7 @@ function chgEarly() {
 }
 async function chgSolve() {
   try {
-    const t0 = performance.now(), G = chgGameFrames();
+    const t0 = performance.now(), G = chgGameFrames(window.__chgBan0 ? new Set(window.__chgBan0) : null);   // __chgBan0: tests only
     const E = CHG.early && CHG.early.give ? CHG.early : null, c = E ? E.c : chgCentre(G), sh = c.sh, dxw = c.dxw, cen = c.cen;
     if (!E && chgP().trigMin && !(sh.ncc >= CHG_NCC_MIN)) {     // no Mario where the Charge has him: not the Charge, do not search it
       CHG.frames = []; CHG.state = 'notseen'; CHG.why = 'Charge not seen: Mario not found on the captured frames (NCC ' + (+sh.ncc).toFixed(2) + ')';
@@ -320,7 +354,8 @@ if (window.__chgDebug) {
     }
     const raw = CHG.frames; CHG.info = { raw: raw.length, spanMs: Math.round(raw[raw.length - 1].t - raw[0].t), grabMs: +(CHG.grabMs || 0).toFixed(1), gaps: raw.slice(1).map((f, i) => Math.round(f.t - raw[i].t)).join(','), frames: G.slice(0, CHG_N).filter(Boolean).length, mario: +sh.dx.toFixed(1), marioNcc: +sh.ncc.toFixed(2), dxWorld: +dxw.toFixed(2), mapsMs: Math.round(t1 - t0) };
     if (E) { CHG.info.early = { mapsMs: E.mapsMs, startedBeforeRaysEndMs: Math.round(CHG.tEnd - E.t1) }; CHG.info.prof = chgP().id; }
-    CHG.frames = []; CHG.state = 'search'; CHG.tSearch = E ? E.t1 : t1; chgShow();
+    CHG.F0 = CHG.frames; CHG.cen = cen; CHG.alt = 0; CHG.ban = new Set();
+    CHG.frames = []; CHG.G = G; CHG.state = 'search'; CHG.tSearch = E ? E.t1 : t1; chgShow();
     slog('chargeMaps', CHG.info);
     let res; if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
     CHG.res = res; CHG.tLock = performance.now(); CHG.info.searchMs = Math.round(CHG.tLock - CHG.tSearch); CHG.info.lockAfterRaysMs = Math.round(CHG.tLock - CHG.tEnd);
@@ -361,6 +396,9 @@ function chgSearch(maps, opts) {
       items.sort((a, b) => b[4] - a[4]); const seen = new Set(), top = [];
       for (const x of items) { if (seen.has(x[2])) continue; seen.add(x[2]); top.push(x[2]); if (top.length >= CHG_M2) break; }
       times.joint = Math.round(performance.now() - t2);
+      // stage 1 per effect: the best base score and the K-th (a no-lock with a clear stage-1 best for one effect read its
+      // rays right and missed on the other effect or the draws between; both at the noise level: the rays were misread)
+      const s1 = lists.map(l => (l.length ? [Math.round(l[0][0]), Math.round(l[l.length - 1][0])] : null));
       if (opts.full) { const tw = performance.now(), M = await opts.full; times.waitMaps = Math.round(performance.now() - tw); await Promise.all(W.map(w => call(w, { type: 'maps', S: M.S, C: M.C, N: CHG_N }, 'mapsok'))); }   // stage 2 needs all 48 frames
       const t3 = performance.now();
       const per2 = Math.ceil(top.length / W.length), qs = [];
@@ -368,7 +406,7 @@ function chgSearch(maps, opts) {
         for (let k = 0; k < W.length; k++) { const sd = top.slice(k * per2, (k + 1) * per2); qs.push(call(W[k], { type: 'q', seeds: sd }, 'q').then(r => r.out.map((q, i) => ({ seed: sd[i], q })))); }
         const all = [].concat(...(await Promise.all(qs))).map(o => { let b = 0; for (let q = 1; q < 48; q++) if (o.q[q] > o.q[b]) b = q; return { seed: o.seed, q: b, sc: o.q[b], qs: o.q }; }).sort((a, b) => b.sc - a.sc);
         W.forEach(w => w.terminate()); CHG.workers = null;
-        resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice() });
+        resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice(), s1 });
         return;
       }
       // FB2: every lightning pattern x q per candidate; candidates are dealt round-robin so each worker starts on the
@@ -386,7 +424,7 @@ function chgSearch(maps, opts) {
       const top1 = all[0], hy = top1 && top1.sc > -1e29 ? await call(W[0], { type: 'hyps', s0: top1.seed, tol: FB2_TOL }, 'hyps') : null;
       times.hyps = Math.round(performance.now() - t4);
       W.forEach(w => w.terminate()); CHG.workers = null;
-      resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice(), fb2: { hyps: hy, times, scored: all.filter(x => x.sc > -1e29).length } });
+      resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice(), s1, fb2: { hyps: hy, times, scored: all.filter(x => x.sc > -1e29).length } });
     };
     for (let k = 0; k < nw; k++) {
       const w = new Worker(url); W.push(w);
@@ -404,6 +442,26 @@ function chgSearch(maps, opts) {
     }
   });
 }
+/* A real Charge (Mario seen) with no clear seed: the placement of the pictures on game frames is the likely culprit. The
+ * N64 sometimes runs a game frame with no picture of its own (or shows one twice) inside the rays; the brightness
+ * places that well on most Charges (clip 2026-11-03_20-54-59: 7.2k with the skip where the brightness puts it, 6.0k with
+ * one picture per game frame), but where the curve is flat (frames 9-17) it can put the skip a few frames off, and
+ * then every later frame is off by one: best 1.6-2.0k at 1.0x, exactly the live session's 5 no-locks of 11 (Mario 0.99,
+ * 45-48 frames, clean capture). Retry with the next-best placement: the assignments around each skip of the last one
+ * are banned (the skip moves or goes), at most CHG_ALTS times (a search is 1.2-3.5 s live; Time Out's target screen comes
+ * ~12 s after the rays). */
+const CHG_ALTS = 2;
+async function chgRetry() {
+  try {
+    CHG.alt++; const path0 = (CHG.skips || []).slice(); for (const k of path0) for (let d = 0; d <= 2; d++) CHG.ban.add(k + d * 65);   // the skip's picture and the next two, at their frames
+    CHG.frames = CHG.F0; const G = chgGameFrames(CHG.ban); CHG.frames = [];
+    const t1 = performance.now(), maps = chgMaps(G, CHG.cen, CHG_N); CHG.G = G; CHG.state = 'search'; CHG.tSearch = performance.now(); chgShow();
+    slog('chargeRetry', { alt: CHG.alt, banned: CHG.ban.size, skips: CHG.skips.map(k => k & 63), frames: G.slice(0, CHG_N).filter(Boolean).length, mapsMs: Math.round(CHG.tSearch - t1) });
+    const res = await chgSearch(maps); CHG.res = res; CHG.tLock = performance.now();
+    Object.assign(CHG.info, { alt: CHG.alt, searchMs: Math.round(CHG.tLock - CHG.tSearch), lockAfterRaysMs: Math.round(CHG.tLock - CHG.tEnd), frames: G.slice(0, CHG_N).filter(Boolean).length });
+    chgDecide();
+  } catch (e) { slog('chargeError', { msg: 'retry: ' + String(e && e.message || e) }); CHG.state = 'failed'; CHG.why = 'error: ' + (e && e.message || e); chgShow(); }
+}
 /* lock: the best seed's score must be clearly above the rest (true seeds 2900-8300 at 2.1-5.4x the runner-up on the
  * route clips, live under load included; no-lock bests 750-1500 at 1.0-1.2x) */
 const CHG_MIN = 2000, CHG_RATIO = 1.8;
@@ -412,10 +470,15 @@ function chgDecide() {
   // FB2: candidates whose best case could not reach 1/CHG_RATIO of the best were skipped (score -1e30): below that ratio
   const b = fb2 ? (T.slice(1).find(x => x.sc > -1e29) || { sc: a ? a.sc / (CHG_RATIO * 1.0001) : 1, skipped: true }) : (T[1] || { sc: 1 });
   CHG.info.best = a && { seed: (a.seed >>> 0).toString(16).padStart(8, '0'), q: a.q, score: Math.round(a.sc), ratio: +(a.sc / b.sc).toFixed(2) };
+  if (CHG.res.s1) CHG.info.s1 = CHG.res.s1;
+  const G = CHG.G; CHG.G = null;
   if (!a || a.sc < CHG_MIN || a.sc / b.sc < CHG_RATIO) {
     CHG.state = 'nolock'; CHG.why = a ? 'no clear seed (best ' + Math.round(a.sc) + ', ' + (a.sc / b.sc).toFixed(2) + 'x the next)' : 'no candidates';
-    slog('chargeNoLock', CHG.info); chgShow(); return;
+    slog('chargeNoLock', CHG.info);
+    if (!fb2 && CHG.info.marioNcc >= CHG_NCC_MIN && CHG.alt < CHG_ALTS && CHG.skips && CHG.skips.length && CHG.F0) { chgRetry(); return; }
+    CHG.F0 = null; chgShow(); if (G && CHG.info.marioNcc >= CHG_NCC_MIN) chgKeepCapture(G, CHG.info); return;
   }
+  CHG.F0 = null;
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); fb2Lock(CHG.res); chgShow(); return; }
   // q hypotheses: every first-coin frame whose score is within 0.5% of the best (late coins barely move the rays)
   let qs = []; a.qs.forEach((s, q) => { if (s >= a.sc * 0.995) qs.push(q); });
@@ -424,6 +487,24 @@ function chgDecide() {
   CHG.qs = qs; CHG.state = 'locked'; slog('chargeLock', Object.assign({ qs }, CHG.info));
   chgStartTracker(a.seed >>> 0, qs);
   chgShow();
+}
+/* A Charge that showed Mario but locked nothing: its game frames go into the saved session log (the last 2, as greyscale
+ * JPEG of the 640x480 game raster, about 2 MB each), so the miss can be replayed offline (charge_live/tools/capture_u8.py
+ * -> tools/harness.c). Encoded one frame per task so the page does not stall. */
+const CHG_CAPS = [];
+function chgKeepCapture(G, info) {
+  const cv = document.createElement('canvas'); cv.width = 640; cv.height = 480; const cx = cv.getContext('2d'), img = cx.createImageData(640, 480), t0 = CHG.trig ? CHG.trig.t : 0;
+  const cap = { at: Math.round(t0), base: CHG.trig ? +CHG.trig.base.toFixed(1) : null, prof: chgP().id, info: Object.assign({}, info, { gaps: undefined }), frames: [] };
+  const idx = G.map((f, i) => i).filter(i => G[i]);
+  const one = k => {
+    if (k >= idx.length) { CHG_CAPS.push(cap); while (CHG_CAPS.length > 2) CHG_CAPS.shift(); slog('chargeCaptureKept', { at: cap.at, frames: cap.frames.length }); return; }
+    const i = idx[k], f = G[i], Y = f.Y, d = img.data;
+    for (let j = 0, o = 0; j < Y.length; j++, o += 4) { d[o] = d[o + 1] = d[o + 2] = Y[j]; d[o + 3] = 255; }
+    cx.putImageData(img, 0, 0);
+    cap.frames.push({ n: i < CHG_N + 2 ? i : i - (CHG_N + 4), t: Math.round(f.t - t0), m: +f.m.toFixed(1), jpg: cv.toDataURL('image/jpeg', 0.92) });
+    setTimeout(() => one(k + 1), 0);
+  };
+  try { one(0); } catch (e) { slog('chargeError', { msg: 'capture: ' + String(e && e.message || e) }); }
 }
 /* the first-coin frame q, checked against the turn-1 menu's coin before the Charge: frames before frame 0 draw only
  * the coin and the per-frame step, so for each q the coins before it follow from the seed stepped back (gap 48 after
@@ -500,15 +581,16 @@ function chgEvalAt(c) {
   return { p: w ? ok / w : null, n: zw.parts.length };
 }
 /* for tests: what zwPlan would beep if Time Out's target screen showed on clock frame cScr (the menu's coin counted up
- * to 4 frames before it): the best confirm frame in the next winS seconds after leadS, press 25/50/25 over -1/0/+1 */
+ * to 4 frames before it): the best confirm frame in the next winS seconds after leadS, with zwPlan's press spread */
 function chgPlanAt(cScr, leadS, winS) {
   zw.visTo = cScr - 4; zwUpdate(cScr);
   const parts = zw.parts.filter(p => !p.S.inst.length && !(p.S.extra && p.S.extra.size));
   if (!parts.length) return { noEdge: 'nothing fits', parts: 0 };
   const tot = parts.reduce((a, p) => a + p.w, 0), from = Math.ceil(cScr + leadS * 1000 / zw.rate + 1), W = Math.max(0, Math.round(winS * 1000 / zw.rate));
   const sc = new Array(W + 1).fill(0);
-  for (const p of parts) { const tab = []; for (let c = from - 1; c <= from + W + 1; c++) tab.push(R.works(p.S.s, p.S.nc, c, p.g, R.PROFILES.timeout) ? 1 : 0);
-    for (let k = 0; k <= W; k++) for (const [d, q] of PRESS_ERR) sc[k] += p.w * q * tab[k + 1 + d]; }
+  const PD = typeof pressDist === 'function' ? pressDist() : PRESS_ERR, D = Math.max(...PD.map(x => Math.abs(x[0])));
+  for (const p of parts) { const tab = []; for (let c = from - D; c <= from + W + D; c++) tab.push(R.works(p.S.s, p.S.nc, c, p.g, R.PROFILES.timeout) ? 1 : 0);
+    for (let k = 0; k <= W; k++) for (const [d, q] of PD) sc[k] += p.w * q * tab[k + D + d]; }
   let k = 0; for (let i = 1; i <= W; i++) if (sc[i] > sc[k] + 1e-12) k = i;
   const states = new Set(parts.map(p => p.S.s + ':' + p.S.nc + ':' + p.g)).size;
   return { target: from + k, p: sc[k] / tot, parts: parts.length, states, from, W };
