@@ -18,7 +18,12 @@ function grabFn(src, name) {
   throw new Error('unbalanced ' + name);
 }
 const grabLine = (src, re) => { const m = src.match(re); if (!m) throw new Error('no ' + re); return m[0]; };
-const PAGE = fs.readFileSync(path.join(RT, 'page_template.html'), 'utf8'), CHG = fs.readFileSync(path.join(RT, 'charge_live/charge_live.js'), 'utf8');
+/* v72: the tracker weighs its states instead of dropping them (test_zw_tolerant.js), so its plans differ from the ones this
+ * v68 log made (attempt 749.9 picks another frame). To reproduce the logged plans the tracker as it was until v71 is used
+ * (git 2d69af1; TRACKER=disk for the files on disk). */
+const git = f => require('child_process').execFileSync('git', ['show', '2d69af1:./' + f], { cwd: RT, maxBuffer: 1 << 26 }).toString();
+const DISK = process.env.TRACKER === 'disk';
+const PAGE = DISK ? fs.readFileSync(path.join(RT, 'page_template.html'), 'utf8') : git('page_template.html'), CHG = DISK ? fs.readFileSync(path.join(RT, 'charge_live/charge_live.js'), 'utf8') : git('charge_live/charge_live.js');
 function tracker(presses) {
   const a = PAGE.indexOf('const ZW_SCENE'), b = PAGE.indexOf('function zwPlan(');
   const code = [grabLine(PAGE, /const PRESS_ERR = .*\n/), grabFn(PAGE, 'pressDist'), PAGE.slice(a, b), grabLine(CHG, /const CHG_N = .*\n/), grabLine(CHG, /const CHG_K = .*\n/),

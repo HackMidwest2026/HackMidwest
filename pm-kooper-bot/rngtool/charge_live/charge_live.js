@@ -65,7 +65,7 @@ const CHG_PROF = {
 const CHG_NCC_MIN = 0.5;     // Mario on frame 0 (route clips and live 0.94, FB2 0.85; a capture with no Charge 0.09)
 const CHG_EARLY_N = 23;      // stage 1 and the joint stage need frames 0..21 (A's initial rays on 0..18, B's on 3..21)
 const CHG_K = 16384, CHG_K_FB2 = 65536, CHG_M2 = 300, CHG_IMPS = Array.from({ length: 136 }, (_, i) => 40 + i);   // Spiny Flip thrown with A: impact +40..+175
-const CHG_LAGS = [[0, 0.75], [1, 0.25]], CHG_QMAX = 6;                  // console lag frames after the rays (weights); most q kept
+const CHG_LAGS = [[0, 0.75], [1, 0.25]], CHG_QMAX = 10, CHG_QTOL = 0.02;   // console lag frames after the rays (weights); most q kept, within 2% of the best q
 const CHG_SHIFTS = [[-2, 0.15], [-1, 0.25], [0, 0.4], [1, 0.2]];     // Spiny Flip confirm vs the bar's hiding (a dropped picture reads it late)
 const CHG = { state: 'idle', ring: [], frames: [], res: null };
 function chgEnabled() { const el = $('s-chg'); return !el || el.checked; }
@@ -515,12 +515,17 @@ function chgDecide() {
   }
   CHG.F0 = null;
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); fb2Lock(CHG.res); chgShow(); return; }
-  // q hypotheses: every first-coin frame whose score is within 0.5% of the best (late coins barely move the rays)
-  let qs = []; a.qs.forEach((s, q) => { if (s >= a.sc * 0.995) qs.push(q); });
-  qs = qs.sort((x, y) => a.qs[y] - a.qs[x]).slice(0, CHG_QMAX).sort((x, y) => x - y);   // at most CHG_QMAX, best first
-  const qb = chgQBack(a.seed >>> 0, qs); CHG.qsRays = qs.slice(); if (qb.length) qs = qb; CHG.info.qBack = qb.length ? 'kept ' + qb.join('/') : CHG.menu ? 'none fit the menu (kept all)' : 'no menu coin seen';
+  // q hypotheses: every first-coin frame whose score is within CHG_QTOL of the best (late coins barely move the rays: v71
+  // kept 0.5% and 6 at most, and on the Duplighost render 1234abcd the true q 42 was not among them), best first; the
+  // turn-1 menu's coin then weighs them (chgQBack: a likelihood, not a filter) and the tracker's shines settle them
+  let qs = []; a.qs.forEach((s, q) => { if (s >= a.sc * (1 - CHG_QTOL)) qs.push(q); });
+  qs = qs.sort((x, y) => a.qs[y] - a.qs[x]).slice(0, CHG_QMAX).sort((x, y) => x - y);
+  const qb = chgQBack(a.seed >>> 0, qs); CHG.qsRays = qs.slice(); CHG.qw = qb.w;
+  if (qb.w) { qs = qs.filter(q => qb.w[q] > 0); }
+  CHG.info.qBack = qb.w ? qs.map(q => q + ':' + qb.w[q].toFixed(3)).join(' ') : CHG.menu ? 'menu too short' : 'no menu coin seen';
+  CHG.info.qRays = CHG.qsRays.map(q => q + ':' + (a.qs[q] / a.sc).toFixed(4)).join(' ');
   CHG.qs = qs; CHG.state = 'locked'; slog('chargeLock', Object.assign({ qs }, CHG.info));
-  chgStartTracker(a.seed >>> 0, qs);
+  chgStartTracker(a.seed >>> 0, qs, qb.w);
   chgShow();
 }
 /* A Charge that showed Mario but locked nothing: its game frames go into the saved session log (the last 2, as greyscale
@@ -541,18 +546,24 @@ function chgKeepCapture(G, info) {
   };
   try { one(0); } catch (e) { slog('chargeError', { msg: 'capture: ' + String(e && e.message || e) }); }
 }
-/* the first-coin frame q, checked against the turn-1 menu's coin before the Charge: frames before frame 0 draw only
- * the coin and the per-frame step, so for each q the coins before it follow from the seed stepped back (gap 48 after
- * a roll >= 70, else 24; readouts/charge_qback.py). Every shine they predict while the menu's coin was steady must have
- * been seen, and every shine seen must be one of them. Returns the q that fit (empty: no menu seen or none fits). */
+/* the first-coin frame q, weighed by the turn-1 menu's coin before the Charge: frames before frame 0 draw only the coin
+ * and the per-frame step, so for each q the coins before it follow from the seed stepped back (gap 48 after a roll >= 70,
+ * else 24; readouts/charge_qback.py). v71 kept only the q for which every predicted shine on the steady menu coin was seen
+ * and every seen shine was predicted (+-1.5 frames): on the Duplighost render 1234abcd the true q was not offered and the
+ * check kept two wrong ones, and the simulated capture reads the menu's flashes 2.3-3.3 frames later than the console
+ * calibration (4.8 after the draw). v72: each q gets the tracker's likelihood (zwLR: a seen shine it has, a missed one, a
+ * false one) in a window of -1.5 .. +4 frames (the console reads at 0, the simulated capture at +2.2 .. +3.5); a q whose chain cannot be built (neither gap fits the seed) gets
+ * 1e-3; the weights are normalised, and a q below 1e-4 of the best is dropped. Returns { w: { q: weight } } or {} when
+ * no menu stretch of a second or more was seen. */
 function chgQBack(seed, qs) {
-  const M = CHG.menu; if (!M || !CHG.trig) return [];
-  const f0t = CHG.trig.t - 3 * FRAME, clk = t => (t - f0t) / FRAME - 4.8;   // shine seen at t -> its draw frame (the flash shows 4.8 frames after)
+  const M = CHG.menu; if (!M || !CHG.trig) return {};
+  const rt = chgRate(), f0t = CHG.trig.t - 3 * FRAME, clk = t => (t - f0t) / rt - 4.8;   // shine seen at t -> its draw frame (the flash shows 4.8 frames after)
   const a = clk(M.from), b = clk(M.to) - 1, seen = M.taps.map(clk);
-  if (b - a < 24) return [];
-  const ok = [];
+  if (b - a < 24) return {};
+  const W = 1.5 + 4, d = W * (ZW_RHO + ZW_FALSE), Lm = (1 - ZW_PMISS) / d, Lmiss = ZW_PMISS, Lf = ZW_FALSE / (ZW_RHO + ZW_FALSE);
+  const w = {}; let mx = 0;
   for (const q of qs) {
-    let f = q, coins = 0, good = true; const shines = [];
+    let f = q, coins = 0, good = true, lw = 1; const shines = [];
     while (f - 24 > a - 48) {
       let next = null, n = 0;
       for (const gap of [24, 48]) {
@@ -563,29 +574,32 @@ function chgQBack(seed, qs) {
       if (n !== 1) { if (!n) good = false; break; }
       f = next[0]; coins++; if (next[1] >= 70) shines.push(f);
     }
-    if (!good) continue;
-    const inWin = x => x >= a && x <= b;
-    if (shines.some(x => inWin(x) && !seen.some(y => Math.abs(y - x) <= 1.5))) continue;
-    if (seen.some(y => inWin(y) && f <= y - 2 && !shines.some(x => Math.abs(y - x) <= 1.5))) continue;
-    ok.push(q);
+    if (!good) lw *= 1e-3;
+    const inWin = x => x >= a && x <= b, near = (y, x) => y - x >= -1.5 && y - x <= 4;
+    for (const x of shines) if (inWin(x)) lw *= seen.some(y => near(y, x)) ? Lm : Lmiss;
+    for (const y of seen) if (inWin(y) && f <= y - 2 && !shines.some(x => near(y, x))) lw *= Lf;
+    w[q] = lw; mx = Math.max(mx, lw);
   }
-  return ok;
+  let tot = 0; for (const q of qs) { if (w[q] < mx * ZW_CUT) w[q] = 0; tot += w[q]; }
+  for (const q of qs) w[q] /= tot;
+  return { w };
 }
 /* the zero-wait tracker from the Charge: clock frame 0 = the Charge's frame 0 (confirm + 13). The coin flash shows
  * 4.8 game frames after its draw on this clock (route clips), the tracker's coin reads assume 6, so its clock starts
  * 1.2 frames earlier. */
 // the tracker's clock: the console's frame time (consoleRate: measured from the session's shines, else a real N64's)
 function chgRate() { return typeof consoleRate === 'function' ? consoleRate() : FRAME; }
-function chgStartTracker(seed, qs) {
+function chgStartTracker(seed, qs, qw) {
   const dup = !!CHG.prof && CHG.prof.id === 'dup';     // (CHG.prof, not chgP(): the replay tests run this function alone)
   // the Duplighost lock came after the route left that step (the runner confirmed Do Nothing before it landed): nothing to plan
   if (dup && !(isRoute() && RT()[routeStep] && RT()[routeStep].chg === 'dup')) { slog('dupLockAfterStep', { step: routeStep }); return; }
   const rate = chgRate(), t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];
   for (const q of qs) for (const [l, wl] of CHG_LAGS) {
     const ev = R.buildEv([{ f: -13, id: 'hw_charge' }]);
-    parts.push({ S: { s: seed, nc: q, inst: [] }, g: 0, ev, evMax: 46, pauseAt: CHG_N + 2, pause: l, w: wl / qs.length, m: new Set() });
+    parts.push({ S: { s: seed, nc: q, inst: [] }, g: 0, ev, evMax: 46, pauseAt: CHG_N + 2, pause: l, w: wl * (qw && qw[q] != null ? qw[q] : 1 / qs.length), m: new Set(), fx: new Set(), err: 0 });
   }
-  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: 3.5, imps: dup ? null : CHG_IMPS, shifts: dup ? null : CHG_SHIFTS, src: 'charge', fight: dup ? 'dup' : 'hw' });
+  // the background ("the lock or the model is wrong", zwDoubt): ZW_BG0 of the prior mass
+  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: dup ? 4 : 3.5, imps: dup ? null : CHG_IMPS, shifts: dup ? null : CHG_SHIFTS, src: 'charge', fight: dup ? 'dup' : 'hw', bg: ZW_BG0 / (1 - ZW_BG0), bgTo: null });
   // what the coin did while the seed was searched
   for (const t of CHG.taps) zwTap(t);
   let up = null;
@@ -606,14 +620,18 @@ function chgShow() {
   const el = $('chg-status'); if (!el) return;
   const s = CHG.state, I = CHG.info || {};
   const lost = s === 'locked' && zw.on && zw.src === 'charge' && zw.dead;
-  const lock = lost ? 'LOST' : s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' || s === 'notseen' ? 'no' : '–';
+  // v72: the tracker weighs its states (zwDoubt: the share left for "none of them is the game's"); 50%+ = doubtful, no beeps
+  const dz = s === 'locked' && zw.on && zw.src === 'charge' && !zw.dead ? zwDoubt() : 0, doubt = dz >= 0.5, errs = zw.on && zw.parts && zw.parts.length ? Math.min(...zw.parts.map(p => p.err || 0)) : 0;
+  const lock = lost ? 'LOST' : doubt ? 'DOUBTFUL' : s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' || s === 'notseen' ? 'no' : '–';
   const t = I.lockAfterRaysMs != null ? (I.lockAfterRaysMs / 1000).toFixed(1) + ' s after the rays' : s === 'search' && CHG.tSearch ? (Math.round((performance.now() - CHG.tSearch) / 100) / 10) + ' s so far' : '–';
   const h = chgHyps();
   el.innerHTML = '<b>Charge lock: ' + lock + '</b>' + (s === 'nolock' || s === 'failed' || s === 'notseen' ? ' (' + (CHG.why || '') + ')' : '') +
     '<br>Time to lock: ' + t + (I.searchMs != null ? ' (search ' + (I.searchMs / 1000).toFixed(1) + ' s, ' + (CHG.res ? CHG.res.workers : '?') + ' threads)' : '') +
     '<br>Hypotheses left: ' + (h != null ? h + (zw.dead ? ' (none fit: No edge)' : '') : '–') +
+    (s === 'locked' && zw.on && zw.src === 'charge' && !zw.dead ? ' · fit ' + Math.round(100 * (1 - dz)) + '%' + (errs ? ' (best state: ' + errs + ' shine' + (errs > 1 ? 's' : '') + ' did not fit)' : '') : '') +
+    (doubt ? '<br><b style="color:var(--warn)">Lock doubtful: the coin fits the tracked states badly (' + errs + ' missed or extra shines on the best one). No beeps; press normally.</b>' : '') +
     (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
-    (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost) : '') +
+    (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost || doubt) : '') +
     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
 }
 /* the Duplighost line of the Charge panel: the plan's chances, or what to do without a lock (dup_charge/odds.json:

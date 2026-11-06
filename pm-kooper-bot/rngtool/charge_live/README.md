@@ -1,3 +1,145 @@
+# Time Out Timer v72: reliability (Nov 6)
+
+What changed, why, and the before/after numbers. Tests: `charge_live/test_zw_tolerant.js` (node, in `run_suite.sh`),
+`test_beeps_stop.js` (in `run_suite.sh`), `test_zw_wait.js`, `test_dup_plan.js`, the frame-fed `test_charge_feed.js` on
+the 14 Hallway clips and `test_dup_page.js` on three Duplighost renders (not in the suite: video / renders in /dev/shm).
+
+## 1. The tracker weighs its states instead of dropping them on one missed or false shine
+**Before (v71):** a state was dropped on any predicted shine the coin did not show while steady, and on any seen shine it
+did not have. One missed shine (a busy browser, the v70 T2 run of 20-54-59) lost the true seed.
+
+**Now** (`zwStep`, `zwUpdate`, `zwDoubt` in page_template.html): every state carries a weight = prior x the likelihood
+ratio of what the coin did, against a background "the coin is unrelated to every tracked state" (a random coin):
+a seen shine it has x(1 - pMiss) / (W (rho + lambda)) (~20; W = the match window, -1.5 .. +tapLate frames), a missed shine
+x pMiss, a seen shine it does not have x lambda / (rho + lambda) (~0.02); the background is weighed by exp(-rho) per frame
+of steady coin (rho = 0.3 / 31.2, a random coin's shine draws per frame). A state is dropped only when it is 10^4 times
+less likely than the best one, or has more than 3 errors. The background keeps the prior mass that the lock or the model
+is wrong (5% at the lock, 3% more at the Spiny Flip confirm); its posterior share is the **doubt**:
+- the chance shown and used for the edge is (1 - doubt) x the states' chance + doubt x blind (Time Out 31%, Duplighosts 3+ 47% / 4 13%);
+- doubt 50%+: no beeps; the sidebar says "Charge lock: DOUBTFUL", the strip "Lock doubtful";
+- the sidebar shows the fit ("fit 98%", and how many shines the best state did not fit).
+
+**The detector's rates**, measured (rule-of-three upper bounds used):
+- the runner's logs: every shine-locked stretch with a clean coin model (seeds c4d16d21, 489 s; 9e314ac1, 66 s): 161
+  predicted shines, **0 missed**; 556 s of steady coin, **0 false** (`tools/detector_rates.py`: the detections incl. rejected ones vs the
+  seed's coin; two other locked stretches, 7f1e2578 and 52467bd0, leave the plain coin model after their lock (a carried turn / the walk) and are left out: the script's totals include them);
+- the 14 clips, frame-fed (v72 T1 runs): the best state at Time Out matches all 31 shines seen after the lock (0 missed,
+  0 false; 15-30-15 excluded, see 2); the v70 T2 run of 20-54-59: 1 missed of 5 (frames dropped);
+- pMiss = 0.02 (3 / ~190 shines), lambda = 1.8e-4 per frame of steady coin (3 / 16,700 frames).
+
+**Before / after** (`test_zw_tolerant.js`, the 14 clips' coin timelines as the page read them, `charge_live/clip_events.json`;
+the lock 0.3 s after the rays and 1 s after the Spiny Flip confirm):
+
+| | v71 | v72 |
+|---|---|---|
+| no error: states / Time Out share at the real confirm | e.g. 20-53-09 4 / 0.916, 15-20-15 2 / 0.737 | 4 / 0.916, 3 / 0.737 (every clip within 0.015 of v71) |
+| one shine after the lock removed (33 shines x 2 lock times) | **seed lost in 34 of 66** | **0 of 66** (all the clean run's states kept, at least 28% of the weight; 15-30-15: doubtful, see 2) |
+| one false shine in a quiet visible stretch (4 x 2) | lost in 2 of 8 | kept in 8 of 8; doubt 50%+ (no beep) in 2 (15-18-30) |
+| 20-54-59 (the v70 miss): each of its 5 shines removed | lost in 5 of 5 | 0 of 5, share 0.98-1.0 |
+
+**Honesty** (same test, simulated: 120 random games through the same tracker, the Spiny Flip impact / guard / confirm read
+error / console lag drawn, the detector missing 2%, false shines at lambda, flashes read -1 .. +3 late; 1 game in 12 with a
+wrong lock; 39 skipped where Bowser's attack was still drawing at the screen): v72 beeped 78 of 81, shown 69.4% against
+72.1% in the game; mean outcome with a blind press when no beep: v71 69.4%, v72 70.6%. On the 7 wrong locks both versions
+beep on states that fit the T2 coin by chance (v71 4, shown 69% / game 38%; v72 5, 75% / 55%): with ~10^4 hypotheses and
+2-3 shines, chance fits are common; the background's 5% prior is what the shown chance assumes.
+`test_zw_wait.js` (v69's seed loss while waiting) passes: the state survives 25 s of replans, 3 beeps each.
+
+## 2. Clip 15-30-15: the seed dies 6 s after the turn-2 shines
+Reproduced (v71, node and frame-fed): the states left after the two T2 shines (clock 304, 376) are **Claw Swipe** states
+(Bowser's AI on clock 234); they predict a shine at 472/473, which the clip does not show, and die at 477-481.
+**The clip shows a Body Slam** (Bowser jumps on Mario; HP 10 -> 5, "Nice"), with the Spiny Flip's hit picture at
+5.76 s after the trigger, i.e. Bowser's AI on clock ~219-221. So the states that fit the two T2 shines were a chance
+fit, and the true state had already been dropped. Under the model **no** state with a Body Slam with its AI on clock
+205-235 fits the coin with fewer than 2 errors, for any q (0..47), the Spiny Flip confirm read anywhere from 8 frames
+early to 3 late, guard or not, or extra draws (1-12) in the Body Slam. Ruled out in the emulator: the Spiny Flip's aim
+sparkle ending at an early A throw (`_spk_throw.py`, throw at +56: the sparkle still redraws until +118, impact +80,
+AI +124, as modelled). **Not found**: the true state leaves the model between the rays and Bowser's AI (an unmodelled
+draw or a wrong q/seed); it needs an emulator replay of this clip's inputs, which the clip does not give exactly.
+v72 on it: the states' chance at the real confirm is 5% (No edge) with doubt 12%; with one T2 shine missed doubt rises to 76% (no beeps).
+
+## 3. Duplighosts 1234abcd: the true q not among the candidates
+Reproduced with a new render (seed 1234abcd, Charge confirm 25 frames after the target screen opens: bfdda85d at the rays,
+true q 42): v71 kept q 35-41 (0.5% / 6 at most; 42 not offered), the menu check fit none ("kept all").
+**Now:** q within 2% of the best, up to 10 (v71: 0.5%, 6), and the menu check (`chgQBack`) is a likelihood with the
+tracker's constants, not a filter, on the console frame time, with a -1.5 .. +4 frame window. v72 on the same render:
+q 38-47 from the rays, the menu weights 39/42/45/46 0.25 each (true 42 kept), 6 states at Strategies, plan +264: 3+ 99.98%,
+4 31%; emulator at +263/+264/+265: 4 / 3 / 3 copies (the page's top state: 4 3 3). The other two renders (D = 25):
+9e3779b9 (fc590fa8, q 18): q 18, plan +252 3+ 75%, emulator 3/3/2 (page 3 3 2); 5eed0071 (2dfcc393, q 18): the rays
+put q 17 best (15-18 within 2%), the menu gives 18 0.997: plan +279 3+ 100%, emulator 3/3/3.
+**The 2.5-3 frame late flash**: measured on the raw Glide64 renders, the coin's main flash (white pixels in the coin
+box) is on render frames draw +6 and +7, and the burst on render frame 3 reads +7.4 / 13.1 / 19.1 above the menu, the
+console curve's 7.2 / 12.5 / 19.4: the burst sits where the console puts it, the coin flash ~2 frames later. On console
+(20-54-59, its 5 shines) the flash is a single 2-frame burst with no early part, read at draw + 4.8 on the burst clock
+(v70: offsets -0.3 .. +0.4). So the late flash is the emulator's rendering of the HUD coin (the same display list on the
+console shows it earlier), a **simulation artifact**, not a model error; the page tolerates both: the menu check and the
+Duplighost tracker take flashes up to 4 frames late (tapLate 4; the Hallway's stays 3.5).
+`test_dup_page.js` now sets Settings > Console frame time to 33.367 (the renders' rate; `CRATE`), as does `test_fb2_page.js`.
+
+## 4. Final Bowser on the console's frame time
+`fb2_live.js` used 33.367 ms frames for the popup frame, the press times and the T7 plan: on a real N64 (33.427) the
+picture 500 frames on read as frame 516.9 (true 516) and the press for +516 came 0.9 frame early. It now uses the measured
+console frame time (`consoleRate`, default 33.427), fixed per fight at the trigger (`FB2.rate`): 516.00 and 0.00
+(`test_zw_tolerant.js` section 4; with the setting at 33.367 the old numbers come back). The FB2 coin check is weighed as
+in 1 (`fb2Prune`), and its T7 chance counts the background's share as no 7.
+
+## 5. Silent wrong beeps
+- **Beeps after the seed was lost.** v71 kept a running plan's beeps going after "Seed lost" (the strip said "showing old
+  prediction" while it beeped) and after a late "Seed changed". Now, whenever the coin changes the states' weights, the
+  planned frame is scored again (`zwPlanChance`): still good, keep; not good and the beeps can move, replan; else stop
+  the beeps and say so ("Beeps stopped" / "Seed lost – beeps stopped"). `test_beeps_stop.js`: shines the tracked state
+  does not have, read before the press: v71 kept beeping in 3 of 3, v72 stopped them 0.5-0.9 s before the press in 3 of
+  3; a control with the state's own shines keeps its plan.
+- The q filter (3) and the hard drop (1) could leave only wrong states that looked certain; both are weights now, and the
+  doubt sends the shown chance back to blind when the coin fits badly.
+- The plan log carries the states' chance, the doubt and the shown chance (`mix.pStates`, `mix.doubt`, `mix.p`).
+
+## Frame-fed (v72, `test_charge_feed.js`, real time)
+| Clip | Lock (seed, score, ratio) | q kept | States at Time Out | At confirm -1/0/+1 | v71 same day: q / states / at confirm |
+|---|---|---|---|---|---|
+| 15-14-09 | b400fca5 (6171, 3.54) | 3/4/5/6/7/8/9 | 22 | 0.22 / 0.32 / 0.16 | 3/4/5/6/7 / 31 / 0.22 / 0.31 / 0.15 |
+| 15-15-06 | cf5894f0 (5374, 3.47) | 19 | 23 | 0 / 0 / 0 | 19 / 20 / 0 / 0 / 0 |
+| 15-16-08 | 6d3b7b2b (5992, 4.48) | 30/31/32/33/34/41/42/43/44/45 | 238 | 0.34 / 0.33 / 0.1 | 40/41/42/44/45/46 / 39 / 0.3 / 0.12 / 0.51 |
+| 15-17-02 | b3fb9c3b (5810, 2.4) | 18 | 39 | 0.89 / 0 / 0.86 | 18 / 14 / 0.23 / 0.63 / 0.85 |
+| 15-18-30 | 2d5dd210 (6688, 4.02) | 34/36/37/41/42/43/44/45/46/47 | 282 | 0.23 / 0.06 / 0.05 | 40/41/42/45/46/47 / 36 / 0.1 / 0.02 / 0.04 |
+| 15-19-21 | ea113ee3 (6338, 4.17) | 18/19 | 330 | 0.44 / 0.3 / 0.39 | 19 / 155 / 0.46 / 0.1 / 0.33 |
+| 15-20-15 | 306686e9 (5893, 4.32) | 16 | 3 | 0.74 / 0.26 / 0 | 16 / 2 / 0.74 / 0.26 / 0 |
+| 15-18-39 | dedb3e53 (7989, 3.89) | 5/6/7/8/9 | 1613 | 0.47 / 0.35 / 0.16 | 6/7/8 / 509 / 0.62 / 0.26 / 0.05 |
+| 15-19-56 | 517b7c30 (5956, 2.77) | 4 | 3 | 0.7 / 1 / 0.3 | 4 / 2 / 0.8 / 1 / 0.2 |
+| 15-22-53 | d066fdbd (5842, 3.07) | 4/6/8/9/10/11/12/13/14/15 | 7 | 0.02 / 0 / 0.02 | 4/6/11/12/14/15 / 3 / 0 / 0 / 0 |
+| 15-25-30 | 180f546b (5715, 4) | 11 | 4 | 0 / 0 / 0 | 11 / 2 / 0 / 0 / 0 |
+| 15-30-15 | ce0959dc (5917, 3.59) | 16 | 10 | 0.19 / 0.03 / 0 | 16 / 0 / dead at [480] |
+| 20-53-09 | 7dc894b3 (5985, 3.65) | 12/13/14 | 6 | 0.89 / 0.65 / 0.59 | 13 / 4 / 1 / 0.85 / 0.83 |
+| 20-54-59 | b59bef18 (6592, 4.07) | 15/16/17 | - | (no Time Out in the clip) | 15 / None / (no Time Out in the clip) |
+
+All 14 lock their known seeds from T1 (one no-lock first on 15-18-39 and 15-19-21 in some runs, then the retry). From T2 the
+runner's 7 clips lock the same seeds and set T1 (one T2 run of 15-25-30 said "Charge not seen: no Mario" (NCC 0.15) with 74
+pictures dropped; two reruns locked it; the capture side is unchanged in v72). From the FB2 step both new clips take the
+Hallway profile and lock; the FB2 clip itself stays no-lock (the aura). 20-54-59 with its target screen saved and a shine
+search running (BUSY): 4 plans in the 8 s wait (96/88/69/100%), the seed kept. BAN0 (a forced wrong placement): the retry
+locks b59bef18. The share at the real confirm moves between runs with the dropped pictures (as in v70/v71); the known
+outcomes: 20-53-09 and 15-19-56 work (v72 T2: 0.92 and 1.0 at the confirm), 15-17-02 fails (0). More q kept means more
+states (15-18-39: 1613 at Time Out, v71 509); the plan reads at most 64 of them.
+Duplighost renders (`test_dup_page.js`, Settings console frame time 33.367 = the renders): 1234abcd q 35-45 from the rays,
+menu weights 39/42/45 1/3 each, plan +264 (3+ 99.98%, 4 31%); 9e3779b9 +252 (75%); 5eed0071 q 17/18 (0.003/0.997), +279 (100%):
+the same plans the emulator checked above.
+
+## Route note
+The route panel's note no longer asks for 60 s of coin on the walk after Jr. Troopa or for B held through the text: the
+Hallway T1 Charge locks the seed by itself, and the T1/T2 menus' coin only confirms it. On the Charge-lock Duplighost
+route: Charge first, then keep the C-up bar up in Bombette's menu (its shines decide between the possible first coin frames).
+
+## Suite
+`run_suite.sh` (with `charge_live/test_zw_tolerant.js` and `test_beeps_stop.js` added): every test rc 0 and both log replays
+lock as before (1379.7 s on 83ebd9e1, 655.7 s on 52467bd0), except `test_strip_geometry.js` once in the second full run
+(the now-line 0.075 frames off at the cue under load); it passed in the first full run (stopped at a 30 min limit after test_strip_geometry) and in 3 of 3 runs alone.
+`charge_live/test_session_plans.js` reproduces the v68 log's plans, so it now uses the tracker as it was until v71
+(git 2d69af1; `TRACKER=disk` for v72's).
+
+**Still open:** 15-30-15's cause (2); the wrong-lock case (a chance fit of the T2 coin still beeps; only more shines
+or a read of Bowser's attack from the picture would tell); pMiss and lambda are upper bounds from few events; the
+Duplighost coin-flash timing on console (no console Duplighost Charge clip); test_fb2_page.js not rerun (its renders are gone).
+
 # Time Out Timer v71: the Duplighost Charge-lock route (Nov 6)
 
 The Duplighosts can now be played with the **Charge lock** as an alternative to the RTA turn (route panel: *Duplighosts

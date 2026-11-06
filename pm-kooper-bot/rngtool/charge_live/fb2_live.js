@@ -22,7 +22,7 @@ const FB2_DELTA = { slam: 52, claw: 62, fire: 55 }, FB2_MENU = { slam: 101, claw
 const FB2_LAGS = [[0, 0.75], [1, 0.25]], FB2_BEEPS = 3, FB2_GAP = 300, FB2_DMG0 = 15, FB2_HP = 80, FB2_MAXH = 4000;
 const FB2_TH = (() => { const t = []; let c = 200; for (let i = 0; i < 30; i++) { c = Math.floor(c * 60 / 100); t.push(c); } return t; })();
 var FB2 = { on: false };      // var: charge_live.js calls fb2Reset (via chgReset) before this file has run
-function fb2Reset() { if (!FB2) return; Object.assign(FB2, { on: false, hyps: null, plan: null, kObs: null, kSeen: null, kHow: null, t7: null, popup: null, why: null, taps: [], vis: [], visFrom: null }); fb2Show(); }
+function fb2Reset() { if (!FB2) return; Object.assign(FB2, { rate: typeof chgRate === 'function' && typeof consoleRate === 'function' ? chgRate() : null, on: false, hyps: null, plan: null, kObs: null, kSeen: null, kHow: null, t7: null, popup: null, why: null, taps: [], vis: [], visFrom: null }); fb2Show(); }
 const fb2nb = (f, p1, p2) => (FB2_P130.includes((f + p1) % 130) ? 1 : 0) + (FB2_P220.includes((f + p2) % 220) ? 1 : 0);
 /* the window patterns (bolt counts on rays frames 0..47 = confirm + 13..60) and the phase pairs behind each */
 function fb2Patterns() {
@@ -80,10 +80,15 @@ function fb2PBWin(S0, f0, D0, W, ph) {
 /* Bowser's attack flags at T6: a Body Slam or a Claw on T5 forbids that attack on T6 (fb2_route README section 4) */
 function fb2Flags() { const v = ($('s-fb2t5') || {}).value || 'any'; return v === 'slam' ? [[false, true, 1]] : v === 'claw' ? [[true, false, 1]] : v === 'fire' ? [[true, true, 1]] : [[true, true, 1 / 3], [false, true, 1 / 3], [true, false, 1 / 3]]; }
 /* ---- clock: confirm-relative logic frames from the Charge trigger (the picture of rays frame 3 = confirm + 16) ---- */
-const fb2Pic = t => 16 + (t - CHG.trig.t) / FRAME;                  // logic frame shown by a picture at time t (lag 0)
+/* v72: on the console's frame time (consoleRate, as the Hallway tracker since v70; 33.427 ms until the shines measure it),
+ * fixed for the fight at the trigger (FB2.rate, fb2Reset). v71 ran this clock on 33.367 ms (59.94 Hz): ~0.25 frame late at
+ * the popup and ~0.9 at the T7 target A on a real N64. Emulator renders run at 33.367: tests set Settings > Console frame
+ * time to that. */
+const fb2Rate = () => (FB2 && FB2.rate) || (typeof chgRate === 'function' ? chgRate() : FRAME);
+const fb2Pic = t => 16 + (t - CHG.trig.t) / fb2Rate();                  // logic frame shown by a picture at time t (lag 0)
 // the press for logic frame k: as Time Out's (zwPlan: 4.7 frames before the picture of that frame, minus the capture
 // delay, plus the runner's offset)
-const fb2PressT = k => CHG.trig.t + (k - 13 - 4.7 + num('off')) * FRAME - num('vlag');
+const fb2PressT = k => CHG.trig.t + (k - 13 - 4.7 + num('off')) * fb2Rate() - num('vlag');
 /* the lock: hypotheses from the worker's (pattern, q) pairs */
 function fb2Lock(res) {
   const P = fb2Patterns(), hy = res.fb2 && res.fb2.hyps; if (!hy || !hy.pairs.length) { FB2.why = 'no hypotheses'; fb2Show(); return; }
@@ -102,7 +107,7 @@ function fb2Lock(res) {
 /* the K plan: lucky per hypothesis x flags for every logic K, then the best time frame k in the rest of the window */
 function fb2PlanK(kAt) {      // kAt (tests): plan as if the earliest beepable frame were kAt, no beeps
   const t0 = performance.now(), H = FB2.hyps, F = fb2Flags(), now = performance.now();
-  const kFirst = kAt != null ? kAt : Math.max(FB2_KMIN + 1, Math.ceil(fb2Pic(now + num('vlag')) + (FB2_BEEPS - 1) * FB2_GAP / FRAME + 0.15 * 1000 / FRAME + 2));
+  const kFirst = kAt != null ? kAt : Math.max(FB2_KMIN + 1, Math.ceil(fb2Pic(now + num('vlag')) + (FB2_BEEPS - 1) * FB2_GAP / fb2Rate() + 0.15 * 1000 / fb2Rate() + 2));
   const rows = [], K0 = Math.max(FB2_KMIN, Math.min(FB2_KMAX, kFirst - 3));   // per (h, flag): lucky for K = K0..137 and the AI result
   for (const h of H) for (const [so, co, wf] of F) {
     const S = { s: h.s, nc: h.nc }; fb2Idle(S, 61, K0 + 40, h.ph);
@@ -166,36 +171,45 @@ function fb2SetK(k, how, k0) {      // the popup A on frame k (k0..k when pictur
   FB2.t7 = { states: out.filter(o => o.a.lucky), pLucky: luck, atk };
   slog('fb2K', { k, k0: ks[0], how, pLucky: +luck.toFixed(3), atk, planned: FB2.plan && FB2.plan.k }); fb2Show();
 }
-/* the states left after the coin seen since K: every seen shine must be a predicted one (+-2 frames, a dropped picture
- * reads it up to 3.5 late) and every predicted shine inside a stretch with the bar up must have been seen */
+/* the states left after the coin seen since K, weighed as the zero-wait tracker weighs its states (v72, zwLR): a seen
+ * shine a state has (+-2 frames, a dropped picture reads it up to 3.5 late), a predicted shine inside a stretch with the
+ * bar up that was not seen (a missed shine), a seen shine it does not have (a false one). v71 dropped a state on any one
+ * of them. Returns the states with their weights (w) and the background's share (doubt, as zwDoubt). */
 function fb2Prune(upto) {
   const T7 = FB2.t7; if (!T7) return [];
   const vis = FB2.vis.concat(FB2.visFrom != null ? [[FB2.visFrom, upto - 4]] : []).map(([a, b]) => [a, Math.min(b, upto - 4)]).filter(([a, b]) => b > a), taps = FB2.taps.filter(x => x < upto);
-  return T7.states.filter(o => {
+  const Wd = 5.5 * (ZW_RHO + ZW_FALSE), Lm = (1 - ZW_PMISS) / Wd, Lmiss = ZW_PMISS, Lf = ZW_FALSE / (ZW_RHO + ZW_FALSE);
+  const near = (x, f) => x - f >= -2 && x - f <= 3.5, out = []; let mx = 0, tot0 = 0;
+  for (const o of T7.states) {
+    tot0 += o.w;
     const S = { s: o.a.S.s, nc: o.a.S.nc, coins: o.a.S.coins.slice() }; fb2Idle(S, o.a.T + 1, Math.floor(upto), o.h.ph);
-    const sh = S.coins.filter(c => c[1]).map(c => c[0] + o.l);
-    if (taps.some(x => !sh.some(f => x - f >= -2 && x - f <= 3.5))) return false;
-    if (sh.some(f => vis.some(([a, b]) => f >= a && f <= b) && !taps.some(x => x - f >= -2 && x - f <= 3.5))) return false;
-    return true;
-  });
+    const sh = S.coins.filter(c => c[1]).map(c => c[0] + o.l); let lw = 1, err = 0;
+    for (const x of taps) if (sh.some(f => near(x, f))) lw *= Lm; else { lw *= Lf; err++; }
+    for (const f of sh) if (vis.some(([a, b]) => f >= a && f <= b) && !taps.some(x => near(x, f))) { lw *= Lmiss; err++; }
+    if (err > ZW_MAXERR) continue;
+    const w = o.w * lw; out.push(Object.assign({}, o, { w, err })); mx = Math.max(mx, w);
+  }
+  const nVis = vis.reduce((a, [x, y]) => a + (y - x), 0), keep = out.filter(o => o.w >= mx * ZW_CUT), sum = keep.reduce((a, o) => a + o.w, 0), bg = tot0 * ZW_BG0 / (1 - ZW_BG0) * Math.exp(-ZW_RHO * nVis);
+  keep.doubt = keep.length ? bg / (bg + sum) : 1;
+  return keep;
 }
 /* the T7 plan on the Power Bounce target screen (or at clock frame cScr in tests): the best target-A frame for 7+ */
 function fb2PlanT7(cScr) {
   if (!FB2.on || !FB2.t7) return false;
   const now = performance.now(), cNow = cScr != null ? cScr : fb2Pic(now + num('vlag')), S = fb2Prune(cNow);
-  if (!S.length) { st.msg = 'No edge: the FB2 states the page kept do not fit what it saw in Bowser\'s turn (the coin, or the popup frame). Press Power Bounce normally.'; FB2.t7.plan = { none: 'no state fits' }; slog('fb2NoEdge', {}); fb2Show(); render(); return true; }
-  const tot = S.reduce((a, o) => a + o.w, 0), W = Math.max(0, Math.round(Math.max(1, num('zwwin')) * 1000 / FRAME));
-  let from = Math.ceil(cNow + num('lead') * 1000 / FRAME + 1);
+  if (!S.length || S.doubt >= 0.5) { st.msg = 'No edge: the FB2 states the page kept do not fit what it saw in Bowser\'s turn (the coin, or the popup frame). Press Power Bounce normally.'; FB2.t7.plan = { none: 'no state fits' }; slog('fb2NoEdge', { doubt: S.doubt != null ? +S.doubt.toFixed(3) : null }); fb2Show(); render(); return true; }
+  const tot = S.reduce((a, o) => a + o.w, 0), W = Math.max(0, Math.round(Math.max(1, num('zwwin')) * 1000 / fb2Rate()));
+  let from = Math.ceil(cNow + num('lead') * 1000 / fb2Rate() + 1);
   if (cScr == null) for (let i = 0; i < 300 && fb2PressT(from) < earliestPress(now); i++) from++;   // every beep still ahead
   const s7 = new Array(W + 1).fill(0), s6 = new Array(W + 1).fill(0);
   for (const o of S) { const b = []; for (let x = from - 1; x <= from + W + 1; x++) b.push(fb2PB(o.a.S, o.a.T + 1, x - o.l, o.h.ph));
     for (let k = 0; k <= W; k++) for (const [d, q] of PRESS_ERR) { s7[k] += o.w * q * (b[k + 1 + d] >= 7 ? 1 : 0); s6[k] += o.w * q * (b[k + 1 + d] >= 6 ? 1 : 0); } }
   let k = 0; for (let i = 1; i <= W; i++) if (s7[i] + 0.1 * s6[i] > s7[k] + 0.1 * s6[k] + 1e-12) k = i;
-  const d = from + k, plan = { d, p7: s7[k] / tot, p6: s6[k] / tot, states: S.length, tPress: fb2PressT(d) };
+  const d = from + k, dz = S.doubt || 0, plan = { d, p7: (1 - dz) * s7[k] / tot, p6: (1 - dz) * s6[k] / tot, doubt: +dz.toFixed(3), states: S.length, tPress: fb2PressT(d) };   // the background's share counts as no 7 (blind 7 is ~7%)
   FB2.t7.plan = plan;
   if (cScr != null) return plan;
   if (cScr == null) { cancelBeeps(); playBeeps(plan.tPress);
-    st.msg = null; st.plan = { tMade: now, w: { start: d, end: d, length: 1 }, target: d, tPress: plan.tPress, tLast: CHG.trig.t, rate: FRAME, carried: true, from, to: from + W, first: 0, prof: 'fb2', tab: [], tab4: null, mix: { p: plan.p7, groups: S.length, zw: true } }; }
+    st.msg = null; st.plan = { tMade: now, w: { start: d, end: d, length: 1 }, target: d, tPress: plan.tPress, tLast: CHG.trig.t, rate: fb2Rate(), carried: true, from, to: from + W, first: 0, prof: 'fb2', tab: [], tab4: null, mix: { p: plan.p7, groups: S.length, zw: true } }; }
   slog('fb2PlanT7', plan); fb2Show(); if (cScr == null) render(); return true;
 }
 function fb2Show() {

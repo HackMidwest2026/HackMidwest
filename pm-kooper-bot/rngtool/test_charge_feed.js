@@ -12,6 +12,8 @@
  *   REF=i: save Time Out's target screen (the クッパ name box) from capture frame i, so the page plans and beeps by itself
  *   (autoPlan) as live; BUSY=1: a shine seed search runs from the first shine after the Spiny Flip to the end (as live,
  *   where the turn-2 menu's shines started a chain search). Prints the plans made (out.plans).
+ *   EVENTS=1: also print the coin's timeline (ms from the trigger picture): the present transitions, the shines seen, the
+ *   coin returns and the bar hides (out.events: the format of charge_live/test_fix_proposal.js CLIPS / test_zw_tolerant.js).
  *   Diagnostics: DEBUG=1 (each game frame's picture time, out.place), GAPS=1 (the capture gaps), DUMP=1 (each picture's
  *   coin box and game-area brightness, out.dump), BAN0=[j*64+n,...] (tests only: assignments the first placement may not
  *   use, to force a wrong first placement and exercise the no-lock retry).
@@ -41,6 +43,7 @@ const { chromium } = require('playwright');
   await p.evaluate(stp => { const T = window.__tot, hi = T.RT().findIndex(s => s.turn === 'hw_spiny'), fi = T.RT().findIndex(s => s.turn === 'fb2_pb');
     T.setStep(stp === 't2' ? hi + 1 : stp === 'fb2' ? fi : hi); document.getElementById('s-lead').value = '1.5'; }, process.env.STEP || '');
   if (process.env.BAN0) await p.evaluate(b => { window.__ban0s = b; }, process.env.BAN0);
+  if (process.env.EVENTS) await p.evaluate(() => { window.__evts = { pres: [], last: null }; });
   if (process.env.DEBUG || process.env.GAPS || process.env.DUMP || process.env.BAN0) await p.evaluate(([d, g]) => { window.__chgDebug = d; window.__gaps = g; window.__dump = !!d && d === 'dump'; if (window.__ban0s) window.__chgBan0 = JSON.parse(window.__ban0s); }, [process.env.DUMP ? 'dump' : !!process.env.DEBUG, process.env.GAPS || '']);
   const res = await p.evaluate(async ({ base, dir, nf, busy }) => {
     const T = window.__tot, live = {};
@@ -70,12 +73,17 @@ const { chromium } = require('playwright');
         } finally { T.V.src = null; vf.close(); }
       if (busy && !live.busyAt && T.SLOG.some(x => x.ev === 'zwInput') && T.SLOG.some(x => x.ev === 'shine' && x.t > T.SLOG.find(y => y.ev === 'zwInput').t)) { T.st.searching = true; T.st.searchKind = 'chain'; live.busyAt = Math.round(tf); }
       watch();
+      if (window.__evts && !window.__evts.trigT && T.CHG.state === 'locked' && T.CHG.trig) { window.__evts.trigT = T.CHG.trig.t; window.__evts.lockT = tf; }
+      if (window.__evts) { const pr = !!T.V.present; if (pr !== window.__evts.last) { window.__evts.pres.push([tf, pr ? 1 : 0]); window.__evts.last = pr; } }
     }
     const S = T.SLOG, ev = n => S.filter(x => x.ev === n), C = T.CHG, I = C.info || {}, out0 = {};
     if (window.__chgDebug && C.dbg) out0.place = C.dbg.map((x, n) => (x ? n + ':' + x[0] : null)).filter(Boolean).join(' ');
     const out = { state: C.state, why: C.why, info: Object.assign({}, I, { gaps: window.__gaps ? I.gaps : undefined }), qs: C.qs, late, shines: +document.getElementById('r-shines').textContent };
     out.spiny = ev('zwInput').map(x => x.c); out.plans = ev('plan').map(x => ({ t: x.t, target: x.target, p: +(x.mix && x.mix.p || 0).toFixed(2), press: x.press })); out.busyAt = live.busyAt;
     Object.assign(out, out0); out.skips = C.skips; out.retries = ev('chargeRetry'); out.noLocks = ev('chargeNoLock').map(x => x.best); out.locks = ev('chargeLock').map(x => x.best); out.t0 = t0; out.trigT = C.trig ? C.trig.t : null; if (dump) out.dump = { p: dump.p, m: dump.m, i: dump.i }; out.arena = ev('chargeArena'); out.stepEnd = T.step(); out.hwDone = ev('hallwayDone').length; out.trigger = ev('chargeTrigger'); out.stepSet = ev('chargeStepSet'); out.notSeen = ev('chargeNotSeen'); out.zwDeadAt = ev('zwInconsistent').map(x => x.at); out.zwdbg = (T.zw.parts || []).slice(0, 3).map(q => q.dbg); out.tapsAfter = T.zw.taps ? T.zw.taps.map(x => +x.toFixed(1)) : null;
+    if (window.__evts) { const t0c = window.__evts.trigT || (C.trig ? C.trig.t : 0), r = x => +(x - t0c).toFixed(1);
+      out.events = { trig: 0, pres: window.__evts.pres.map(([t, v]) => [r(t), v]), shines: S.filter(x => x.ev === 'shine' || x.ev === 'rejected').map(x => r(x.at)).concat(S.filter(x => x.ev === 'newSegment' && x.at != null).map(x => r(x.at))).sort((a, b) => a - b),
+        coinBack: S.filter(x => x.ev === 'coinBack').map(x => [r(x.t), x.hiddenMs]), barHide: S.filter(x => x.ev === 'barHide').map(x => [r(x.at), x.upMs]), hist: (T.V.hist || []).map(r), lockAt: window.__evts.lockT ? r(window.__evts.lockT) : null }; }
     Object.assign(out, live); out.zwDead = T.zw.dead; out.zwRate = T.zw.rate && +T.zw.rate.toFixed(4); out.rateRuns = S.filter(x => x.ev === 'consoleRate').map(x => x.run); return out;
   }, { base, dir, nf, busy: !!process.env.BUSY });
   res.errors = errs.slice(0, 5); console.log(dir, JSON.stringify(res));

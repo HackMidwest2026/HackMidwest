@@ -4,7 +4,7 @@
  * start + i / 60 s, so the lock and the plan run against the clock as they would live; a frame more than 25 ms late
  * is dropped (as a busy browser drops pictures) and counted.
  * The page starts on the Final Bowser Power Bounce step (its pre is the T6 Charge) with the coin box on this layout.
- * usage: node test_fb2_page.js URLBASE DIR NFRAMES [T5ATTACK=any]   (URLBASE/tot.html = the standalone page,
+ * usage: [CRATE=33.367] node test_fb2_page.js URLBASE DIR NFRAMES [T5ATTACK=any]   (CRATE: Settings > Console frame time, the renders run at 33.367)   (URLBASE/tot.html = the standalone page,
  *        URLBASE/DIR/f%05d.jpg = the capture frames; serve with python3 -m http.server --bind 127.0.0.1)
  * Prints JSON: the trigger, the lock (seed, score, time after the rays end, stage times), the FB2 states, the beeped
  * popup frame K with its chances, the K the page read from the popup closing, and the page's log of these events.
@@ -20,8 +20,8 @@ const { chromium } = require('playwright');
     localStorage.setItem('tot-boxes', JSON.stringify({ coin: { x: 1080 / 1280, y: 40 / 720, w: 40 / 1280, h: 52 / 720 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } }));
   });
   await p.goto(base + '/tot.html');
-  const out = await p.evaluate(async ({ base, dir, nf, t5, kAt, t7c, wait, truth }) => {
-    const T = window.__tot; document.getElementById('s-fb2t5').value = t5;
+  const out = await p.evaluate(async ({ base, dir, nf, t5, kAt, t7c, wait, truth, crate }) => {
+    const T = window.__tot; document.getElementById('s-fb2t5').value = t5; document.getElementById('s-crate').value = crate;   // v72: the emulator's frame time (the page's clocks run on the console's)
     T.setStep(T.RT().findIndex(s => s.turn === 'fb2_pb'));
     const url = i => base + '/' + dir + '/f' + String(i).padStart(5, '0') + '.jpg';
     const bmp = new Map(); let next = 0;
@@ -45,7 +45,7 @@ const { chromium } = require('playwright');
       trigger: ev('chargeTrigger'), early: ev('chargeEarly'), lock: ev('chargeLock'), nolock: ev('chargeNoLock'), errors: ev('chargeError'),
       fb2Lock: ev('fb2Lock'), planK: ev('fb2PlanK'), kSeen: ev('fb2K'), planT7: ev('fb2PlanT7'), trigT: C.trig && C.trig.t, t0,
       extra, fb2: document.getElementById('fb2-status').innerText, chg: document.getElementById('chg-status').innerText };
-  }, { base, dir, nf, t5, kAt: +(process.env.KAT || 0), t7c: +(process.env.T7C || 0), wait: +(process.env.WAIT || 0), truth: process.env.TRUTH || '' });
+  }, { base, dir, nf, t5, kAt: +(process.env.KAT || 0), t7c: +(process.env.T7C || 0), wait: +(process.env.WAIT || 0), truth: process.env.TRUTH || '', crate: process.env.CRATE || '33.367' });
   out.pageErrors = errs.slice(0, 5); console.log(JSON.stringify(out));
   await b.close();
 })();

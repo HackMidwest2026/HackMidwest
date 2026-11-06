@@ -108,7 +108,7 @@ details[open] summary { margin-bottom: 10px; }
 <main>
   <header>
     <h1>Time Out <span>Timer</span></h1>
-    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100) · <span id="ver">v71</span></div>
+    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100) · <span id="ver">v72</span></div>
   </header>
 
   <section class="panel stage" aria-live="polite">
@@ -295,7 +295,7 @@ details[open] summary { margin-bottom: 10px; }
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
     <label class="f" style="margin:0">Duplighosts route<select id="s-duproute"><option value="rta">RTA: Spiny Surge (no lock)</option><option value="charge">Charge lock: Mario Charge, Bombette Do Nothing</option></select><small id="duproute-note"></small></label>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page (on the Charge-lock Duplighost route the page beeps Bombette's Do Nothing).</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the max extra wait (Settings, Advanced; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>Up to Hallway Bowser, play without the page: no coin is needed on the walk (the Charge reads the seed).</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -904,35 +904,67 @@ function zwMerge(dst, src) {
 }
 function zwClone(p) {
   return { S: { s: p.S.s, nc: p.S.nc, inst: p.S.inst.map(I => ({ rm: I.rm, per: I.per, p: I.p.slice() })), extra: p.S.extra ? new Map(p.S.extra) : undefined, branch: p.S.branch },
-    g: p.g, ev: zwMerge(new Map(), p.ev), evMax: p.evMax, pauseAt: p.pauseAt, pause: p.pause, w: p.w, m: new Set(p.m) };
+    g: p.g, ev: zwMerge(new Map(), p.ev), evMax: p.evMax, pauseAt: p.pauseAt, pause: p.pause, w: p.w, m: new Set(p.m), fx: new Set(p.fx || []), err: p.err || 0 };
 }
 const zwF = (t, lat) => (t - num('vlag') - zw.t0) / zw.rate - lat;     // clock frame of a game event seen at time t
 function zwVisible(f) { return zw.vis.some(([a, b]) => f >= a && f <= b) || (zw.visTo != null && f >= zw.visFrom && f <= zw.visTo); }
-function zwStep(p, to) {      // simulate particle p up to frame `to`; false = it contradicts what the page saw
+/* v72: the coin detector makes mistakes, so a state is weighed, not killed, by what the coin did. Each state's weight is
+ * its prior times the likelihood ratio of what was seen against a background "the coin is unrelated to every tracked
+ * state" (a random coin: a shine draw about every 104 frames, 0.3 / 31.2 per frame), per event:
+ *  - a seen shine that this state has (its flash within -1.5 .. +tapLate frames): (1 - pMiss) / (W (rho + lambda)), ~20;
+ *  - a shine this state has where the coin was steady and none was seen (a missed shine): pMiss;
+ *  - every frame of steady coin: the background's own chance of no shine there, exp(-rho) (applied to the background);
+ *  - a seen shine this state does not have (a false shine, or the wrong state): lambda / (rho + lambda), ~0.02.
+ * pMiss and lambda (false shines per frame of steady coin) are the coin detector's measured rates (charge_live/README.md,
+ * v72: 0 misses of 161 shines and 0 false ones in 556 s of the runner's logs, 1 miss of ~120 shines in the frame-fed clips:
+ * the rule-of-three bounds 0.02 and 3 / 16700 frames). A state is dropped only when the evidence against it is
+ * overwhelming: 10^4 times less likely than the best state, or more than 3 errors. The background keeps the prior mass
+ * that the lock or the model is wrong (5% at the lock, 3% more at every modelled input) and is never weighed, so a
+ * tracker whose states fit the coin badly hands the chance back to blind (zwDoubt) instead of beeping on them. v71 dropped
+ * a state on any one miss or false shine: one missed shine (a busy browser) lost the true seed (clip 20-54-59, T2). */
+const ZW_PMISS = 0.02, ZW_FALSE = 1.8e-4, ZW_RHO = 0.3 / 31.2, ZW_CUT = 1e-4, ZW_MAXERR = 3, ZW_BG0 = 0.05, ZW_BGIN = 0.03;
+const ZW_BLIND = { timeout: 0.31, dup3: 0.47, dup4: 0.13 };
+function zwLR() {
+  const W = 1.5 + (zw.tapLate || 1.5), d = W * (ZW_RHO + ZW_FALSE);
+  return { match: (1 - ZW_PMISS) / d, miss: ZW_PMISS, fals: ZW_FALSE / (ZW_RHO + ZW_FALSE) };
+}
+function zwStep(p, to, L) {      // simulate particle p up to frame `to`, weighing it by the coin seen; false = drop it
+  L = L || zwLR(); if (!p.fx) p.fx = new Set(); if (p.err == null) p.err = 0;
   while (p.g < to) {
     if (p.pause && p.g === p.pauseAt) { p.S.nc += p.pause; p.g += p.pause; continue; }   // console lag: clock runs, game does not
     const f = p.g, r = R.frameEv(p.S, f, p.ev); p.g++;
-    if (r === null) continue;
+    if (!r) continue;                         // no coin draw, or a plain spin (a seen shine near it is charged below)
     const k = zw.taps.findIndex(x => x - f >= -1.5 && x - f <= (zw.tapLate || 1.5));   // tapLate: a dropped picture reads a flash late
-    if (r) { if (k >= 0) p.m.add(k); else if (zwVisible(f)) return false; }   // a shine where the coin was steady and none was seen
-    else if (k >= 0) return false;                                            // a seen shine where this particle has a plain spin
+    if (k >= 0) { if (!p.m.has(k)) { p.m.add(k); p.w *= L.match; } }
+    else if (zwVisible(f)) { p.w *= L.miss; p.err++; }                         // a shine where the coin was steady and none was seen
   }
-  for (let k = 0; k < zw.taps.length; k++) if (zw.taps[k] < to - 2 && zw.taps[k] >= zw.f0 && !p.m.has(k)) return false;   // every shine seen must be one of its shines
-  return true;
+  for (let k = 0; k < zw.taps.length; k++) if (zw.taps[k] < to - 2 && zw.taps[k] >= zw.f0 && !p.m.has(k) && !p.fx.has(k)) { p.fx.add(k); p.w *= L.fals; p.err++; }   // a seen shine it does not have
+  return p.err <= ZW_MAXERR;
 }
 function zwUpdate(to) {
-  const keep = new Map(), out = [];
+  const keep = new Map(), out = [], L = zwLR();
+  // the background (a random coin) shows a shine about every 1 / rho frames: every frame the coin was watched without
+  // one is evidence against it (its Poisson factor; the states are charged per predicted shine instead)
+  if (zw.bg) { const a = zw.bgTo != null ? zw.bgTo : Math.max(0, zw.f0 || 0); if (to > a) { let n = 0; for (let f = Math.ceil(a); f < to; f++) if (zwVisible(f)) n++; zw.bg *= Math.exp(-ZW_RHO * n); zw.bgTo = to; } }
   for (const p of zw.parts) {
-    if (!zwStep(p, to)) continue;
+    if (!zwStep(p, to, L)) continue;
     if (to > p.evMax && !p.S.inst.length && !(p.S.extra && p.S.extra.size) && p.g >= (p.pauseAt || 0) + (p.pause || 0)) {
       const k = p.S.s + ':' + p.S.nc + ':' + p.g; const q = keep.get(k);
-      if (q) { q.w += p.w; continue; } keep.set(k, p);
+      if (q) { q.w += p.w; q.err = Math.min(q.err, p.err); continue; } keep.set(k, p);
     }
     out.push(p);
   }
-  zw.parts = out;
-  if (!out.length && !zw.dead) { zw.dead = true; zw.deadAt = to; slog('zwInconsistent', { at: Math.round(to), taps: zw.taps.length }); if (typeof chgShow === 'function') chgShow(); }
+  let mx = 0; for (const p of out) if (p.w > mx) mx = p.w;
+  zw.parts = out.filter(p => p.w >= mx * ZW_CUT);
+  if (!zw.parts.length && !zw.dead) { zw.dead = true; zw.deadAt = to; slog('zwInconsistent', { at: Math.round(to), taps: zw.taps.length }); if (typeof chgShow === 'function') chgShow(); }
 }
+/* the posterior mass of the background ("none of the tracked states is the game's"): 0 = the coin fits them as well as
+ * it can, 1 = lost. The page beeps only below 0.5, and its shown chance mixes in the blind chance by this share. */
+function zwDoubt() {
+  if (!zw.on || zw.dead || !zw.parts || !zw.parts.length) return 1;
+  let s = 0; for (const p of zw.parts) s += p.w; const b = zw.bg || 0; return b / (b + s);
+}
+function zwBgAdd(share) { let s = 0; for (const p of zw.parts) s += p.w; zw.bg = (zw.bg || 0) + share * s / (1 - share); }
 function zwStart(hiddenMs) {
   const hi = isRoute() ? RT().findIndex(x => x.turn === 'hw_spiny') : -1;
   if (zw.on || hi < 0 || routeStep > hi || hiddenMs == null || hiddenMs < ZW_GAP || !(num('zwwin') > 0)) return false;
@@ -947,7 +979,7 @@ function zwStart(hiddenMs) {
     for (const c of st.cands) if (R.matches(c, P.pattern)) bases.push({ s: c >>> 0, nc: 0, g: 0 });
   }
   if (!bases.length) return false;
-  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts: [], nBase: bases.length, imps: null, shifts: null, tapLate: null, src: 'walk', fight: 'walk' });
+  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts: [], nBase: bases.length, imps: null, shifts: null, tapLate: null, src: 'walk', fight: 'walk', bg: ZW_BG0 / (1 - ZW_BG0), bgTo: null });
   const tBack = performance.now() - 1000, Fup = Math.round(zwF(tBack, 2)); zw.f0 = Fup;
   for (const b of bases) for (let a = -ZW_SHIFT; a <= ZW_SHIFT; a++) for (let l = 0; l <= ZW_PAUSE; l++) {
     const s0 = Fup + a - ZW_UP, ev = zwSceneEv(s0);
@@ -987,6 +1019,7 @@ function zwInput(id, tObs, vanish, imps) {
     zw.parts = out;
   }
   if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
+  else zwBgAdd(ZW_BGIN);       // a modelled input: some chance it went outside the model (an unseen input, lag)
   slog('zwInput', { id, c, particles: zw.parts.length });
 }
 /* The tracker is only stepped up to the frames whose shines the page has had time to see (zwHorizon): a shine drawn on
@@ -1014,8 +1047,10 @@ function zwStatesAt(h) {
     if (q) q.w += p.w; else m.set(k, { s: p.S.s >>> 0, nc: p.S.nc, g: p.g, w: p.w, key: k });
   }
   const list = [...m.values()].sort((a, b) => b.w - a.w);
-  // the key changes when states are ruled out or merge (not when they are stepped on): it says when to redo the strip
-  return { h, list, open, key: list.length + ':' + list.slice(0, 16).map(x => x.w.toFixed(5)).join() };
+  // the key changes when states are ruled out, merge or are reweighed (not when they are stepped on): it says when to
+  // redo the strip (weights relative to the top state: they grow by the likelihood ratios)
+  const w0 = list.length ? list[0].w : 1;
+  return { h, list, open, doubt: zwDoubt(), key: list.length + ':' + list.slice(0, 16).map(x => (x.w / w0).toFixed(4)).join() };
 }
 // the share of the states (weighted) for which confirming on clock frames a..b works
 function zwShare(list, a, b, prof) {
@@ -1038,11 +1073,13 @@ function zwFight() {
  * best chance the frame with the best 3+ chance (within 2 points of it) that has the best all-4 chance: 3 and 4 copies
  * both end the fight on T2, so 3+ comes first (dup_charge/odds.json 'safe3': 3+ 99.7%, 4 57.8% in a 1 s window with
  * +-1-frame presses; aiming at all 4 first: 4 67.6% but 3+ 92.4%). */
-function zwChoose(list, from, W, PD, prof) {
+/* adj (v72): { d, b3, b4 }: the background's share d and the blind chances; the chance shown and the No-edge check are
+ * (1 - d) x the states' chance + d x blind, as the game behaves if none of the tracked states is the real one */
+function zwChoose(list, from, W, PD, prof, adj) {
   const D = Math.max(...PD.map(x => Math.abs(x[0]))), X = 10, a = from - D, b = from + W + X + D, top = R.TOP[prof.id] ? R.PROFILES[R.TOP[prof.id]] : null;
   const share = zwShare(list, a, b, prof), share4 = top ? zwShare(list, a, b, top) : null;
   const scOf = sh => c => { let v = 0; for (const [d, q] of PD) v += q * (sh[c + d - a] || 0); return v; };
-  const sc = scOf(share), sc4 = share4 ? scOf(share4) : null, type = wtype();
+  const sc = scOf(share), sc4 = share4 ? scOf(share4) : null, type = wtype(), honest = (p, k) => (adj ? (1 - adj.d) * p + adj.d * adj[k] : p);
   let target = null, w = null, none = null;
   if (type === 'best') {
     // the best chance among the frames most states agree work: with a wide press spread the best score can fall on a
@@ -1055,12 +1092,13 @@ function zwChoose(list, from, W, PD, prof) {
       k = k4; }
     target = from + k;
     { let s0 = target, e0 = target; if (share[target - a] >= 0.5) { while (s0 - 1 >= a && share[s0 - 1 - a] >= 0.5) s0--; while (e0 + 1 <= b && share[e0 + 1 - a] >= 0.5) e0++; } w = { start: s0, end: e0, length: e0 - s0 + 1 }; }
-    if (sc(target) < num('zwedge')) none = 'edge';
+    if (honest(sc(target), 'b3') < num('zwedge')) none = 'edge';
   } else {
     const maj = Array.from(share, v => v >= 0.5), pk = pickRun(maj, a, from, from + W, type, sc);
     if (!pk) none = 'window'; else { target = pk.target; w = pk.w; }
   }
-  return { target, w, none, type, a, b, D, share, share4, p: target != null ? sc(target) : null, p4: target != null && sc4 ? sc4(target) : null };
+  return { target, w, none, type, a, b, D, share, share4, p: target != null ? honest(sc(target), 'b3') : null, p4: target != null && sc4 ? honest(sc4(target), 'b4') : null,
+    pStates: target != null ? sc(target) : null, doubt: adj ? adj.d : 0 };
 }
 function zwPlan(why) {
   const now = performance.now(), S = zwStates(now), F = zwFight();
@@ -1069,8 +1107,13 @@ function zwPlan(why) {
       : 'No edge yet: ' + F.busy;
     render(); return true;
   }
+  if (S.doubt >= 0.5) {      // the coin fits the tracked states worse than it fits a coin unrelated to them
+    st.msg = 'No edge: the coin no longer fits the Charge lock (' + Math.round(S.doubt * 100) + '% that none of the ' + S.list.length + ' tracked states is the game\'s: missed or extra shines, or an input the page did not see). ' + F.normal + '.';
+    slog('zwDoubt', { doubt: +S.doubt.toFixed(3), parts: S.list.length }); render(); if (typeof chgShow === 'function') chgShow(); return true;
+  }
   const rate = zw.rate, from = Math.max(S.h + 1, earliestFrame(zw.t0, rate, now)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
-  const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF()), type = C.type;
+  const pid = PROF().id, adj = { d: S.doubt, b3: ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31, b4: ZW_BLIND.dup4 };
+  const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj), type = C.type;
   if (C.none === 'edge') {
     st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames) works for enough of them (best ' + Math.round(C.p * 100) + '%; ' + F.blind + '). ' + F.normal + '.';
     slog('zwNoEdge', { parts: S.list.length, best: +C.p.toFixed(3) }); render(); return true;
@@ -1082,7 +1125,7 @@ function zwPlan(why) {
   for (let c = Math.max(a, disp.first); c <= Math.min(b - D, disp.first + tab.length - 1); c++) { tab[c - disp.first] = share[c - a] >= 0.5; if (tab4) tab4[c - disp.first] = C.share4[c - a] >= 0.5; }   // the window part from every state
   cancelBeeps();
   st.plan = { tMade: now, w: { start: w.start - Fa, end: w.end - Fa, length: w.length }, target: target - Fa, aim4: false, tPress, tLast, rate, seedBL: A.seedBL, baseF: Fa, carried: true, from: from - Fa, to: from + W - Fa, first, prof: PROF().id,
-    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, groups: S.list.length, zw: true }, zwState: S.list[0], zwAbs: target };
+    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true }, PD, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
   playBeeps(tPress);
   slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
   st.msg = null; render(); if (typeof chgShow === 'function') chgShow(); return true;
@@ -1127,16 +1170,34 @@ function zwDisplay(now, sync) {
   if (J && J.i >= J.L.length) { ZWD.done = { first: J.a, tab: Array.from(J.share, v => v >= 0.5), share: J.share, n: S.list.length }; ZWD.key = J.key; ZWD.job = null; }
   return ZWD.done || { first: c0 - 30, tab: [], share: null };
 }
-/* about 4 times a second while the tracker runs: step it to the horizon, and if a running plan's state is gone (a shine
- * on the target screen ruled it out), plan again from the states left and say so on the strip ("Seed changed") */
+/* about 4 times a second while the tracker runs: step it to the horizon and, when the coin has changed the states' weights
+ * since a running plan was made, score the planned frame again (zwPlanChance). Still good: keep it. Not good and the
+ * beeps can still move: plan again ("Seed changed"). Not good and too late, or no plan possible: stop the beeps and say
+ * so. (v71 kept the old beeps going after "Seed lost" and after a late "Seed changed": a confident beep on a frame the
+ * coin had ruled out.) */
+function zwPlanChance(P, S) {
+  if (!S.list.length || P.zwAbs == null) return null;
+  const PD = P.PD || PRESS_ERR, D = Math.max(...PD.map(x => Math.abs(x[0]))), sh = zwShare(S.list, P.zwAbs - D, P.zwAbs + D, PROF());
+  let v = 0; for (const [d, q] of PD) v += q * sh[d + D];
+  const pid = PROF().id, b3 = ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31;
+  return { p: (1 - S.doubt) * v + S.doubt * b3, pStates: v, doubt: S.doubt };
+}
 function zwTick(now) {
   if (!zw.on || (ZWD.t && now - ZWD.t < 250)) return; ZWD.t = now;
   ZWD.S = zwStates(now);
   const P = st.plan; if (!P || !P.mix || !P.mix.zw || P.seedNote) return;
-  const ref = zwAdvance(P.zwState, ZWD.S.h); if (ZWD.S.list.some(q => q.s === ref.s && q.nc === ref.nc && q.g === ref.g)) return;
-  const old = P.zwAbs;
-  if (beepsFit(P.tPress) && (onTarget() || !V.ref)) { zwPlan('seed changed'); if (st.plan && st.plan !== P) { st.seedChange = { t: now, from: old, to: st.plan.zwAbs, ok: true }; slog('seedChanged', { from: old, to: st.plan.zwAbs }); } }
-  else { P.seedNote = true; st.seedChange = { t: now, from: old, ok: false }; slog('seedChanged', { from: old, late: true }); }
+  if (P.tPress < now - 300 || ZWD.S.key === P.zwKey) return;
+  P.zwKey = ZWD.S.key;
+  const ch = zwPlanChance(P, ZWD.S), good = !!ch && ch.doubt < 0.5 && ch.p >= num('zwedge') && ch.p >= P.mix.p - 0.15;
+  if (ch) P.mix.pNow = +ch.p.toFixed(3);
+  if (good) return;
+  const old = P.zwAbs, stop = why => { cancelBeeps(); P.seedNote = true; P.stopped = true; st.seedChange = { t: now, from: old, ok: false, stopped: true }; slog('beepsStopped', { from: old, why, p: ch ? +ch.p.toFixed(3) : null, doubt: ch ? +ch.doubt.toFixed(3) : null }); };
+  if (beepsFit(P.tPress) && (onTarget() || !V.ref)) {
+    zwPlan('seed changed');
+    if (st.plan && st.plan !== P) { st.seedChange = { t: now, from: old, to: st.plan.zwAbs, ok: true }; slog('seedChanged', { from: old, to: st.plan.zwAbs }); }
+    else stop('no new plan');
+  } else if (!ch || ch.doubt >= 0.5 || ch.p < num('zwedge')) stop('late');
+  else { P.seedNote = true; st.seedChange = { t: now, from: old, ok: false }; slog('seedChanged', { from: old, late: true, p: +ch.p.toFixed(3) }); }
   render();
 }
 /*@include charge_live/charge_live.js*/
@@ -1335,7 +1396,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v71';
+const VERSION = 'v72';
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
   const blob = new Blob([JSON.stringify({ version: 1, page: VERSION, saved: new Date().toISOString(), settings: (() => { const o = {}; SET.forEach(k => o[k] = $('s-' + k).value); return o; })(), route: routeStep, more: { zwwin: num('zwwin'), zwedge: num('zwedge'), chgcpu: num('chgcpu'), presses: presses.slice() }, events: SLOG, chargeCaptures: typeof CHG_CAPS !== 'undefined' ? CHG_CAPS : [] }, null, 0)], { type: 'application/json' });
@@ -1396,10 +1457,10 @@ const NOW_AT = 0.25;
 const onTarget = () => !!V.wasOn;
 function stripData() {
   const P = st.plan;
-  if (P) return { src: 'plan', tab4: P.tab4, tab: P.tab, first: P.first, tLast: P.tLast, rate: P.rate, w: P.w, target: P.target, stale: !!(P.mix && P.mix.zw && zw.dead) };
+  if (P) return { src: 'plan', tab4: P.tab4, tab: P.tab, first: P.first, tLast: P.tLast, rate: P.rate, w: P.w, target: P.target, stale: !!(P.mix && P.mix.zw && (zw.dead || P.stopped)) };
   if (zw.on && PROF().rolls.length) {
     const z = zwDisplay(performance.now(), false);
-    if (z.tab.length) return { src: 'zw', tab: z.tab, tab4: null, first: z.first, tLast: zw.t0, rate: zw.rate, w: null, stale: !!zw.dead };
+    if (z.tab.length) return { src: 'zw', tab: z.tab, tab4: null, first: z.first, tLast: zw.t0, rate: zw.rate, w: null, stale: !!zw.dead || (ZWD.S && ZWD.S.doubt >= 0.5), doubt: !zw.dead && !!(ZWD.S && ZWD.S.doubt >= 0.5) };
   }
   if (st.clock && (st.lock || !st.note)) {
     const C = st.clock, B = baseState(), seedBL = B.seedBL, tLast = B.tLast;
@@ -1415,13 +1476,15 @@ function stripData() {
 function stripState(d) {
   const now = performance.now(), P = st.plan, sc = st.seedChange && now - st.seedChange.t < 4000 ? st.seedChange : null;
   if (!PROF().rolls.length) return { cls: 'wait', text: 'Nothing to time on this step: just play it.' };
+  if (P && P.stopped) return { cls: 'stale', text: (zw.dead ? 'Seed lost' : 'Beeps stopped') + ' – the coin ruled the planned frame out. Press normally.', overlay: zw.dead ? 'Seed lost – beeps stopped' : 'Beeps stopped' };
   if (P && d.stale) return { cls: 'stale', text: 'Seed lost – showing old prediction. Press normally.', overlay: 'Seed lost – old prediction' };
-  if (sc) return sc.ok ? { cls: 'stale', text: 'Seed changed – new window (a shine ruled the old one out). Follow the new beeps.' } : { cls: 'stale', text: 'Seed changed – too late to move the beeps; this window may be wrong.' };
+  if (sc) return sc.ok ? { cls: 'stale', text: 'Seed changed – new window (a shine ruled the old one out). Follow the new beeps.' } : { cls: 'stale', text: 'Seed changed – too late to move the beeps; the planned frame still works for ' + Math.round(100 * (P && P.mix && P.mix.pNow != null ? P.mix.pNow : 0)) + '%.' };
   if (P) {
     const left = P.tPress - now, typ = P.type && WTYPE[P.type] ? WTYPE[P.type].name : 'best chance', ch = P.mix ? (P.mix.p4 != null ? ' · 3+ copies ' + Math.round(P.mix.p * 100) + '%, all 4 ' + Math.round(P.mix.p4 * 100) + '%' : ', ' + Math.round(P.mix.p * 100) + '% chance') : '';
     if (left > -400) return { cls: 'plan', text: 'Beeping: ' + (P.beeps || nBeeps()) + ' beeps, press on the last · ' + typ + ' · ' + P.w.length + '-frame window' + ch };
     return { cls: 'plan', text: onTarget() ? 'Window passed – planning the next one' : 'Window passed' };
   }
+  if (d.src === 'zw' && d.doubt) return { cls: 'stale', text: 'Lock doubtful – the coin fits the tracked states badly (missed or extra shines). Press normally.', overlay: 'Lock doubtful' };
   if (d.src === 'zw') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (what the coin did fits none of the tracked states).', overlay: 'Seed lost – old prediction' }
     : { cls: 'live', text: 'Tracking ' + (ZWD.done ? ZWD.done.n : '?') + ' possible state' + (ZWD.done && ZWD.done.n === 1 ? '' : 's') + ' – the beeps start on ' + (PROF().id === 'dup3' ? 'Bombette\'s Strategies screen (hand on Do Nothing)' : 'Time Out\'s target screen') };
   if (d.src === 'clock') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (resyncing from the next shines).', overlay: 'Seed lost – old prediction' } : { cls: 'live', text: 'Locked – live frames; the beeps start on the target screen' };

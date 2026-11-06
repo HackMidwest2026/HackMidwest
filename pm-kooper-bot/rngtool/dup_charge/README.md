@@ -114,3 +114,11 @@ is `dc_odds.py`'s 60-frame window (2 s at 30 game frames/s); 30 frames (the page
 safe3 3+ 97.3%, 4 44.6% (`odds.json` windows.30).
 
 Logs and screenshots were in /dev/shm (not committed).
+
+**v72** (`../charge_live/README.md`, v72 section 3): the page keeps every q within 2% of the rays' best (up to 10) and
+weighs them with the turn-1 menu's coin instead of filtering; on a 1234abcd render (Charge confirm 25 frames after the
+target screen opens: bfdda85d, true q 42, which v71 did not offer) the page keeps q 42 and its Do Nothing plan gives
+4/3/3 copies at -1/0/+1 in the emulator. The simulated capture reads the coin's flash ~2-3 frames later than a console
+does (the Glide64 renders show the main flash on draw +6/+7 while the burst sits on the console's curve): a simulation
+artifact; the page accepts flashes up to 4 frames late here. `../test_dup_page.js` sets the console frame time to 33.367
+(the renders' rate, `CRATE`).

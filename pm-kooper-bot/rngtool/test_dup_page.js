@@ -10,7 +10,7 @@
  * CSCR (lead 1.5 s, 1 s max extra wait, best chance). Prints JSON: trigger, lock, arena events, the plan (target clock
  * frame, 3+ and 4 chances) and the predicted copies on target -1 / 0 / +1 for the lag-0 state; dup_charge/dc_e2e_press.py
  * then plays that frame in the emulator.
- * usage: node test_dup_page.js URLBASE DIR NFRAMES [CSCR=203]   (URLBASE/tot.html = the standalone page,
+ * usage: [CRATE=33.367] node test_dup_page.js URLBASE DIR NFRAMES [CSCR=203]   (CRATE: the console frame time setting; the renders run at 33.367)   (URLBASE/tot.html = the standalone page,
  *        URLBASE/DIR/f%05d.jpg = the capture frames; serve with python3 -m http.server --bind 127.0.0.1) */
 const { chromium } = require('playwright');
 (async () => {
@@ -21,8 +21,9 @@ const { chromium } = require('playwright');
     localStorage.setItem('tot-boxes', JSON.stringify({ coin: { x: 1080 / 1280, y: 40 / 720, w: 40 / 1280, h: 52 / 720 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } }));
   });
   await p.goto(base + '/tot.html');
-  const out = await p.evaluate(async ({ base, dir, nf, cScr }) => {
+  const out = await p.evaluate(async ({ base, dir, nf, cScr, crate }) => {
     const T = window.__tot, sel = document.getElementById('s-duproute'); sel.value = 'charge'; sel.dispatchEvent(new Event('change'));
+    document.getElementById('s-crate').value = crate;     // v72: emulator renders run at 33.367 ms a frame (the page's tracker runs on the console's frame time)
     T.setStep(T.RT().findIndex(s => s.chg === 'dup'));
     const url = i => base + '/' + dir + '/f' + String(i).padStart(5, '0') + '.jpg';
     const bmp = new Map(); let next = 0;
@@ -45,7 +46,7 @@ const { chromium } = require('playwright');
       if (pl.target != null) res.predicted = st0.map(q => ({ w: +q.w.toFixed(3), cls: T.dupClasses(q.s, q.nc, q.g, pl.target - 1, pl.target + 1).join('') }));
     }
     return res;
-  }, { base, dir, nf, cScr });
+  }, { base, dir, nf, cScr, crate: process.env.CRATE || '33.367' });
   out.pageErrors = errs.slice(0, 5); console.log(JSON.stringify(out));
   await b.close();
 })();
