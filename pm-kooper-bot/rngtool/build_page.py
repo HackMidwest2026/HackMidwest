@@ -3,7 +3,7 @@ version, which also carries the standalone file (base64) for its Save for OBS mo
 import base64, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shared'))
 from inline import inline
-D = '/tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer'
+D = os.environ.get('TOT_OUT') or '/tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer'   # TOT_OUT: another folder (parallel worktrees)
 os.makedirs(D, exist_ok=True)
 t = inline(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'page_template.html')).read())
 H = os.path.dirname(os.path.abspath(__file__))

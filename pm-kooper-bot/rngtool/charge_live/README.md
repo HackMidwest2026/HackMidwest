@@ -1,3 +1,137 @@
+# Time Out Timer v74: Final Bowser phase 2, T1 -> T4 manipulated from the T1 Charge (Nov 6)
+
+The route (the runner's): T1 Super Charge, Cloud Nine; T2 Super Charge; T3 Jammin' Jelly; T4 Super Charge (block the
+wave, Lakilester may take it); T5 Peach Beam at Danger; T6 Super Charge (Close Call); T7 Power Bounce x7. Lakilester
+does nothing on T2-T4 (Strategies -> なにもしない). New: `fb14_live.js`, the Charge profile `fb1` (`charge_live.js`),
+`kernel.c` (fb1score / fb1struct / fb1end), the route steps, `fb2_route/t14_log.py`, `t14model.py`, `t14_fixture.py`,
+`t5_steps.py`, `fb14_e2e.py`; tests `test_fb14_model.js`, `test_fb14_plan.js` (both in `run_suite.sh`) and the
+frame-fed `test_fb14_page.js` (emulator renders, not in the suite).
+
+## 1. The model (emulator, `fb2_route/t14model.py`; the page's port `fb14_live.js` fbStep)
+From a seed in Mario's menu every gRandSeed draw of a turn is fixed by the inputs (`t14_log.py`, 64 logs: T1-T4 x 16,
+8 seeds, different menu waits, popup presses at 80 or none, partner confirm delays 0-36):
+- per frame: bolts; script draws (the Charge rays' two creations on Mario's confirm M + 13 / + 16; the Jelly's sparkles
+  10 x (359, 10, 10) on M + 118; Cloud Nine's puffs RandInt(40), RandInt(30) on P + 200 .. 209; Bowser's AI on P + 13
+  after Do Nothing, P + 332 after Cloud Nine; the dodge test on AI + 52 / 62 / 55 by attack, + 72 for the wave); the
+  coin; **Bowser's star aura** (c[f mod 20] rand_int(359): 16 per 20 frames, the pattern fixed for the fight); the rays'
+  respawns (the aura's effect slot is before the rays': RAM gEffectInstances, T1 / T2 / T4); the wave's particles; the step;
+- the popup A only moves the partner menu (K + 17); the AI's Body Slam / Claw are off after the same attack the turn
+  before; T4: RandInt(100) < 75, else RandInt(110) < 20 -> the Draining Shockwave (15 of 16 logs);
+- the dodge (Cloud Nine) is the test < 50; after a miss nothing else draws to the next menu, the wave included (its
+  draws are a fixed schedule, the same in all 6 wave-miss logs). After a hit Mario's HP drops and Peach's wish heals him
+  (other effects, not modelled: the route has failed there).
+**Python model vs emulator: 64 / 64 logs exact on every frame to the test, and on every frame of the log after a miss.
+Page model vs emulator (`test_fb14_model.js`, 32 of the logs in `fixtures/fb14_logs.json`): 32 / 32 exact over 18421
+frames, every attack and test value equal.**
+
+## 2. The lock: the Charge rays with the aura (`fb1` profile, `kernel.c`)
+The aura's draws come between the rays' respawns on every frame, so the Hallway / T6 stage 2 does not fit (the old FB2
+profile on the console clip 14-47-09 with the aura: no lock). Stage 1 is unchanged (each effect's creation draws are
+contiguous), with both effects (A alone ranked the true seed below 65536 on the T1 render: Lakilester and the stars
+cover part of its rays); the joint stage takes B's base draw 24..38 steps after A's (the aura's draws on frames 0-2).
+Stage 2, `fb1score`: all draws are single LCG steps, so the score is a sum of g_v[n][k_n] over frames, k_n = the extra
+draws before frame n's respawns; the best monotone path (0..6 extra draws a frame) over every v. A candidate a few
+steps along the best one's stream shares B's rays and every respawn and scores all but A's initial rays: it is the same
+seed, not the runner-up (T1 render: true 5853, one step off 4645).
+Then `fb1struct` fits the structure of the best: per lightning pattern x first coin q x second coin, the aura pattern by
+dynamic programming over the 20 residues (frames j, j+20, j+40 share c_j; P_19 = 16). Every fit within 0.2% of the best
+is a hypothesis; each, with every lightning phase pair behind its pattern and console lag 0 / 1, is a tracker state.
+| render (capture simulation) | lock | score, ratio | fits within 0.2% |
+|---|---|---|---|
+| T1, 1234abcd (r1, native, clean maps) | true | 7274 vs 2968, 2.45x | 35 |
+| T1 (rt1, page, live) | true | 4605-5680, 2.25-2.41x | 73-343 |
+| T2, 9e3779b9 (rt2, native) | true | 7908, 2.77x | 1605 |
+| T2 (rt2, page, live) | true | 5877-5907, 2.29-2.86x | 261-1680 |
+The rays do not tell the aura's split between neighbouring frames, the first coin's frame and the lightning apart where
+no ray respawns (rt2: the true fit among 1605; at 0.2%, the true structured score 7907.9 against a best of 7908.0). So
+the page also walks every fit back through Mario's menu before the Charge (`fbBackShines`: the coin's 24 / 48 rule with
+the fit's aura and bolts, as chgQBack does on the Hallway) and weighs it with that menu's shines before keeping at most
+16000 states: on rt2 the menu's one shine (frame -32) puts the true coin frame on top (16 of the top 400 states, all
+the others one error behind).
+
+## 3. The tracker and the levers (`fb14_live.js`)
+The states are carried with the v72 weights (zwLR constants; match window -2 .. +4.5 frames; the background's share is
+the doubt: 50%+ = no beeps). The clock: logic frame 0 = T1's Mario confirm, from the burst (re-anchored at every later
+Charge). The inputs the page reads: Mario's Charge from the burst (T2 / T4: M - 1 / M / M + 1, the burst places it to
+about a frame), the Jelly from the bar hiding (first picture without it = M + 2; +-1), the partner's confirm from its
+screen closing (Cloud Nine's target, the マリオ name box: P + 1; Lakilester's Strategies panel: P + 2; read to +-2 frames,
+weights 10/25/40/20/5%). The lever is the partner's confirm: the runner waits on that screen; the page plans the frame
+with the shared machinery (zwChoose with the share of states for which a confirm there makes Bowser miss; window type,
+beeps, beep / visual offsets, lead, max extra wait), re-scores it 4 times a second and stops the beeps when the coin
+rules it out. T4's goal is the wave and the miss (the wave must come on T4: on T5/T6 there is no Cloud Nine).
+Each later Charge (T2, T4) is locked again; the carried states that drew those very rays (same seed after A's base draw
+and the same state at the rays' end) are kept, else the fresh fit replaces them; a fresh fit keeps only the aura
+patterns the carried states still hold. With no lock: "play it blind" (Cloud Nine / Do Nothing whenever you like:
+Bowser misses about 50% a turn, 39% on T4; all four about 5%).
+
+**Odds the page shows**: 60-97% on the T1 plans of the renders (a mixture of hundreds to thousands of states), 75-99.8%
+on T2's; no edge / play it blind when the coin rules the states out. **Odds the page claims and gets with an exact lock** (`test_fb14_plan.js`: the true state and its lag-1 twin, the
+page's own plan, presses 25/50/25 over -1/0/+1, 60 random games): T1 94.8% claimed / 98.3% model, T2 96.3 / 98.3,
+T3 95.6 / 96.6, T4 90.3 / 87.5; **all four 81.7%** (the study's 87% assumed 0.39 / frame on T4 with 1 s windows; blind ~5%).
+With the real T1 fits (hundreds to thousands of states) the T1 plan is a mixture: the page showed 60-87% on the
+renders before the partner menu's coin had pruned them (section 5).
+
+## 4. T5 -> T6: the carried seed narrows the T6 Charge's search
+The Peach Beam is not modelled, but from its confirm to the T6 Charge's rays frame 0 the game draws a nearly fixed
+number of random numbers beyond the frames (`fb2_route/t5_steps.py`, 120 emulator runs, 40 seeds x 3 text policies):
+Close Call 8654-8764, Bowser's hit 9116-9351 (+ 8776 with Mario at 3 HP in an end-to-end run). The page takes the
+carried states at the Peach Beam confirm (the bar hiding after T4's confirm + 5 s), and at the T6 Charge searches only
+the seeds frames + 8540 .. 9420 steps after them (bases on the same stream merged): about 900 candidates per base,
+straight into the FB2 stage 2 (`chgSearch` opts.cands; no stage 1 over 2^32). If that does not lock, the full search
+runs as before. The FB2 profile does not arm during T4's Bowser turn and the beam (they flash the arena).
+
+## 5. End to end, and lock times
+**Lock times** (`test_fb14_page.js` on the end-to-end T1 render, fed in real time; Settings > Charge CPUs; 4-core
+machine shared with the page's own thread and another agent's tests, load 1.7-2.6, so pessimistic):
+| workers | one search (stage 1 / joint / stage 2 / fit) | lock after the rays |
+|---|---|---|
+| 1 | 4.4-5.2 s (3.2-4.1 / 0.2 / 0.6 / 0.3-0.4) | 15.4 s (2 placement retries before the lock) |
+| 2 | 3.4-3.8 s (2.5-2.9 / 0.3 / 0.3-0.4 / 0.3) | 11.3 s (2 retries) |
+| 3 (the default here: hardwareConcurrency - 1) | 3.3 s (2.4 / 0.3 / 0.3 / 0.3) | 3.7 s |
+| 4 | 3.6 s (2.6 / 0.3 / 0.3 / 0.4) | 3.9 s |
+Stage 1 is ~4 CPU-s of WebAssembly and splits over the workers; on this machine it stops gaining after 2-3 (the cores
+are shared). With 7+ free cores a search should take ~1-1.5 s. The T1 lever is the Cloud Nine confirm, which the runner
+can hold: the cost of a slow lock is waiting on that screen, not a missed window. The worker count follows
+navigator.hardwareConcurrency - 1 (1..16) unless Settings fixes it.
+**T6, narrowed by the carry:** about 900 candidates per carried base go to the FB2 stage 2: 0.37 CPU-s for their upper
+bounds and 0.03 s for the full scoring of the best few (native, one thread; the WebAssembly is ~1.5x that, split over the
+workers), instead of the 2^32 stage 1 (~1.4 CPU-s) whose late start made the v68-v72 T6 lock land 1.6-2.6 s after the
+rays on 3 workers. **Not measured end to end** (below).
+
+**End to end** (`fb2_route/fb14_e2e.py`, seed 1234abcd, Glide64 -> `t6_capsim.py` -> the page, pictures delivered late
+rather than dropped: LATEMS 2000; 3 workers; the beeped frames pressed in the emulator):
+- T1: the lock is the true seed (c49d0092, 7101 at 2.7x), but only on the third placement (the burst over this arena
+  varies run to run: lightning, the stars; the first placements put a skipped frame at 12-17). The plan came after the
+  test's 400-frame wait, so T1 was pressed blind (Bowser missed; -1 and +1 would have been hit).
+- **The carry from T1 is not right yet.** The fit of the T1 rays left the true seed and first coin among the states, but
+  not the true aura pattern: '...1021010201310...' against the fits' '...0040 / 0131 / 0311...' on residues whose
+  frames do have respawns, so a misplaced frame in the rays (above) bends the aura fit itself. The alternative splits
+  (`fb1alts`) do not contain it either. With a wrong aura every carried state drifts on some frames: the T2 Charge's
+  check against them found no match in the earlier runs, and in this one the T3 menu's coin ruled out every state
+  ("fb14AllOut"; T3 pressed blind, Bowser missed).
+- T2: the T1-carried plan beeped clock frame +1169, claiming 99.8%; pressed in the emulator: Bowser missed (-1 also,
+  +1 hit). T2's own Charge was not read in that run (the T1 search was still running when the step changed; fixed since:
+  the reader is armed again once it finishes, not re-run).
+- T4 -> T6: the T4 feed's headless page died (the debug dumps of 20000 states per lock); T5 / T6 were not reached in any
+  run of this session, so **the narrowed T6 lock has not run end to end**. Its window is from 120 emulator runs.
+- Found and fixed on the way: the end-to-end harness dropped one frame at every savestate load (the page's clock then
+  ran a frame early after each confirm); T2 / T4's Charge on the clock is +-1 (carried as -1 / 0 / +1); the coin from
+  before a lock is kept (in page time); the FB2 reader is re-armed after T4 and after the Peach Beam; the joint stage no
+  longer sorts ~260k items on the page's thread (it stalled the capture for ~1 s).
+
+## Suite
+`run_suite.sh` on the rebased v74 build (after Jr. Troopa's v73): every test rc 0, the torch maze rc 0, both log replays
+lock as before (1379.7 s on 83ebd9e1, 655.7 s on 52467bd0). Run in two parts (the first runner was stopped by a
+session time limit after test_route_replay; the rest rerun with ONLY=). Another agent's tests ran at the same time.
+
+## Not verified on console
+Everything here is emulator (Glide64) and the capture simulation: the aura profile's burst curve (one T1 render), the
+screens' vanish frames (Glide64: the name box P + 1, the Strategies panel P + 2; the page's VAN from other fights' console
+clips says 2 / 3), the bar hide after the Jelly / Peach Beam (M + 2), the coin flash delay with the aura up, console lag
+frames during Cloud Nine / the wave / the beam (the tracker carries lag 0 / 1 after the rays only; a console lag frame
+elsewhere moves its frames by one), the T5 step window on console, whether the runner's text presses in the beam turn
+stay inside it, and the A presses during Cloud Nine's message (speech blips; the route says not to).
+
 # Time Out Timer v73: the Jr. Troopa Charge-lock route (Nov 6)
 
 The endgame route now plays Jr. Troopa with the page (route panel: *Jr. Troopa route*, Charge lock by default; the old

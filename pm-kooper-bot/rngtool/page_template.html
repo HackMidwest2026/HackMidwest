@@ -108,7 +108,7 @@ details[open] summary { margin-bottom: 10px; }
 <main>
   <header>
     <h1>Time Out <span>Timer</span></h1>
-    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100) · <span id="ver">v73</span></div>
+    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100) · <span id="ver">v74</span></div>
   </header>
 
   <section class="panel stage" aria-live="polite">
@@ -296,7 +296,7 @@ details[open] summary { margin-bottom: 10px; }
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser → Final Bowser · click a numbered step to jump there · ★ = planned press</p>
     <label class="f" style="margin:0">Duplighosts route<select id="s-duproute"><option value="rta">RTA: Spiny Surge (no lock)</option><option value="charge">Charge lock: Mario Charge, Bombette Do Nothing</option></select><small id="duproute-note"></small></label>
     <label class="f" style="margin:0">Jr. Troopa route<select id="s-jrroute"><option value="charge">Charge lock: T1 Super Charge, beeps on T3-T6</option><option value="shine">Old: a shine lock carried through the turns (v72)</option></select></label>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save Bombette's Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save Bombette's Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb14-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turns 1-4: the aura Charge lock, the beeped Cloud Nine / Do Nothing (Bowser misses), and the seed carried to the Peach Beam"><b>FB2 T1 → T4:</b> waiting for the T1 Super Charge lock</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -401,11 +401,15 @@ const ENDGAME = [
   // Final Bowser phase 2 (fb2_route/README.md). The T6 Super Charge locks the seed from its rays (the step below has it
   // as its pre, as Hallway T1); the page then beeps the A that closes the "+3" popup (the Close Call lever), reads the
   // frame it happened on from the popup closing, follows Bowser's turn with the coin, and beeps the Power Bounce A.
+  // T1-T4 (charge_live/fb14_live.js): the T1 Charge locks the seed (the aura profile, chg 'fb1'); Cloud Nine (T1) and
+  // Lakilester's Do Nothing (T2-T4) on the beep make Bowser miss (T4: the Draining Shockwave, blocked); T2 and T4's Charges
+  // lock it again and check the carried seed; the carry runs on to the Peach Beam and narrows the T6 Charge's search.
   { h: 'Final Bowser', turns: [
-    { text: 'T1: Charge; Cloud Nine', steps: [] },
-    { text: 'T2: Charge (Lakilester: Do Nothing)', steps: [] },
-    { text: 'T3: Jammin\' Jelly (Laki: Do Nothing)', steps: [] },
-    { text: 'T4: Charge (Laki: Do Nothing) - block the wave', steps: [] },
+    { text: 'T1: Charge; Cloud Nine', steps: [{ label: 'Super Charge (hand on Mario): its rays lock the seed', cat: 'M', chg: 'fb1', fb14: 1, fb14role: 'charge' },
+      { label: 'Cloud Nine on the beep (hand on Mario) → Bowser misses', cat: 'M', chg: 'fb1', fb14: 1, fb14role: 'lever' }] },
+    { text: 'T2: Charge (Lakilester: Do Nothing)', steps: [{ label: 'Do Nothing (Lakilester) on the beep → Bowser misses', cat: 'S', chg: 'fb1', fb14: 2, fb14role: 'lever' }] },
+    { text: 'T3: Jammin\' Jelly (Laki: Do Nothing)', steps: [{ label: 'Do Nothing on the beep → Bowser misses', cat: 'S', fb14: 3, fb14role: 'lever' }] },
+    { text: 'T4: Charge (Laki: Do Nothing) - block the wave', steps: [{ label: 'Do Nothing on the beep → the wave comes and misses Mario (block it; it may hit Laki)', cat: 'S', chg: 'fb1', fb14: 4, fb14role: 'lever' }] },
     { text: 'T5: Peach Beam at Danger', steps: [] },
     { text: 'T6: Charge, then the popup A on the beep → Close Call', steps: [] },
     { text: 'T7: Power Bounce x7', steps: [{ label: 'Power Bounce → 7 (T6: Super Charge, then close its +3 popup on the beep)', cat: 'B', turn: 'fb2_pb', pre: [{ cat: 'M', id: 'fb2_charge' }] }] } ] } ];
@@ -1071,6 +1075,7 @@ function zwStatesAt(h) {
 }
 // the share of the states (weighted) for which confirming on clock frames a..b works
 function zwShare(list, a, b, prof) {
+  if (prof && prof.share) return prof.share(a, b);     // a fight with its own model (Final Bowser T1-T4: fb14_live.js)
   const L = list.slice(0, 64), tot = L.reduce((x, q) => x + q.w, 0) || 1, sh = new Float64Array(Math.max(0, b - a + 1));
   for (const q of L) { const lo = Math.max(a, q.g), tab = fastTable(q.s, q.nc, q.g, lo, b, prof || PROF()); for (let i = 0; i < tab.length; i++) if (tab[i]) sh[lo - a + i] += q.w / tot; }
   return sh;
@@ -1221,7 +1226,9 @@ function zwTick(now) {
 /*@include charge_live/charge_live.js*/
 /*@include charge_live/fb2_live.js*/
 /*@include charge_live/jr_live.js*/
+/*@include charge_live/fb14_live.js*/
 function makePlan() {
+  if (typeof fb14Plan === 'function' && fb14Plan()) return;     // Final Bowser T1-T4 (fb14_live.js)
   if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (FB2.t7) fb2PlanT7(); else { st.msg = FB2.plan && !FB2.kObs ? 'FB2: waiting for the T6 popup A (the page reads the frame from the popup closing).' : 'No edge: no FB2 states to plan with. Press Power Bounce normally.'; render(); } return; }
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'Time Out is done for this attempt. The route stays on the Hallway until the next Charge (a retry) or Final Bowser\'s arena.'; render(); return; }
   if (zw.on && (PROF().id === 'timeout' || dupZw() || jrZw()) && zwPlan()) return;
@@ -1285,6 +1292,7 @@ function addShine(t, auto) {
   if (auto) rateShine(t);
   if (auto) chgTap(t);
   if (auto && typeof fb2Tap === 'function') fb2Tap(t);
+  if (auto && typeof fb14Tap === 'function') fb14Tap(t);
   if (auto && zw.on) zwTap(t);
   const s = seg();
   if (auto && s.taps.length) {                     // a real shine lands 48 + 24k frames after the previous one
@@ -1703,6 +1711,7 @@ function onFrame(t) {
   if (steady) V.steadyT = t;
   chgFrame(t, present);
   if (typeof jrFrame === 'function') jrFrame(t, present);
+  if (typeof fb14Frame === 'function') fb14Frame(t, present);     // Final Bowser T1-T4 and the T5 carry (fb14_live.js)
   // target screen
   if (V.ref) {
     const g = sample(V.boxes.target, 24, 16); let diff = 0;
@@ -1810,7 +1819,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) {
-  slog('step', { to: i }); const was = routeStep; st.hwDone = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
+  slog('step', { to: i }); const was = routeStep; st.hwDone = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); if (typeof fb14StepChange === 'function') fb14StepChange(was); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
   if (RT()[was] && /^Hallway Bowser/.test(RT()[was].t || '') && !/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '') && routeStep > was) st.hwLeft = { at: performance.now(), hides: 0 };
   else if (/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) st.hwLeft = null; if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
@@ -1945,6 +1954,7 @@ const presses = (function () { try { return JSON.parse(localStorage.getItem('tot
 // Every time the target screen closes, say what happened. With a beep plan: early/late vs the aimed frame (feeds the
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
 function checkPress(tObs) {
+  if (typeof fb14Confirm === 'function' && isRoute()) fb14Confirm(tObs, RT()[routeStep]);     // Final Bowser T1-T4: the lever's frame
   if (typeof jrStepNow === 'function' && jrStepNow()) { slog('screenClosed', { at: Math.round(tObs), step: routeStep, jr: true }); jrScreenClosed(tObs); checkPress_(tObs); return; }   // Jr. Troopa: the bar count moves the route
   { const z = isRoute() && RT()[routeStep];
     // the hide the Charge capture armed on is the Charge confirm itself (its pre was used up by an earlier hide, e.g. the
@@ -2064,6 +2074,7 @@ $('test-beep').onclick = () => {
 // any click or key wakes the audio (browsers start it suspended until the page is used)
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
 function autoPlan() {
+  if (typeof fb14Step === 'function' && fb14Step() && fb14Step().fb14role === 'lever') { if (st.plan && performance.now() < st.plan.tPress + 600) return; if (st.planTry && performance.now() - st.planTry < 500) return; st.planTry = performance.now(); makePlan(); return; }
   if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (st.plan && performance.now() < st.plan.tPress + 600) return; makePlan(); return; }
   // a seed search from shines (the turn-2 menu's coin can start a chain search) must not hold up the zero-wait plan: it
   // needs no search (live log 1793757328924, last attempt: the search started on the 2nd shine of the turn-2 menu and the

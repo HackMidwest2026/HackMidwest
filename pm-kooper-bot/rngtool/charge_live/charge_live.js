@@ -56,12 +56,22 @@ const CHG_BRIGHT_DUP = [7.0, 12.3, 18.8, 27.3, 35.2, 41.8, 47.3, 49.0, 50.6, 54.
  * nuisance draws in the rays. */
 const CHG_BRIGHT_JR = [6.3, 11.6, 18.3, 26.5, 34.0, 40.2, 45.9, 47.2, 48.8, 52.5, 54.9, 55.8, 57.2, 59.5, 59.4, 59.3, 58.1, 59.9, 58.5, 56.1, 55.1, 49.7, 45.2,
   40.4, 29.7, 20.5, 14.7, 8.2, 3.2, 1.8, 3.7, 3.1, 3.0, 3.0, 3.1, 3.0, 2.9, 2.9, 3.0, 2.8, 2.7, 2.8, 2.7];   // frames 3..45
+/* Final Bowser phase 2, T1-T4 (Bowser's star aura up; fb14_live.js): the burst over the arena with Lakilester beside Mario
+ * (emulator T1 render through the capture simulation, fb2_route/t14_log.py SHOTS + t6_capsim.py: frames 0-2 read -1.0,
+ * 0.9, 3.4; frame 3 is the trigger at 6 above the menu; unverified on console) */
+const CHG_BRIGHT_FB1 = [8.3, 13.5, 19.5, 25.2, 30.4, 34.8, 38.2, 38.6, 39.4, 42.0, 43.2, 43.4, 44.9, 46.6, 46.2, 46.2, 44.1, 44.5, 42.3, 40.9, 40.0, 37.7,
+  34.8, 31.6, 24.3, 17.5, 10.8, 6.1, 1.9, -1.9, -0.8, 2.1, -2.7, -6.0, -6.5, -6.7, -7.1, -7.7, -7.9, -8.2, -8.3, -8.6, -8.5];   // frames 3..45
 const CHG_PROF = {
   hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true },
   fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 },
   // dup: the route step with chg 'dup' (Duplighosts, Charge-lock route). The lock starts the zero-wait tracker as on the
   // Hallway; its plan is Bombette's Do Nothing (profile dup3: 3+ copies, 4 as tie-break). altMs: retries only while the
   // runner would still be waiting on Do Nothing (the natural confirm is ~2-3 s after the rays).
+  // fb1: Final Bowser phase 2 T1, T2, T4 (route steps with chg 'fb1'): the aura's draws between the rays' (kernel.c fb1score);
+  // both effects in stage 1 (A's initial rays alone ranked the true seed below 65536 on the T1 render: Lakilester and the
+  // stars cover part of them), B's base draw 24 .. 38 steps after A's (the aura's draws on frames 0-2); the lock starts the
+  // T1-T4 tracker (fb14_live.js). A real bar hide arms it, as on the Hallway.
+  fb1: { id: 'fb1', turn: null, cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB1, bolts: false, aura: true, early: false, offs: Array.from({ length: 15 }, (_, i) => 24 + i), effects: [0, 1], trigLo: 6, trigHi: 20, trigN: true, trigCut: [10.9, 16.5], tol: tb => 4 + 0.3 * Math.abs(tb), trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 12000 },
   dup: { id: 'dup', turn: null, cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT_DUP, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 6000 },
   // jr: the Jr. Troopa steps (chg 'jr'). The lock goes to jrLock (jr_live.js): the T1 lock starts the tracker that carries it
   // through the fight; the T3 / T5 locks check the carry or start it again.
@@ -118,16 +128,16 @@ function chgArenaJr(L, br, lbr) { const A = JR_ARENA; return L > A.L[0] && L < A
  * Duplighost room at a real hide is that fight (a reset to an earlier save): the route goes to the Duplighost step, but
  * only on the Charge-lock route (on the RTA route the Duplighosts have no Charge to read). */
 function chgArenaProf(P0, real) {
-  const A = chgArena(), fbI = RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup'), jrI = RT().findIndex(x => x.chg === 'jr');
+  const A = chgArena(), fb1I = RT().findIndex(x => x.chg === 'fb1'), fbI = fb1I >= 0 ? fb1I : RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup'), jrI = RT().findIndex(x => x.chg === 'jr');
   // Jr. Troopa (jr_live.js): on his steps a Hallway picture is the Hallway (its burst sets Hallway T1), Final Bowser's arena at
   // a real hide that fight. His arena does not move the route from another fight's step: the castle corridors on the walk
   // after the fight are grey stone too, and no console clip of the fight exists to rule that out (jrI: the log only).
   if (P0 !== CHG_PROF.jr && real && A.a === 'jr' && jrI >= 0) slog('chargeArenaJrSeen', { step: routeStep, L: A.L, br: A.br, lbr: A.lbr });
   if (P0 === CHG_PROF.jr && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
-  if (P0 === CHG_PROF.jr && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); setStep(fbI); return CHG_PROF.fb2; }
-  if ((P0 === CHG_PROF.fb2 || P0 === CHG_PROF.dup) && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
-  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return CHG_PROF.fb2; }
-  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.fb2) && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
+  if (P0 === CHG_PROF.jr && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
+  if ((P0 === CHG_PROF.fb2 || P0 === CHG_PROF.dup || P0 === CHG_PROF.fb1) && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
+  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
+  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.fb2 || P0 === CHG_PROF.fb1) && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
   return P0;
 }
 const chgP = () => CHG.prof || CHG_PROF.hw;
@@ -186,7 +196,7 @@ function chgFrame(t, present) {
     if (P.trigMin && !real) { CHG.hideT = -1e12; CHG.armP = null; return; }   // not a confirm: the bar was not up
     CHG.hideT = t; CHG.armP = P; CHG.menu = CHG.menuSince ? { from: CHG.menuSince + 1000, to: t - 4 * FRAME, taps: (V.hist || []).filter(x => x > CHG.menuSince + 1000 && x < t) } : null;
   }
-  if (CHG.state === 'idle' || CHG.state === 'notseen') { const P = CHG.armP || chgProfNow(); if (t - CHG.hideT > P.trigMax) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = P; }
+  if (CHG.state === 'idle' || CHG.state === 'notseen') { const P = CHG.armP || chgProfNow(); if (t - CHG.hideT > P.trigMax) return; if (typeof fb14ArmOk === 'function' && !fb14ArmOk(P, t)) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = P; }
   const g = sample(chgGame(), 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
   const tg = performance.now(), last = CHG.state === 'capture' ? CHG.frames[CHG.frames.length - 1] : CHG.ring[CHG.ring.length - 1];
   const rep = chgP().id === 'fb2' && last && Math.abs(last.m - m) < 0.02;     // FB2: a repeated picture (same coarse brightness) reuses the raster: half the grabs
@@ -202,8 +212,8 @@ function chgFrame(t, present) {
         // which burst frame the trigger picture is (hw): frame 3 reads +7.0..7.8 on every clip and live trigger; when the
         // browser dropped frame 3's pictures the first one above the menu is frame 4 (+12.5) or 5 (+19.4), and v69 took it
         // as frame 3 (or, at +19.4, did not trigger at all): every frame after it one or two off, no lock
-        const d0 = m - base, n0 = P.trigN ? (d0 < 9.85 ? 3 : d0 < 15.95 ? 4 : 5) : 3;
-        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1 }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); }
+        const d0 = m - base, cut = P.trigCut || [9.85, 15.95], n0 = P.trigN ? (d0 < cut[0] ? 3 : d0 < cut[1] ? 4 : 5) : 3;
+        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1 }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); if (P.id === 'fb1' && typeof fb14Trigger === 'function') fb14Trigger(); }
     }
     return;
   }
@@ -215,7 +225,7 @@ function chgFrame(t, present) {
     if (n >= 5 && n <= 27) { let lo = 1e9, hi = -1e9; for (let k = Math.max(3, Math.floor(n - 1.5)); k <= Math.min(45, Math.ceil(n + 1.5)); k++) { lo = Math.min(lo, BRS[k - 3]); hi = Math.max(hi, BRS[k - 3]); }
       const d = m - CHG.trig.base; if (d < lo - 10 || d > hi + 10) CHG.shapeBad++; } }
   if ((dt > 330 && dt < 400 && m < CHG.trig.base + 15) || CHG.shapeBad > 3) { slog('chargeFalseTrigger', { m: +m.toFixed(1), shapeBad: CHG.shapeBad || 0 }); CHG.state = 'armed'; CHG.ring = CHG.frames.slice(-16); CHG.frames = []; return; }
-  if (chgP().early && !CHG.early && dt > (CHG_EARLY_N - 3 + 1.5) * FRAME) { CHG.early = { t }; setTimeout(chgEarly, 0); }   // stage 1 while the rays go on
+  if (chgP().early && !CHG.early && dt > (CHG_EARLY_N - 3 + 1.5) * FRAME) { if (typeof FB14 !== 'undefined' && FB14.t6 && chgP().id === 'fb2') CHG.early = { narrow: true }; else { CHG.early = { t }; setTimeout(chgEarly, 0); } }   // stage 1 while the rays go on
   if (dt > CHG_N * FRAME) { CHG.state = 'maps'; CHG.tEnd = t; CHG.taps = []; CHG.pres = []; setTimeout(chgSolve, 0); }
 }
 /* the coin while the seed is searched: kept, so the tracker gets the Lakilester menu's shines once it is locked */
@@ -226,11 +236,12 @@ function chgTap(t) { if (CHG.state === 'search' || CHG.state === 'maps') CHG.tap
 function chgGameFrames(ban) {     // ban: Set of j * 64 + n, assignments an earlier placement used for a skipped frame
   const F = CHG.frames, out = new Array(CHG_N + 4).fill(null), ti = CHG.trig.i, tT = F[ti].t, NN = CHG_N + 2;
   const diff = (a, b) => { let s = 0; for (let y = 40; y < 440; y += 8) for (let x = 24; x < 616; x += 8) s += Math.abs(a[y * 640 + x] - b[y * 640 + x]); return s / (50 * 74); };
-  const fresh = F.map((f, i) => i === 0 || diff(f.Y, F[i - 1].Y) > 0.8);
+  const fm = chgP().freshMin || 0.8, fresh = F.map((f, i) => i === 0 || diff(f.Y, F[i - 1].Y) > fm);
   // from the trigger on, each new picture is a game frame; which one is set by the burst's brightness, which is the
   // same every Charge (CHG_BRIGHT, 7 route clips, sd < 0.7), and by the time between pictures (the browser's frame
   // times jitter by +-17 ms and it drops pictures), by dynamic programming over n
   const J = []; for (let i = ti; i < F.length; i++) if (i === ti || fresh[i]) J.push(i);
+  if (window.__chgDebug) CHG.J0 = F.map((f, i) => [Math.round(f.t - F[ti].t), +f.m.toFixed(1), i >= 1 ? +diff(f.Y, F[i - 1].Y).toFixed(2) : null]);
   const base = CHG.trig.base, INF = 1e18, cost = [], from = [], BR = chgP().bright(), TOL = chgP().tol;
   for (let j = 0; j < J.length; j++) { cost.push(new Float64Array(NN + 3).fill(INF)); from.push(new Int16Array(NN + 3)); }
   if (chgP().trigN) { const d = F[ti].m - base; for (let n = 3; n <= 5; n++) cost[0][n] = Math.min(25, ((d - BR[n - 3]) / TOL(BR[n - 3])) ** 2) + 3 * (n - 3); }
@@ -353,10 +364,10 @@ onmessage = async e => {
       for (let e2 = 0; e2 < 2; e2++) { const n = X.heapN(e2); out.push({ s: Array.from(new Float32Array(X.memory.buffer, X.heapS(e2), n)), d: Array.from(new Uint32Array(X.memory.buffer, X.heapD(e2), n)) }); }
       postMessage({ type: 'heaps', out });
     } else if (m.type === 'joint') {      // A's candidates get B's best initial rays over the offsets, B's get A's
-      const sc = new Float32Array(m.e.length);
+      const sc = new Float32Array(m.e.length), vb = new Int16Array(m.e.length);
       for (let i = 0; i < m.e.length; i++) { const s0 = m.s0[i];
-        if (m.e[i] === 0) { let b = -1e30; for (const o of m.offs) b = Math.max(b, X.s1score(1, fwd(s0, o + 1))); sc[i] = m.sc[i] + b; } else sc[i] = m.sc[i] + X.s1score(0, fwd(s0, 1)); }
-      postMessage({ type: 'joint', sc });
+        if (m.e[i] === 0) { let b = -1e30, bo = 0; for (const o of m.offs) { const x = X.s1score(1, fwd(s0, o + 1)); if (x > b) { b = x; bo = o; } } sc[i] = m.sc[i] + b; vb[i] = bo; } else sc[i] = m.sc[i] + X.s1score(0, fwd(s0, 1)); }
+      postMessage({ type: 'joint', sc, vb });
     } else if (m.type === 'q') {
       const out = m.seeds.map(s => Array.from(new Float32Array(X.memory.buffer, X.qscores(s >>> 0), 48)));
       postMessage({ type: 'q', out });
@@ -365,6 +376,20 @@ onmessage = async e => {
     } else if (m.type === 'q2') {
       let best = m.thr * 1.8; const out = m.seeds.map(s => { const sc = X.fb2cand(fwd(s >>> 0, 1), best / 1.8); if (sc > best) best = sc; return { sc, p: X.fb2bp(0), q: X.fb2bp(1) }; });
       postMessage({ type: 'q2', out });
+    } else if (m.type === 'fb1') {        // FB2 T1-T4 (the aura): the relaxed path score of each candidate (kernel.c fb1score)
+      postMessage({ type: 'fb1', out: m.seeds.map((s, i) => ({ sc: m.v ? X.fb1scorev(fwd(s >>> 0, 1), m.v[i] - 1, m.v[i] + 1) : X.fb1score(fwd(s >>> 0, 1)) })) });
+    } else if (m.type === 'fb1h') {       // the structured fit of the best (fb1struct): every (pattern, q, second coin) within tol
+      const a = fwd(m.s0 >>> 0, 1), P = X.fb1path(a), v = new Int32Array(X.memory.buffer, P, 52)[0], best = X.fb1struct(a, v), n = X.fb2npat();
+      const S3 = new Float32Array(X.memory.buffer, X.sc3Ptr(), n * 96), out = [];
+      for (let i = 0; i < n * 96; i++) if (S3[i] > -1e29 && S3[i] >= best * (1 - m.tol)) out.push(i);
+      const hy = out.slice(0, m.max || 4000).map(i => { const p = (i / 96) | 0, q = ((i % 96) / 2) | 0, br = i % 2, sc = X.fb1aura(p, q, br), A = Array.from(new Uint8Array(X.memory.buffer, X.xaPtr(), 20));
+        const XB = new Uint8Array(X.memory.buffer, X.xbPtr(), 60), XA = new Uint8Array(X.memory.buffer, X.xaPtr(), 60), PT = new Uint8Array(X.memory.buffer, X.patPtr() + p * 52, 52);
+        for (let n2 = 0; n2 < 60; n2++) { XB[n2] = n2 < 48 ? PT[n2] : 0; XA[n2] = A[n2 % 20]; }
+        X.fb1end(a, q, 48); const E = new Uint32Array(X.memory.buffer, X.endPtr(), 3), esc = new Float32Array(E.buffer, E.byteOffset + 8, 1)[0];
+        const na = X.fb1alts(p, q, br, Math.max(1, best * m.tol), 600), AL = new Uint8Array(X.memory.buffer, X.altPtr(), na * 20), alts = [];
+        for (let i = 0; i < na; i++) alts.push(Array.from(AL.subarray(i * 20, i * 20 + 20)));
+        return { p, q, br, sc, aura: A, alts, s48: E[0] >>> 0, nc48: E[1], esc }; });
+      postMessage({ type: 'fb1h', a, v, best, n: out.length, hy });
     } else if (m.type === 'hyps') {
       const a = fwd(m.s0 >>> 0, 1), best = X.fb2best(a), n = X.fb2npat(), S2 = new Float32Array(X.memory.buffer, X.sc2Ptr(), n * 48), out = [];
       for (let i = 0; i < n * 48; i++) if (S2[i] >= best * (1 - m.tol)) out.push([(i / 48) | 0, i % 48, S2[i]]);
@@ -403,12 +428,20 @@ if (window.__chgDebug) {
     CHG.dbg = G.map(f => { if (!f) return null; const a = []; for (let y = 4; y < 480; y += 8) for (let x = 4; x < 640; x += 8) a.push(f.Y[y * 640 + x]); return [Math.round(f.t - CHG.trig.t), a]; });
     CHG.dbgRaw = CHG.frames.map(f => { const a = []; for (let y = 4; y < 480; y += 8) for (let x = 4; x < 640; x += 8) a.push(f.Y[y * 640 + x]); return [Math.round(f.t - CHG.trig.t), a]; });
     }
+    if (window.__chgDebug) CHG.G0 = G.map(f => (f ? Math.round(f.t - CHG.trig.t) : null));
     const raw = CHG.frames; CHG.info = { raw: raw.length, spanMs: Math.round(raw[raw.length - 1].t - raw[0].t), grabMs: +(CHG.grabMs || 0).toFixed(1), gaps: raw.slice(1).map((f, i) => Math.round(f.t - raw[i].t)).join(','), frames: G.slice(0, CHG_N).filter(Boolean).length, mario: +sh.dx.toFixed(1), marioNcc: +sh.ncc.toFixed(2), dxWorld: +dxw.toFixed(2), mapsMs: Math.round(t1 - t0) };
     if (E) { CHG.info.early = { mapsMs: E.mapsMs, startedBeforeRaysEndMs: Math.round(CHG.tEnd - E.t1) }; CHG.info.prof = chgP().id; }
     CHG.F0 = CHG.frames; CHG.cen = cen; CHG.alt = 0; CHG.forced = 0; CHG.ban = new Set();
     CHG.frames = []; CHG.G = G; CHG.state = 'search'; CHG.tSearch = E ? E.t1 : t1; chgShow();
     slog('chargeMaps', CHG.info);
-    let res; if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
+    let res;
+    const cands = !E && chgP().id === 'fb2' && typeof fb14T6Cands === 'function' ? fb14T6Cands() : null;
+    if (cands) {        // T6 with the seed carried from T1-T4: only the carried stream's stretch (fb14_live.js); the full search if it does not lock
+      res = await chgSearch(maps, { cands }); const T = res.top, ok = T[0] && T[0].sc >= CHG_MIN && T[0].sc / ((T.slice(1).find(x => x.sc > -1e29) || { sc: T[0].sc / (CHG_RATIO * 1.0001) }).sc) >= CHG_RATIO;
+      CHG.info.narrow = { cands: cands.length, ms: Math.round(performance.now() - CHG.tSearch), locked: !!ok };
+      slog('chargeNarrow', CHG.info.narrow);
+      if (!ok) { CHG.tSearch = performance.now(); res = await chgSearch(maps); }
+    } else if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
     CHG.res = res; CHG.tLock = performance.now(); CHG.info.searchMs = Math.round(CHG.tLock - CHG.tSearch); CHG.info.lockAfterRaysMs = Math.round(CHG.tLock - CHG.tEnd);
     if (res.fb2) CHG.info.stage = res.fb2.times;
     chgDecide();
@@ -428,9 +461,11 @@ function chgSearch(maps, opts) {
     // the exact top K of its bases, so the union's top K is the exact top K of all 2^32)
     const deal = () => { const lists = W.map(() => []); queue.forEach((q, i) => lists[i % W.length].push([q.e, q.b])); busy = W.length; W.forEach((w, k) => w.postMessage({ type: 'tasks', list: lists[k] })); };
     let finishing = false;
+    // a narrowed search (FB2 T6 after a carried seed, fb14_live.js): no stage 1; the candidates (seeds before A's base-angle
+    // draw) go straight to stage 2
+    const finishN = () => { finishing = true; times.stage1 = 0; times.joint = 0; stage2(opts.cands.slice()); };
     const finish = async () => {
       if (finishing) return; finishing = true; times.stage1 = Math.round(performance.now() - tS);
-      const call = (w, msg, type) => new Promise(r => { w.onmessage = e => { if (e.data.type === type) r(e.data); else if (e.data.type === 'error') fail(e.data.msg); }; w.postMessage(msg); });
       const t2 = performance.now();
       const hs = await Promise.all(W.map(w => call(w, { type: 'heaps' }, 'heaps')));
       const lists = [0, 1].map(e => { const a = []; for (const h of hs) { const L = h.out[e]; for (let i = 0; i < L.s.length; i++) a.push([L.s[i], L.d[i]]); } a.sort((x, y) => y[0] - x[0]); return a.slice(0, P.bolts ? CHG_K_FB2 : CHG_K); });
@@ -438,21 +473,35 @@ function chgSearch(maps, opts) {
       // base-angle draw is P.offs + 1 LCG steps after s0: Hallway 25 or 26)
       const items = [];
       for (const [sc, s1] of lists[0]) items.push([0, s1, chgBack(s1, 1), sc]);
-      for (const [sc, sb] of lists[1]) for (const o of P.offs) items.push([1, sb, chgBack(sb, o + 1), sc]);
+      // (B's candidates: the seed P.offs + 1 steps back, stepped back once per offset instead of from B each time: the aura
+      // profile has 15 offsets, and this runs on the page's thread)
+      const oMin = Math.min(...P.offs), oMax = Math.max(...P.offs);
+      for (const [sc, sb] of lists[1]) { let x = chgBack(sb, oMin + 1); for (let o = oMin; o <= oMax; o++) { if (P.offs.includes(o)) items.push([1, sb, x, sc, 0, o]); x = Math.imul((x - 1) >>> 0, CHG_INVN) >>> 0; } }
       const per = Math.ceil(items.length / W.length), parts = [];
       for (let k = 0; k < W.length; k++) { const it = items.slice(k * per, (k + 1) * per), e = new Uint8Array(it.length), s0 = new Uint32Array(it.length), sc = new Float32Array(it.length);
         it.forEach((x, i) => { e[i] = x[0]; s0[i] = x[2]; sc[i] = x[3]; });
-        parts.push(call(W[k], { type: 'joint', e, s0, sc, offs: P.offs }, 'joint').then(r => r.sc.forEach((v, i) => { it[i][4] = v; }))); }
+        parts.push(call(W[k], { type: 'joint', e, s0, sc, offs: P.offs }, 'joint').then(r => r.sc.forEach((v, i) => { it[i][4] = v; if (it[i][0] === 0) it[i][5] = r.vb[i]; }))); }
       await Promise.all(parts);
-      items.sort((a, b) => b[4] - a[4]); const seen = new Set(), top = [];
-      for (const x of items) { if (seen.has(x[2])) continue; seen.add(x[2]); top.push(x[2]); if (top.length >= CHG_M2) break; }
+      // the best few thousand by a typed-array threshold, then sorted (a full sort of the aura profile's ~260k items
+      // stalled the page's thread)
+      let pool = items; if (items.length > 20000) { const v = Float32Array.from(items, x => x[4]).sort(); const thr = v[v.length - 8000]; pool = items.filter(x => x[4] >= thr); }
+      pool.sort((a, b) => b[4] - a[4]); const seen = new Set(), top = [];
+      const topV = [];
+      for (const x of pool) { if (seen.has(x[2])) continue; seen.add(x[2]); top.push(x[2]); topV.push(x[5] != null ? x[5] - 24 : null); if (top.length >= CHG_M2) break; }
+      top.v = topV;      // the aura profile: B's offset the joint stage found best for each (fb1Stage2 scores v +-1 around it)
       times.joint = Math.round(performance.now() - t2);
+      stage2(top, lists);
+    };
+    const call = (w, msg, type) => new Promise(r => { w.onmessage = e => { if (e.data.type === type) r(e.data); else if (e.data.type === 'error') fail(e.data.msg); }; w.postMessage(msg); });
+    const stage2 = async (top, lists) => {
+      try {
       // stage 1 per effect: the best base score and the K-th (a no-lock with a clear stage-1 best for one effect read its
       // rays right and missed on the other effect or the draws between; both at the noise level: the rays were misread)
-      const s1 = lists.map(l => (l.length ? [Math.round(l[0][0]), Math.round(l[l.length - 1][0])] : null));
+      const s1 = lists ? lists.map(l => (l.length ? [Math.round(l[0][0]), Math.round(l[l.length - 1][0])] : null)) : null;
       if (opts.full) { const tw = performance.now(), M = await opts.full; times.waitMaps = Math.round(performance.now() - tw); await Promise.all(W.map(w => call(w, { type: 'maps', S: M.S, C: M.C, N: CHG_N }, 'mapsok'))); }   // stage 2 needs all 48 frames
       const t3 = performance.now();
       const per2 = Math.ceil(top.length / W.length), qs = [];
+      if (P.aura) { const r = await fb1Stage2(W, call, top, times, t3); W.forEach(w => w.terminate()); CHG.workers = null; resolve(Object.assign(r, { stats, workers: W.length, thr: gthr.slice(), s1 })); return; }
       if (!P.bolts) {
         for (let k = 0; k < W.length; k++) { const sd = top.slice(k * per2, (k + 1) * per2); qs.push(call(W[k], { type: 'q', seeds: sd }, 'q').then(r => r.out.map((q, i) => ({ seed: sd[i], q })))); }
         const all = [].concat(...(await Promise.all(qs))).map(o => { let b = 0; for (let q = 1; q < 48; q++) if (o.q[q] > o.q[b]) b = q; return { seed: o.seed, q: b, sc: o.q[b], qs: o.q }; }).sort((a, b) => b.sc - a.sc);
@@ -476,6 +525,7 @@ function chgSearch(maps, opts) {
       times.hyps = Math.round(performance.now() - t4);
       W.forEach(w => w.terminate()); CHG.workers = null;
       resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice(), s1, fb2: { hyps: hy, times, scored: all.filter(x => x.sc > -1e29).length } });
+      } catch (err) { fail(String(err && err.message || err)); }
     };
     for (let k = 0; k < nw; k++) {
       const w = new Worker(url); W.push(w);
@@ -484,12 +534,13 @@ function chgSearch(maps, opts) {
         const m = e.data;
         if (m.type === 'error') return fail(m.msg);
         if (m.type === 'ready') {
+          if (opts.cands) { if (++ready === nw) { times.narrow = opts.cands.length; finishN(); } return; }
           if (!ub) { ub = m.ub; const order = []; for (const e2 of P.effects) for (let b = 0; b <= 360; b++) order.push({ e: e2, b, u: ub[e2][b] });
             order.sort((a, b) => b.u - a.u); for (const o of order) queue.push({ e: o.e, b: o.b }); }
           if (++ready === nw) deal();
         } else if (m.type === 'done') { busy--; stats.tasks += m.n; stats.skipped += m.skipped; gthr[0] = Math.max(gthr[0], m.thr[0]); gthr[1] = Math.max(gthr[1], m.thr[1]); if (!busy) finish(); }
       };
-      w.postMessage({ type: 'init', mod, S: maps.S, C: maps.C, N: opts.N || CHG_N, ND: CHG_ND, K: P.bolts ? CHG_K_FB2 : CHG_K, pat: P.bolts ? fb2Patterns().bytes : null });
+      w.postMessage({ type: 'init', mod, S: maps.S, C: maps.C, N: opts.N || CHG_N, ND: CHG_ND, K: P.bolts ? CHG_K_FB2 : CHG_K, pat: P.bolts || P.aura ? fb2Patterns().bytes : null });
     }
   });
 }
@@ -528,6 +579,7 @@ function chgDecide() {
   const b = fb2 ? (T.slice(1).find(x => x.sc > -1e29) || { sc: a ? a.sc / (CHG_RATIO * 1.0001) : 1, skipped: true }) : (T[1] || { sc: 1 });
   CHG.info.best = a && { seed: (a.seed >>> 0).toString(16).padStart(8, '0'), q: a.q, score: Math.round(a.sc), ratio: +(a.sc / b.sc).toFixed(2) };
   if (CHG.res.s1) CHG.info.s1 = CHG.res.s1;
+  if (CHG.res.fb1 && CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times;
   const G = CHG.G; CHG.G = null;
   if (!a || a.sc < CHG_MIN || a.sc / b.sc < CHG_RATIO) {
     CHG.state = 'nolock'; CHG.why = a ? 'no clear seed (best ' + Math.round(a.sc) + ', ' + (a.sc / b.sc).toFixed(2) + 'x the next)' : 'no candidates';
@@ -537,6 +589,7 @@ function chgDecide() {
   }
   CHG.F0 = null;
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); fb2Lock(CHG.res); chgShow(); return; }
+  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); fb14Lock(CHG.res); chgShow(); return; }
   // q hypotheses: every first-coin frame whose score is within CHG_QTOL of the best (late coins barely move the rays: v71
   // kept 0.5% and 6 at most, and on the Duplighost render 1234abcd the true q 42 was not among them), best first; the
   // turn-1 menu's coin then weighs them (chgQBack: a likelihood, not a filter) and the tracker's shines settle them
@@ -638,7 +691,7 @@ function chgStartTracker(seed, qs, qw) {
   slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs, fight: zw.fight });
   if (!dup && CHG.spiny != null) { const c = CHG.spiny; CHG.spiny = null; zwInput('hw_spiny', c, VAN.B(), CHG_IMPS); }
 }
-function chgHyps() { return zw.on && zw.src === 'charge' ? zw.parts.length : typeof FB2 !== 'undefined' && FB2.on ? FB2.hyps.length : null; }
+function chgHyps() { return zw.on && zw.src === 'charge' ? zw.parts.length : CHG.prof && CHG.prof.id === 'fb1' && typeof FB14 !== 'undefined' && FB14.on ? FB14.states.length : typeof FB2 !== 'undefined' && FB2.on ? FB2.hyps.length : null; }
 function chgShow() {
   const el = $('chg-status'); if (!el) return;
   const s = CHG.state, I = CHG.info || {};

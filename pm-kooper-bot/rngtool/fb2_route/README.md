@@ -119,7 +119,7 @@ before the lock, so it is a lever only with an earlier lock (a coin lock in the 
 Joint odds: see the table at the top (`./t6pay TRIALS KLO KW DW SLAM_OK CLAW_OK [EXACT]`, flags make no real
 difference: 22-23% for Close Call and 7+ with +-1 presses, 20% with Fire Breath only).
 
-## 3. T1-T4 (emulator; levers verified, page model not built)
+## 3. T1-T4 (emulator; levers verified; the page model: section 7)
 `t14_study.py` (b1, seeds 1234abcd 9e3779b9 00000001, no input outside the confirms):
 - **Mario's action to the partner menu is 154 frames for a Charge (popup left alone) and for the Jelly**, for every seed.
   Draws: Charge = 2 x (1 x 360 + 20 x 10) ray inits + ray respawns, Jelly = 10 x (359, 10, 10) of its sparkle effect
@@ -183,6 +183,25 @@ New scripts:
 
 Note for the page's model: with no press the popup closes like K = 137, the first picture without it shows K + 2, and
 the status bar is back on K + 5 and stays up through Bowser's turn and the T7 menu (the coin is readable there).
+
+## 7. T1-T4 modelled and on the page (Nov 6): `../charge_live/README.md`, v74
+The page model section 3 asked for is built: every draw of T1-T4 from a menu seed to the dodge test, and through the next
+menu after a miss (`t14model.py`; Bowser's star aura is 16 rand_int(359) per 20 frames in a fixed 20-frame pattern, after
+the coin and before the Charge rays; the wave's draws a fixed schedule). Checked frame by frame on 64 emulator logs
+(`t14_log.py`): 64 / 64 exact to the test, every miss exact to the next menu. The T1 Charge locks the seed with the aura
+as nuisance; Cloud Nine (T1) and Do Nothing (T2-T4) are beeped; T2 and T4's Charges lock again and check the carry; the
+carried seed at the Peach Beam confirm narrows the T6 Charge's search to ~900 seeds (`t5_steps.py`: the beam's random
+numbers beyond the frames, 8654-9351 in 120 runs).
+**Status (end to end, v74 section 5):** the T1 lock finds the true seed, but the aura pattern it fits can be wrong where
+a capture picture is misplaced, and then the carry to T2 fails (the next Charge locks afresh); the narrowed T6 lock has
+not yet run end to end.
+| file | what |
+|---|---|
+| `t14_log.py` | one turn T1-T5 logged draw by draw (and Glide64 screenshots with SHOTS) |
+| `t14model.py` | the T1-T4 model, `check` against the logs |
+| `t14_fixture.py` | the page model's fixture (`../fixtures/fb14_logs.json`) |
+| `t5_steps.py` | Peach Beam confirm -> T6 rays frame 0: steps vs frames |
+| `fb14_e2e.py` | T1 -> T6 end to end: renders, capture simulation, the page, its beeped frames pressed in the emulator |
 
 ## 5. Recordings that would validate it
 1. **T6 -> T7 (the main test)**: 5+ takes of T6 (Charge, popup A, Bowser's turn) through the T7 Power Bounce, input

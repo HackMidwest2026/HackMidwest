@@ -332,3 +332,145 @@ EXPORT("fb2ub") float fb2ub(uint32_t a) {
         if (u > ub2) ub2 = u; }
     return ub2;
 }
+
+/* ---- stage 2 with Bowser's star aura (Final Bowser phase 2, T1-T4; fb2_route/t14model.py) ----
+ * The aura is an energy_in_out(4) effect in an effect slot before the Charge rays: on every frame its 16 stars draw
+ * c[f mod 20] rand_int(359) after the coin and before the rays' respawns (c: the fight's 20-frame pattern, 16 per
+ * period, drawn when phase 2 began; unknown to the page until a lock). With the lightning and the coin these are all
+ * single LCG steps before frame n's respawns, so the score is again a sum of g_v[n][k_n], k_n = the extra draws on
+ * frames 3..n (aura and coin on 3..n, bolts on 4..n), and B's creation offset v = the extra draws on frames 0..2 (coin,
+ * aura) and the bolts on 1..3. fb1score: the best monotone path k_3 <= k_4 <= ... with per-frame steps 0..A_DMAX,
+ * over every v (a relaxed score: any aura pattern, bolt pattern and coin; the page fits the structure from the path,
+ * fb14_live.js). fb1path: that path for the best v. */
+#define A_VMAX 14
+#define A_KM 60
+#define A_DMAX 6
+static float AG[A_VMAX + 1][A_KM + 1][NMAX];   /* g_v[n][k] (not prefix sums) */
+static float AINIT[A_VMAX + 1]; static int AOK[A_VMAX + 1]; static uint32_t AVA = 0xFFFFFFFFu;
+static void fb1variant(uint32_t a, int v) {
+    int sp[2][10], ph[2][10]; uint32_t s = a;
+    for (int i = 0; i < 10; i++) { sp[0][i] = r10(&s); ph[0][i] = r10(&s); }
+    uint32_t sb = jump(a, 24 + v); s = sb; AINIT[v] = initscore(0, a) + initscore(1, sb);
+    for (int i = 0; i < 10; i++) { sp[1][i] = r10(&s); ph[1][i] = r10(&s); }
+    static Ev ev[NMAX][24]; int ne[NMAX]; for (int n = 0; n < N; n++) ne[n] = 0;
+    for (int e = 0; e < 2; e++) for (int i = 0; i < 10; i++) for (int n = (e ? 12 : 9) + ph[e][i]; n < (e ? 48 : 45) && n < N; n += 10)
+        ev[n][ne[n]++] = (Ev){e, n, sp[e][i] + 4, (float)(1.0 - ((i + 1) % 3) * 0.3), e ? 0.8f : 1.2f};
+    int P0[NMAX + 1], P = 0; for (int n = 3; n <= N; n++) { P0[n] = P; if (n < N) P += ne[n] + 1; }
+    static uint32_t Y[NMAX * 26 + A_KM + 8]; int ny = P + A_KM + 4; Y[0] = s; for (int i = 1; i < ny; i++) Y[i] = adv(Y[i - 1]);
+    for (int k = 0; k <= A_KM; k++) for (int n = 0; n < N; n++) { float g = 0;
+        if (n >= 3) { int base = P0[n] + k;
+            for (int j = 0; j < ne[n]; j++) { uint32_t y = Y[base + 1 + j]; uint32_t th = y / (0xFFFFFFFFu / 360); if (th > 359) th = 359; g += evscore(&ev[n][j], (int)th); } }
+        AG[v][k][n] = g; }
+    AOK[v] = 1;
+}
+static float ADP[NMAX][A_KM + 1]; static int8_t AFROM[NMAX][A_KM + 1]; static int APATH[NMAX], ABV = 0;
+static float fb1dp(int v, int keep) {
+    for (int k = 0; k <= A_KM; k++) ADP[3][k] = k <= A_DMAX ? AG[v][k][3] : -1e30f;
+    for (int n = 4; n < N; n++) for (int k = 0; k <= A_KM; k++) {
+        float b = -1e30f; int bd = 0; for (int d = 0; d <= A_DMAX && d <= k; d++) { float x = ADP[n - 1][k - d]; if (x > b) { b = x; bd = d; } }
+        ADP[n][k] = b + AG[v][k][n]; AFROM[n][k] = (int8_t)bd; }
+    int bk = 0; for (int k = 1; k <= A_KM; k++) if (ADP[N - 1][k] > ADP[N - 1][bk]) bk = k;
+    if (keep) { int k = bk; for (int n = N - 1; n >= 3; n--) { APATH[n] = k; if (n > 3) k -= AFROM[n][k]; } }
+    return AINIT[v] + ADP[N - 1][bk];
+}
+EXPORT("fb1score") float fb1score(uint32_t a) {
+    if (AVA != a) { for (int v = 0; v <= A_VMAX; v++) AOK[v] = 0; AVA = a; }
+    float best = -1e30f; for (int v = 0; v <= A_VMAX; v++) { if (!AOK[v]) fb1variant(a, v); float x = fb1dp(v, 0); if (x > best) { best = x; ABV = v; } }
+    return best;
+}
+/* the best path of the last fb1score: APATH[3..N-1] = k_n, ABV = v */
+EXPORT("fb1path") int *fb1path(uint32_t a) { fb1score(a); fb1dp(ABV, 1); APATH[0] = ABV; return APATH; }
+/* the score of one structured hypothesis: k_n for n = 3..N-1 given in KH[], v = KH[0] */
+static int KH[NMAX];
+EXPORT("khPtr") int *khPtr(void) { return KH; }
+EXPORT("fb1hyp") float fb1hyp(uint32_t a) {
+    if (AVA != a) { for (int v = 0; v <= A_VMAX; v++) AOK[v] = 0; AVA = a; }
+    int v = KH[0]; if (v < 0 || v > A_VMAX) return -1e30f; if (!AOK[v]) fb1variant(a, v);
+    float sc = AINIT[v]; for (int n = 3; n < N; n++) { int k = KH[n]; if (k < 0 || k > A_KM) return -1e30f; sc += AG[v][k][n]; }
+    return sc;
+}
+/* the end of a hypothesis: gRandSeed at the start of frame `upto` and the next coin frame, from a (after A's base draw),
+ * given the extra draws per frame: XB[n] = bolts before the script on frame n, XC = the first coin frame (q), and the
+ * aura counts XA[n] (after the coin); same order as the game (t14model.py). END[0..2] as fb2end. */
+static uint8_t XB[NMAX + 8], XA[NMAX + 8];
+EXPORT("xbPtr") uint8_t *xbPtr(void) { return XB; }
+EXPORT("xaPtr") uint8_t *xaPtr(void) { return XA; }
+EXPORT("fb1end") void fb1end(uint32_t a, int q, int upto) {
+    uint32_t s = (a - 1u) * 0x6A76AE6Du; Eff A, B; A.alive = B.alive = 0; int coin_next = q; float sc = 0;
+    for (int n = 0; n < upto; n++) {
+        if (n > 0) for (int k = 0; k < XB[n]; k++) r359(&s);      /* frame 0's bolts came before a */
+        if (n == 0) eff_init(&A, &s, 1.2f);
+        if (n == 3) eff_init(&B, &s, 0.8f);
+        if (n == coin_next) { int v = r100(&s); coin_next = n + (v >= 70 ? 48 : 24); }
+        for (int k = 0; k < XA[n]; k++) r359(&s);
+        if (A.alive) eff_update(&A, &s);
+        if (n >= 3 && B.alive) eff_update(&B, &s);
+        r1(&s);
+        if (n < N) sc += eff_score(&A, n) + (n >= 3 ? eff_score(&B, n) : 0);
+    }
+    END[0] = s; END[1] = (uint32_t)coin_next; union { float f; uint32_t u; } c; c.f = sc; END[2] = c.u;
+}
+/* the structured fit after a lock: for candidate a and B-offset v (fb1path's), every lightning pattern p (setPatterns) x
+ * first coin q (0..47) x second coin (q + 24 or none, for q < 24): the best aura pattern by dynamic programming over
+ * the 20 residues j (frames j, j + 20, j + 40 share c_j; state = the prefix P_j = c_0 + .. + c_j, P_19 = 16, c_j <=
+ * A_CMAX, P_2 set by v). Scores into SC3[(p * 48 + q) * 2 + branch] (-1e30: impossible); fb1aura(p, q, br) rebuilds
+ * that best aura pattern into XA (20 counts by rays frame mod 20) and returns its score. */
+#define A_CMAX 4
+static float SC3[NPATMAX * 96]; static float TD[20][17]; static int8_t TF[20][17];
+EXPORT("sc3Ptr") float *sc3Ptr(void) { return SC3; }
+static int A3V = 0, LBc[NMAX], LP2 = 0;
+static float lterm(int v, int j, int P) {
+    float t = 0;
+    for (int l = 0; l < 3; l++) { int n = j + 20 * l; if (n < 3 || n >= N) continue; int k = LBc[n] + 16 * l + P - LP2; if (k < 0 || k > A_KM) return -1e30f; t += AG[v][k][n]; }
+    return t;
+}
+static float fb1lanes(int v, const uint8_t *pt, int q, int br, int keep) {
+    /* Bc[n]: bolts on 4..n + coins on 3..n; the coins at q and (br) q + 24; P_2 = v - coins(0..2) - bolts(1..3) */
+    int *Bc = LBc, acc = 0, c0 = 0, b13 = pt[1] + pt[2] + pt[3];
+    int c2 = br ? q + 24 : -1; if (q <= 2) c0++; if (c2 >= 0 && c2 <= 2) c0++;
+    int P2 = v - c0 - b13; if (P2 < 0 || P2 > 3 * A_CMAX) return -1e30f; LP2 = P2;
+    for (int n = 3; n < N; n++) { acc += (n >= 4 ? pt[n] : 0) + (n == q) + (n == c2); Bc[n] = acc; }
+    for (int j = 0; j < 20; j++) for (int P = 0; P <= 16; P++) {
+        float t = 0; int ok = 1;
+        for (int l = 0; l < 3; l++) { int n = j + 20 * l; if (n < 3 || n >= N) continue; int k = Bc[n] + 16 * l + P - P2; if (k < 0 || k > A_KM) { ok = 0; break; } t += AG[v][k][n]; }
+        float b = -1e30f; int bc = 0;
+        if (ok) { if (j == 0) { if (P <= A_CMAX) b = 0, bc = P; }
+                  else for (int c = 0; c <= A_CMAX && c <= P; c++) { float x = TD[j - 1][P - c]; if (x > b) { b = x; bc = c; } } }
+        if (j == 2 && P != P2) b = -1e30f;
+        TD[j][P] = b > -1e29f ? b + t : -1e30f; TF[j][P] = (int8_t)bc; }
+    float r = TD[19][16];
+    if (keep && r > -1e29f) { int P = 16; for (int j = 19; j >= 0; j--) { int c = TF[j][P]; XA[j] = (uint8_t)c; P -= c; } }
+    return r > -1e29f ? AINIT[v] + r : -1e30f;
+}
+EXPORT("fb1struct") float fb1struct(uint32_t a, int v) {
+    if (AVA != a) { for (int w = 0; w <= A_VMAX; w++) AOK[w] = 0; AVA = a; }
+    if (!AOK[v]) fb1variant(a, v); A3V = v; float best = -1e30f;
+    for (int p = 0; p < NPAT; p++) for (int q = 0; q < 48; q++) for (int br = 0; br < 2; br++) {
+        float x = (br && q >= 24) ? -1e30f : fb1lanes(v, PAT[p], q, br, 0);
+        SC3[(p * 48 + q) * 2 + br] = x; if (x > best) best = x; }
+    return best;
+}
+EXPORT("fb1aura") float fb1aura(int p, int q, int br) { return fb1lanes(A3V, PAT[p], q, br, 1); }
+/* fb1score over v in [vlo, vhi] only (the joint stage's best B offset for the candidate, +-1) */
+EXPORT("fb1scorev") float fb1scorev(uint32_t a, int vlo, int vhi) {
+    if (AVA != a) { for (int v = 0; v <= A_VMAX; v++) AOK[v] = 0; AVA = a; }
+    if (vlo < 0) vlo = 0; if (vhi > A_VMAX) vhi = A_VMAX;
+    float best = -1e30f; for (int v = vlo; v <= vhi; v++) { if (!AOK[v]) fb1variant(a, v); float x = fb1dp(v, 0); if (x > best) { best = x; ABV = v; } }
+    return best;
+}
+
+/* every aura pattern of hypothesis (p, q, br) whose score is within tol of that hypothesis' best (the rays' faded and
+ * offscreen respawns leave neighbouring residues' split open): up to max patterns into ALTS (20 counts each, rays frame
+ * mod 20), by depth-first search on the dynamic programme's table with its best-prefix bound */
+static uint8_t ALTS[4096 * 20]; static int NALT, ALTMAX; static uint8_t CUR[20]; static float ABEST, ATOL;
+EXPORT("altPtr") uint8_t *altPtr(void) { return ALTS; }
+static void altdfs(int j, int P, float suffix) {
+    if (NALT >= ALTMAX) return;
+    float t = lterm(A3V, j, P); if (t < -1e29f) return; suffix += t;
+    if (j == 0) { if (P > A_CMAX) return; if (suffix < ABEST - ATOL) return; CUR[0] = (uint8_t)P; for (int i = 0; i < 20; i++) ALTS[NALT * 20 + i] = CUR[i]; NALT++; return; }
+    for (int c = 0; c <= A_CMAX && c <= P; c++) { int Pp = P - c; float b = TD[j - 1][Pp]; if (b < -1e29f || b + suffix < ABEST - ATOL) continue; CUR[j] = (uint8_t)c; altdfs(j - 1, Pp, suffix); }
+}
+EXPORT("fb1alts") int fb1alts(int p, int q, int br, float tol, int max) {
+    float r = fb1lanes(A3V, PAT[p], q, br, 0); if (r < -1e29f) return 0;
+    ABEST = TD[19][16]; ATOL = tol; NALT = 0; ALTMAX = max > 4096 ? 4096 : max; altdfs(19, 16, 0); return NALT;
+}
