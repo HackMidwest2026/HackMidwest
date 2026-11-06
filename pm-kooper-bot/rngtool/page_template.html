@@ -68,7 +68,7 @@ canvas { display: block; width: 100%; height: 86px; }
 .spins { font-family: var(--mono); font-size: .9rem; letter-spacing: .12em; word-break: break-all; color: var(--muted); min-height: 1.5em; }
 .spins b { color: var(--gold); font-weight: 700; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-label.f { display: grid; gap: 4px; font-size: .86rem; color: var(--muted); }
+label.f { display: grid; gap: 4px; align-content: start; font-size: .86rem; color: var(--muted); }
 label.f input, label.f select { font-family: var(--mono); font-size: .95rem; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box; }
 label.c { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
 ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 70ch; }
@@ -87,6 +87,18 @@ ol.steps b { font-weight: 600; }
 .seg button { border: 0; border-radius: 0; }
 .seg button[aria-pressed="true"] { background: var(--gold-soft); }
 .box-coin { color: var(--gold); } .box-target { color: #3d7bd9; }
+.strip-state { margin: 6px 0 0; font-family: var(--mono); font-size: .82rem; font-weight: 700; letter-spacing: .02em; padding: 4px 10px; border-radius: 6px; border-left: 4px solid var(--line); background: color-mix(in srgb, var(--line) 30%, transparent); color: var(--ink); }
+.strip-state.live { border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.strip-state.plan { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
+.strip-state.stale { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.strip-state.wait { border-color: var(--muted); }
+label.f small { font-size: .76rem; color: var(--muted); line-height: 1.3; }
+details.menu { position: relative; flex: 0 1 auto; max-width: 100%; }
+details.menu > summary { display: inline-block; list-style: none; font-family: var(--body); text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .9rem; color: var(--ink); padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+details.menu > summary::-webkit-details-marker { display: none; }
+details.menu[open] > summary { margin-bottom: 0; border-color: var(--muted); }
+.menu-body { display: grid; gap: 8px; margin-top: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); width: 100%; box-sizing: border-box; }
+@media (min-width: 621px) { .menu-body { position: absolute; right: 0; z-index: 5; width: 340px; box-shadow: 0 6px 24px rgba(0,0,0,.18); } }
 details summary { cursor: pointer; font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 details[open] summary { margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) { #shine.flash { transition: none; } }
@@ -99,6 +111,23 @@ details[open] summary { margin-bottom: 10px; }
     <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100)</div>
   </header>
 
+  <section class="panel stage" aria-live="polite">
+    <div class="status">
+      <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
+      <div class="phase" id="phase">
+        <span class="chip" id="p-watch">Watch</span>
+        <span class="chip" id="p-lock">Seed</span>
+        <span class="chip" id="p-time">Window</span>
+      </div>
+      <p id="headline">Start watching (below), then play: the page reads the seed by itself.</p>
+      <p id="detail">On Hallway Bowser it reads the seed from Mario's Charge on turn 1 and beeps Time Out on turn 2.</p>
+      <div class="row">
+        <button class="b primary" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button>
+        <button class="b" id="reset">Reset</button>
+      </div>
+    </div>
+  </section>
+
   <section class="panel">
     <div class="row" style="justify-content:space-between; align-items:center">
       <h2 style="margin:0">Confirm frames ahead</h2>
@@ -107,7 +136,8 @@ details[open] summary { margin-bottom: 10px; }
         <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
       </select></label>
     </div>
-    <div class="strip-wrap"><canvas id="strip" width="860" height="120" aria-label="Working confirm frames for the selected fight"></canvas></div>
+    <div class="strip-wrap"><canvas id="strip" width="860" height="132" aria-label="Working confirm frames for the selected fight"></canvas></div>
+    <p class="strip-state" id="strip-state" role="status"></p>
     <div class="legend">
       <span>Working frames, colored by how many in a row:</span>
       <span><i style="background:var(--run1)"></i>1</span>
@@ -117,73 +147,61 @@ details[open] summary { margin-bottom: 10px; }
       <span><i style="background:var(--run5)"></i>5+</span>
       <span id="legend4" hidden><i style="background:var(--cursor); height:5px; vertical-align:4px"></i><span id="legend4-text">top band: all 4 copy</span></span>
       <span><i style="background:var(--bad)"></i>fails</span>
-      <span><i style="background:var(--gold)"></i>chosen window</span>
+      <span><i style="background:var(--gold)"></i>aimed frame</span>
       <span><i style="background:var(--cursor)"></i>now</span>
     </div>
     <p class="note" id="stripnote">Shows the example seed until you lock your own.</p>
-    <div class="row" id="press-row" hidden style="margin-top:8px"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p><button class="b" id="press-apply" hidden>Move beeps</button><button class="b" id="press-apply-v" hidden>Move visual</button><button class="b" id="press-clear">Clear</button></div>
-  </section>
-
-  <section class="panel">
-    <div class="row" style="justify-content:space-between; align-items:center"><h2 style="margin:0">Coin spins this segment <span id="spins-count"></span></h2><button class="b" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button></div>
-    <div class="spins" id="spins">–</div>
-    <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
-  </section>
-
-
-  <section class="panel stage" aria-live="polite">
-    <div class="status">
-      <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
-      <div class="phase" id="phase">
-        <span class="chip" id="p-watch">Watch</span>
-        <span class="chip" id="p-lock">Seed</span>
-        <span class="chip" id="p-time">Window</span>
-      </div>
-      <p id="headline">Tap Shine each time the status-bar coin flashes white.</p>
-      <p id="detail">Normal spins fill themselves in from the timing between shines. After about 13 shines (45 seconds) press Find seed.</p>
-      <div class="row">
-        <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
-        <button class="b" id="gap">New segment<kbd>N</kbd></button>
-        <button class="b" id="plan" disabled>Plan press<kbd>P</kbd></button>
-        <button class="b" id="undo">Undo tap<kbd>⌫</kbd></button>
-        <button class="b" id="reset">Reset</button>
-      </div>
+    <div class="row" id="press-row" hidden style="margin-top:8px; align-items:flex-start"><p class="note" id="press-msg" style="margin:0; flex:1 1 300px"></p>
+      <details class="menu" id="cal-menu"><summary>Calibrate…</summary>
+        <div class="menu-body">
+          <label class="f">Use<select id="cal-n"><option value="1">the last press</option><option value="3">the average of the last 3</option><option value="5">the average of the last 5</option></select></label>
+          <label class="c"><input type="checkbox" id="cal-beep" checked> Beep offset</label>
+          <label class="c"><input type="checkbox" id="cal-vis" checked> Visual offset</label>
+          <p class="note" id="cal-preview" style="margin:0">No press measured yet.</p>
+          <div class="row"><button class="b" id="cal-go" disabled>Calibrate from last press</button><button class="b primary" id="cal-yes" hidden>Yes, change them</button><button class="b" id="cal-no" hidden>Cancel</button></div>
+          <button class="b" id="press-clear" style="justify-self:start">Clear measured presses</button>
+        </div>
+      </details>
     </div>
-    <button id="shine" type="button">Shine<kbd>Space</kbd></button>
   </section>
 
-
-
-
-  <section class="panel">
-    <details id="settings-d">
-      <summary>Timing settings</summary>
+  <section class="panel" id="settings">
+    <h2>Settings</h2>
+    <div class="grid2">
+      <label class="f">Window to aim at
+        <select id="s-wtype">
+          <option value="best">Best chance (automatic)</option>
+          <option value="green">Green: 3+ in a row (consistency)</option>
+          <option value="yellow">Yellow: 2 in a row</option>
+          <option value="red">Red: one exact frame (calibration)</option>
+        </select><small>The first window of this kind within the max extra wait; the page says when there is none.</small></label>
+      <label class="f">Beeps<select id="s-beeps"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select><small>Always exactly this many; press A on the last (higher) one.</small></label>
+      <label class="f">Lead time (s)<input id="s-lead" type="number" step="0.5" value="1.5"><small>The earliest press after the target screen shows.</small></label>
+      <label class="f">Beep offset (frames, + = later)<input id="s-off" type="number" step="0.5" value="0"><small>Moves the beeps. Calibrate… under the strip sets it.</small></label>
+      <label class="f">Visual offset (frames, + = later)<input id="s-voff" type="number" step="0.5" value="0"><small>Moves the strip against the now-line.</small></label>
+      <label class="f">Charge area size (%)<input id="s-chgsc" type="number" step="0.2" value="100"><small>The purple frame on the camera preview should match the game picture.</small></label>
+      <label class="f">Charge area shift right (px of 1280×720)<input id="s-chgdx" type="number" step="1" value="0"></label>
+      <label class="f">Charge area shift down (px of 1280×720)<input id="s-chgdy" type="number" step="1" value="0"></label>
+    </div>
+    <details id="settings-d" style="margin-top:14px">
+      <summary>Advanced</summary>
       <div class="grid2">
-        <label class="f">Reaction to the shine, tapping only (ms)<input id="s-react" type="number" step="5" value="200"></label>
-        <label class="f">TV lag, tapping only (ms)<input id="s-lag" type="number" step="5" value="0"></label>
-        <label class="f">Beep offset (frames, + = later; Move beeps sets it)<input id="s-off" type="number" step="0.5" value="0"></label>
-        <label class="f">Visual offset (frames, + = later; Move visual sets it)<input id="s-voff" type="number" step="0.5" value="0"></label>
-        <label class="f">Press check correction (frames; raise it if presses that worked read as late)<input id="s-pfix" type="number" step="0.5" value="0"></label>
-        <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"></label>
-        <label class="f">Lead time before the window (s)<input id="s-lead" type="number" step="0.5" value="1.5"></label>
-        <label class="f">Beeps before the press<input id="s-beeps" type="number" min="1" max="8" value="4"></label>
-        <label class="f">Best-guess window: extra wait on Time Out's target screen the page may add to pick a better frame (s; 1 s = up to 30 game frames; 0 = off)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"></label>
-        <label class="f">Best guess: beep only if it works at least (0–1; a blind press is 0.31)<input id="s-zwedge" type="number" step="0.01" value="0.4"></label>
-        <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"></label>
-        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"></label>
-        <label class="f">Video lag, camera mode (ms; moves beeps and visual together)<input id="s-vlag" type="number" step="5" value="50"></label>
-        <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"></label>
-        <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"></label>
-        <label class="f">Seed search threads (max half your cores)<input id="s-cpu" type="number" min="1" max="8" value="2"></label>
-        <label class="f">Charge lock search threads (0 = all cores but one; it runs for a few seconds during turn 1)<input id="s-chgcpu" type="number" min="0" max="16" value="0"></label>
-        <label class="f">Charge area size (%; the purple frame on the camera preview should match the game picture)<input id="s-chgsc" type="number" step="0.2" value="100"></label>
-        <label class="f">Charge area shift right (px of a 1280×720 capture)<input id="s-chgdx" type="number" step="1" value="0"></label>
-        <label class="f">Charge area shift down (px of a 1280×720 capture)<input id="s-chgdy" type="number" step="1" value="0"></label>
+        <label class="f">Max extra wait for the window (s)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"><small>How far past the lead the page may look for the window (1 s = 30 frames; 0 = off on Hallway T2).</small></label>
+        <label class="f">Best chance: beep only from (0–1)<input id="s-zwedge" type="number" step="0.01" value="0.4"><small>Below this the page says No edge (a blind press is 0.31).</small></label>
+        <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"><small>Time between beeps.</small></label>
+        <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"><small>Best chance, outside Hallway T2: the narrowest run it plans on.</small></label>
+        <label class="f">Video lag, camera mode (ms)<input id="s-vlag" type="number" step="5" value="50"><small>Capture delay; moves beeps and strip together.</small></label>
+        <label class="f">Press check correction (frames)<input id="s-pfix" type="number" step="0.5" value="0"><small>Raise it if presses that worked read as late.</small></label>
+        <label class="f">Console frame time (ms; 0 = measure from the shines)<input id="s-crate" type="number" step="0.001" value="0"><small>A real N64 frame is ~33.43 ms (an emulator 33.37); the tracker drifts if it is wrong.</small></label>
+        <label class="f">Resync range after a gap (extra draws)<input id="s-range" type="number" step="250" value="1000"><small>How far the shine search looks after a gap.</small></label>
+        <label class="f">Flash threshold (0 = automatic)<input id="s-wthr" type="number" step="0.005" value="0"><small>White level that counts as a coin shine.</small></label>
+        <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"><small>How close the blue box must match the saved screen.</small></label>
+        <label class="f">Seed search threads<input id="s-cpu" type="number" min="1" max="8" value="2"><small>Shine seed search; at most half your cores.</small></label>
+        <label class="f">Charge lock search threads (0 = all cores but one)<input id="s-chgcpu" type="number" min="0" max="16" value="0"><small>Runs for a few seconds during turn 1.</small></label>
+        <label class="f">Final Bowser: Bowser's turn-5 attack<select id="s-fb2t5"><option value="any">not set (all three)</option><option value="fire">Fire Breath</option><option value="claw">Claw Swipe</option><option value="slam">Body Slam</option></select><small>A Body Slam or Claw on T5 rules it out on T6.</small></label>
       </div>
       <div class="row" style="margin-top:12px">
-        <label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until beeps land on the flashes)</label>
-        <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays on Hallway Bowser turn 1 and Final Bowser turn 6 (needs the OBS capture at 1280×720 as this route was recorded)</label>
-        <label class="f">Final Bowser: Bowser's turn-5 attack (a Body Slam or Claw on T5 rules it out on T6)<select id="s-fb2t5"><option value="any">not set (all three)</option><option value="fire">Fire Breath</option><option value="claw">Claw Swipe</option><option value="slam">Body Slam</option></select></label>
+        <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays (Hallway Bowser T1, Final Bowser T6; OBS capture at 1280×720)</label>
       </div>
       <div class="row" style="margin-top:12px; align-items:flex-end">
         <label class="f" style="flex:1; min-width:220px">Calibration from the High Power Bounce Manipulator (paste its Copy calibration text; empty = read it from this browser)<input id="cal-json" type="text" placeholder='{"recommendedOffFrames": …}'></label>
@@ -194,21 +212,46 @@ details[open] summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel">
+    <details id="manual-d">
+      <summary>Manual mode (tapping)</summary>
+      <div class="stage" style="margin-top:4px">
+        <div class="status">
+          <p class="note">Without a camera: tap Shine on every white flash of the status-bar coin. Shortcuts: Space shine, F find seed, N new segment, P plan press, Backspace undo.</p>
+          <div class="row">
+            <button class="b primary" id="find">Find seed<kbd>F</kbd></button>
+            <button class="b" id="gap">New segment<kbd>N</kbd></button>
+            <button class="b" id="plan" disabled>Plan press<kbd>P</kbd></button>
+            <button class="b" id="undo">Undo tap<kbd>⌫</kbd></button>
+          </div>
+          <h2 style="margin:6px 0 0">Coin spins this segment <span id="spins-count"></span></h2>
+          <div class="spins" id="spins">–</div>
+          <p class="note" id="spinnote">Gold S = shine you tapped, dot = normal spin inferred from the gap.</p>
+        </div>
+        <button id="shine" type="button">Shine<kbd>Space</kbd></button>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <label class="f">Reaction to the shine (ms)<input id="s-react" type="number" step="5" value="200"></label>
+        <label class="f">TV lag (ms)<input id="s-lag" type="number" step="5" value="0"></label>
+      </div>
+      <div class="row" style="margin-top:12px"><label class="c"><input type="checkbox" id="s-cal"> Beep on every predicted shine (calibration: adjust reaction until the beeps land on the flashes)</label></div>
+      <ol class="steps" style="margin-top:12px">
+        <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
+        <li><b>Gap.</b> Before leaving to do something else (turn 1, the hallway door), you can stop tapping. When the coin is in view again, press New segment, then tap again. A few shines resync it; the page shows when it is locked.</li>
+        <li><b>Turn 2.</b> Open Star Spirits, up 3 to Time Out, A, so the hand is on Bowser. Keep tapping shines while you do this if you can.</li>
+        <li><b>Press.</b> Press Plan press. Confirm Bowser with A on the last beep. The strip shows the frame you are aiming at.</li>
+      </ol>
+    </details>
+  </section>
+
+  <section class="panel">
     <h2>In the run (automatic)</h2>
     <ol class="steps">
       <li><b>Once, before runs.</b> Save for OBS mode and open that file in Chrome or Edge. In OBS, right-click your game capture source and choose Windowed Projector (Source); leave that window open (it can sit behind other windows, but not minimized). Here, keep the source on "A window", press Start watching and pick the projector window. Drag the gold box tightly around the status-bar coin. Go to Time Out's target screen (hand on Bowser), click Time Out's Hand on Hallway, drag the blue box over the クッパ name box in the top-left corner, and press Save target screen. The boxes and the target screen are remembered.</li>
-      <li><b>Calibrate (a few practice presses).</b> After each confirm, Press check under the strip reads from the video which frame you actually pressed on, measured against the middle of the window. After 3 presses that agree, press Move beeps if you pressed on the beeps, or Move visual if you pressed when the gold line reached the now-line. The two are separate because sound and picture reach you with different delays.</li>
+      <li><b>Calibrate (a few practice presses).</b> After each confirm, Press check under the strip reads from the video which frame you actually pressed on, against the aimed frame. Once it agrees over a few presses, open Calibrate… under the strip, check what it will change and confirm: it moves the beep offset and the visual offset by the measured error. Pick Red (one exact frame) as the window to test the timing; Green (3+) for runs.</li>
       <li><b>During the run</b>, leave the page watching. Whenever the coin is on screen it reads the spins, finds the seed after about 13 shines, and resyncs by itself after every room transition, pause or turn.</li>
-      <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window and starts beeping. Press A on the last (higher) beep. If you leave the screen early the beeps stop.</li>
+      <li><b>Turn 2.</b> Go to Time Out's target screen. The page sees it, picks a window of the kind set under Settings and plays exactly the set number of beeps. Press A on the last (higher) beep, or when the gold aim line reaches the now-line. Backing out of the target screen (B) is not counted as a press; the beeps stop and start again when you come back.</li>
     </ol>
     <p class="note" style="margin-top:10px">The OBS Virtual Camera also works as a source (start it in OBS first). The page only ever keeps the OBS camera open, never a capture card that OBS is using. The seed search uses 2 threads by default so OBS keeps its CPU; it takes about 20 s.</p>
-    <h2 style="margin-top:16px">Without a camera (tapping)</h2>
-    <ol class="steps">
-      <li><b>Watch somewhere quiet.</b> Mario's first battle menu, or standing in the last staircase room before the hallway (C-up shows the status bar; not on the same frame as a spin). Tap Shine on every white flash. Press Find seed after about 13 shines; keep tapping if it reports more than one seed.</li>
-      <li><b>Gap.</b> Before leaving to do something else (turn 1, the hallway door), you can stop tapping. When the coin is in view again, press New segment, then tap again. A few shines resync it; the page shows when it is locked.</li>
-      <li><b>Turn 2.</b> Open Star Spirits, up 3 to Time Out, A, so the hand is on Bowser. Keep tapping shines while you do this if you can.</li>
-      <li><b>Press.</b> Press Plan Time Out. Confirm Bowser with A on the last beep. The strip shows the window you are aiming at.</li>
-    </ol>
     <p class="note" style="margin-top:10px">Shines come 48 frames after a shine and 24 after a normal spin; one game frame is 33.4 ms. The Time Out roll comes 386 frames after the confirm and works on 30 or less, a 30.7% chance on a random frame. Verified frame for frame in an emulator, including after Super Jump Charge, Spiny Flip and Bowser's first attack.</p>
   </section>
 
@@ -251,7 +294,7 @@ details[open] summary { margin-bottom: 10px; }
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser · click a numbered step to jump there · ★ = planned press</p>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the best-guess window (Timing settings; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
+      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>The dungeon, the Duplighosts and Jr. Troopa: play them without the page.</li><li>After Jr. Troopa, keep the C-up bar up all the way to the hallway (press C-up again each time it hides): before Bowser door 3, the stairs after it, outside Peach's castle, the way to the Power Rush room, the library, the stairs upstairs, the long stairs to the hallway. All of these rooms are clean.</li><li><b>Hold B through all text from Jr. Troopa to Hallway Bowser</b> (the hallway scene and the battle intro): with B held they always use the same random numbers, so the seed found on the walk is carried through them.</li><li>The page needs about 60 s or more of coin on screen while you walk from the end of the Jr. Troopa fight to the Hallway Bowser cutscene (time the run spends anyway, no standing; re-press C-up whenever the bar hides). With less it usually has no seed and says <i>no edge</i> (in a test with a single 30 s look it had a seed 2 times in 40).</li><li>Hallway Bowser T1 and T2: the coin is on screen in the menus anyway; the page uses whatever shines it sees there to tell the remaining possibilities apart.</li><li>Time Out's target screen: the page beeps its best guess and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only real time it adds to the run: you wait on the target screen for the lead time plus up to the max extra wait (Settings, Advanced; a 1 s window = up to 30 game frames at 30 fps), about 1-1.5 s with the zero-wait settings.</li></ol>With no lock the page says <i>no edge</i> and you press normally. If what it saw was wrong (a missed shine), its guess is no better than a normal press (31%) and the shown chance is too high; the beep also costs the wait. Numbers: zerowait/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -265,10 +308,60 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5'];
-function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } SET.forEach(k => { if (s[k] !== undefined) $('s-' + k).value = s[k]; }); } catch (e) {} }
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate'];
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } if (!localStorage.getItem('tot-beeps3')) { if (s.beeps === '4' || s.beeps === undefined) s.beeps = '3'; localStorage.setItem('tot-beeps3', '1'); } SET.forEach(k => { if (s[k] !== undefined && $('s-' + k)) { $('s-' + k).value = s[k]; if ($('s-' + k).tagName === 'SELECT' && $('s-' + k).selectedIndex < 0) $('s-' + k).selectedIndex = 0; } }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
+/* ---------- beeps and the earliest plannable frame ----------
+ * Exactly the set number of beeps, always: a plan never starts so late that its first beep is already past (v69 planned
+ * from now + lead + 1 frame and ignored the beep offset, so with an offset of -5 and 4 beeps 500 ms apart over a 1.5 s
+ * lead the first beep was ~150 ms in the past unless the chosen frame came 5+ frames after the earliest one: 3 or 4
+ * beeps at random). If the earliest frame is too soon for every beep, the plan takes a later frame instead. */
+const nBeeps = () => Math.max(1, Math.min(8, Math.round(num('beeps')) || 3));
+const BEEP_MARGIN = 150;   // ms: the first beep at least this far ahead when a plan is made
+function earliestPress(now) { return now + Math.max(num('lead') * 1000, (nBeeps() - 1) * num('gapms') + BEEP_MARGIN); }
+// the press for confirm frame f: the middle of its input window (f - 0.5 on this clock), moved by the beep offset
+function pressTime(tLast, rate, f) { return tLast + (f - 0.5 + num('off')) * rate; }
+// the earliest confirm frame (on a clock with frame 0 at tLast) whose press and every beep before it are still ahead
+function earliestFrame(tLast, rate, now) { return Math.ceil((earliestPress(now) - tLast) / rate + 0.5 - num('off') - 1e-9); }
+function playBeeps(tPress) { const n = nBeeps(), g = num('gapms'); for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06); }
+const beepsFit = tPress => tPress - (nBeeps() - 1) * num('gapms') > performance.now() + 20;
+/* ---------- which window to aim at (Settings: Window to aim at) ----------
+ * best: the automatic choice (the best chance in the wait on Hallway T2, the widest window soon elsewhere). green /
+ * yellow / red: the first run of working frames of that length (3+ / exactly 2 / exactly 1, the strip's colours) that
+ * starts no earlier than the earliest frame and is aimed within the max extra wait; none: the page says so. The aim is
+ * the run's middle frame (of the two middle ones, the one more of the states agree on), never a frame boundary. */
+const WTYPE = { green: { min: 3, max: 1e9, name: 'green (3+ in a row)' }, yellow: { min: 2, max: 2, name: 'yellow (2 in a row)' }, red: { min: 1, max: 1, name: 'red (one exact frame)' } };
+const wtype = () => (WTYPE[$('s-wtype').value] ? $('s-wtype').value : 'best');
+function tabRuns(tab, first) {
+  const runs = []; for (let i = 0, s = -1; i <= tab.length; i++) { if (i < tab.length && tab[i]) { if (s < 0) s = i; } else if (s >= 0) { runs.push({ start: first + s, end: first + i - 1, length: i - s }); s = -1; } }
+  return runs;
+}
+function pickRun(tab, first, from, to, type, score) {
+  const T = WTYPE[type]; if (!T) return null;
+  for (const r of tabRuns(tab, first)) {
+    if (r.start < from || r.length < T.min || r.length > T.max) continue;
+    if (r.end >= first + tab.length - 1) return null;            // its length is not known yet (runs past the table)
+    let target = r.start + Math.floor((r.length - 1) / 2);
+    if (r.length % 2 === 0 && score && score(target + 1) > score(target) + 1e-9) target++;
+    return target <= to ? { w: r, target } : null;
+  }
+  return null;
+}
+/* working-frame table for confirm frames a..b of a coin-only state (seed s before the draw on frame g = nc, or nc later):
+ * the coin is stepped once along the frames and each frame is judged from its own state (R.works from t0 = c), so it
+ * costs ~400 steps a frame instead of R.timeOutTable's c + 400 (same answers, test_strip_geometry.js) */
+const fastOk = prof => !prof.sim && !Object.keys(prof.effects || {}).some(k => +k < 0) && !Object.keys(prof.post || {}).some(k => +k < 0);
+function fastTable(s, nc, g, a, b, prof) {
+  if (!fastOk(prof)) { const out = []; for (let c = a; c <= b; c++) out.push(R.works(s, nc, c, g, prof)); return out; }
+  const out = new Array(Math.max(0, b - a + 1)).fill(false); let x = s >>> 0, n = nc;
+  for (let t = g; t <= b; t++) {
+    if (t >= a) out[t - a] = R.works(x, n, t, t, prof);
+    if (t === n) { const r = R.randInt(x, 100); x = r[0]; n = t + (r[1] >= 70 ? 48 : 24); }
+    x = R.adv(x);
+  }
+  return out;
+}
 // Jr. Troopa route: every target screen of the route in order. cat: which saved screen it looks like (M = target on
 // Mario, K = target on Jr. Troopa, S = Bombette's Strategies menu). prof: the table for the presses that decide a roll.
 // Routes: every target screen in order. cat = which saved screen it looks like (shared by all routes):
@@ -342,10 +435,9 @@ $('cal-apply').onclick = () => {
 };
 $('s-off').addEventListener('input', () => {
   saveSettings(); const P = st.plan; if (!P || P.tPress < performance.now()) return;
-  P.tPress = P.tLast + (P.target - 0.5 + num('off')) * P.rate; cancelBeeps();
-  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
-  for (let i = 0; i < n; i++) beepAt(P.tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
-  render();
+  const t = pressTime(P.tLast, P.rate, P.target);
+  if (!beepsFit(t)) { slog('offsetReplan', {}); cancelPlan(); return; }   // too late now for every beep: the next plan takes a later frame
+  P.tPress = t; cancelBeeps(); playBeeps(t); render();
 });
 
 /* ---------- state ---------- */
@@ -682,6 +774,40 @@ function fitRate(taps, f) {
   let sff = 0, sft = 0; for (let i = 0; i < n; i++) { sff += (f[i] - mf) * (f[i] - mf); sft += (f[i] - mf) * (taps[i] - mt); }
   const r = sft / sff; return Math.abs(r / FRAME - 1) < 0.05 ? r : null;
 }
+/* The console's frame time, from every run of shines the coin showed (any stretch, locked or not): consecutive shines are
+ * 48 + 24k game frames apart, so a run's shine times against their frame counts give the frame time (least squares). A
+ * real N64 runs 240p at ~59.83 Hz, 33.43 ms a frame, not the 33.37 of 59.94 Hz: the runner's logs give 33.414-33.445 ms
+ * over 60+ runs (median 33.427). The Charge tracker ran on 33.37 (v69), so its clock fell behind the game by 0.18%: a
+ * frame every ~18 s, which shifted the beeps and, on a long wait, pushed the menu's shines out of the tracker's
+ * tolerance. The estimate is kept in this browser (it belongs to the console); Settings > Advanced can fix it. */
+const CONSOLE_FRAME = 33.427;
+const CR = (() => { let o = null; try { o = JSON.parse(localStorage.getItem('tot-crate') || 'null'); } catch (e) {} return Object.assign({ sw: 0, swr: 0 }, o || {}, { run: [] }); })();
+function rateFit(r) {
+  if (r.length < 8 || r[r.length - 1].f - r[0].f < 600) return null;
+  let mf = 0, mt = 0; for (const x of r) { mf += x.f; mt += x.t; } mf /= r.length; mt /= r.length;
+  let sff = 0, sft = 0; for (const x of r) { sff += (x.f - mf) * (x.f - mf); sft += (x.f - mf) * (x.t - mt); }
+  const k = sft / sff; return Math.abs(k / FRAME - 1) < 0.01 ? { k, w: sff } : null;
+}
+function rateClose() {
+  const r = CR.run; CR.run = []; const q = rateFit(r); if (!q) return;
+  if (CR.sw > 4e8) { CR.sw /= 2; CR.swr /= 2; }          // about the last ten long runs count
+  CR.sw += q.w; CR.swr += q.w * q.k;
+  try { localStorage.setItem('tot-crate', JSON.stringify({ sw: CR.sw, swr: CR.swr })); } catch (e) {}
+  slog('consoleRate', { run: +q.k.toFixed(4), shines: r.length, est: +consoleRate().toFixed(4) });
+}
+function rateShine(t) {
+  const r = CR.run;
+  if (r.length) { const g = (t - r[r.length - 1].t) / consoleRate(), k = Math.round((g - 48) / 24);
+    if (k >= 0 && k <= 10 && Math.abs(g - 48 - 24 * k) <= 2.5) { r.push({ t, f: r[r.length - 1].f + 48 + 24 * k }); CR.cur = null; return; }
+    rateClose(); }
+  CR.run = [{ t, f: 0 }]; CR.cur = null;
+}
+function consoleRate() {
+  const s = num('crate'); if (s > 30 && s < 36) return s;
+  if (CR.cur === undefined || CR.cur === null) CR.cur = rateFit(CR.run) || false;   // the run going on counts too
+  const sw = CR.sw + (CR.cur ? CR.cur.w : 0), swr = CR.swr + (CR.cur ? CR.cur.w * CR.cur.k : 0);
+  return sw > 0 ? swr / sw : CONSOLE_FRAME;
+}
 function updateClock() {
   st.note = null;
   const L = st.lock; const taps = st.segs[L.seg].taps; const p = pat(taps).pattern; const f = shineFrames(p);
@@ -711,31 +837,36 @@ function pressDist() {
   for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); out.push([d, w]); s += w; }
   return out.map(([d, w]) => [d, w / s]);
 }
-function mixScores(g, F0, from, W) {
-  const tot = g.reduce((a, x) => a + x.imps.length, 0);
-  const tabs = g.map(x => R.timeOutTable(x.seed, from - 1 + F0 - x.F, from + W + 1 + F0 - x.F, PROF()));
-  const sc = [];
-  for (let k = 0; k <= W; k++) { let v = 0; g.forEach((x, i) => { for (const [d, p] of PRESS_ERR) v += x.imps.length * p * (tabs[i][k + 1 + d] ? 1 : 0); }); sc.push(v / tot); }
-  return sc;
-}
 function mixPlan(C) {
   const g = st.groupCache && st.groupCache.g; if (!g || g.length < 2) return false;
-  const rt = C.rate, F0 = g[0].F, tLast = C.t0 + F0 * rt, nowF = (performance.now() - tLast) / rt;
-  const from = Math.max(2, Math.ceil(nowF + num('lead') * 1000 / rt + 1)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rt));
+  const rt = C.rate, F0 = g[0].F, tLast = C.t0 + F0 * rt, now = performance.now(), nowF = (now - tLast) / rt;
+  const from = Math.max(2, earliestFrame(tLast, rt, now)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rt)), X = 10;
   if (g.some(x => from - 1 + F0 - x.F < 1)) return false;
-  const sc = mixScores(g, F0, from, W); let k = 0; for (let i = 1; i < sc.length; i++) if (sc[i] > sc[k] + 1e-9) k = i;
-  const best = sc[k], n = g.reduce((a, x) => a + x.imps.length, 0);
-  if (best < num('zwedge')) {
-    st.msg = 'No edge: ' + g.length + ' Spiny Flip outcomes are still possible and no frame in the next ' + num('zwwin') + ' s works for enough of them (best ' + Math.round(best * 100) + '%; a blind press is 31%). Press Time Out normally, or show a shine or two in this menu and it plans again.';
-    slog('mixNoEdge', { groups: g.length, best: +best.toFixed(3) }); render(); return true;
+  const n = g.reduce((a, x) => a + x.imps.length, 0), a = from - 1, b = from + W + X + 1, share = new Float64Array(b - a + 1);
+  g.forEach(x => { const tab = R.timeOutTable(x.seed, a + F0 - x.F, b + F0 - x.F, PROF()); tab.forEach((v, i) => { if (v) share[i] += x.imps.length / n; }); });
+  const sc = f => { let v = 0; for (const [d, p] of PRESS_ERR) v += p * (share[f + d - a] || 0); return v; };
+  const type = wtype(); let target, w;
+  if (type === 'best') {
+    let k = -1; for (let i = 0; i <= W; i++) if (share[from + i - a] >= 0.5 && (k < 0 || sc(from + i) > sc(from + k) + 1e-9)) k = i;
+    if (k < 0) { k = 0; for (let i = 1; i <= W; i++) if (sc(from + i) > sc(from + k) + 1e-9) k = i; }
+    target = from + k; w = { start: target, end: target, length: 1 };
+    { let s0 = target, e0 = target; if (share[target - a] >= 0.5) { while (s0 - 1 >= a && share[s0 - 1 - a] >= 0.5) s0--; while (e0 + 1 <= b && share[e0 + 1 - a] >= 0.5) e0++; } w = { start: s0, end: e0, length: e0 - s0 + 1 }; }
+    if (sc(target) < num('zwedge')) {
+      st.msg = 'No edge: ' + g.length + ' Spiny Flip outcomes are still possible and no frame in the next ' + num('zwwin') + ' s works for enough of them (best ' + Math.round(sc(target) * 100) + '%; a blind press is 31%). Press Time Out normally, or show a shine or two in this menu and it plans again.';
+      slog('mixNoEdge', { groups: g.length, best: +sc(target).toFixed(3) }); render(); return true;
+    }
+  } else {
+    const pk = pickRun(Array.from(share, v => v >= 0.5), a, from, from + W, type, sc);
+    if (!pk) { st.msg = 'No ' + WTYPE[type].name + ' window in the next ' + num('zwwin') + ' s for most of the ' + g.length + ' Spiny Flip outcomes. Press Time Out normally, or pick another window.'; render(); return true; }
+    target = pk.target; w = pk.w;
   }
-  const target = from + k, tPress = tLast + (target - 0.5 + num('off')) * rt, first = Math.floor(nowF), last = target + 400;
+  const best = sc(target), tPress = pressTime(tLast, rt, target), first = Math.floor(nowF), last = target + 400;
   cancelBeeps();
-  st.plan = { tMade: performance.now(), w: { start: target, end: target, length: 1 }, target, aim4: false, tPress, tLast, rate: rt, seedBL: g[0].seed, baseF: F0, carried: true, from, to: from + W, first, prof: PROF().id,
-    tab: R.timeOutTable(g[0].seed, first, last, PROF()), tab4: null, mix: { p: best, groups: g.length, top: g[0].imps.length / n } };
-  const nb = Math.max(1, Math.round(num('beeps'))), gm = num('gapms');
-  for (let i = 0; i < nb; i++) beepAt(tPress - (nb - 1 - i) * gm, i === nb - 1 ? 1320 : 880, i === nb - 1 ? 0.12 : 0.06);
-  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, target, tPress: Math.round(tPress), carried: true });
+  const tab = R.timeOutTable(g[0].seed, first, last, PROF()); for (let f = Math.max(first, a); f <= b - 1 && f <= last; f++) tab[f - first] = share[f - a] >= 0.5;
+  st.plan = { tMade: now, w, target, aim4: false, tPress, tLast, rate: rt, seedBL: g[0].seed, baseF: F0, carried: true, from, to: from + W, first, prof: PROF().id, type, beeps: nBeeps(),
+    tab, tab4: null, mix: { p: best, groups: g.length, top: g[0].imps.length / n } };
+  playBeeps(tPress);
+  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), beeps: nBeeps(), carried: true });
   render(); return true;
 }
 /* ---------- Zero-wait candidate tracker: Hallway Bowser with B held (zerowait/README.md) ----------
@@ -787,7 +918,7 @@ function zwUpdate(to) {
     out.push(p);
   }
   zw.parts = out;
-  if (!out.length && !zw.dead) { zw.dead = true; slog('zwInconsistent', { at: Math.round(to) }); }
+  if (!out.length && !zw.dead) { zw.dead = true; zw.deadAt = to; slog('zwInconsistent', { at: Math.round(to), taps: zw.taps.length }); if (typeof chgShow === 'function') chgShow(); }
 }
 function zwStart(hiddenMs) {
   const hi = isRoute() ? RT().findIndex(x => x.turn === 'hw_spiny') : -1;
@@ -796,10 +927,10 @@ function zwStart(hiddenMs) {
   const L = st.lock, cur = L && L.seg === st.segs.length - 1;
   if (L && st.clock && !L.torch && !st.turnEv.length && cur) { t0 = st.clock.t0; rate = st.clock.rate; bases.push({ s: st.clock.seed, nc: 0, g: 0 }); }
   else if (!L && st.prevLock && st.prevLock.seedAfter != null) {   // lock from an earlier look: start right after its last shine
-    rate = st.rate || FRAME; t0 = st.prevLock.lastTap - 6 * rate - vl; bases.push({ s: R.adv(st.prevLock.seedAfter), nc: 48, g: 1 });
+    rate = st.rate || consoleRate(); t0 = st.prevLock.lastTap - 6 * rate - vl; bases.push({ s: R.adv(st.prevLock.seedAfter), nc: 48, g: 1 });
   } else if (!L && st.cands && st.cands.length && st.cands.length <= ZW_MAXBASE && seg().taps.length) {   // near-lock: candidate set
     const P = pat(seg().taps); if (P.error) return false;
-    rate = FRAME; t0 = seg().taps[0] - 6 * rate - vl;
+    rate = consoleRate(); t0 = seg().taps[0] - 6 * rate - vl;
     for (const c of st.cands) if (R.matches(c, P.pattern)) bases.push({ s: c >>> 0, nc: 0, g: 0 });
   }
   if (!bases.length) return false;
@@ -822,13 +953,15 @@ function zwCoinBack(hiddenMs) {      // the coin was hidden (an action, a confir
   // must not make the hidden frames after it look visible
   const end = Math.min(zw.visTo != null ? zw.visTo : Infinity, hideF - 6);
   if (zw.visFrom != null && end > zw.visFrom) zw.vis.push([zw.visFrom, end]);
-  zw.visFrom = zwF(now, 0); zw.visTo = null;
+  zw.visFrom = zwF(now, 0); zw.visTo = null; zw.visLocked = false;
 }
 function zwTap(t) { zw.taps.push(zwF(t, 6)); }
 function zwInput(id, tObs, vanish, imps) {
   const c = Math.round(zwF(tObs, vanish + num('pfix')));
-  if (zw.visFrom != null && zw.visTo == null) zw.visTo = c - 4;      // the menu showed the coin until this confirm
-  zwUpdate(c);                                   // nothing is simulated past the confirm before its events are in
+  zwSeen(performance.now());
+  if (zw.visFrom != null && (zw.visTo == null || zw.visTo < c - 4)) zw.visTo = c - 4;      // the menu showed the coin until this confirm
+  zw.visLocked = true;          // nothing after the confirm counts as watched (the coin box can flicker on with the bar hidden)
+  zwUpdate(Math.min(c - 3, zwHorizon(performance.now())));   // nothing is simulated past the confirm (shifted -2) before its events are in, nor past what was seen
   const ev = R.buildEv([{ f: c, id }]);
   if (!imps) { for (const p of zw.parts) { zwMerge(p.ev, ev); p.evMax = Math.max(p.evMax, ...ev.keys(), ...[...ev.values()].flatMap(e => e.eio.map(x => x[0]))); } }
   else {
@@ -843,37 +976,110 @@ function zwInput(id, tObs, vanish, imps) {
   if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
   slog('zwInput', { id, c, particles: zw.parts.length });
 }
-function zwPlan() {
-  const now = performance.now(), to = Math.floor(zwF(now, 0)); zw.visTo = to - 4;
-  zwUpdate(to);
-  const parts = zw.parts.filter(p => !p.S.inst.length && !(p.S.extra && p.S.extra.size));
-  if (!parts.length) {
-    st.msg = zw.dead || !zw.parts.length ? 'No edge: what the page saw since the hallway fits none of its candidates (a missed or extra shine, text not held with B, or lag outside the model). Press Time Out normally.'
+/* The tracker is only stepped up to the frames whose shines the page has had time to see (zwHorizon): a shine drawn on
+ * clock frame f flashes at about f + 6 here (zwTap) and can be read up to tapLate later. v69 stepped every particle
+ * to "now" at each plan, so a shine drawn in the last ~10 frames was passed over before its flash was read, and the next
+ * update (the next plan while waiting on the target screen) dropped every state that had it: the true one with it, a
+ * ~25% chance per replan. That is how the lock died after ~20 s on a target screen (feedback item 2). The coin's
+ * visible stretch is likewise only extended to frames whose flash was watched on a steady coin (zwSeen), not to now. */
+const zwLate = () => 6 + (zw.tapLate || 1.5) + 0.5;
+function zwHorizon(now) { return Math.floor(zwF(now, zwLate())); }
+function zwSeen(now) {
+  if (zw.visFrom == null || zw.visLocked || V.steadyT == null || V.steadyT < now - 250) return;   // only while the coin is steady now
+  const f = Math.floor(zwF(V.steadyT, zwLate()));
+  if (f > zw.visFrom && (zw.visTo == null || f > zw.visTo)) zw.visTo = f;
+}
+const zwSettled = p => !p.S.inst.length && !(p.S.extra && p.S.extra.size) && p.g > p.evMax;
+// the distinct coin-only states left, stepped to the horizon: [{ s, nc, g, w, key }], heaviest first
+function zwStates(now) {
+  zwSeen(now); const h = zwHorizon(now); zwUpdate(h);
+  const m = new Map(); let open = 0;
+  for (const p of zw.parts) {
+    if (!zwSettled(p)) { open++; continue; }
+    const k = (p.S.s >>> 0) + ':' + p.S.nc + ':' + p.g, q = m.get(k);
+    if (q) q.w += p.w; else m.set(k, { s: p.S.s >>> 0, nc: p.S.nc, g: p.g, w: p.w, key: k });
+  }
+  const list = [...m.values()].sort((a, b) => b.w - a.w);
+  // the key changes when states are ruled out or merge (not when they are stepped on): it says when to redo the strip
+  return { h, list, open, key: list.length + ':' + list.slice(0, 16).map(x => x.w.toFixed(5)).join() };
+}
+// the share of the states (weighted) for which confirming on clock frames a..b works
+function zwShare(list, a, b) {
+  const L = list.slice(0, 64), tot = L.reduce((x, q) => x + q.w, 0) || 1, sh = new Float64Array(Math.max(0, b - a + 1));
+  for (const q of L) { const lo = Math.max(a, q.g), tab = fastTable(q.s, q.nc, q.g, lo, b, PROF()); for (let i = 0; i < tab.length; i++) if (tab[i]) sh[lo - a + i] += q.w / tot; }
+  return sh;
+}
+/* the coin-only state anchored on its next coin draw: seedBL (the seed before that draw) and its frame */
+// a coin-only state stepped on to frame g (as R.works steps it: the coin draw on its frame, then the per-frame step)
+function zwAdvance(q, g) { let x = q.s >>> 0, n = q.nc; for (let t = q.g; t < g; t++) { if (t === n) { const r = R.randInt(x, 100); x = r[0]; n = t + (r[1] >= 70 ? 48 : 24); } x = R.adv(x); } return { s: x, nc: n, g: Math.max(g, q.g) }; }
+function zwAnchor(q) { let x = q.s >>> 0; for (let g = q.g; g < q.nc; g++) x = R.adv(x); return { seedBL: x, F: q.nc }; }
+function zwPlan(why) {
+  const now = performance.now(), S = zwStates(now);
+  if (!S.list.length) {
+    st.msg = zw.dead || !zw.parts.length ? 'No edge: the seed was lost. What the page saw since the Charge fits none of its states (a missed or extra shine, an input it did not see, or lag outside the model). Press Time Out normally.'
       : 'No edge yet: Bowser\'s attack is still being simulated. Press Plan again in a moment, or press Time Out normally.';
     render(); return true;
   }
-  const tot = parts.reduce((a, p) => a + p.w, 0), from = Math.ceil(to + num('lead') * 1000 / zw.rate + 1), W = Math.max(0, Math.round(num('zwwin') * 1000 / zw.rate));
-  const sc = new Array(W + 1).fill(0), PD = pressDist(), D = Math.max(...PD.map(x => Math.abs(x[0])));
-  for (const p of parts) {
-    const tab = []; for (let c = from - D; c <= from + W + D; c++) tab.push(R.works(p.S.s, p.S.nc, c, p.g, PROF()) ? 1 : 0);
-    for (let k = 0; k <= W; k++) for (const [d, q] of PD) sc[k] += p.w * q * tab[k + D + d];
+  const rate = zw.rate, from = Math.max(S.h + 1, earliestFrame(zw.t0, rate, now)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
+  const PD = pressDist(), D = Math.max(...PD.map(x => Math.abs(x[0]))), X = 10, a = from - D, b = from + W + X + D;
+  const share = zwShare(S.list, a, b), sc = c => { let v = 0; for (const [d, q] of PD) v += q * (share[c + d - a] || 0); return v; };
+  const type = wtype(); let target, w;
+  if (type === 'best') {
+    // the best chance among the frames most states agree work: with a wide press spread the best score can fall on a
+    // failing frame between two runs, and the aim marker then sat between two yellow runs on the strip (item 1)
+    let k = -1; for (let i = 0; i <= W; i++) if (share[from + i - a] >= 0.5 && (k < 0 || sc(from + i) > sc(from + k) + 1e-12)) k = i;
+    if (k < 0) { k = 0; for (let i = 1; i <= W; i++) if (sc(from + i) > sc(from + k) + 1e-12) k = i; }
+    target = from + k; w = { start: target, end: target, length: 1 };
+    { let s0 = target, e0 = target; if (share[target - a] >= 0.5) { while (s0 - 1 >= a && share[s0 - 1 - a] >= 0.5) s0--; while (e0 + 1 <= b && share[e0 + 1 - a] >= 0.5) e0++; } w = { start: s0, end: e0, length: e0 - s0 + 1 }; }
+    if (sc(target) < num('zwedge')) {
+      st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames) works for enough of them (best ' + Math.round(sc(target) * 100) + '%; a blind press is 31%). Press Time Out normally.';
+      slog('zwNoEdge', { parts: S.list.length, best: +sc(target).toFixed(3) }); render(); return true;
+    }
+  } else {
+    const maj = Array.from(share, v => v >= 0.5), pk = pickRun(maj, a, from, from + W, type, sc);
+    if (!pk) { st.msg = 'No ' + WTYPE[type].name + ' window in the next ' + num('zwwin') + ' s of extra wait for most of the ' + S.list.length + ' possible states. Press Time Out normally, raise Max extra wait (Settings, Advanced), or pick another window.'; slog('zwNoWindow', { type, parts: S.list.length }); render(); return true; }
+    target = pk.target; w = pk.w;
   }
-  let k = 0; for (let i = 1; i <= W; i++) if (sc[i] > sc[k] + 1e-12) k = i;
-  const best = sc[k] / tot;
-  if (best < num('zwedge')) {
-    st.msg = 'No edge: ' + parts.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of beep window (up to ' + Math.round(num('zwwin') * 30) + ' game frames of added wait) works for enough of them (best ' + Math.round(best * 100) + '%; a blind press is 31%). Press Time Out normally.';
-    slog('zwNoEdge', { parts: parts.length, best: +best.toFixed(3) }); render(); return true;
-  }
-  const target = from + k, top = parts.reduce((a, p) => (p.w > a.w ? p : a));
-  const q = zwClone(top); while (q.g < q.S.nc) { R.frameEv(q.S, q.g, q.ev); q.g++; }    // anchor the plan on the top particle's next coin draw
-  const F = q.g, tLast = zw.t0 + F * zw.rate, tPress = tLast + (target - F - 0.5 + num('off')) * zw.rate, first = Math.max(0, to - F);
+  const best = sc(target), A = zwAnchor(S.list[0]), F = A.F, tLast = zw.t0 + F * rate, tPress = pressTime(tLast, rate, target - F);
+  const disp = zwDisplay(now, true), first = disp.first - F, tab = disp.tab.slice();
+  for (let c = Math.max(a, disp.first); c <= Math.min(b - D, disp.first + tab.length - 1); c++) tab[c - disp.first] = share[c - a] >= 0.5;   // the window part from every state
   cancelBeeps();
-  st.plan = { tMade: now, w: { start: target - F, end: target - F, length: 1 }, target: target - F, aim4: false, tPress, tLast, rate: zw.rate, seedBL: q.S.s, baseF: F, carried: true, from: from - F, to: from + W - F, first, prof: PROF().id,
-    tab: R.timeOutTable(q.S.s, first, target - F + 400, PROF()), tab4: null, mix: { p: best, groups: parts.length, zw: true } };
-  const nb = Math.max(1, Math.round(num('beeps'))), gm = num('gapms');
-  for (let i = 0; i < nb; i++) beepAt(tPress - (nb - 1 - i) * gm, i === nb - 1 ? 1320 : 880, i === nb - 1 ? 0.12 : 0.06);
-  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, target, tPress: Math.round(tPress), zw: true, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((a, [d, q]) => a + q * d * d, 0)).toFixed(2) });
+  st.plan = { tMade: now, w: { start: w.start - F, end: w.end - F, length: w.length }, target: target - F, aim4: false, tPress, tLast, rate, seedBL: A.seedBL, baseF: F, carried: true, from: from - F, to: from + W - F, first, prof: PROF().id,
+    tab, tab4: null, type, beeps: nBeeps(), mix: { p: best, groups: S.list.length, zw: true }, zwState: S.list[0], zwAbs: target };
+  playBeeps(tPress);
+  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
   st.msg = null; render(); return true;
+}
+/* the strip between plans on the tracker (and its frames once planned): frames most of the states agree work, computed a
+ * few states per animation frame so the strip never stalls (zwDisplay(now, true) finishes it at once) */
+const ZWD = { key: null, job: null, done: null };
+function zwDisplay(now, sync) {
+  const S = ZWD.S, h = S ? S.h : zwHorizon(now), c0 = Math.floor(zwF(now, 0)), bucket = Math.floor(c0 / 90);
+  if (!S || !S.list.length) return ZWD.done || { first: c0 - 30, tab: [], share: null };
+  const key = S.key + '#' + bucket;
+  if (ZWD.key !== key && (!ZWD.job || ZWD.job.key !== key)) {
+    const a = bucket * 90 - 60, b = bucket * 90 + 540, L = S.list.slice(0, 16), tot = L.reduce((x, q) => x + q.w, 0) || 1;
+    ZWD.job = { key, a, b, L, tot, i: 0, share: new Float64Array(b - a + 1) };
+  }
+  const J = ZWD.job, t0 = performance.now();
+  while (J && J.i < J.L.length && (sync || performance.now() - t0 < 5)) {
+    const q = J.L[J.i++], lo = Math.max(J.a, q.g), tab = fastTable(q.s, q.nc, q.g, lo, J.b, PROF());
+    for (let i = 0; i < tab.length; i++) if (tab[i]) J.share[lo - J.a + i] += q.w / J.tot;
+  }
+  if (J && J.i >= J.L.length) { ZWD.done = { first: J.a, tab: Array.from(J.share, v => v >= 0.5), share: J.share, n: S.list.length }; ZWD.key = J.key; ZWD.job = null; }
+  return ZWD.done || { first: c0 - 30, tab: [], share: null };
+}
+/* about 4 times a second while the tracker runs: step it to the horizon, and if a running plan's state is gone (a shine
+ * on the target screen ruled it out), plan again from the states left and say so on the strip ("Seed changed") */
+function zwTick(now) {
+  if (!zw.on || (ZWD.t && now - ZWD.t < 250)) return; ZWD.t = now;
+  ZWD.S = zwStates(now);
+  const P = st.plan; if (!P || !P.mix || !P.mix.zw || P.seedNote) return;
+  const ref = zwAdvance(P.zwState, ZWD.S.h); if (ZWD.S.list.some(q => q.s === ref.s && q.nc === ref.nc && q.g === ref.g)) return;
+  const old = P.zwAbs;
+  if (beepsFit(P.tPress) && (onTarget() || !V.ref)) { zwPlan('seed changed'); if (st.plan && st.plan !== P) { st.seedChange = { t: now, from: old, to: st.plan.zwAbs, ok: true }; slog('seedChanged', { from: old, to: st.plan.zwAbs }); } }
+  else { P.seedNote = true; st.seedChange = { t: now, from: old, ok: false }; slog('seedChanged', { from: old, late: true }); }
+  render();
 }
 /*@include charge_live/charge_live.js*/
 /*@include charge_live/fb2_live.js*/
@@ -893,12 +1099,18 @@ function makePlan() {
   const um = unmodeledAfter(B.tLast);
   if (um) { st.msg = 'Since the last shines the page saw an input it cannot simulate (' + um.id + '), so the seed has moved by an unknown amount. Show a few shines (C-up / the battle menu) and it plans again.'; render(); return; }
   const seedBL = B.seedBL;                                         // frame 0 of the plan = the last tapped shine's draw (or after the carried turns)
-  const rt = C.rate, tLast = B.tLast, nowF = (performance.now() - tLast) / rt;
-  const from = Math.max(1, Math.ceil(nowF + num('lead') * 1000 / rt + 1)), to = from + 1800;   // never before the plan's known state (frame 0)
-  let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun)));
+  const rt = C.rate, tLast = B.tLast, now0 = performance.now(), nowF = (now0 - tLast) / rt;
+  const from = Math.max(1, earliestFrame(tLast, rt, now0)), to = from + 1800;   // never before the plan's known state (frame 0), never too soon for every beep
+  let w = null, minRun = Math.max(1, Math.round(Math.min(num('min'), PROF().minRun))), typed = null;
+  if (wtype() !== 'best') {     // the first window of the chosen kind within the max extra wait
+    const Wt = Math.max(0, Math.round(num('zwwin') * 1000 / rt)), tab = fastTable(seedBL, 0, 0, from, from + Wt + 10, PROF());
+    typed = pickRun(tab, from, from, from + Wt, wtype(), null);
+    if (!typed) { st.msg = 'No ' + WTYPE[wtype()].name + ' window in the next ' + num('zwwin') + ' s of extra wait (Settings: Max extra wait, Window to aim at). Press normally, or plan again.'; render(); return; }
+    w = typed.w;
+  }
   // prefer a wider window when it costs only a little more waiting (a 2-frame window first was always taken before):
   // 5+ within ~8 s of the earliest usable window, else 4 within ~6 s, else 3 within ~4 s, else the earliest
-  { const tab = R.timeOutTable(seedBL, from, to, PROF()), runs = [];
+  if (!typed) { const tab = fastTable(seedBL, 0, 0, from, to, PROF()), runs = [];
     for (let i = 0, s = -1; i <= tab.length; i++) {
       if (i < tab.length && tab[i]) { if (s < 0) s = i; }
       else if (s >= 0) { runs.push({ start: from + s, end: from + i - 1, length: i - s }); s = -1; }
@@ -911,26 +1123,26 @@ function makePlan() {
     }
   }
   if (!w) { st.msg = 'No working frame in the next minute (very unlikely). Plan again.'; render(); return; }
-  let target = w.start + Math.floor((w.length - 1) / 2), aim4 = false;
+  let target = typed ? typed.target : w.start + Math.floor((w.length - 1) / 2), aim4 = false;
   // Duplighosts 3+: aim at a frame where all 4 copy whose neighbours both give 3+ (another all-4 frame or a 3), so a
   // frame early or late still gets 3. Earliest such frame in the next minute; otherwise the plain window.
-  if (R.TOP[PROF().id]) {
+  if (R.TOP[PROF().id] && !typed) {
     const w4 = R.aimTop(seedBL, from, to, PROF().id);
     if (w4) { w = w4.window; target = w4.target; aim4 = true; }
   }
   if (!(tLast + target * rt - performance.now() > 0 && tLast + target * rt - performance.now() < 120000)) { st.msg = 'Timing clock problem: the planned press is not in the next two minutes. Please report this; press Reset meanwhile.'; render(); return; }
-  const tPress = tLast + (target - 0.5 + num('off')) * rt;        // middle of the target frame's input window
-  const first = Math.floor(nowF), last = Math.max(first + 359, w.end + 45);
+  const tPress = pressTime(tLast, rt, target);        // middle of the target frame's input window
+  const first = Math.max(0, Math.floor(nowF) - 100), last = Math.max(first + 459, w.end + 45);
   cancelBeeps();
-  st.plan = { tMade: performance.now(), w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, tab: R.timeOutTable(seedBL, first, last, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
-  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
-  for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
-  slog('plan', { prof: PROF().id, step: routeStep, window: w.length, target, tPress: Math.round(tPress), carried: !!B.carried });
+  st.plan = { tMade: performance.now(), w, target, aim4, tPress, tLast, rate: rt, seedBL, baseF: B.baseF, carried: B.carried, from, to, first, prof: PROF().id, type: wtype(), beeps: nBeeps(), tab: fastTable(seedBL, 0, 0, first, last, PROF()), tab4: R.TOP[PROF().id] ? fastTable(seedBL, 0, 0, first, last, R.PROFILES[R.TOP[PROF().id]]) : null };
+  playBeeps(tPress);
+  slog('plan', { prof: PROF().id, step: routeStep, window: w.length, type: wtype(), target, tPress: Math.round(tPress), beeps: nBeeps(), carried: !!B.carried });
   render();
 }
 
 /* ---------- input ---------- */
 function addShine(t, auto) {
+  if (auto) rateShine(t);
   if (auto) chgTap(t);
   if (auto && typeof fb2Tap === 'function') fb2Tap(t);
   if (auto && zw.on) zwTap(t);
@@ -952,7 +1164,7 @@ function addShine(t, auto) {
     if (keep.length) {
       const before = st.hyp ? st.hyp.length : 0; if (st.hyp) st.hyp = keep; st.carryOk = (st.carryOk || 0) + 1;
       // the shine ruled out the confirm frame a running plan was made from: plan again from the one that is left
-      if (before > keep.length && st.plan && st.plan.carried && st.plan.tPress > performance.now() + 300 && (st.plan.mix || baseState().seedBL !== st.plan.seedBL)) { slog('replanAfterShine', { left: keep.length }); cancelPlan(); makePlan(); }
+      if (before > keep.length && st.plan && st.plan.carried && st.plan.tPress > performance.now() + 300 && (st.plan.mix || baseState().seedBL !== st.plan.seedBL)) { slog('replanAfterShine', { left: keep.length }); const old = st.plan.target; cancelPlan(); makePlan(); st.seedChange = { t: performance.now(), from: old, to: st.plan ? st.plan.target : null, ok: !!st.plan }; }
       render(); return; }
     if (st.lock.flick && !st.turnEv.length && !st.lock.shifted) {     // after a dropout: maybe a quick room load ran a few fast frames (once per dropout)
       const g = predictedShineIn(f - 2.5, f + 8.5, evNow());           // the predicted shine this one is: shift the clock exactly onto it
@@ -1030,20 +1242,19 @@ async function findTorch() {
  * time left for the countdown, takes over and the beeps move to it. */
 const SWITCH_LEAD = 2500;
 function maybeSwitchPlan() {
-  const P = st.plan; if (!P || P.aim4 || P.measured || !PROF().rolls.length) return;
+  const P = st.plan; if (!P || P.aim4 || P.measured || P.mix || !PROF().rolls.length || (P.type && P.type !== 'best')) return;   // a chosen kind of window stays where it is
   const now = performance.now(); if (P.tPress - now < SWITCH_LEAD + 1500) return;
-  const from = Math.max(1, Math.ceil((now + SWITCH_LEAD - P.tLast) / P.rate) + 1), to = P.w.start - 1; if (to - from < 2) return;
+  const from = Math.max(1, Math.ceil((now + SWITCH_LEAD - P.tLast) / P.rate) + 1, earliestFrame(P.tLast, P.rate, now)), to = P.w.start - 1; if (to - from < 2) return;
   const tab = R.timeOutTable(P.seedBL, from, to, PROF()); let best = null;
   for (let i = 0, s = -1; i <= tab.length; i++) {
     if (i < tab.length && tab[i]) { if (s < 0) s = i; }
     else if (s >= 0) { const L = i - s; if (L >= Math.max(3, P.w.length)) { best = { start: from + s, end: from + i - 1, length: L }; break; } s = -1; }
   }
   if (!best) return;
-  const target = best.start + Math.floor((best.length - 1) / 2), tPress = P.tLast + (target - 0.5 + num('off')) * P.rate;
+  const target = best.start + Math.floor((best.length - 1) / 2), tPress = pressTime(P.tLast, P.rate, target);
+  if (!beepsFit(tPress)) return;
   slog('switchPlan', { from: P.w.length + '@' + P.w.start, to: best.length + '@' + best.start, sooner: Math.round(P.tPress - tPress) });
-  P.w = best; P.target = target; P.tPress = tPress; P.switched = (P.switched || 0) + 1; cancelBeeps();
-  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms');
-  for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  P.w = best; P.target = target; P.tPress = tPress; P.switched = (P.switched || 0) + 1; cancelBeeps(); playBeeps(tPress);
   render();
 }
 setInterval(maybeSwitchPlan, 250);
@@ -1075,12 +1286,15 @@ function render() {
     if (k !== slogLock) { slog(st.lock ? 'lock' : 'unlock', st.lock ? { seed: st.lock.seed >>> 0, seg: st.lock.seg, segs: st.segs.length, tier: st.tier, have: st.have, need: st.need, carried: st.turnEv.length } : { segs: st.segs.length }); slogLock = k; } }
   const s = seg(), P = pat(s.taps), nSh = s.taps.length;
   const segLabel = st.segs.length > 1 ? 'Segment ' + st.segs.length + ': ' : '';
-  $('plan').disabled = !st.lock;
+  $('plan').disabled = !st.lock && !zw.on;
   chip('p-watch', nSh ? 'on' : ''); chip('p-lock', st.lock ? 'ok' : (st.cands && st.cands.length > 1 ? 'on' : (st.msg ? 'err' : ''))); chip('p-time', st.plan ? 'ok' : '');
   if (st.searching) {}
-  else if (st.msg) setText(segLabel + 'Check your taps', st.msg);
-  else if (st.plan) setText(st.plan.again ? 'Still on the target screen: next window planned' : st.plan.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep', st.plan.mix ? 'Best guess: ' + st.plan.mix.groups + (st.plan.mix.zw ? ' possible RNG states are left (carried from the walk through the hallway scene);' : ' Spiny Flip outcomes are still possible;') + ' this frame works for ' + Math.round(st.plan.mix.p * 100) + '% of them, counting a press 1 frame off (a blind press: 31%). A shine in this menu replans.' : 'Window: ' + st.plan.w.length + ' frame' + (st.plan.w.length > 1 ? 's' : '') + ' in a row. ' + (st.plan.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle one.') + ' Missed it? Press Plan Time Out again for the next window.');
-  else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan Time Out) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan Time Out) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
+  else if (st.msg) setText(/^(No |Time Out is done|The seed is being|FB2)/.test(st.msg) ? 'No beeps this time' : segLabel + 'Check your taps', st.msg);
+  else if (st.plan) { const P = st.plan, typ = P.type && WTYPE[P.type] ? 'Window ' + WTYPE[P.type].name + ': ' : '';
+    setText(P.again ? 'Still on the target screen: next window planned' : P.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep (' + (P.beeps || nBeeps()) + ' beeps)',
+      typ + (P.mix ? (P.mix.zw ? P.mix.groups + ' possible RNG states are left (carried from the Charge or the walk);' : P.mix.groups + ' Spiny Flip outcomes are still possible;') + ' the aimed frame works for ' + Math.round(P.mix.p * 100) + '% of them, counting your press spread (a blind press: 31%). A shine in this menu replans if it rules the frame out.'
+        : P.w.length + ' frame' + (P.w.length > 1 ? 's' : '') + ' in a row. ' + (P.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle frame.') + ' Missed it? Press Plan again for the next window.')); }
+  else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan press) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan press) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
   else if (st.segs.length > 1) setText(segLabel + (nSh ? nSh + ' shine' + (nSh > 1 ? 's' : '') + ', resyncing' : 'tap the next shine'), st.tier ? 'Searching further ahead: the game used a lot of random numbers during the gap (an attack, charge or room load). This needs a few more shines; the seed is kept.' : 'A few shines are usually enough after a gap. It locks as soon as only one position fits.');
@@ -1107,96 +1321,144 @@ function render() {
   drawStrip();
 }
 
-/* strip: the next ~12 s of confirm frames */
+/* strip: the confirm frames ahead, scrolling at a constant speed past a fixed now-line (feedback items 1, 4, 5).
+ * Geometry: frame f is the cell [f, f + 1) on the strip's frame axis; a press at clock time t lands on frame
+ * floor((t - tLast) / rate) + 1, so the now-line sits at nowF + 1 - voff: inside cell f exactly while a press now (with
+ * your visual offset) lands on f. The aim marker is drawn at target + 0.5, the middle of the aimed cell, never on a
+ * boundary; it meets the now-line at tLast + (target - 0.5 + voff) * rate, the visual cue. The beeps keep their own
+ * offset: at the last beep the now-line is at target + 0.5 + (beep offset - visual offset).
+ * Steadiness: the now-line stays at 25% of the width in every state (v69 moved it from 10% to 25% when a plan was made:
+ * the jump the runner saw), the frames move with the clock only, and a change of clock (a shine refit, the tracker
+ * after the shine lock) is eased in at 50 ms/s between plans (200 ms/s during one, so the aim still meets the line at
+ * the cue). A plan's frames stay where they are in game frames until the seed changes, which the strip says. */
 const EXAMPLE = { seed: 0x12345678 };
+const NOW_AT = 0.25;
+const onTarget = () => !!V.wasOn;
 function stripData() {
-  if (st.plan) return { tab4: st.plan.tab4, tab: st.plan.tab, first: st.plan.first, tLast: st.plan.tLast, rate: st.plan.rate, w: st.plan.w };
+  const P = st.plan;
+  if (P) return { src: 'plan', tab4: P.tab4, tab: P.tab, first: P.first, tLast: P.tLast, rate: P.rate, w: P.w, target: P.target, stale: !!(P.mix && P.mix.zw && zw.dead) };
+  if (zw.on && PROF().rolls.length) {
+    const z = zwDisplay(performance.now(), false);
+    if (z.tab.length) return { src: 'zw', tab: z.tab, tab4: null, first: z.first, tLast: zw.t0, rate: zw.rate, w: null, stale: !!zw.dead };
+  }
   if (st.clock && (st.lock || !st.note)) {
-    const C = st.clock, B = baseState(), lastF = B.baseF, seedBL = B.seedBL, tLast = B.tLast;
+    const C = st.clock, B = baseState(), seedBL = B.seedBL, tLast = B.tLast;
     const nowF = Math.floor((performance.now() - tLast) / C.rate);
     const key = PROF().id + ':' + seedBL + ':' + Math.floor(nowF / 120);
-    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 60); stripData.cache = { tab: R.timeOutTable(seedBL, f0, nowF + 479, PROF()), tab4: R.TOP[PROF().id] ? R.timeOutTable(seedBL, f0, nowF + 479, R.PROFILES[R.TOP[PROF().id]]) : null, first: f0, w: null }; }   // data only; the view scrolls smoothly in drawStrip
-    return Object.assign({}, stripData.cache, { tLast, rate: C.rate, stale: !st.lock });
+    if (stripData.key !== key) { stripData.key = key; const f0 = Math.max(0, nowF - 120); stripData.cache = { tab: fastTable(seedBL, 0, 0, f0, nowF + 479, PROF()), tab4: R.TOP[PROF().id] ? fastTable(seedBL, 0, 0, f0, nowF + 479, R.PROFILES[R.TOP[PROF().id]]) : null, first: f0, w: null }; }
+    return Object.assign({}, stripData.cache, { src: 'clock', tLast, rate: C.rate, stale: !st.lock });
   }
-  if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()) };
+  if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { src: 'example', prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()), example: true };
   return stripData.ex;
 }
+/* what the strip shows, in words (the strip's state line and the overlay on stale or waiting frames) */
+function stripState(d) {
+  const now = performance.now(), P = st.plan, sc = st.seedChange && now - st.seedChange.t < 4000 ? st.seedChange : null;
+  if (!PROF().rolls.length) return { cls: 'wait', text: 'Nothing to time on this step: just play it.' };
+  if (P && d.stale) return { cls: 'stale', text: 'Seed lost – showing old prediction. Press normally.', overlay: 'Seed lost – old prediction' };
+  if (sc) return sc.ok ? { cls: 'stale', text: 'Seed changed – new window (a shine ruled the old one out). Follow the new beeps.' } : { cls: 'stale', text: 'Seed changed – too late to move the beeps; this window may be wrong.' };
+  if (P) {
+    const left = P.tPress - now, typ = P.type && WTYPE[P.type] ? WTYPE[P.type].name : 'best chance', ch = P.mix ? ', ' + Math.round(P.mix.p * 100) + '% chance' : '';
+    if (left > -400) return { cls: 'plan', text: 'Beeping: ' + (P.beeps || nBeeps()) + ' beeps, press on the last · ' + typ + ' · ' + P.w.length + '-frame window' + ch };
+    return { cls: 'plan', text: onTarget() ? 'Window passed – planning the next one' : 'Window passed' };
+  }
+  if (d.src === 'zw') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (what the coin did fits none of the tracked states).', overlay: 'Seed lost – old prediction' }
+    : { cls: 'live', text: 'Tracking ' + (ZWD.done ? ZWD.done.n : '?') + ' possible state' + (ZWD.done && ZWD.done.n === 1 ? '' : 's') + ' – the beeps start on Time Out\'s target screen' };
+  if (d.src === 'clock') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (resyncing from the next shines).', overlay: 'Seed lost – old prediction' } : { cls: 'live', text: 'Locked – live frames; the beeps start on the target screen' };
+  const cs = typeof CHG !== 'undefined' ? CHG.state : 'idle';
+  if (zw.on && !zw.dead && !d.tab.length && zw.parts.length) return { cls: 'wait', text: 'Following the turn (Bowser\'s attack is being simulated)…', overlay: 'Following the turn…' };
+  if (cs === 'capture' || cs === 'maps' || cs === 'search') return { cls: 'wait', text: 'Reading the Charge rays…', overlay: 'Reading the Charge…' };
+  if (cs === 'nolock' || cs === 'failed') return { cls: 'stale', text: 'No Charge lock – press Time Out normally (a blind press works 31%). Example frames.', overlay: 'No lock – example frames' };
+  if (zw.on && zw.dead) return { cls: 'stale', text: 'Seed lost – nothing tracked fits what the coin did. Press normally.', overlay: 'Seed lost' };
+  return { cls: 'wait', text: 'Waiting for lock – example frames', overlay: 'Waiting for lock' };
+}
+// eased display correction: a clock change moves the frames by at most 50 ms of clock per second
+function stripClock(d, pn) {
+  if (d.tLast == null) { V.grid = null; return 0; }
+  const near = d.tLast + Math.round((pn - d.tLast) / d.rate) * d.rate;     // the frame boundary nearest now on this clock
+  if (V.grid && V.grid.src !== 'example') {
+    let dl = near - V.grid.near; dl -= Math.round(dl / d.rate) * d.rate;      // a whole frame is a different index, not a move
+    if (Math.abs(dl) > 0.5) V.corr = Math.abs((V.corr || 0) - dl) < 200 ? (V.corr || 0) - dl : 0;
+  }
+  const rateNow = st.plan ? 200 : 50, dt = Math.min(0.1, (pn - (V.corrT || pn)) / 1000), k = rateNow * dt;
+  if (V.corr) V.corr = Math.abs(V.corr) <= k ? 0 : V.corr - Math.sign(V.corr) * k;
+  V.corrT = pn; V.grid = { src: d.src, near: d.tLast + Math.round((pn - d.tLast) / d.rate) * d.rate };
+  return V.corr || 0;
+}
 function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function stripGeom(W, span, nowD) { const cw = W / span, v0 = nowD - span * NOW_AT; return { cw, v0, x: f => (f - v0) * cw }; }
 function drawStrip() {
+  if (zw.on) zwTick(performance.now());
   const cv = $('strip'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth, H = 120; cv.style.height = H + 'px';
+  const W = cv.clientWidth, H = 132; cv.style.height = H + 'px';
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-  const d = stripData(), span = Math.max(30, Math.round((num('zoom') || 12) * 30)), cw = W / span;
-  // small clock refinements (each new shine re-fits the clock) are eased in at <= 50 ms/s instead of jumping
-  const pn = performance.now(), C = st.clock;
-  if (C) {
-    const key = (C.seed >>> 0) + ':' + C.frames[0];
-    if (V.dc && V.dc.key === key && (V.dc.t0 !== C.t0 || V.dc.rate !== C.rate)) {
-      const g = (pn - C.t0) / C.rate, delta = (C.t0 + g * C.rate) - (V.dc.t0 + g * V.dc.rate);
-      V.corr = Math.abs(delta) < 100 ? (V.corr || 0) - delta : 0;
-    }
-    V.dc = { key, t0: C.t0, rate: C.rate };
-  }
-  if (V.corr) { const dt = Math.min(0.1, (pn - (V.corrT || pn)) / 1000), k = 50 * dt; V.corr = Math.abs(V.corr) <= k ? 0 : V.corr - Math.sign(V.corr) * k; }
-  V.corrT = pn;
-  const nowF = d.tLast !== null ? (pn - (V.corr || 0) - d.tLast) / d.rate : null;
-  // Visual offset shifts the whole strip: the middle of the aimed frame meets the now-line at the visual cue moment
-  // (target - 0.5 + voff frames), so 'press when the window's middle reaches the line' includes your reaction.
+  const d = stripData(), span = Math.max(30, Math.round((num('zoom') || 12) * 30));
+  const pn = performance.now(), corr = stripClock(d, pn);
+  const nowF = d.tLast !== null ? (pn - corr - d.tLast) / d.rate : null;
   const nowD = nowF === null ? null : nowF + 1 - num('voff');
-  V.dispAbs = C && d.tLast !== null ? (pn - (V.corr || 0) - d.tLast) / d.rate + (d.tLast - C.t0) / C.rate : null; V.dispT = pn;   // for tests: displayed now in segment frames, and when
-  // view: centred on the chosen window once planned, otherwise scrolling with "now" near the left edge
-  // v0 may be fractional: "now" stays fixed near the left and the frames glide toward it (no jitter), also while a
-  // plan is counting down, so the window can be watched arriving at the line
-  let v0;
-  if (nowD !== null) v0 = nowD - span * (st.plan ? 0.25 : 0.1);
-  else if (d.w) v0 = Math.round((d.w.start + d.w.end) / 2 - span / 2);
-  else v0 = d.first;
-  const good = css('--good'), bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted');
-  const gap = cw >= 5 ? Math.min(2, cw * 0.15) : 0.2;                       // visible gaps between frames when zoomed
-  // run length of working frames at each index (each run colored by its length: 1 red, 2 yellow, 3 green, 4 blue, 5+ purple)
+  V.dispAbs = st.clock && d.tLast !== null ? (pn - corr - d.tLast) / d.rate + (d.tLast - st.clock.t0) / st.clock.rate : null; V.dispT = pn;   // for tests: displayed now in segment frames, and when
+  const G = stripGeom(W, span, nowD !== null ? nowD : (d.w ? (d.w.start + d.w.end + 1) / 2 : d.first + span * NOW_AT)), cw = G.cw, v0 = G.v0, X = G.x;
+  V.stripGeom = { cw, v0, nowD, target: d.target, W, span };   // for tests (test_strip_geometry.js)
+  const bad = css('--bad'), gold = css('--gold'), ink = css('--cursor'), muted = css('--muted'), bg = css('--panel');
+  const gap = cw >= 5 ? Math.min(2, cw * 0.15) : 0.2;                       // visible gaps between frames, centred on the boundaries
   if (d.runs === undefined || d.runsOf !== d.tab) {
     const r = new Array(d.tab.length).fill(0);
     for (let i = 0; i < d.tab.length;) { if (!d.tab[i]) { i++; continue; } let k = i; while (k < d.tab.length && d.tab[k]) k++; for (let m = i; m < k; m++) r[m] = k - i; i = k; }
     d.runs = r; d.runsOf = d.tab;
   }
   const RUN = [null, css('--run1'), css('--run2'), css('--run3'), css('--run4'), css('--run5')];
-  ctx.globalAlpha = d.stale ? 0.45 : 1;
+  const Y0 = 26, CH = 56;                                                   // cell band
+  ctx.globalAlpha = d.stale || d.example ? 0.4 : 1;
   const fa = Math.floor(v0);
   for (let f = fa; f <= fa + span + 1; f++) {
     const i = f - d.first; if (i < 0 || i >= d.tab.length) continue;
-    ctx.fillStyle = d.tab[i] ? RUN[Math.min(5, d.runs[i])] : bad; ctx.fillRect((f - v0) * cw, 20, Math.max(1, cw - gap), 56);
-    if (d.tab4 && d.tab4[i]) { ctx.fillStyle = ink; ctx.fillRect((f - v0) * cw, 20, Math.max(1, cw - gap), 12); }   // all 4 copy on this frame
+    const x = X(f) + gap / 2, w = Math.max(1, cw - gap);
+    ctx.fillStyle = d.tab[i] ? RUN[Math.min(5, d.runs[i])] : bad; ctx.fillRect(x, Y0, w, CH);
+    if (d.tab4 && d.tab4[i]) { ctx.fillStyle = ink; ctx.fillRect(x, Y0, w, 12); }   // all 4 copy on this frame
   }
-  // run length printed on each run when there is room
   ctx.font = '600 12px ' + css('--mono'); ctx.textAlign = 'center';
   for (let f = fa - 8; f <= fa + span + 1; f++) {
     const i = f - d.first; if (i < 0 || i >= d.tab.length || !d.tab[i] || (i > 0 && d.tab[i - 1])) continue;
-    const n = d.runs[i], w = n * cw; if (w < 12) continue;
-    ctx.fillStyle = n === 2 ? '#1a1a1a' : '#ffffff'; ctx.fillText(String(n), (f - v0 + n / 2) * cw - gap / 2, 52);   // dark text on yellow
+    const n = d.runs[i], w = n * cw; if (w < 14) continue;
+    // the run length, in the middle of the run's first frame (never on a boundary between frames)
+    ctx.fillStyle = n === 2 ? '#1a1a1a' : '#ffffff'; ctx.fillText(String(n), X(f + 0.5), Y0 + CH / 2 + 4);
   }
   ctx.textAlign = 'left'; ctx.globalAlpha = 1;
-  if (d.w) { const x = (d.w.start - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(x, 10, d.w.length * cw - gap, 7); ctx.fillRect(x, 79, d.w.length * cw - gap, 7); }
-  if (st.plan) {   // middle of the aimed frame: press when this reaches the now-line
-    const xm = (st.plan.target + 0.5 - v0) * cw; ctx.fillStyle = gold; ctx.fillRect(xm - 1.5, 4, 3, 84);
+  if (d.w) { const x = X(d.w.start) + gap / 2, w = d.w.length * cw - gap; ctx.fillStyle = gold; ctx.fillRect(x, Y0 - 8, w, 5); ctx.fillRect(x, Y0 + CH + 3, w, 5); }
+  if (d.target != null && st.plan) {   // the aimed frame: a marker in the middle of its cell (press when it reaches the now-line)
+    const xm = X(d.target + 0.5); ctx.globalAlpha = d.stale ? 0.4 : 1;
+    ctx.fillStyle = bg; ctx.fillRect(xm - 3, Y0 - 2, 6, CH + 4);
+    ctx.fillStyle = gold; ctx.fillRect(xm - 1.5, Y0 - 12, 3, CH + 24);
+    ctx.beginPath(); ctx.moveTo(xm - 7, Y0 - 20); ctx.lineTo(xm + 7, Y0 - 20); ctx.lineTo(xm, Y0 - 11); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
   }
-  // time ticks relative to now (or to the left edge for the example)
+  // time ticks relative to now (or to the aim once planned)
   ctx.fillStyle = muted; ctx.font = '11px ' + css('--mono');
-  const ref = st.plan ? st.plan.target + 0.5 : (nowD !== null ? nowD : v0), step = span <= 60 ? 0.25 : span <= 120 ? 0.5 : span <= 240 ? 1 : 2;
+  const ref = st.plan && d.target != null ? d.target + 0.5 : (nowD !== null ? nowD : v0), step = [0.25, 0.5, 1, 2, 4].find(k => k * 30 * cw >= 64) || 4;
+  let lastX = -1e9;
   for (let s = Math.ceil((v0 - ref) / 30 / step) * step; (ref + s * 30 - v0) < span; s += step) {
     const x = (ref + s * 30 - v0) * cw; if (x < 0) continue;
-    const lab = st.plan && Math.abs(s) < 1e-9 ? 'press' : (s > 0 ? '+' : '') + (Math.round(s * 100) / 100) + ' s', tw = ctx.measureText(lab).width;
-    ctx.fillRect(Math.min(x, W - 1), 90, 1, 5); ctx.fillText(lab, Math.max(0, Math.min(x + 3, W - tw - 1)), 106);
+    const lab = st.plan && Math.abs(s) < 1e-9 ? 'press' : (s > 0 ? '+' : '') + (Math.round(s * 100) / 100) + ' s', tw = ctx.measureText(lab).width, lx = Math.max(0, Math.min(x + 3, W - tw - 1));
+    ctx.fillRect(Math.min(x, W - 1), Y0 + CH + 12, 1, 5); if (lx > lastX + 6) { ctx.fillText(lab, lx, Y0 + CH + 28); lastX = lx + tw; }
   }
-  let note = 'Example seed 0x12345678, marked as an example. Your own frames appear once the seed is locked.';
-  if (nowD !== null) {
-    const x = (nowD - v0) * cw;
-    if (x >= 0 && x <= W) { ctx.fillStyle = ink; ctx.fillRect(x - 1, 4, 3, 84); }
-    note = d.stale && !st.plan ? 'Resyncing after a gap: the faded frames are the prediction from before it (they may shift a little when it locks again).' : st.plan ? 'Beeping: press A when the gold line in the middle of the window reaches the white now-line, or on the last, higher beep. Visual offset moves the strip so the two happen together.' :
-      'Live: colored frames would work if you confirmed on them. The dark line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%), or press P.');
+  if (nowD !== null) {   // the now-line, with a halo so it reads on every cell colour
+    const x = X(nowD);
+    if (x >= 0 && x <= W) { ctx.fillStyle = bg; ctx.fillRect(x - 2.5, Y0 - 14, 5, CH + 28); ctx.fillStyle = ink; ctx.fillRect(x - 1, Y0 - 14, 2, CH + 28); }
   }
+  const S = stripState(d);
+  if (S.overlay && (d.stale || d.example || !d.tab.length)) {
+    ctx.font = '700 14px ' + css('--mono'); const tw = ctx.measureText(S.overlay).width, bx = Math.max(4, (W - tw) / 2 - 12);
+    ctx.globalAlpha = 0.92; ctx.fillStyle = bg; ctx.fillRect(bx, Y0 + CH / 2 - 15, tw + 24, 30); ctx.globalAlpha = 1;
+    ctx.strokeStyle = S.cls === 'stale' ? css('--warn') : muted; ctx.lineWidth = 1.5; ctx.strokeRect(bx, Y0 + CH / 2 - 15, tw + 24, 30);
+    ctx.fillStyle = S.cls === 'stale' ? css('--warn') : css('--ink'); ctx.fillText(S.overlay, bx + 12, Y0 + CH / 2 + 5);
+  }
+  const el = $('strip-state'); if (el.textContent !== S.text) el.textContent = S.text; if (el.dataset.cls !== S.cls) { el.className = 'strip-state ' + S.cls; el.dataset.cls = S.cls; }
+  let note = 'Example seed 0x12345678. Your own frames appear once the seed is locked (the Charge on Hallway turn 1, or shines).';
+  if (nowD !== null) note = st.plan ? 'Press A on the last, higher beep, or when the gold aim marker (the middle of the aimed frame) reaches the now-line. Visual offset moves the strip so the two happen together.' :
+      'Coloured frames would work if you confirmed on them; the line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%).');
   if (!PROF().rolls.length) note = 'This route step decides nothing random: just play it. The page moves to the next step when this screen closes.';
-  $('stripnote').textContent = note;
+  if ($('stripnote').textContent !== note) $('stripnote').textContent = note;
   if (st.plan) {
     const left = (st.plan.tPress - performance.now()) / 1000;
     $('count').innerHTML = (left > 0 ? left.toFixed(1) : '0.0') + '<small> s to press</small>';
@@ -1293,6 +1555,7 @@ function onFrame(t) {
   if (!dims()[0]) return;
   V.frames++; if (t - V.fpsT > 1000) { V.fps = V.frames * 1000 / (t - V.fpsT); V.frames = 0; V.fpsT = t; }
 /*@include shared/coin_detect.frag.js*/
+  if (steady) V.steadyT = t;
   chgFrame(t, present);
   // target screen
   if (V.ref) {
@@ -1302,7 +1565,13 @@ function onFrame(t) {
     // hysteresis: a score hovering around the cutoff must not flicker the screen on and off (that restarted the plan)
     const on = V.wasOn ? V.score >= num('tmatch') - 0.04 : V.score >= num('tmatch');
     // an item on Mario confirmed quickly shows the hand screen only for a moment: count it from one frame (cat M)
-    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && (RT()[routeStep].cat === 'M' || RT()[routeStep].turn === 'hw_spiny') ? 20 : 200)) { V.lastClose = t; checkPress(t); }   // the target screen just closed (after being up for a moment)
+    if (V.wasOn && !on && V.onFor > (isRoute() && RT()[routeStep] && (RT()[routeStep].cat === 'M' || RT()[routeStep].turn === 'hw_spiny') ? 20 : 200)) {   // the target screen just closed (after being up for a moment)
+      // a hand-on-Bowser screen (Spiny Flip, Time Out) with the status bar still up: a confirm hides the bar 2-3 frames
+      // later, B (back to the menu) leaves it up. Decided below; a back-out is not a press and does not move the route.
+      screenClosed(t);
+    }
+    closeTick(t, on);
+    if (on && !V.onSeen && V.onFor > 300) { V.onSeen = true; hwStepByTarget(t); } else if (!on) V.onSeen = false;
     // an optional step that does not happen: if the next step's screen shows up instead, skip to it
     if (isRoute() && RT()[routeStep] && RT()[routeStep].optional && routeStep + 1 < RT().length && !on) {
       const N = targets['jr_' + RT()[routeStep + 1].cat];
@@ -1340,6 +1609,15 @@ function onFrame(t) {
     $('r-fps').textContent = V.fps.toFixed(0) + ' fps · ' + dims().join('×') + (V.src ? ' · background' : '');
     if (!document.hidden) drawPreview();
   }
+}
+function screenClosed(t) {
+  if (isRoute() && RT()[routeStep] && RT()[routeStep].cat === 'B' && V.present) V.closePend = { t, step: routeStep };
+  else { V.lastClose = t; checkPress(t); }
+}
+function closeTick(t, on) {
+  const c = V.closePend; if (!c) return;
+  if (V.hudGone && V.hudGone >= c.t - 2 * FRAME) { V.closePend = null; V.lastClose = c.t; checkPress(c.t); }
+  else if (on || t - c.t > 450 || routeStep !== c.step) { V.closePend = null; slog('targetBackout', { at: Math.round(c.t), step: c.step }); V.pressNote = 'You backed out of the target screen (the status bar stayed up): not counted as a press.'; showPresses(); V.pressNote = null; }
 }
 function drawPreview() {
   const cv = $('preview'), [vw, vh] = dims();
@@ -1412,6 +1690,19 @@ const SHORT_GAP = 4000;
 const CHAIN_GAP = 15000;
 /* a long gap on Hallway T2, or soon after the route left the Hallway by itself (fewer than 3 real bar hides since: the
  * fight did not go on), is a retry (a reload walked back into the hallway): back to T1 without a manual step change */
+/* Which Hallway turn a hand-on-Bowser screen belongs to (feedback item 11). Spiny Flip (T1) and Time Out (T2) use the
+ * same saved screen, so the route's step alone decides, and one missed or extra confirm put the route on the wrong turn
+ * (a Spiny Flip read as Time Out never reached the tracker; Time Out read as the Spiny Flip planned nothing). The
+ * Charge burst marks T1 (chargeStepSet). The screen is told by time from it: Lakilester's target screen comes 2-6 s
+ * after the burst with no long bar hide between; Time Out's comes after Bowser's attack (the bar hidden 3 s or more),
+ * 9+ s after the burst (route clips and live logs: 11-13 s). */
+function hwStepByTarget(t) {
+  if (!isRoute() || st.hwBurstT == null) return;
+  const hi = RT().findIndex(x => x.turn === 'hw_spiny'); if (hi < 0) return;
+  const since = t - st.hwBurstT, attack = (st.longHides || []).some(h => h.at > st.hwBurstT + 1500 && h.ms >= 3000);
+  if (routeStep === hi && attack && since > 9000 && since < 60000) { slog('stepByTarget', { from: routeStep, to: hi + 1, why: 'Time Out screen', sinceMs: Math.round(since) }); setStep(hi + 1); }
+  else if (routeStep === hi + 1 && !attack && since > 1000 && since < 8000 && !st.hwDone) { slog('stepByTarget', { from: routeStep, to: hi, why: 'Spiny Flip screen', sinceMs: Math.round(since) }); setStep(hi); }
+}
 function hwRetry(hiddenMs) {
   if (!isRoute() || hiddenMs == null || hiddenMs < ZW_GAP) return;
   const hi = RT().findIndex(x => x.turn === 'hw_spiny'), s = RT()[routeStep]; if (hi < 0 || routeStep <= hi) return;
@@ -1419,6 +1710,8 @@ function hwRetry(hiddenMs) {
   slog('stepBackToHallway', { from: routeStep, to: hi, hiddenMs: Math.round(hiddenMs) }); zw.on = false; st.hwLeft = null; setStep(hi);
 }
 function coinBack(hiddenMs) {
+  if (hiddenMs != null && hiddenMs >= 3000) { (st.longHides = st.longHides || []).push({ at: performance.now() - 1000 - hiddenMs, ms: hiddenMs }); if (st.longHides.length > 20) st.longHides.shift(); }
+  if (CR.run.length) rateClose();      // a run of shines ends when the coin goes away (a room load drops game frames)
   if (hiddenMs != null && hiddenMs >= ZW_GAP) { walkEnd(hiddenMs); hwRetry(hiddenMs); }
   if (zw.on) zwCoinBack(hiddenMs); else if (zwStart(hiddenMs)) return;
   if (!seg().taps.length) {          // a look with no shine: the gap to the next shine now spans both dropouts
@@ -1539,8 +1832,9 @@ function measurePress(tObs) {
 function showPresses() {
   const row = $('press-row'), P = st.plan && st.plan.measured;
   row.hidden = false;
-  if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
-  if (!presses.length && !(P || st.lastPress)) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed, measured against the middle of the window.'; $('press-apply').hidden = $('press-apply-v').hidden = true; return; }
+  calPreview();
+  if (V.pressNote) { $('press-msg').textContent = 'Press check: ' + V.pressNote; return; }
+  if (!presses.length && !(P || st.lastPress)) { $('press-msg').textContent = 'Press check: after you confirm on the target screen (with the beeps running), this says how early or late you pressed, measured against the middle of the aimed frame.'; return; }
   const last = presses.length ? presses[presses.length - 1] : (P || st.lastPress || { err: 0 }).err, r = x => Math.round(x * 10) / 10;
   const avg = presses.length ? presses.reduce((a, b) => a + b, 0) / presses.length : 0;
   const spread = presses.length ? Math.sqrt(presses.reduce((a, b) => a + (b - avg) * (b - avg), 0) / presses.length) : 0;
@@ -1552,23 +1846,47 @@ function showPresses() {
   if (lq && lq.likely) s += 'The page counts it as worked (the next shines check it). Did the outcome come out right (all 4 copied, the Close Call dodged)? Then your capture reads presses about ' + Math.abs(r(lq.err)) + ' frames ' + (lq.err < 0 ? 'early' : 'late') + ': set Press check correction to ' + (Math.round((num('pfix') + lq.err) * 2) / 2) + ' (now ' + num('pfix') + '). ';
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
-  if (ready) s += 'Only if it has been failing: pressed on the beeps? Move beeps (' + num('off') + ' → ' + step(num('off') - avg) + '). Pressed on the gold line? Move visual (' + num('voff') + ' → ' + step(num('voff') - avg) + ').';
-  $('press-apply').hidden = $('press-apply-v').hidden = !ready;
-  $('press-apply').dataset.v = step(num('off') - avg); $('press-apply-v').dataset.v = step(num('voff') - avg);
+  if (ready) s += 'Consistently off? Calibrate… (next to this) moves the beep and visual offsets by the measured error, after you confirm.';
   const lp = P || st.lastPress, good = lp ? (lp.works ? true : lp.likely ? null : false) : null;
   const col = good === true ? 'var(--run3)' : good === false ? 'var(--run1)' : 'var(--ink)';
   $('press-msg').innerHTML = '<span style="color:' + (good === null ? 'var(--bg)' : '#fff') + '; background:' + col + '; font-weight:700; font-size:1.25em; display:inline-block; padding:4px 10px; border-radius:6px; margin-bottom:4px">' + head + (good === true ? ' ✓' : good === false ? ' ✗' : lp && lp.likely ? ' ?' : '') + '</span><br>' + s;
 }
-function applyPress(id, btn) { $(id).value = $(btn).dataset.v; saveSettings(); presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); }
-$('press-apply').onclick = () => applyPress('s-off', 'press-apply');
-$('press-apply-v').onclick = () => applyPress('s-voff', 'press-apply-v');
+/* Calibrate from last press (feedback item 9): in a menu, never one click. It moves the beep offset and the visual offset
+ * by the last measured press error (or the average of the last 3 / 5 presses on the beeps), shows what it will change,
+ * and applies only after "Yes, change them". The presses measured against the old offsets are then cleared. */
+const r1 = x => Math.round(x * 10) / 10;
+function calProposal() {
+  const n = Math.max(1, +$('cal-n').value || 1), L = presses.slice(-n); if (!L.length) return null;
+  const e = L.reduce((a, b) => a + b, 0) / L.length;
+  return { n: L.length, want: n, err: e, off: r1(num('off') - e), voff: r1(num('voff') - e), beep: $('cal-beep').checked, vis: $('cal-vis').checked };
+}
+function calPreview() {
+  const c = calProposal(), el = $('cal-preview'), go = $('cal-go');
+  $('cal-yes').hidden = $('cal-no').hidden = true; go.hidden = false;
+  if (!c) { el.textContent = 'No press on the beeps measured yet: confirm on the beeps a few times first.'; go.disabled = true; return; }
+  const what = (c.n === 1 ? 'The last press' : 'The last ' + c.n + ' presses (average)') + (c.n < c.want ? ' (only ' + c.n + ' so far)' : '') + ': ' + (Math.abs(c.err) < 0.05 ? 'on time' : Math.abs(r1(c.err)) + ' frames ' + (c.err > 0 ? 'late' : 'early')) + '.';
+  const ch = [c.beep ? 'Beep offset ' + num('off') + ' → ' + c.off : null, c.vis ? 'Visual offset ' + num('voff') + ' → ' + c.voff : null].filter(Boolean);
+  el.textContent = what + ' ' + (ch.length ? 'It will set ' + ch.join(', ') + '.' : 'Tick what to change.');
+  go.disabled = !ch.length || Math.abs(c.err) < 0.05;
+}
+$('cal-go').onclick = () => { const c = calProposal(); if (!c) return; $('cal-go').hidden = true; $('cal-yes').hidden = $('cal-no').hidden = false; $('cal-preview').textContent = 'Change ' + [c.beep ? 'the beep offset to ' + c.off : null, c.vis ? 'the visual offset to ' + c.voff : null].filter(Boolean).join(' and ') + '?'; };
+$('cal-no').onclick = () => calPreview();
+$('cal-yes').onclick = () => {
+  const c = calProposal(); if (!c) return calPreview();
+  slog('calibrated', { err: +c.err.toFixed(2), n: c.n, off: c.beep ? [num('off'), c.off] : undefined, voff: c.vis ? [num('voff'), c.voff] : undefined });
+  if (c.beep) $('s-off').value = c.off; if (c.vis) $('s-voff').value = c.voff; saveSettings();
+  presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {}
+  V.pressNote = 'Calibrated: ' + [c.beep ? 'beep offset ' + c.off : null, c.vis ? 'visual offset ' + c.voff : null].filter(Boolean).join(', ') + ' (from ' + (c.n === 1 ? 'the last press' : 'the last ' + c.n + ' presses') + ', ' + r1(c.err) + ' frames). The measured presses start again.';
+  $('cal-menu').open = false; showPresses(); V.pressNote = null;
+};
+['cal-n', 'cal-beep', 'cal-vis'].forEach(id => $(id).addEventListener('change', calPreview));
+$('cal-menu').addEventListener('toggle', calPreview);
 $('press-clear').onclick = () => { presses.length = 0; try { localStorage.setItem('tot-presses', '[]'); } catch (e) {} showPresses(); };
 showPresses();
 // sound check: the same four beeps a plan plays, starting in half a second
 $('test-beep').onclick = () => {
   const a = audio(); if (!a) { camMsg('This browser has no Web Audio.'); return; }
-  const n = Math.max(1, Math.round(num('beeps'))), g = num('gapms'), t = performance.now() + 500;
-  for (let i = 0; i < n; i++) beepAt(t + i * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06);
+  const n = nBeeps(); playBeeps(performance.now() + 500 + (n - 1) * num('gapms'));
   camMsg('Playing ' + n + ' test beeps (audio ' + a.state + '). No sound? Check that this tab is not muted and which speaker Chrome uses.');
 };
 // any click or key wakes the audio (browsers start it suspended until the page is used)
@@ -1581,7 +1899,8 @@ function autoPlan() {
   if ((!st.lock && !zw.on) || (st.searching && !zw.on) || !PROF().rolls.length) return;
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
-  const again = !!st.plan; makePlan(); if (st.plan) st.plan.again = again;
+  if (st.planTry && performance.now() - st.planTry < 500) return;     // no plan last time (No edge, no window): try again twice a second, not every frame
+  const again = !!st.plan, P0 = st.plan; st.planTry = performance.now(); makePlan(); if (st.plan && st.plan !== P0) { st.plan.again = again; st.planTry = 0; }
 }
 // claude.ai: offer the page as a file, since the camera only works outside the claude.ai frame
 (async function () {
@@ -1595,6 +1914,6 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
+window.__tot = { zwTap: t => zwTap(t), screenClosed, closeTick, hwStepByTarget, presses, calPreview, zwStates: n => zwStates(n), fastTable, pickRun, nBeeps, earliestFrame, pressTime, consoleRate, CR, stripData, CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
 })();
 </script>

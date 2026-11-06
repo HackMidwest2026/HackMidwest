@@ -1,3 +1,105 @@
+# Time Out Timer v70: the runner's feedback on v69 (Nov 6)
+
+What the runner reported, what it was, and what changed. Tests: `test_strip_geometry.js`, `test_beeps_window.js`,
+`test_calibrate.js`, `test_zw_wait.js`, `test_turn_backout.js` (all in `run_suite.sh`), and `test_charge_feed.js` on the 14
+Hallway clips.
+
+1. **"The white bar sits between frames."** In dark mode the white bar is the now-line (`--cursor`); the gold line is the
+   aimed frame. Geometry is now explicit and tested: frame f is the cell [f, f+1); the now-line is at nowF + 1 - voff,
+   i.e. inside cell f exactly while a press now (with the visual offset) lands on f; the aim marker is at target + 0.5 and
+   meets the now-line at tLast + (target - 0.5 + voff) * rate (measured: within 0.012 frames, voff 0 / -6 / -4.5 / +2.3;
+   the gold column on the canvas is within 0.5 px of the cell centre). What could put a marker between frames in v69:
+   - the zero-wait plan drew the top state's frames but chose the frame by the mixture of all states, so the aimed frame
+     could be a failing cell between two runs (two yellow 2-runs); the strip now shows the frames most states agree on, and
+     "best chance" only aims at such a frame;
+   - the run-length label "2" was drawn on the boundary between the two yellow cells; it is now in the middle of a cell;
+   - the cells were drawn left-aligned (the gap after each cell), now centred on the boundaries;
+   - v69 applied the shine-clock's display correction (up to 100 ms) to the tracker's plans too.
+   With different beep and visual offsets, at the last beep the now-line is at target + 0.5 + (beep offset - visual offset):
+   a half-frame difference puts it on a boundary at the beep, by design (the beeps and the strip are separate cues).
+2. **"It stopped beeping after ~20 s of waiting."** Found and fixed:
+   - **The cause:** `zwPlan` stepped every tracker state to "now" at each plan. A shine drawn in the last ~10 frames is read
+     only ~6 + tapLate frames later, so the state was passed over that frame before the flash was seen, and the next
+     update (the next plan, ~2 s later while waiting) dropped every state that had the shine: the true one with it, about
+     a 25% chance per replan. `test_zw_wait.js` reproduces it: v69 loses the seed after 9-10 s of replans, v70 keeps it
+     for 25 s. The tracker is now stepped only to the frames whose shines have had time to be read (`zwHorizon`), and the
+     coin's watched stretch only to what was watched on a steady coin (`zwSeen`; v69 set it to now - 4 even with the coin
+     hidden).
+   - **The clock:** the Charge tracker ran on 33.367 ms frames; a real N64 runs 240p at 33.43 ms (the runner's logs:
+     33.414-33.445 ms over 60+ shine runs). The clock fell a frame behind every ~18 s, shifting the beeps (~0.9 frame at
+     the usual Time Out frame) and pushing the menu shines out of tolerance on long waits. The page now measures the
+     console's frame time from every run of shines (`consoleRate`, kept in the browser; default 33.427; Settings >
+     Advanced can fix it). The tracker's shine offsets on 20-53-09 went from a drift of +0.4..+1.2 frames to -0.3..+0.4,
+     and the share of states for which Time Out works at the real confirm on the two clips that worked rose from
+     0.67 to 0.85 (20-53-09) and 0.8 to 1.0 (15-19-56).
+   - **Backing out:** B on Time Out's target screen counted as the Time Out confirm, so the attempt was marked done and
+     nothing more was planned. A hand-on-Bowser screen closing with the status bar still up is now a back-out (a confirm
+     hides the bar 2-3 frames later): not a press, the route stays, the beeps restart on return.
+   - When the tracker is really contradicted, the sidebar says "Charge lock: LOST" with why, and the strip says "Seed lost".
+3. **"It failed to capture the Charge once (31%)."** A no-lock leaves a blind press (31%). Hardened:
+   - a dropped frame-3 picture made the trigger picture frame 4 (+12.5) or 5 (+19.4); v69 took it as frame 3 (every frame
+     after it off by one, no lock) or, at +19.4, did not trigger at all. The trigger now accepts up to +25 and the
+     placement chooses the trigger picture's frame (3, 4 or 5), and the clock anchor follows it;
+   - the retry with other placements: up to 4 alternatives while there is time (9 s after the rays), and also when the
+     first placement had no skip (a skip forced at frames 13, 9, 17, 21);
+   - frame-fed (below): all 14 clips lock their known seeds from T1, the 7 runner clips from T2, both new clips from the
+     FB2 step; the forced wrong placement (BAN0) is recovered by the first retry.
+4. **Low-opacity frames** are now explained on the strip in words: "Seed lost – showing old prediction", "Waiting for
+   lock", "Reading the Charge…", "Tracking N possible states", "Window passed – planning the next one", "Seed changed".
+5. **The strip jumped.** The now-line stays at 25% of the width in every state (v69: 10% without a plan, 25% with one);
+   clock changes are eased (50 ms/s, 200 ms/s during a plan so the aim still meets the line at the cue); between plans on
+   the tracker the strip shows the tracker's own frames (v69 showed the example seed until the plan); a plan's window
+   stays fixed in game frames, and when a shine rules its state out the page replans and says "Seed changed".
+6. **Window type** (Settings): best chance (automatic), green 3+, yellow 2, red 1 (calibration). The first run of that
+   kind that starts no earlier than the earliest frame and is aimed within the max extra wait; otherwise the page says
+   there is none. The aim is the run's middle frame (for even runs, the middle frame more states agree on).
+7. **3 or 4 beeps.** v69 planned from now + lead + 1 frame and ignored the beep offset: with -5 and 4 beeps 500 ms apart
+   over a 1.5 s lead the first beep was ~150 ms in the past (and dropped) unless the chosen frame came 5+ frames later.
+   Beeps is a dropdown (default 3, once moved from a saved 4); every plan takes the earliest frame for which the press
+   and every beep are still ahead, so it always plays exactly that many (tested: beeps 1-5 x offsets -5/-3.5/0/+2).
+8. **Manual controls** (Shine, Find seed, New segment, Plan press, Undo tap, the spin list, reaction / TV lag / shine
+   beeps) are in a collapsed "Manual mode (tapping)" section; keyboard shortcuts still work. Download session log is
+   next to Reset in the status panel.
+9. **Calibrate from last press** is in a "Calibrate…" menu next to Press check: last press or the average of the last
+   3 / 5, beep and/or visual offset, shows the change, applies on "Yes, change them", then clears the measured presses.
+   The one-click Move beeps / Move visual buttons are gone.
+10. **Settings:** Basic (window type, beeps, lead, beep and visual offsets, Charge area) always shown; Advanced (with a
+   line each) collapsed.
+11. **Turn identification:** Spiny Flip (T1) and Time Out (T2) share the hand-on-Bowser screen. A Bowser screen 9+ s
+   after the Charge burst and after Bowser's attack (a 3 s+ bar hide) is Time Out (T1 -> T2); one 1-8 s after the burst
+   with no attack is the Spiny Flip (T2 -> T1). With the back-out fix, B on either screen no longer moves the route.
+
+Frame-fed on v70 (`test_charge_feed.js`, real time; "at confirm" = share of states for which Time Out works at the
+real confirm, -1/0/+1). With the console's frame time the prediction at the real confirm agrees with every known outcome
+(15-17-02 now 0.24, it failed; 15-20-15, 15-19-56 and 20-53-09 worked):
+
+| Clip | Seed (score, ratio) | Spiny c | States | At confirm | Earlier builds (README; the clip's actual outcome) |
+|---|---|---|---|---|---|
+| 15-14-09 | b400fca5 (7075, 3.94) | 105 | 30 | 0.27 / 0.39 / 0.09 | 0.39 / 0.09 / 0.08 (fails) |
+| 15-15-06 | cf5894f0 (5702, 3.74) | 105 | 20 | 0 / 0 / 0 | 0 / 0 / 0.02 |
+| 15-16-08 | 6d3b7b2b (6572, 5.11) | 106 | 27 | 0.59 / 0.04 / 0.31 | 0.62 / 0.01 / 0.31 |
+| 15-17-02 | b3fb9c3b (6197, 2.27) | 103 | 8 | 0.67 / 0.24 / 0.65 | 0.24 / 0.65 / 0.87 (actual: fails) |
+| 15-18-30 | 2d5dd210 (7420, 4.37) | 102 | 36 | 0.11 / 0.02 / 0.01 | 0.18 / 0.04 / 0.17 |
+| 15-19-21 | ea113ee3 (7772, 4.73) | 102 | 24 | 0.3 / 0 / 0.16 | 0 / 0 / 0.78 (fails) |
+| 15-20-15 | 306686e9 (6894, 4.45) | 106 | 2 | 0 / 0.76 / 0.24 | 1.00 (works) |
+| 15-18-39 | dedb3e53 (8366, 3.95) | 105 | 501 | 0.26 / 0.05 / 0.18 | 0.44 / 0.10 / 0.13 (fails) |
+| 15-19-56 | 517b7c30 (7004, 3.59) | 104 | 2 | 0.8 / **1** / 0.2 | 0.2 / 0.8 / 0.2 (works) |
+| 15-22-53 | d066fdbd (5967, 3.06) | 102 | 3 | 0 / 0 / 0 | 0 / 0 / 0 |
+| 15-25-30 | 180f546b (5913, 4.10) | 103 | 2 | 0 / 0 / 0 | 0 / 0 / 0 |
+| 15-30-15 | ce0959dc (6189, 3.75) | 103 | 0 | No edge (dies at 481, as before) | No edge |
+| 20-53-09 | 7dc894b3 (7476, 4.54) | 107 | 4 | 1 / **0.85** / 0.83 | 0.75 / 0.67 / 0.27 (works) |
+| 20-54-59 | b59bef18 (6671, 3.94) | 101 | alive | (not pressed) | |
+
+From T2 the runner's 7 clips lock the same seeds and set T1; from the FB2 step both new clips take the Hallway profile
+and lock; the FB2 clip from T2 moves the route to FB2. 20-54-59 with its target screen saved (REF=1300, a shine search
+running): 4 plans in the 8 s wait, the seed kept through 5 shines (v69 also kept it in this clip: no shine fell in the
+last 10 frames before a plan). BAN0 (a forced wrong placement): no lock (1714, 1.04x), the first retry locks b59bef18.
+One T2 run of 20-54-59 lost the seed at frame 405 after the coin detector missed a shine (a busy frame feed); the tracker
+still drops a state on a missed shine.
+
+Not changed: the Final Bowser tracker still runs on 33.367 ms frames (its tests are emulator renders); the shine-lock
+clock keeps its own fit.
+
 # Final Bowser phase 2, T6: the Charge lock -> the popup A (Close Call) -> T7 Power Bounce (Nov 3)
 
 **Bottom line.**

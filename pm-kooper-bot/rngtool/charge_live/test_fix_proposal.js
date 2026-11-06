@@ -47,12 +47,12 @@ function variants() {
 const PAGE = fs.readFileSync(path.join(RT, 'page_template.html'), 'utf8'), R = require(path.join(RT, 'pmrng_core.js'));
 const PAGE0 = cp.execFileSync('git', ['show', BASE + ':./page_template.html'], { cwd: RT, maxBuffer: 1 << 26 }).toString();
 function tracker(chg, page) {
-  page = page || PAGE; const a = page.indexOf('const ZW_SCENE'), b = page.indexOf('function zwPlan()');
+  page = page || PAGE; const a = page.indexOf('const ZW_SCENE'), b = page.indexOf('function zwPlan(');
   const code = [page.slice(a, b), grabLine(chg, /const CHG_N = .*\n/), grabLine(chg, /const CHG_K = .*\n/), grabLine(chg, /const CHG_LAGS = .*\n/),
-    grabLine(chg, /const CHG_SHIFTS = .*\n/), grabFn(chg, 'chgStartTracker'),
+    grabLine(chg, /const CHG_SHIFTS = .*\n/), (chg.includes('function chgRate(') ? grabFn(chg, 'chgRate') : ''), grabFn(chg, 'chgStartTracker'),
     'this.api = { zw, zwF, zwUpdate, zwInput, zwTap, zwCoinBack, chgStartTracker, CHG_IMPS };'].join('\n');
   const settings = { vlag: 50, pfix: 0 }, ctx = { R, FRAME: R.FRAME_MS, Math, Array, Map, Set, Object, Number, JSON, String, now: 0, log: [],
-    VAN: { B: () => R.PROFILES.timeout.vanish }, CHG: {}, num: k => +(settings[k] || 0) };
+    VAN: { B: () => R.PROFILES.timeout.vanish }, CHG: {}, V: {}, num: k => +(settings[k] || 0) };
   ctx.slog = (ev, o) => ctx.log.push(Object.assign({ ev }, o)); ctx.performance = { now: () => ctx.now };
   vm.createContext(ctx); vm.runInContext(code, ctx); return Object.assign(ctx.api, { ctx });
 }
@@ -68,8 +68,8 @@ let fails = 0; const check = (ok, msg) => { if (!ok) { fails++; console.log('FAI
 
 /* ---- 1. the live log ---- */
 const LOG = { up: 424681, spiny: 426190, lock: 427144, shines: [431040, 432723, 435023, 438274, 440673] };
-function runLog(chg, T, TB) {
-  const L = tracker(chg), presOf = t => t >= LOG.up && t < LOG.spiny;
+function runLog(chg, T, TB, page) {
+  const L = tracker(chg, page), presOf = t => t >= LOG.up && t < LOG.spiny;
   const zw = lockAt(L, T, LOG.lock, presOf, [], LOG.spiny, 0xed937d1f, [21]), log = L.ctx.log.map(e => [e.ev, e.c, e.at, e.particles]);
   const atConfirm = zw.parts.length;
   if (zw.dead || TB == null) return { log, atConfirm, end: zw.parts.length };
@@ -79,7 +79,7 @@ function runLog(chg, T, TB) {
   return { log, atConfirm, end: zw.parts.length, states: [...new Set(zw.parts.map(p => p.S.s.toString(16) + ' ' + p.S.branch))] };
 }
 const [OLD, NEW] = variants(), want = JSON.stringify([['zwStart', null, null, 2], ['zwInconsistent', null, 120, null], ['zwInput', 120, null, 0]]);
-const Ts = []; for (let T = 422200; T <= 422300; T++) { const r = runLog(OLD, T); if (r.log[r.log.length - 1][1] === 120) Ts.push([T, JSON.stringify(r.log.map(x => x.map(y => y === undefined ? null : y))) === want]); }
+const Ts = []; for (let T = 422200; T <= 422300; T++) { const r = runLog(OLD, T, undefined, PAGE0); if (r.log[r.log.length - 1][1] === 120) Ts.push([T, JSON.stringify(r.log.map(x => x.map(y => y === undefined ? null : y))) === want]); }
 const repro = Ts.filter(x => x[1]).map(x => x[0]);
 check(repro.length >= 5, 'unpatched: the logged death (zwInconsistent at 120) is reproduced for ' + repro.length + ' clock origins');
 console.log('log: clock origins giving c = 120: ' + Ts[0][0] + '..' + Ts[Ts.length - 1][0] + ' ms; unpatched reproduces the logged death on ' + repro[0] + '..' + repro[repro.length - 1]);

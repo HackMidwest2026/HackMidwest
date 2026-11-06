@@ -42,7 +42,7 @@ const CHG_BRIGHT = [7.2, 12.5, 19.4, 28, 35.9, 42.1, 47.6, 49.2, 50.4, 53.9, 56.
 const CHG_BRIGHT_FB2 = [11, 16.2, 22.4, 28.4, 33.8, 38.7, 42.2, 42.8, 43.7, 46.3, 47.6, 47.7, 49.4, 50.3, 50, 49.9, 47.6, 48.1, 46.1, 44.2, 43.2, 39.9,
   37.8, 34.7, 27.5, 20.7, 14, 9.6, 5.4, 1.5, 2.4, -1.4, -5.2, -6.9, -7.1, -7, -7.1, -7.1, -7, -6.9, -6.9, -7, -6.9];   // frames 3..45
 const CHG_PROF = {
-  hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 16, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true },
+  hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true },
   fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 } };
 /* the burst's first picture (frame 3) comes 13 game frames after the bar hides for the Charge confirm: 433-478 ms on the
  * 7 route clips and the first live attempt. hw: the trigger only counts trigMin..trigMax ms after a hide that ended a
@@ -111,7 +111,7 @@ function chgPendResolve() {
   CHG.preUsed = CHG.trig.t; V.preDone = V.preDone || {}; V.preDone[hi + ':' + hidePre] = true;
   slog('chargeConfirm', { at: Math.round(tObs), from: P ? 'bar' : 'burst' }); preConfirm(hwPre, tObs);
 }
-function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null, armP: null, G: null, F0: null, skips: null, alt: 0 }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
+function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null, armP: null, G: null, F0: null, skips: null, alt: 0, forced: 0 }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
 chgReset();
 let chgCv = null, chgCtx = null;
 function chgCanvas() { if (!chgCv) { chgCv = document.createElement('canvas'); chgCv.width = 640; chgCv.height = 480; chgCtx = chgCv.getContext('2d', { willReadFrequently: true }); } return chgCtx; }
@@ -155,15 +155,19 @@ function chgFrame(t, present) {
       const base = CHG.means.slice(0, -1).sort((a, b) => a - b)[CHG.means.length >> 1];
       const P = CHG.prof || CHG_PROF.hw;
       if (m > base + P.trigLo && m < base + P.trigHi && !(P.baseMin && base < P.baseMin)) {   // baseMin: a fade from black (battle entry) is no Charge
-        CHG.state = 'capture'; CHG.trig = { t, base, i: CHG.ring.length - 1 }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); }
+        // which burst frame the trigger picture is (hw): frame 3 reads +7.0..7.8 on every clip and live trigger; when the
+        // browser dropped frame 3's pictures the first one above the menu is frame 4 (+12.5) or 5 (+19.4), and v69 took it
+        // as frame 3 (or, at +19.4, did not trigger at all): every frame after it one or two off, no lock
+        const d0 = m - base, n0 = P.trigN ? (d0 < 9.85 ? 3 : d0 < 15.95 ? 4 : 5) : 3;
+        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1 }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); }
     }
     return;
   }
   // capture: until game frame ~50; the burst must keep rising (a real Charge: +30 within ~0.4 s)
   CHG.frames.push(fr);
-  const dt = t - CHG.trig.t;
+  const dt = t - CHG.trig.t;   // from frame 3 (CHG.trig.t is frame 3's time even when the trigger picture was a later frame)
   // hw: every picture of the burst (game frames 5..27 by time) must sit on CHG_BRIGHT, within +-1.5 frames and 10 levels
-  if (chgP().shape) { const n = 3 + dt / FRAME;
+  if (chgP().shape) { const n = 3 + (t - CHG.trig.t) / FRAME;
     if (n >= 5 && n <= 27) { let lo = 1e9, hi = -1e9; for (let k = Math.max(3, Math.floor(n - 1.5)); k <= Math.min(45, Math.ceil(n + 1.5)); k++) { lo = Math.min(lo, CHG_BRIGHT[k - 3]); hi = Math.max(hi, CHG_BRIGHT[k - 3]); }
       const d = m - CHG.trig.base; if (d < lo - 10 || d > hi + 10) CHG.shapeBad++; } }
   if ((dt > 330 && dt < 400 && m < CHG.trig.base + 15) || CHG.shapeBad > 3) { slog('chargeFalseTrigger', { m: +m.toFixed(1), shapeBad: CHG.shapeBad || 0 }); CHG.state = 'armed'; CHG.ring = CHG.frames.slice(-16); CHG.frames = []; return; }
@@ -185,7 +189,8 @@ function chgGameFrames(ban) {     // ban: Set of j * 64 + n, assignments an earl
   const J = []; for (let i = ti; i < F.length; i++) if (i === ti || fresh[i]) J.push(i);
   const base = CHG.trig.base, INF = 1e18, cost = [], from = [], BR = chgP().bright(), TOL = chgP().tol;
   for (let j = 0; j < J.length; j++) { cost.push(new Float64Array(NN + 3).fill(INF)); from.push(new Int16Array(NN + 3)); }
-  cost[0][3] = 0;
+  if (chgP().trigN) { const d = F[ti].m - base; for (let n = 3; n <= 5; n++) cost[0][n] = Math.min(25, ((d - BR[n - 3]) / TOL(BR[n - 3])) ** 2) + 3 * (n - 3); }
+  else cost[0][3] = 0;
   for (let j = 1; j < J.length; j++) {
     const d = F[J[j]].m - base, dt = F[J[j]].t - F[J[j - 1]].t;
     for (let n = 3; n < NN + 3; n++) {
@@ -202,8 +207,10 @@ function chgGameFrames(ban) {     // ban: Set of j * 64 + n, assignments an earl
   // where this placement says a game frame had no picture of its own (or a picture was shown twice) inside the rays: the
   // assignments a retry bans so that the next-best placement puts it elsewhere (chgRetry)
   CHG.skips = []; for (let j = 1; j < J.length; j++) if (path[j] !== path[j - 1] + 1 && path[j] <= 36) CHG.skips.push(j * 64 + path[j]);
+  // the trigger picture's frame as placed: frame 3's time (the clock's anchor) follows from it
+  const n0 = J.length ? path[0] : 3; CHG.trig.n = n0; CHG.trig.t = (CHG.trig.tRaw != null ? CHG.trig.tRaw : tT) - (n0 - 3) * FRAME;
   // before it the picture barely changes: by time
-  for (let n = -2; n <= 2; n++) { const want = tT + (n - 3) * FRAME; let bi = null;
+  for (let n = -2; n <= 2; n++) { const want = tT + (n - n0) * FRAME; let bi = null;
     for (let i = 0; i < ti; i++) if (bi == null || Math.abs(F[i].t - want) < Math.abs(F[bi].t - want)) bi = i;
     if (bi != null && Math.abs(F[bi].t - want) < 0.75 * FRAME) out[n < 0 ? NN + 2 + n : n] = bi; }
   return out.map(i => (i == null ? null : F[i]));
@@ -346,7 +353,7 @@ async function chgSolve() {
       CHG.frames = []; CHG.state = 'notseen'; CHG.why = 'Charge not seen: Mario not found on the captured frames (NCC ' + (+sh.ncc).toFixed(2) + ')';
       slog('chargeNotSeen', { why: 'no Mario', mario: +(+sh.dx).toFixed(1), marioNcc: +(+sh.ncc).toFixed(2) }); chgPendDrop('no Mario'); chgShow(); return;
     }
-    if (chgP().id === 'hw') chgPendResolve();      // the Charge is real: its confirm counts now (and the route is on Hallway T1)
+    if (chgP().id === 'hw') { st.hwBurstT = CHG.trig.t; chgPendResolve(); }      // the Charge is real: its confirm counts now (and the route is on Hallway T1)
     const maps = chgMaps(G, cen, CHG_N, E && E.prev), t1 = performance.now();
 if (window.__chgDebug) {
     CHG.dbg = G.map(f => { if (!f) return null; const a = []; for (let y = 4; y < 480; y += 8) for (let x = 4; x < 640; x += 8) a.push(f.Y[y * 640 + x]); return [Math.round(f.t - CHG.trig.t), a]; });
@@ -354,7 +361,7 @@ if (window.__chgDebug) {
     }
     const raw = CHG.frames; CHG.info = { raw: raw.length, spanMs: Math.round(raw[raw.length - 1].t - raw[0].t), grabMs: +(CHG.grabMs || 0).toFixed(1), gaps: raw.slice(1).map((f, i) => Math.round(f.t - raw[i].t)).join(','), frames: G.slice(0, CHG_N).filter(Boolean).length, mario: +sh.dx.toFixed(1), marioNcc: +sh.ncc.toFixed(2), dxWorld: +dxw.toFixed(2), mapsMs: Math.round(t1 - t0) };
     if (E) { CHG.info.early = { mapsMs: E.mapsMs, startedBeforeRaysEndMs: Math.round(CHG.tEnd - E.t1) }; CHG.info.prof = chgP().id; }
-    CHG.F0 = CHG.frames; CHG.cen = cen; CHG.alt = 0; CHG.ban = new Set();
+    CHG.F0 = CHG.frames; CHG.cen = cen; CHG.alt = 0; CHG.forced = 0; CHG.ban = new Set();
     CHG.frames = []; CHG.G = G; CHG.state = 'search'; CHG.tSearch = E ? E.t1 : t1; chgShow();
     slog('chargeMaps', CHG.info);
     let res; if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
@@ -450,10 +457,16 @@ function chgSearch(maps, opts) {
  * 45-48 frames, clean capture). Retry with the next-best placement: the assignments around each skip of the last one
  * are banned (the skip moves or goes), at most CHG_ALTS times (a search is 1.2-3.5 s live; Time Out's target screen comes
  * ~12 s after the rays). */
-const CHG_ALTS = 2;
+/* v70: up to 4 alternatives while there is time (a lock up to ~9 s after the rays still reaches Time Out: the Spiny Flip
+ * confirm is held, CHG.spiny, and the turn-2 menu prunes). A placement with no skip in the rays gets alternatives too:
+ * one picture per game frame is the commonest placement, and a game frame with no picture of its own in the flat part
+ * of the burst (frames 9-17) leaves it with no skip to move. Those alternatives force a skip at frame 13, then 9, then
+ * 17 (the identity assignment of that frame's picture banned). */
+const CHG_ALTS = 4, CHG_ALT_MS = 9000, CHG_FORCE = [13, 9, 17, 21];
 async function chgRetry() {
   try {
     CHG.alt++; const path0 = (CHG.skips || []).slice(); for (const k of path0) for (let d = 0; d <= 2; d++) CHG.ban.add(k + d * 65);   // the skip's picture and the next two, at their frames
+    if (!path0.length) { const m = CHG_FORCE[(CHG.forced = (CHG.forced || 0) + 1) - 1]; if (m != null) CHG.ban.add((m - 3) * 64 + m); }
     CHG.frames = CHG.F0; const G = chgGameFrames(CHG.ban); CHG.frames = [];
     const t1 = performance.now(), maps = chgMaps(G, CHG.cen, CHG_N); CHG.G = G; CHG.state = 'search'; CHG.tSearch = performance.now(); chgShow();
     slog('chargeRetry', { alt: CHG.alt, banned: CHG.ban.size, skips: CHG.skips.map(k => k & 63), frames: G.slice(0, CHG_N).filter(Boolean).length, mapsMs: Math.round(CHG.tSearch - t1) });
@@ -475,7 +488,7 @@ function chgDecide() {
   if (!a || a.sc < CHG_MIN || a.sc / b.sc < CHG_RATIO) {
     CHG.state = 'nolock'; CHG.why = a ? 'no clear seed (best ' + Math.round(a.sc) + ', ' + (a.sc / b.sc).toFixed(2) + 'x the next)' : 'no candidates';
     slog('chargeNoLock', CHG.info);
-    if (!fb2 && CHG.info.marioNcc >= CHG_NCC_MIN && CHG.alt < CHG_ALTS && CHG.skips && CHG.skips.length && CHG.F0) { chgRetry(); return; }
+    if (!fb2 && CHG.info.marioNcc >= CHG_NCC_MIN && CHG.alt < CHG_ALTS && CHG.F0 && performance.now() - CHG.tEnd < CHG_ALT_MS && ((CHG.skips && CHG.skips.length) || (CHG.forced || 0) < CHG_FORCE.length)) { chgRetry(); return; }
     CHG.F0 = null; chgShow(); if (G && CHG.info.marioNcc >= CHG_NCC_MIN) chgKeepCapture(G, CHG.info); return;
   }
   CHG.F0 = null;
@@ -539,8 +552,10 @@ function chgQBack(seed, qs) {
 /* the zero-wait tracker from the Charge: clock frame 0 = the Charge's frame 0 (confirm + 13). The coin flash shows
  * 4.8 game frames after its draw on this clock (route clips), the tracker's coin reads assume 6, so its clock starts
  * 1.2 frames earlier. */
+// the tracker's clock: the console's frame time (consoleRate: measured from the session's shines, else a real N64's)
+function chgRate() { return typeof consoleRate === 'function' ? consoleRate() : FRAME; }
 function chgStartTracker(seed, qs) {
-  const rate = FRAME, t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];
+  const rate = chgRate(), t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];
   for (const q of qs) for (const [l, wl] of CHG_LAGS) {
     const ev = R.buildEv([{ f: -13, id: 'hw_charge' }]);
     parts.push({ S: { s: seed, nc: q, inst: [] }, g: 0, ev, evMax: 46, pauseAt: CHG_N + 2, pause: l, w: wl / qs.length, m: new Set() });
@@ -565,12 +580,14 @@ function chgHyps() { return zw.on && zw.src === 'charge' ? zw.parts.length : typ
 function chgShow() {
   const el = $('chg-status'); if (!el) return;
   const s = CHG.state, I = CHG.info || {};
-  const lock = s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' || s === 'notseen' ? 'no' : '–';
+  const lost = s === 'locked' && zw.on && zw.src === 'charge' && zw.dead;
+  const lock = lost ? 'LOST' : s === 'locked' ? 'yes' : s === 'search' || s === 'maps' ? 'searching…' : s === 'capture' ? 'reading the rays…' : s === 'nolock' || s === 'failed' || s === 'notseen' ? 'no' : '–';
   const t = I.lockAfterRaysMs != null ? (I.lockAfterRaysMs / 1000).toFixed(1) + ' s after the rays' : s === 'search' && CHG.tSearch ? (Math.round((performance.now() - CHG.tSearch) / 100) / 10) + ' s so far' : '–';
   const h = chgHyps();
   el.innerHTML = '<b>Charge lock: ' + lock + '</b>' + (s === 'nolock' || s === 'failed' || s === 'notseen' ? ' (' + (CHG.why || '') + ')' : '') +
     '<br>Time to lock: ' + t + (I.searchMs != null ? ' (search ' + (I.searchMs / 1000).toFixed(1) + ' s, ' + (CHG.res ? CHG.res.workers : '?') + ' threads)' : '') +
     '<br>Hypotheses left: ' + (h != null ? h + (zw.dead ? ' (none fit: No edge)' : '') : '–') +
+    (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
 }
 /* for tests and the session log: the weighted share of the tracker's states for which confirming Time Out on clock

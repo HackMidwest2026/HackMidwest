@@ -184,7 +184,9 @@ function fb2PlanT7(cScr) {
   if (!FB2.on || !FB2.t7) return false;
   const now = performance.now(), cNow = cScr != null ? cScr : fb2Pic(now + num('vlag')), S = fb2Prune(cNow);
   if (!S.length) { st.msg = 'No edge: the FB2 states the page kept do not fit what it saw in Bowser\'s turn (the coin, or the popup frame). Press Power Bounce normally.'; FB2.t7.plan = { none: 'no state fits' }; slog('fb2NoEdge', {}); fb2Show(); render(); return true; }
-  const tot = S.reduce((a, o) => a + o.w, 0), from = Math.ceil(cNow + num('lead') * 1000 / FRAME + 1), W = Math.max(0, Math.round(Math.max(1, num('zwwin')) * 1000 / FRAME));
+  const tot = S.reduce((a, o) => a + o.w, 0), W = Math.max(0, Math.round(Math.max(1, num('zwwin')) * 1000 / FRAME));
+  let from = Math.ceil(cNow + num('lead') * 1000 / FRAME + 1);
+  if (cScr == null) for (let i = 0; i < 300 && fb2PressT(from) < earliestPress(now); i++) from++;   // every beep still ahead
   const s7 = new Array(W + 1).fill(0), s6 = new Array(W + 1).fill(0);
   for (const o of S) { const b = []; for (let x = from - 1; x <= from + W + 1; x++) b.push(fb2PB(o.a.S, o.a.T + 1, x - o.l, o.h.ph));
     for (let k = 0; k <= W; k++) for (const [d, q] of PRESS_ERR) { s7[k] += o.w * q * (b[k + 1 + d] >= 7 ? 1 : 0); s6[k] += o.w * q * (b[k + 1 + d] >= 6 ? 1 : 0); } }
@@ -192,7 +194,7 @@ function fb2PlanT7(cScr) {
   const d = from + k, plan = { d, p7: s7[k] / tot, p6: s6[k] / tot, states: S.length, tPress: fb2PressT(d) };
   FB2.t7.plan = plan;
   if (cScr != null) return plan;
-  if (cScr == null) { cancelBeeps(); const nb = Math.max(1, Math.round(num('beeps'))), gm = num('gapms'); for (let i = 0; i < nb; i++) beepAt(plan.tPress - (nb - 1 - i) * gm, i === nb - 1 ? 1320 : 880, i === nb - 1 ? 0.12 : 0.06);
+  if (cScr == null) { cancelBeeps(); playBeeps(plan.tPress);
     st.msg = null; st.plan = { tMade: now, w: { start: d, end: d, length: 1 }, target: d, tPress: plan.tPress, tLast: CHG.trig.t, rate: FRAME, carried: true, from, to: from + W, first: 0, prof: 'fb2', tab: [], tab4: null, mix: { p: plan.p7, groups: S.length, zw: true } }; }
   slog('fb2PlanT7', plan); fb2Show(); if (cScr == null) render(); return true;
 }

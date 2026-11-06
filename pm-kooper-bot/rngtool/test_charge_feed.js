@@ -24,6 +24,8 @@ const { chromium } = require('playwright');
   await p.addInitScript(() => {
     localStorage.setItem('tot-boxes', JSON.stringify({ coin: { x: 1080 / 1280, y: 40 / 720, w: 40 / 1280, h: 52 / 720 }, target: { x: 0.55, y: 0.12, w: 0.2, h: 0.08 } }));
   });
+  if (process.env.ZWDBG) await p.addInitScript(() => { window.__zwdbg = 1; });
+  if (process.env.CHGRATE) await p.addInitScript(r => { window.__chgRate = r; }, +process.env.CHGRATE);
   await p.goto(base + '/' + (process.env.PAGEFILE || 'tot.html'));
   if (process.env.REF) {      // Time Out's target screen saved from capture frame REF (the クッパ name box), as Save target screen does
     await p.evaluate(async ({ base, dir, i }) => {
@@ -73,8 +75,8 @@ const { chromium } = require('playwright');
     if (window.__chgDebug && C.dbg) out0.place = C.dbg.map((x, n) => (x ? n + ':' + x[0] : null)).filter(Boolean).join(' ');
     const out = { state: C.state, why: C.why, info: Object.assign({}, I, { gaps: window.__gaps ? I.gaps : undefined }), qs: C.qs, late, shines: +document.getElementById('r-shines').textContent };
     out.spiny = ev('zwInput').map(x => x.c); out.plans = ev('plan').map(x => ({ t: x.t, target: x.target, p: +(x.mix && x.mix.p || 0).toFixed(2), press: x.press })); out.busyAt = live.busyAt;
-    Object.assign(out, out0); out.skips = C.skips; out.retries = ev('chargeRetry'); out.noLocks = ev('chargeNoLock').map(x => x.best); out.locks = ev('chargeLock').map(x => x.best); out.t0 = t0; out.trigT = C.trig ? C.trig.t : null; if (dump) out.dump = { p: dump.p, m: dump.m, i: dump.i }; out.arena = ev('chargeArena'); out.stepEnd = T.step(); out.hwDone = ev('hallwayDone').length; out.trigger = ev('chargeTrigger'); out.stepSet = ev('chargeStepSet'); out.notSeen = ev('chargeNotSeen');
-    Object.assign(out, live); out.zwDead = T.zw.dead; return out;
+    Object.assign(out, out0); out.skips = C.skips; out.retries = ev('chargeRetry'); out.noLocks = ev('chargeNoLock').map(x => x.best); out.locks = ev('chargeLock').map(x => x.best); out.t0 = t0; out.trigT = C.trig ? C.trig.t : null; if (dump) out.dump = { p: dump.p, m: dump.m, i: dump.i }; out.arena = ev('chargeArena'); out.stepEnd = T.step(); out.hwDone = ev('hallwayDone').length; out.trigger = ev('chargeTrigger'); out.stepSet = ev('chargeStepSet'); out.notSeen = ev('chargeNotSeen'); out.zwDeadAt = ev('zwInconsistent').map(x => x.at); out.zwdbg = (T.zw.parts || []).slice(0, 3).map(q => q.dbg); out.tapsAfter = T.zw.taps ? T.zw.taps.map(x => +x.toFixed(1)) : null;
+    Object.assign(out, live); out.zwDead = T.zw.dead; out.zwRate = T.zw.rate && +T.zw.rate.toFixed(4); out.rateRuns = S.filter(x => x.ev === 'consoleRate').map(x => x.run); return out;
   }, { base, dir, nf, busy: !!process.env.BUSY });
   res.errors = errs.slice(0, 5); console.log(dir, JSON.stringify(res));
   await b.close();

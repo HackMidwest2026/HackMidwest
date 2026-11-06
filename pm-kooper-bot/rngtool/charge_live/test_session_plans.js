@@ -20,12 +20,12 @@ function grabFn(src, name) {
 const grabLine = (src, re) => { const m = src.match(re); if (!m) throw new Error('no ' + re); return m[0]; };
 const PAGE = fs.readFileSync(path.join(RT, 'page_template.html'), 'utf8'), CHG = fs.readFileSync(path.join(RT, 'charge_live/charge_live.js'), 'utf8');
 function tracker(presses) {
-  const a = PAGE.indexOf('const ZW_SCENE'), b = PAGE.indexOf('function zwPlan()');
+  const a = PAGE.indexOf('const ZW_SCENE'), b = PAGE.indexOf('function zwPlan(');
   const code = [grabLine(PAGE, /const PRESS_ERR = .*\n/), grabFn(PAGE, 'pressDist'), PAGE.slice(a, b), grabLine(CHG, /const CHG_N = .*\n/), grabLine(CHG, /const CHG_K = .*\n/),
-    grabLine(CHG, /const CHG_LAGS = .*\n/), grabLine(CHG, /const CHG_SHIFTS = .*\n/), grabFn(CHG, 'chgStartTracker'),
+    grabLine(CHG, /const CHG_LAGS = .*\n/), grabLine(CHG, /const CHG_SHIFTS = .*\n/), (CHG.includes('function chgRate(') ? grabFn(CHG, 'chgRate') : ''), grabFn(CHG, 'chgStartTracker'),
     'this.api = { zw, zwF, zwUpdate, zwInput, zwTap, zwCoinBack, chgStartTracker, CHG_IMPS, pressDist, PRESS_ERR };'].join('\n');
   const settings = { vlag: 50, pfix: 0 }, ctx = { R, FRAME: R.FRAME_MS, Math, Array, Map, Set, Object, Number, JSON, String, now: 0, log: [], presses,
-    VAN: { B: () => R.PROFILES.timeout.vanish }, CHG: {}, num: k => +(settings[k] || 0) };
+    VAN: { B: () => R.PROFILES.timeout.vanish }, CHG: {}, V: {}, num: k => +(settings[k] || 0) };
   ctx.slog = (ev, o) => ctx.log.push(Object.assign({ ev }, o)); ctx.performance = { now: () => ctx.now };
   vm.createContext(ctx); vm.runInContext(code, ctx); return Object.assign(ctx.api, { ctx });
 }
