@@ -3,6 +3,8 @@
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
+  // v73: this plan is on the old Jr. Troopa route (a shine lock); the Charge lock is the default
+  await p.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); s.jrroute = 'shine'; localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} });
   await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');
   const out = await p.evaluate(async () => {
     const T = window.__tot, R = T.R, F = R.FRAME_MS; const res = [];

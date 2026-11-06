@@ -7,6 +7,8 @@ const PAGE = 'file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f8
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
+  // v73: these turns are the old Jr. Troopa route (a shine lock carried by the target screens); the Charge lock is the default
+  await p.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); s.jrroute = 'shine'; localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} });
   await p.goto(PAGE);
   for (const seed0 of [0x2468ace1, 0x13579bdf, 0x0f1e2d3c]) {
     const out = await p.evaluate(async ([seed0, SHINES, RB, DBG]) => {

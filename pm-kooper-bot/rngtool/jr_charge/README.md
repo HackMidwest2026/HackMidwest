@@ -6,6 +6,8 @@ T1 Charge; Bomb - T2 Bomb; Whacka - T3 Charge; Bomb (Life Shroom) - T4 Bomb; Map
 
 Everything below is emulator (mupen64plus, JP ROM, debug core) or simulation of the emulator-exact model. Nothing was
 checked on console footage: none of the 23 uploaded clips shows this fight (thumbnails of all of them were checked).
+(v73 correction: two short uploads do show this arena: `8526dcdd` 2026-11-02 14:16:56, 5.7 s at 30 fps, a T1 Super
+Charge with Bombette; `c5537165` 14:24:35, 10.6 s, a Super Charge with Goombario. See section 7.)
 **V** = verified in the emulator here, **C** = code-read (decomp), **S** = simulation of the verified model.
 
 ## Bottom line (go / no-go)
@@ -134,7 +136,7 @@ did not change the roll, `../README.md`).
   late coin: the page keeps every q within 0.5%).
 
 ## 6. Console clips that would validate it
-None on disk. Needed (same chain as the Hallway clips: S-Video -> GV-USB2 -> OBS 1280x720 60 fps, same crop, input
+Only the two short T1 Charge clips of section 7 (no turn after T1, no Close Call, no seed known). Needed (same chain as the Hallway clips: S-Video -> GV-USB2 -> OBS 1280x720 60 fps, same crop, input
 display on): **the whole Jr. Troopa fight from the T1 menu to the end**, 4-6 attempts:
 - each Charge's 1.6 s of rays (T1, T3, T5) -> lock offline with `charge_live/tools/gameframes.py` + `jc_jsmaps.js` +
   the harness; T1's and T3's seeds must agree through the carry (T3's seed = T1's carried with the confirm frames read
@@ -143,6 +145,16 @@ display on): **the whole Jr. Troopa fight from the T1 menu to the end**, 4-6 att
   death on T3/T4/T5, the bounce count on T6, and the coin shines in every menu;
 - at least one attempt with a T3 death (re-lock at T5 after the revive) and one where T3 and T4 survive (the T4 carry);
 - the T3/T5 burst brightness on capture, to replace the suggested `CHG_BRIGHT` and to take a capture Mario patch.
+
+## 7. On the page (v73) and the two console clips
+The route runs on the page now (`../charge_live/jr_live.js`, `../charge_live/README.md` v73): the T1 lock carried through
+every confirm (read from the status bar hiding; Do Nothing from its Strategies screen), the four levers beeped, the T3 /
+T5 locks checked against the carry, Mario's HP read after each Close Call. What section 4 listed as missing is in the
+page's core: `jr_bomb_t1`, `jr_syrup_hit`, `jr_nothing_hit` (`pmrng_core.js` TURNS), checked frame by frame by
+`jc_check_core.js` on 24 new runs: 64 / 64 Charge segments, 68,343 frames; 110 / 110 Close Call / Power Bounce outcomes.
+Console: `8526dcdd` and `c5537165` show Mario's Super Charge in this arena (the thumbnail check missed them; both are a
+few seconds long). Through the page's jr profile clip 1 locks d260c382 in two runs (5568 / 3.39x, 6079 / 3.76x), clip 2
+df7d78b1 (6196 / 3.69x); neither goes on with this route, so neither seed is confirmed by later rolls.
 
 ## Files
 | File | What |
@@ -157,6 +169,11 @@ display on): **the whole Jr. Troopa fight from the T1 menu to the end**, 4-6 att
 | `jc_reader_data.py` | writes the three `readouts/data/charge_*jr*` files |
 | `jc_mario_ref.py` | Mario patch + NCC cross-check (port of chgMarioShift1) |
 | `jc_e2e.py`, `jc_jsmaps.js` | emulator end-to-end lock through the page's maps code and kernel |
+| `jc_check_core.js` | the page's own core (pmrng_core.js TURNS / profiles) against `jc_turns.py` logs, frame by frame (v73) |
+| `jc_fixture.py`, `plan_cases.json` | model cases for `../test_jr_plan.js` (the page's tracker and plans vs this model) |
+| `jc_render.py` | the route with given confirm frames, logged, optional Glide64 screenshots (the page end to end) |
+| `jc_capsim.py` | `../fb2_route/t6_capsim.py`'s capture simulation, cached per game frame, as JPEG frames |
+| `jc_e2e_page.py` | renders -> capture simulation -> the page (`../test_jr_page.js`) -> its planned presses in the emulator |
 
 Run from anywhere (`jc_probe.py` / `jc_turns.py` chdir to the emulator dir `/tmp/claude-0/pm/bot1`, debug core
 `M64P_DBG=1`; screenshots need Xvfb :97 with `M64P_GFX=.../mupen64plus-video-glide64mk2.so`). States: `jr_t3_menu.st`,

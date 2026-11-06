@@ -339,6 +339,14 @@
    * every part redraws rand(359) each time its 10-frame counter wraps, from the frame it is created until +r). The coin
    * keeps its 24/48-frame schedule through all of it. */
   const TURNS = {"jr_bomb_cc":{"pre":{"73":[359,359,359,359,359,359,359,359],"179":[100]},"post":{"73":[360]}},"jr_bomb":{"pre":{"73":[359,359,359,359,359,359,359,359]},"post":{"73":[360]}},"jr_syrup_cc":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"163":[100]},"post":{}},"jr_nothing_cc":{"pre":{"26":[100]},"post":{}},"jr_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]},"jr_whacka":{"pre":{"118":[359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10,359,10,10],"190":[359,359,359,359,359,359,359,359,359,359]},"post":{}},"hw_charge":{"pre":{},"post":{},"eio":[[13,58],[16,61]]},"hw_spiny":{"pre":{},"post":{},"eio":[[39,119,20]],"impact":[359,359,359,359,359,359,359,359],"ai":44}};
+  /* Jr. Troopa on the Charge-lock route (jr_charge/README.md, jc_model.py; checked frame by frame against emulator runs by
+   * jr_charge/jc_check_core.js): the T1 Bomb with Jr. Troopa's T1 hit on Mario at 10 HP (+206, no roll), and the turns at
+   * 10 HP after a Life Shroom revive (no Close Call roll, the hit lands): Maple Syrup (15 sparkles, the hit at +190) and
+   * Bombette doing nothing (the hit at +53). */
+  const X359 = n => Array(n).fill(359);
+  TURNS.jr_bomb_t1 = { pre: { 73: X359(8), 206: X359(10) }, post: { 73: [360] } };
+  TURNS.jr_syrup_hit = { pre: { 118: [].concat(...Array(15).fill([359, 10, 10])), 190: X359(10) }, post: {} };
+  TURNS.jr_nothing_hit = { pre: { 53: X359(10) }, post: {} };
   /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
   function buildEv(list) {
     const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };

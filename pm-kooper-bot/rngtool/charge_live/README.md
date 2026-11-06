@@ -1,3 +1,124 @@
+# Time Out Timer v73: the Jr. Troopa Charge-lock route (Nov 6)
+
+The endgame route now plays Jr. Troopa with the page (route panel: *Jr. Troopa route*, Charge lock by default; the old
+shine carry of v72 stays as the other choice, and the tests of that machinery select it). The study is
+`../jr_charge/README.md`; the code is `jr_live.js`.
+
+**The route.** T1: Mario's Super Charge first (its rays lock the seed), Bomb. T2: Bomb; Whacka. T3: Charge; **Bomb on the
+beep** (Close Call). T4: Bomb; **Maple Syrup on the beep** (Close Call). T5: Charge; **Do Nothing on the beep** (Close
+Call). T6: **Power Bounce on the beep** (6+ bounces; Bomb if 5). The run goes Duplighosts → Jr. Troopa → Hallway → Final
+Bowser with no manual step: the page moves the route by itself.
+
+**What the page does.**
+- Profile **jr** (`CHG_PROF.jr`, steps with `chg: 'jr'`): the Hallway camera table (bit-identical in this arena), the
+  Hallway capture Mario patch, the study's burst curve `CHG_BRIGHT_JR`, the Hallway trigger, placement, retries and q
+  check. The first jr Charge whose capture shows Mario starts the fight (T1); its lock starts the zero-wait tracker
+  (`jrLock` → `jrStartFrom`, fight `jr`).
+- **Turn tracking** (`jrFrame`, `JR_SEQ`): every confirm on this route but Do Nothing hides the status bar 3 (Mario) or 4
+  (Bomb) frames after the A; the page counts the hides after a menu (bar up 0.3 s+, gaps under 8 frames are flickers) in
+  route order, each an input to the tracker with its frame -2..+1 (as the Spiny Flip's: a dropped picture only ever reads
+  late; the coin settles them). Do Nothing is read from Bombette's Strategies screen closing (save that screen once: on
+  this route the bar stays up through Do Nothing and Jr. Troopa's turn). The Charge bursts (T3, T5) anchor the count; a
+  burst where the count does not expect one resyncs it and ends the carry.
+- **The levers**: on each lever's target screen `zwPlan` plans and beeps with the Hallway's machinery (window types,
+  beeps, offsets, the v72 weighting and doubt, the beeps stopped on a bad plan): T3 Bomb (`jrcc_bomb`), T4 Syrup
+  (`jrcc_syrup`), T5 Do Nothing (`jrcc_nothing`), T6 Power Bounce (`jrpb5`: the best 5+ chance and, within 2 points of
+  it, the best 6+, as the Duplighosts' 3+ / 4). The headline, the strip line and the Charge panel show Close Call or
+  5+ / 6+, the shown chance mixed with blind by the doubt (`ZW_BLIND` has the Jr. levers; the top band's blind is the
+  top profile's, not always the Duplighosts' all-4).
+- **Deaths**: the status bar is up through Jr. Troopa's turn (emulator: back ~134 frames after the Bomb, up through the hit,
+  the death and the revive), so the page reads Mario's HP: the tens place is blank at 2 HP and shows the "1" of 10 after
+  a Life Shroom revive (`jrTens`). 10 HP after a Close Call = a hit: the carry ends (the revive's 933-939 RNG steps are not
+  modelled), the next turn says "No roll this turn" (at 10 HP: `jr_syrup_hit` / `jr_nothing_hit` go in once the next
+  Charge locks) and that Charge locks again. No 10 HP by the next confirm = a dodge: the states whose roll hit are dropped
+  and the background is weighed by a blind dodge (0.30). (The next menu comes 246 / 230 / 93 frames after the Bomb /
+  Syrup / Do Nothing confirm on a dodge, 359 later on a death, in every emulator run.)
+- **Later Charges** (T3, T5): their locks are checked against the carry (the carried states simulated to the Charge's frame
+  0, -2..+2; the seed is the evidence, the first coin frame the carry's, since the rays barely tell late coins apart).
+  Agreed: the page goes on from the new lock (its frame 0 is exact; the carry's Charge confirm is only known to -2..+1)
+  with the carry's first coin, and a running plan is moved onto the new clock. Not agreed: it starts again from the new
+  lock and the confirms since its Charge. No carry (no T1 lock, or a death): the Charge's own lock starts it.
+- **No lock**: "play it blind" with the blind odds (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%) in the headline, the
+  strip and the Charge panel.
+- **Arena**: `chgArena` says `jr` for this arena (floor luma 55-75, top B - R 8..17, floor B - R -7..-0.8; tested after
+  the other three). Over every 6th frame of the 28 console clips of the other fights and walks it never fires; on the two
+  console clips of this arena it does. On a Jr. step a Hallway picture is the Hallway, a Final Bowser one at a real hide
+  that fight. The Jr. arena does not move the route from another fight's step (the castle corridors walked after the
+  fight are grey stone too); the page only logs it.
+- On the Jr. steps the old shine search does not run (it only took CPU from the Charge search); the walk tracker does
+  not start during the fight (a death's long text looked like the walk's gap).
+- Core: `pmrng_core.js` TURNS `jr_bomb_t1` (the T1 Bomb with Jr. Troopa's hit at 10 HP), `jr_syrup_hit`, `jr_nothing_hit`.
+
+## Checks
+**The page's core against the emulator** (`../jr_charge/jc_check_core.js`, the dc_check.py way; 24 new `jc_turns.py` runs:
+14 from T1, 4 from T3, 4 from T5 blind, 2 planned): from each Charge confirm's seed and first coin and the confirm frames
+alone, **64 of 64 segments match every frame (68,343 frames)**, including the T1 Bomb with Jr. Troopa's hit (15), Whacka
+(15), the 10-HP Syrup after a T3 death (9, from the T4 Bomb's seed) and Do Nothing at 10 HP after a T4 death (4); every
+Close Call and Power Bounce outcome the page's profiles predict from the state at the confirm: **110 of 110** (81 Close
+Calls, 29 Power Bounces).
+
+**Model vs page** (`../test_jr_plan.js`, in `run_suite.sh`; 40 cases from `../jr_charge/jc_fixture.py`; the page's plan with
+lead 1.5 s, 1 s max extra wait, best chance, scored with presses 25/50/25 over -1/0/+1). In every mode the true state is
+among the page's states and its outcome equals the model's on every frame of each 190-frame window (7600 / 7600 per
+lever). Real chance of the planned frame (the page's own claim in brackets):
+
+| Mode | T3 Bomb: Close Call | T4 Syrup: Close Call | T5 Do Nothing: Close Call | T6 Power Bounce: 5+, 6+ |
+|---|---|---|---|---|
+| carry | 78.1% (65.5%) | 75.6% (67.1%) | 75.0% (63.7%) | 5+ 98.8%, 6+ 68.8% (93.3% / 60.3%) |
+| coin | 77.5% (72.5%) | 83.1% (83.4%) | 79.4% (74.3%) | 5+ 98.1%, 6+ 82.5% (99.6% / 84.0%) |
+| own | 85.0% (82.8%) | 83.1% (78.4%) | 86.9% (84.2%) | 5+ 98.1%, 6+ 76.3% (98.3% / 74.2%) |
+| lock | 83.1% (81.7%) | 82.5% (77.8%) | 86.9% (84.0%) | 5+ 98.1%, 6+ 76.3% (98.3% / 73.2%) |
+
+(carry: the T1 lock carried through every turn with no coin seen; coin: the same with the menus' coin; own: each later
+Charge's own lock; lock: the carry with the T3 / T5 locks landing on it, 80 of 80 agreeing; blind: Close Call 30%, 5+
+67.5%, 6+ 32.2%.) Also tested: a wrong T3 lock does not agree and the page starts again from it; the right seed with a
+wrong kept q agrees and keeps the carry's q; a death stops the tracker and the next turn says no roll; after a T4 death
+the T5 lock plans T6 through Do Nothing at 10 HP; no lock: play it blind with the blind odds; the arena on console clips.
+
+**Frame-fed end to end** (`../test_jr_page.js` + `../jr_charge/jc_e2e_page.py`, seed 0badf00d): Glide64 renders of the
+whole fight (`jc_render.py`) through the capture simulation (`jc_capsim.py`), fed to the page in real time; the page saves
+the target screens, reads the Charges, counts the confirms and plans on each target screen by itself; its first beeped
+frame is then pressed in the emulator, and the frames next to it. This machine was loaded (another agent's renders):
+470-2500 of 3500-6800 pictures dropped per feed, more than a live session.
+
+| Lever | run 2 (before the later-lock handover): plan, emulator -1 / 0 / +1 | run 3: tracker, plan, emulator -1 / 0 / +1 |
+|---|---|---|
+| T3 Bomb | T1 carry, 94.6%: dodge / **dodge** / dodge | T3 lock (agreed with the carry), 90.2%: dodge / **dodge** / dodge |
+| T4 Syrup | T1 carry, 94.5%: dodge / **dodge** / dodge | T3 lock, 93.7%: dodge / **dodge** / dodge |
+| T5 Do Nothing | T1 carry, 67.5%: dodge / **hit** / hit | T5 lock (the carry did not fit), 73.1%: hit / **dodge** / dodge |
+| T6 Power Bounce | the page read 10 HP 466 frames after the T5 confirm: carry ended, no beeps (blind) | seed lost (doubt 96%): no beeps (blind) |
+
+Every Charge lock in these runs was the true seed (T1 6e878514, T3 b582731b, T5 0cbf505c, checked against the emulator
+log), every confirm was counted in order (bars and the Strategies screen), the dodges were read as dodges and the death
+as a death. The misses: under the drops each confirm read 2 frames late (hence the -2..+1 shifts now) and the simulated
+capture shows the coin flash ~3 frames late (v72 section 3), so in run 3 the carry lost its state before T5; the T5 lock
+then kept q 31-42 when the true first coin was 44, so T6 had no right state and said so. The cross-check now takes the
+seed alone and the carry's q: not re-run end to end (a run takes ~1 h here).
+
+**Console**: two short clips of this arena exist (`8526dcdd` 2026-11-02 14:16:56, a T1 Super Charge with Bombette, 30 fps;
+`c5537165` 14:24:35, with Goombario). Fed to the page on the Jr. T1 step (each picture twice, as a 60 fps capture): clip 1
+locks d260c382 in both runs (5568 at 3.39x and 6079 at 3.76x, after one placement retry; Mario NCC 0.94), clip 2
+df7d78b1 (6196, 3.69x, first try, 2.8 s after the rays; NCC 0.92). True locks on the Hallway clips score 2900-8300 at
+2.1-5.4x, no-locks 750-1500 at 1.0-1.2x. Neither seed can be checked by later rolls: neither clip goes on with this route
+(clip 2's next turn is Goombario's, which the page does not model; its one shine afterwards fit no state: DOUBTFUL, no
+beeps). The HP tens place reads 0.47 at 10 HP on clip 1 (0 with the bar hidden; the death read needs 0.12).
+
+## Suite
+`run_suite.sh` (with `test_jr_plan.js` added): every test rc 0 and both log replays lock as before (1379.7 s on 83ebd9e1,
+655.7 s on 52467bd0); the torch maze rc 0. In the first pass under load `test_strip_geometry` failed once (as in v72) and
+`test_switch` needed the old Jr. route (fixed); both passed when rerun (a container restart cut the first pass short: the
+tests from `test_beeps_window` on, the torch maze and the replays ran in a second pass). The old shine-carry tests
+(`test_carry_page`, `test_hud_confirm`, `test_carry_guard`, `test_early_press`, `test_switch`) select the old Jr. route.
+Not in the suite (they need renders or uploads): `test_jr_page.js`, `jr_charge/jc_check_core.js`.
+
+## Not verified on console
+The Close Calls and the bounces themselves (no console turn after T1 exists), the bar-hide delays in this fight (emulator
+3 / 4 frames, as the HUD comment had them), Do Nothing read from the Strategies screen, the HP read at 2 HP and after a
+revive, the coin-flash timing in this fight, the burst curve beyond these two clips, the whole fight's timing in a live
+browser. Recordings that would: 4-6 attempts of the whole fight from the T1 menu (bar up), capture chain and input
+display as for the Hallway clips, at least one with a Close Call hit (the Life Shroom) and one with every Close Call
+dodged, ideally with the page's session log.
+
 # Time Out Timer v72: reliability (Nov 6)
 
 What changed, why, and the before/after numbers. Tests: `charge_live/test_zw_tolerant.js` (node, in `run_suite.sh`),
