@@ -1,3 +1,60 @@
+# Time Out Timer v71: the Duplighost Charge-lock route (Nov 6)
+
+The Duplighosts can now be played with the **Charge lock** as an alternative to the RTA turn (route panel: *Duplighosts
+route*, RTA by default). The study is `../dup_charge/README.md` (14b2938).
+
+**The route (Charge lock).** T1: Mario's Super Charge first (no Z), Bombette Do Nothing on the beep; aim 3+ copies, 4 ideal.
+T2: Power Bomb, then Jump x2 on the one that did not transform (3 and 4 copies both end the fight with Ultra Boots).
+
+**What the page does.**
+- Profile **dup** (`CHG_PROF.dup`, step key `chg: 'dup'`): the Hallway's camera table (bit-identical in this room), the
+  Hallway capture Mario patch (NCC 0.90 on this room's render), the study's suggested burst curve `CHG_BRIGHT_DUP`
+  (unverified on console), the Hallway's trigger (a real bar hide, 250-1000 ms), placement, retries (up to 6 s after the
+  rays) and q check. The lock starts the zero-wait tracker (seed x q x console lag 0/1), with no Spiny Flip events.
+- **Arena**: the floor band's B - R (purple floor +5..+20 here, the Hallway's bushes -25..-50, Final Bowser's lit floor
+  luma > 95), tested first. Over every 6th frame of 4 Hallway clips and the FB2 clip it never says Duplighosts (0 / 1610);
+  on the console clip of the Duplighost fight (aad978a3, Surge route) it does on 167 / 252. A Hallway picture on the
+  Duplighost step is a Hallway retry; the Duplighost room on a Hallway / Final Bowser step moves the route to the
+  Duplighost step (Charge-lock route only).
+- **Plan** on Bombette's Strategies screen (saved screen S): `zwChoose` with profile dup3 (3+ copies): on best chance the
+  frame with the best 3+ chance and, within 2 points of it, the best all-4 chance; the window types (green / yellow / red),
+  the beeps (default 3), beep and visual offsets are the Hallway's. The headline, the strip line and the Charge panel show
+  **3+ and all-4 chances** for the planned frame; the strip's top band marks the all-4 frames.
+- **No lock** (no clear seed, Charge not seen, seed lost, or no Charge on T1): "play it blind: Do Nothing whenever you
+  like, 3+ about 47%, all 4 about 13%" (study blind 47.2% / 12.9%; the Surge route without a lock is the same draw).
+- **Confirm / turns**: the Strategies screen closing is the Do Nothing confirm (press check against the plan); the route
+  moves on and the tracker is turned off, so the Hallway's walk tracker can start later.
+
+**Odds with the page's defaults** (1.5 s lead, 1 s max extra wait = 30 frames, presses 25/50/25 over -1/0/+1, the
+console-lag-1 state at 25%): 3+ about 96%, all 4 about 35% (400 model cases; 2 s: 99% / 42%). The study's table header
+says "1 s" for its 60-frame column; a 30-frame window there is 97.3% / 44.6% (no lag state).
+
+**Tests.** `test_dup_plan.js` (in `run_suite.sh`): the route option; the page's predicted copies equal `dc_model.py` on
+every frame (15200 / 15200: 40 cases x 2 lags x 190 frames; `dup_charge/plan_cases.json` from `dc_fixture.py`); 40 plans
+scored by the model with +-1 presses: 3+ 96.3%, 4 30.6% (claimed 95.2% / 29.7%); no-lock texts; the tracker off after the
+step; the arena on 12 console frames (Duplighost, 2 Hallway clips, FB2). `test_dup_page.js` (not in the suite: it needs
+emulator renders in /dev/shm): renders of T1 (`jr_charge/jc_probe.py`, Glide64) through `fb2_route/t6_capsim.py`, fed to the
+page at 60 fps, then `dup_charge/dc_e2e_press.py` plays the planned frame in the emulator:
+
+| seed | lock (score, ratio, after the rays) | q (truth) | plan (Strategies on clock 203) | page: lag-0 copies -1/0/+1 | emulator -1/0/+1 |
+|---|---|---|---|---|---|
+| 1234abcd | bfdda85d right (5744, 4.06x, 2.8-3.7 s) | 45/46 kept (42): wrong | seed lost at clock 172, play blind | - | - |
+| 9e3779b9 | 77f79aca right (5689, 3.56x, 2.5 s) | 12 (12) | +252: 3+ 75%, 4 0% | 3 3 2 | 3 3 2 |
+| 5eed0071 | f7118e6f right (8270, 3.81x, 2.2 s) | 23 (23) | +259: 3+ 100%, 4 0% | 3 3 3 | 3 3 3 |
+
+In the simulated capture the coin's flash reads about 2.5-3 frames later against the burst than the console calibration
+(4.8 frames) assumes (menu shines read at -99.7 / -129.7 / -56.7 for true -102 / -132 / -60). With the true first coin
+late in the rays (42), the rays left 41/43-47 and the menu check kept 45/46; the tracker then lost the seed. Whether that
+offset is the simulation (Glide64 screenshot timing) or real is not known: no console Duplighost Charge clip exists yet.
+
+**Not verified on console:** the burst curve in this room, the trigger and placement on a real capture, the arena rule at
+a real Charge hide (only the Surge clip's hides), the coin-flash delay in this fight, the timing of the Do Nothing press
+(the Strategies box vanishing 3 frames after the confirm, the dup3 profile's value), and the 2-hit Jump kill on the
+runner's boots. Recordings that would: 4-6 attempts with the capture chain of the Hallway clips and the input display on,
+from the T1 menu (bar up for 2 s+) through the Charge, Bombette's menu (bar up, the coin visible for a few seconds), the
+Do Nothing confirm and all 4 copy rolls, at least one with the T2 Power Bomb + Jump; ideally with the page's session log
+of the same attempt.
+
 # Time Out Timer v70: the runner's feedback on v69 (Nov 6)
 
 What the runner reported, what it was, and what changed. Tests: `test_strip_geometry.js`, `test_beeps_window.js`,

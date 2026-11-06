@@ -106,5 +106,11 @@ Same capture chain as the Hallway clips (S-Video -> GV-USB2 -> OBS 1280x720 60 f
 | `dc_check.py` | model vs logs, every frame from the Charge confirm |
 | `dc_odds.py`, `odds.json` | blind vs locked odds, windows 0.25-2 s, run lengths, waits |
 | `dc_reader_data.py` | writes the three `readouts/data/charge_*dup*` files from `jc_probe.py` screenshot runs |
+| `dc_fixture.py`, `plan_cases.json` | model cases (seed and q at the rays' frame 0, copies per Do Nothing frame) for the page test `../test_dup_plan.js` |
+| `dc_e2e_press.py` | plays a page plan's Do Nothing frame (and +-1) in the emulator after the rendered Charge (`../test_dup_page.js`) |
+
+On the page (v71, `../charge_live/README.md`): the route option *Charge lock*. Note on the table above: the "1 s" column
+is `dc_odds.py`'s 60-frame window (2 s at 30 game frames/s); 30 frames (the page's default 1 s max extra wait) is
+safe3 3+ 97.3%, 4 44.6% (`odds.json` windows.30).
 
 Logs and screenshots were in /dev/shm (not committed).

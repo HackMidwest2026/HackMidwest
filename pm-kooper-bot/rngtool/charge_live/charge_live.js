@@ -41,9 +41,21 @@ const CHG_BRIGHT = [7.2, 12.5, 19.4, 28, 35.9, 42.1, 47.6, 49.2, 50.4, 53.9, 56.
 // reads 5.2, 9.4, 15.8, 24 on frames 2-5). The tail goes below the menu: the default camera is darker there.
 const CHG_BRIGHT_FB2 = [11, 16.2, 22.4, 28.4, 33.8, 38.7, 42.2, 42.8, 43.7, 46.3, 47.6, 47.7, 49.4, 50.3, 50, 49.9, 47.6, 48.1, 46.1, 44.2, 43.2, 39.9,
   37.8, 34.7, 27.5, 20.7, 14, 9.6, 5.4, 1.5, 2.4, -1.4, -5.2, -6.9, -7.1, -7, -7.1, -7.1, -7, -6.9, -6.9, -7, -6.9];   // frames 3..45
+/* Duplighosts T1 (dup_charge/README.md): Mario's Super Charge first, then Bombette's Do Nothing. The battle camera is
+ * bit-identical to the Hallway's on all 48 frames (readouts/data/charge_cams_mario_dup.json = charge_cams_mario_route.json),
+ * so the Hallway table is used; Mario's Hallway capture patch scores NCC 0.90 on this arena's emulator render (the
+ * Hallway's own 0.92). The burst over this room: the page's Hallway curve on frames 0-33 (within 0.7 levels in the
+ * emulator), then 1.6-2.8 darker once the camera swings back (charge_dup_reader.json CHG_BRIGHT_dup_suggested: unverified
+ * on console). No nuisance draws in the rays (the torches of kpa_01 draw nothing). */
+const CHG_BRIGHT_DUP = [7.0, 12.3, 18.8, 27.3, 35.2, 41.8, 47.3, 49.0, 50.6, 54.2, 56.5, 57.3, 59.2, 61.6, 61.4, 61.6, 60.5, 61.7, 59.9, 57.5, 56.0, 50.7, 45.9,
+  41.1, 30.3, 20.7, 14.7, 8.2, 3.2, 2.2, 4.2, 4.3, 4.5, 4.8, 4.8, 4.5, 4.4, 4.3, 4.1, 4.0, 4.1, 4.2, 4.3];   // frames 3..45
 const CHG_PROF = {
   hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true },
-  fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 } };
+  fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 },
+  // dup: the route step with chg 'dup' (Duplighosts, Charge-lock route). The lock starts the zero-wait tracker as on the
+  // Hallway; its plan is Bombette's Do Nothing (profile dup3: 3+ copies, 4 as tie-break). altMs: retries only while the
+  // runner would still be waiting on Do Nothing (the natural confirm is ~2-3 s after the rays).
+  dup: { id: 'dup', turn: null, cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT_DUP, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 6000 } };
 /* the burst's first picture (frame 3) comes 13 game frames after the bar hides for the Charge confirm: 433-478 ms on the
  * 7 route clips and the first live attempt. hw: the trigger only counts trigMin..trigMax ms after a hide that ended a
  * real bar-up (600+ ms, as hudWatch's barHide); a flicker of the coin box never arms it, and a hide with no burst in
@@ -60,19 +72,24 @@ function chgEnabled() { const el = $('s-chg'); return !el || el.checked; }
 /* any Hallway Bowser step arms the Hallway Charge (the runner is often on T2 after a retry; a burst seen there sets the
  * route back to T1, chgFrame) */
 const chgHallStep = s => !!(s && s.t && /^Hallway Bowser/.test(s.t));
-function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (chgHallStep(s)) return CHG_PROF.hw; for (const k in CHG_PROF) if (CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
+function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (chgHallStep(s)) return CHG_PROF.hw; if (s.chg && CHG_PROF[s.chg]) return CHG_PROF[s.chg]; for (const k in CHG_PROF) if (CHG_PROF[k].turn && CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
 function chgStepActive() { return !!chgProfNow(); }
 /* Which arena the capture shows, read at a real bar hide (the menu just closed, battle camera): the band under the
  * battle floor (320-space y 165-190) is the dark bushes in the Hallway (luma 45-67 at all 43 bar hides of the 14
  * Hallway clips) and the lit stone floor in Final Bowser's arena (114-116 on the FB2 clip); the top of the picture
  * (y 40-100) is the blue windows in the Hallway (B - R +27..+64) and the dark sky in Final Bowser's (+4..+11). Mario's
- * reference patch does not tell them apart (at the hide he is not in the Charge pose: NCC 0.08 with either patch). */
+ * reference patch does not tell them apart (at the hide he is not in the Charge pose: NCC 0.08 with either patch).
+ * The Duplighost room (kpa_01): that band is the purple floor, B - R +5..+18 on the console clip of the Duplighost fight
+ * (aad978a3, the Surge route: luma 47-73 with the battle camera) and +10..+20 at the emulator's Charge hide, where the
+ * Hallway's bushes are -25..-50 and Final Bowser's floor is lit (luma > 95). Checked over every 6th frame of 4 Hallway
+ * clips and the FB2 clip: this rule never fires there (0 of 1610 frames), and on 167 of 252 frames of the Duplighost
+ * clip. It is tested first: the Duplighost room's top band can read like the Hallway's (B - R up to +21). */
 const CHG_ARENA_LOW = [30, 165, 300, 190], CHG_ARENA_TOP = [30, 40, 300, 100];
 function chgArenaBox(b) { const [SX, OX, SY, OY] = chgMap(); return { x: (OX + b[0] * SX) / 1280, y: (OY + b[1] * SY) / 720, w: (b[2] - b[0]) * SX / 1280, h: (b[3] - b[1]) * SY / 720 }; }
 function chgArena() {
   const rgb = b => { const g = sample(chgArenaBox(b), 32, 8), n = g.length / 4; let r = 0, gr = 0, bl = 0; for (let i = 0; i < g.length; i += 4) { r += g[i]; gr += g[i + 1]; bl += g[i + 2]; } return [r / n, gr / n, bl / n]; };
-  const lo = rgb(CHG_ARENA_LOW), tp = rgb(CHG_ARENA_TOP), L = 0.299 * lo[0] + 0.587 * lo[1] + 0.114 * lo[2], br = tp[2] - tp[0];
-  return { a: L < 85 && br > 18 ? 'hw' : L > 95 && br < 18 && br > -15 ? 'fb' : null, L: +L.toFixed(1), br: +br.toFixed(1) };
+  const lo = rgb(CHG_ARENA_LOW), tp = rgb(CHG_ARENA_TOP), L = 0.299 * lo[0] + 0.587 * lo[1] + 0.114 * lo[2], br = tp[2] - tp[0], lbr = lo[2] - lo[0];
+  return { a: lbr > 2 && L > 30 && L < 95 && br < 30 ? 'dup' : L < 85 && br > 18 ? 'hw' : L > 95 && br < 18 && br > -15 ? 'fb' : null, L: +L.toFixed(1), br: +br.toFixed(1), lbr: +lbr.toFixed(1) };
 }
 /* the profile for a Charge armed on this hide: the step's, unless the picture is the other arena (a black or faded picture
  * is neither). Final Bowser's arena is taken only at a real bar hide (the menu just closed): the Hallway's battle intro
@@ -80,10 +97,15 @@ function chgArena() {
  * any hide (its dark bushes and blue windows do not occur in Final Bowser's arena). On the FB2 step
  * (or past it) a Hallway picture is a Hallway retry: the Hallway profile, and the burst sets the route to Hallway T1
  * (chgPendResolve). On a Hallway step a Final Bowser picture is that battle reached: the route goes to the FB2 step. */
+/* The Duplighost step (Charge-lock route): a Hallway picture is a Hallway retry (the Hallway profile; its burst sets
+ * Hallway T1), a Final Bowser picture at a real hide moves the route there. On a Hallway or Final Bowser step, the
+ * Duplighost room at a real hide is that fight (a reset to an earlier save): the route goes to the Duplighost step, but
+ * only on the Charge-lock route (on the RTA route the Duplighosts have no Charge to read). */
 function chgArenaProf(P0, real) {
-  const A = chgArena(), fbI = RT().findIndex(x => x.turn === CHG_PROF.fb2.turn);
-  if (P0 === CHG_PROF.fb2 && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br }); return CHG_PROF.hw; }
-  if (P0 === CHG_PROF.hw && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br }); chgPendDrop('arena'); setStep(fbI); return CHG_PROF.fb2; }
+  const A = chgArena(), fbI = RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup');
+  if ((P0 === CHG_PROF.fb2 || P0 === CHG_PROF.dup) && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
+  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return CHG_PROF.fb2; }
+  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.fb2) && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
   return P0;
 }
 const chgP = () => CHG.prof || CHG_PROF.hw;
@@ -167,8 +189,8 @@ function chgFrame(t, present) {
   CHG.frames.push(fr);
   const dt = t - CHG.trig.t;   // from frame 3 (CHG.trig.t is frame 3's time even when the trigger picture was a later frame)
   // hw: every picture of the burst (game frames 5..27 by time) must sit on CHG_BRIGHT, within +-1.5 frames and 10 levels
-  if (chgP().shape) { const n = 3 + (t - CHG.trig.t) / FRAME;
-    if (n >= 5 && n <= 27) { let lo = 1e9, hi = -1e9; for (let k = Math.max(3, Math.floor(n - 1.5)); k <= Math.min(45, Math.ceil(n + 1.5)); k++) { lo = Math.min(lo, CHG_BRIGHT[k - 3]); hi = Math.max(hi, CHG_BRIGHT[k - 3]); }
+  if (chgP().shape) { const n = 3 + (t - CHG.trig.t) / FRAME, BRS = chgP().bright();
+    if (n >= 5 && n <= 27) { let lo = 1e9, hi = -1e9; for (let k = Math.max(3, Math.floor(n - 1.5)); k <= Math.min(45, Math.ceil(n + 1.5)); k++) { lo = Math.min(lo, BRS[k - 3]); hi = Math.max(hi, BRS[k - 3]); }
       const d = m - CHG.trig.base; if (d < lo - 10 || d > hi + 10) CHG.shapeBad++; } }
   if ((dt > 330 && dt < 400 && m < CHG.trig.base + 15) || CHG.shapeBad > 3) { slog('chargeFalseTrigger', { m: +m.toFixed(1), shapeBad: CHG.shapeBad || 0 }); CHG.state = 'armed'; CHG.ring = CHG.frames.slice(-16); CHG.frames = []; return; }
   if (chgP().early && !CHG.early && dt > (CHG_EARLY_N - 3 + 1.5) * FRAME) { CHG.early = { t }; setTimeout(chgEarly, 0); }   // stage 1 while the rays go on
@@ -488,7 +510,7 @@ function chgDecide() {
   if (!a || a.sc < CHG_MIN || a.sc / b.sc < CHG_RATIO) {
     CHG.state = 'nolock'; CHG.why = a ? 'no clear seed (best ' + Math.round(a.sc) + ', ' + (a.sc / b.sc).toFixed(2) + 'x the next)' : 'no candidates';
     slog('chargeNoLock', CHG.info);
-    if (!fb2 && CHG.info.marioNcc >= CHG_NCC_MIN && CHG.alt < CHG_ALTS && CHG.F0 && performance.now() - CHG.tEnd < CHG_ALT_MS && ((CHG.skips && CHG.skips.length) || (CHG.forced || 0) < CHG_FORCE.length)) { chgRetry(); return; }
+    if (!fb2 && CHG.info.marioNcc >= CHG_NCC_MIN && CHG.alt < CHG_ALTS && CHG.F0 && performance.now() - CHG.tEnd < (chgP().altMs || CHG_ALT_MS) && ((CHG.skips && CHG.skips.length) || (CHG.forced || 0) < CHG_FORCE.length)) { chgRetry(); return; }
     CHG.F0 = null; chgShow(); if (G && CHG.info.marioNcc >= CHG_NCC_MIN) chgKeepCapture(G, CHG.info); return;
   }
   CHG.F0 = null;
@@ -555,12 +577,15 @@ function chgQBack(seed, qs) {
 // the tracker's clock: the console's frame time (consoleRate: measured from the session's shines, else a real N64's)
 function chgRate() { return typeof consoleRate === 'function' ? consoleRate() : FRAME; }
 function chgStartTracker(seed, qs) {
+  const dup = !!CHG.prof && CHG.prof.id === 'dup';     // (CHG.prof, not chgP(): the replay tests run this function alone)
+  // the Duplighost lock came after the route left that step (the runner confirmed Do Nothing before it landed): nothing to plan
+  if (dup && !(isRoute() && RT()[routeStep] && RT()[routeStep].chg === 'dup')) { slog('dupLockAfterStep', { step: routeStep }); return; }
   const rate = chgRate(), t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];
   for (const q of qs) for (const [l, wl] of CHG_LAGS) {
     const ev = R.buildEv([{ f: -13, id: 'hw_charge' }]);
     parts.push({ S: { s: seed, nc: q, inst: [] }, g: 0, ev, evMax: 46, pauseAt: CHG_N + 2, pause: l, w: wl / qs.length, m: new Set() });
   }
-  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: 3.5, imps: CHG_IMPS, shifts: CHG_SHIFTS, src: 'charge' });
+  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: 3.5, imps: dup ? null : CHG_IMPS, shifts: dup ? null : CHG_SHIFTS, src: 'charge', fight: dup ? 'dup' : 'hw' });
   // what the coin did while the seed was searched
   for (const t of CHG.taps) zwTap(t);
   let up = null;
@@ -573,8 +598,8 @@ function chgStartTracker(seed, qs) {
     else if (!p && up != null) { const a = zwF(up + 1000, 0), b = zwF(t, 0) - 6; if (b > a) zw.vis.push([a, b]); up = null; }
   }
   if (up != null) { zw.visFrom = zwF(up + 1000, 0); zw.visTo = null; }
-  slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs });
-  if (CHG.spiny != null) { const c = CHG.spiny; CHG.spiny = null; zwInput('hw_spiny', c, VAN.B(), CHG_IMPS); }
+  slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs, fight: zw.fight });
+  if (!dup && CHG.spiny != null) { const c = CHG.spiny; CHG.spiny = null; zwInput('hw_spiny', c, VAN.B(), CHG_IMPS); }
 }
 function chgHyps() { return zw.on && zw.src === 'charge' ? zw.parts.length : typeof FB2 !== 'undefined' && FB2.on ? FB2.hyps.length : null; }
 function chgShow() {
@@ -588,7 +613,18 @@ function chgShow() {
     '<br>Time to lock: ' + t + (I.searchMs != null ? ' (search ' + (I.searchMs / 1000).toFixed(1) + ' s, ' + (CHG.res ? CHG.res.workers : '?') + ' threads)' : '') +
     '<br>Hypotheses left: ' + (h != null ? h + (zw.dead ? ' (none fit: No edge)' : '') : '–') +
     (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
+    (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost) : '') +
     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
+}
+/* the Duplighost line of the Charge panel: the plan's chances, or what to do without a lock (dup_charge/odds.json:
+ * blind 3+ 47.2%, 4 12.9%; the Surge route without a lock is the same per-frame draw, 47.5% / 12.9%) */
+const DUP_BLIND = { p3: 0.47, p4: 0.13 };
+function dupStatusLine(s, lost) {
+  const P = st.plan, pc = x => Math.round(100 * x) + '%';
+  if (s === 'nolock' || s === 'failed' || s === 'notseen' || lost) return '<br><b>Duplighosts: play it blind.</b> Do Nothing whenever you like: 3+ copies about ' + pc(DUP_BLIND.p3) + ', all 4 about ' + pc(DUP_BLIND.p4) + ' (the same as the RTA Surge route with no lock).';
+  if (P && P.mix && P.mix.p4 != null) return '<br><b>Do Nothing on the beep:</b> 3+ copies ' + pc(P.mix.p) + ', all 4 ' + pc(P.mix.p4) + ' (blind: ' + pc(DUP_BLIND.p3) + ' / ' + pc(DUP_BLIND.p4) + ')';
+  if (s === 'locked') return '<br>Duplighosts: locked. The beeps start on Bombette\'s Strategies screen (hand on Do Nothing).';
+  return '';
 }
 /* for tests and the session log: the weighted share of the tracker's states for which confirming Time Out on clock
  * frame c works (c = zwF(confirm time, 0)) */
