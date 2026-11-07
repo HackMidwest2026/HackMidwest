@@ -1,3 +1,83 @@
+# Time Out Timer v76: the first console session of the Charge-lock routes, analysed (Nov 7)
+
+Data: the runner's v73 OBS file, 2026-11-07, S-Video -> GV-USB2 -> OBS 1280x720 60 fps; 4 Duplighost clips, 2 Jr. Troopa
+clips (one fight), 2 Hallway clips, 1 Final Bowser clip, and the session logs. Frames were read off the clips in /dev/shm
+(no video committed); the numbers are in `../fixtures/console_1107.json`, the checks in `../test_console_1107.js`
+(in `run_suite.sh`). **The recordings have no input display** (the OBS recording does not carry it), so no A press is
+seen directly; confirm frames come from the picture and from the copies / outcomes run through the emulator-checked models.
+
+## 1. Duplighosts: the locks were right, the presses really were early
+| clip | lock (q) | aimed (clock) | press read | copies seen | model at the frame read (q) |
+|---|---|---|---|---|---|
+| 11-24-29 | 55ee0a3f (5, 6) | 197 | -2.34 | F F C C (2) | F F C C at the frame read (q 5): **failed, 2 frames early** |
+| 11-29-59 | b72e7914 (8-10) | 178 | -1.77 | C C C F (3) | C C C F at the frame read (q 8) or +1 (q 9) |
+| 11-30-55 | 46f90976 (1, 2) | 193 | -1.31 | C C C C (4) | C C C C at the frame read (q 1) or +1 (q 2) |
+| 11-31-51 | f0045c35 (18) | 192 | -0.81 | C C C F (3) | C C C F one frame after the frame read |
+Every outcome is the model's within one frame of the frame the page read: the locks (seed and first coin) were right.
+3 of 4 attempts succeeded (3+ copies); the page said "works: false" for two of them (one frame off its read).
+**The Strategies box offset is 3 frames on console too**: every clip shows one highlighted frame (the box redrawn, the
+help text gone), then the box gone on the next game frame, as the emulator does on confirm + 2 / + 3 (glide64 run here);
+the page's screenClosed is that frame in all four. The residual (true frame minus the frame read) is +0.3, -0.2 / +0.8,
++0.3 / +1.3 and +0.8: the Charge clock's own placement (the burst places it to about a frame; the Jr. Troopa T5 lock in
+the same session is off the other way, -0.9, on two independent presses). No change to VAN.S / dup3 vanish: shifting it
+would mis-read Jr. Troopa's T5 Do Nothing (same screen). The presses on Bombette's screen averaged about -1.5 frames
+(Hallway about 0): the runner's, on this screen.
+
+## 2. Route and plan fixes
+- A Duplighost Charge on a Jr. Troopa step (a retry after Do Nothing moved the route on) now moves the route back to the
+  Duplighosts (`chgArenaProf`); Jr. Troopa's arena on console reads B - R -1.5 .. -2.8 low, never the Duplighost rule (> +2).
+- On the Charge-lock route the Duplighosts are planned only from their Charge tracker: a walk coin lock (t=579423, three
+  plans and a beeped press) no longer plans Do Nothing.
+- No new plan once the runner may have pressed: an expired plan is not replaced while the bar is hidden since it was made
+  (Jr. Troopa T3: a jrcc_bomb plan with new beeps went out 272 ms after the confirm's bar hide, before the hide was counted).
+- Final Bowser T1-T4: a Charge burst moves the route (T1's Charge step -> Cloud Nine; a later burst on a lever step, 8 s+
+  after that turn's, -> the next Charge's turn; a burst on T3 -> T4), and the reader arms again after each lock. The clip:
+  the route sat on T1's Charge step for the whole fight (the Mario target screen was never saved), the T1 lock came
+  5.4 s after the rays (after Cloud Nine), and T2's Charge was never read (reader still 'locked'): no plan at all.
+- The fb1 shift retries start on the side of the frame cut the trigger level is near (+15.8 under the 4/5 cut 16.5 is
+  tried as frame 5 first: the console lock was the -1 shift, on the 2nd retry).
+- The page's version string was stale (v74 / v75 logs said "v73"): one VERSION, shown in the header.
+- Layout: the status panel is below the strip and the countdown always takes its space, so nothing above the strip changes
+  height (desktop and 390 px checked); the route list shows one "N. Tn: actions" line per turn (labels in the tooltip).
+
+## 3. Jr. Troopa (clips 11-33-12 + 11-34-33, log t=881-978 s)
+T1 Charge (retry 1), T2 Bomb + Whacka (the route's T2; Whacka's Bump healed 25), T3 Charge + Bomb: Jr. Troopa hit, death,
+Life Shroom (as logged). T4 is between the clips. T5 Do Nothing: Lucky. T6 Power Bounce: 6 bounces (fight over).
+- T3: the plan (from the T1 carry, 50%) aimed at about frame 214 from the T3 Charge; the bar hide puts the press 0.7
+  frames before the aimed one. The T3 lock (fefafd47, 1.8 s before the beep) gives no Close Call at 214 / 215 and Lucky at
+  213: the press landed on 214 (death), as planned. The late plan (918758) came after the press and changed nothing; it
+  is now held (section 2).
+- T5 / T6 from the T5 lock: Lucky needs 302 or 304 (read 302.9), 6 bounces needs 486 or 488 (read 486.9): both agree on
+  a clock about 1 frame off, the outcomes fit.
+- The route list steps (2->3 Whacka, 3->4 T3 Bomb, 4->5 T4 Syrup, 5->6 Do Nothing, 6->7 Power Bounce) match the turns.
+
+## 5. Final Bowser logs 1794070564756 and 1794071163309 (v74/v75 builds; their "page" said v73: fixed)
+- 11:55 clip: T1 Charge read on the 2nd retry (shift -1, 5.4 s after the rays, after Cloud Nine); Cloud Nine pressed
+  with no plan; Bowser's fire breath hit (death, Life Shroom); T2 Charge burst never read (route stuck on T1's Charge step,
+  reader 'locked'). Fixed by the burst-driven steps and the re-arm (section 2).
+- 1794071163309 attempt A (t 2546-2620 s): **no lock in that attempt.** The runner was off-route (Life Shroom on T1, no
+  block on T2, Life Shroom on T3) and no Charge was read: the reader was still 'locked' from the 11:55 attempt, whose T1
+  states (5 minutes old) the page still carried, so the coin ruled out all of them at T2 (fb14AllOut) and the page said
+  no edge, doubt 1, to the end. Now: the reader re-arms after each lock, a Charge 120 s+ after the last one starts a new
+  attempt (fb14Reset), and when every state is ruled out the page says the carried seed is gone because the turn did not
+  fit the route and drops the carry, so the next Charge locks afresh. The T6 Charge (fb2, chargeEarly) did not lock: not
+  investigated.
+- Attempt B (t 2801-2842 s): the replan storm. fb14Tick re-scored a plan over press offsets -1..+1 only while fb14Plan
+  used the runner's pressDist() (-4..+4, sd ~1.5): every re-score read ~0.6 x the plan's chance and replanned the same frame
+  every 250 ms (37 plans; the runner still confirmed at -0.5). Now the tick uses the plan's press spread and states sample,
+  and a replan that lands on the same frame keeps the scheduled beeps. The Hallway / Jr. Troopa / Duplighost re-score
+  (zwPlanChance) already used the full spread and the same state list. In attempt B the step was also one ahead of the
+  fight (set by hand to the Cloud Nine step before the T1 Charge), so T2's plan was for Cloud Nine's press: the
+  burst-driven steps make the hand setting unnecessary.
+- The page is renamed "Paper Mario (Any% No ACE) (RNG Manipulation)" (title, header, tag line; the OBS file saves as
+  pm-rng-manipulation.html, the log as pm-rng-log-*.json; build paths unchanged).
+
+## 4. Not settled
+- Charge read retries: Duplighosts 4/6 first try, Jr. Troopa 0/3, Hallway 1/2, Final Bowser 0/1. No link to the raw
+  picture count (73-100) or the trigger level (all within the frame-3 band but Final Bowser); the retries are skip-ban
+  placements (dup / jr) and the shift (fb1). Needs the session's chargeCaptures (the log keeps none) to replay.
+- An input display in the recording would measure the A-to-screen delays directly.
+
 # Time Out Timer v75: Final Bowser T1-T4 carry and the T6 narrowed lock, fixed and run end to end (Nov 7)
 
 The two known problems of v74, reproduced first on the end-to-end renders (`fb2_route/fb14_e2e.py`, seed 1234abcd from

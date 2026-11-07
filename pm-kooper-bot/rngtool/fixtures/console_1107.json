@@ -1,0 +1,20 @@
+{
+  "about": "Real console session 2026-11-07 (page v73 OBS file; S-Video -> GV-USB2 -> OBS 1280x720 60 fps). Frames read off the clips (in /dev/shm while analysed; no video here). The recordings carry no input display. capture frame = clip time x 60. Duplighost Do Nothing: the Strategies box shows one highlighted frame, then is gone the next game frame (emulator: highlight on confirm + 2, gone on + 3), and the page's screenClosed time is that gone frame in all four clips. Copies are in roll order (C copy, F failed copy / tackle).",
+  "consoleRate": 33.4253, "vlag": 50, "off": -5,
+  "dup": [
+    { "clip": "0712b28b-2026-11-07_11-24-29.mkv", "seed": "55ee0a3f", "qs": [5, 6], "ratio": 2.62, "target": 197, "tPress": 368232, "tObs": 368488, "err": -2.34, "boxHighlightCap": 718, "boxGoneCap": 720, "barHideCap": 306, "seen": "FFCC" },
+    { "clip": "bbf50c88-2026-11-07_11-29-59.mkv", "seed": "b72e7914", "qs": [8, 9, 10], "ratio": 4.45, "target": 178, "tPress": 694929, "tObs": 695204, "err": -1.77, "boxHighlightCap": 526, "boxGoneCap": 528, "barHideCap": 151, "seen": "CCCF" },
+    { "clip": "fd6b6a75-2026-11-07_11-30-55.mkv", "seed": "46f90976", "qs": [1, 2], "ratio": 3.32, "target": 193, "tPress": 751913, "tObs": 752203, "err": -1.31, "boxHighlightCap": 597, "boxGoneCap": 599, "barHideCap": 190, "seen": "CCCC" },
+    { "clip": "f4808fc4-2026-11-07_11-31-51.mkv", "seed": "f0045c35", "qs": [18], "ratio": 3.30, "target": 192, "tPress": 806029, "tObs": 806337, "err": -0.81, "boxHighlightCap": 486, "boxGoneCap": 488, "barHideCap": 78, "seen": "CCCF" }
+  ],
+  "arena": {
+    "jr": { "clip": "6c5132fb-2026-11-07_11-33-12.mkv", "cap": 105, "low": [69.2, 68.1, 67.5], "top": [48.7, 49.2, 64.2] },
+    "dup": { "clip": "0712b28b-2026-11-07_11-24-29.mkv", "cap": 306, "low": [57.4, 54.3, 63.8], "top": [45.2, 48.3, 60.8] }
+  },
+  "jr": {
+    "t3": { "seed": "fefafd47", "q": 1, "turn": "bomb_cc", "confirmFromCharge": 214, "planTPress": 918143, "barHide": 918486, "replanAt": 918758, "seen": "hit, death, Life Shroom" },
+    "t5": { "seed": "950e0bb6", "q": 23, "doNothingClose": 972069, "seen": "Lucky" },
+    "t6": { "seen": 6 }
+  },
+  "fb": { "clip": "528db45a-2026-11-07_11-55-22.mkv", "seed": "6af4517d", "trigLevel": 15.8, "lockedShift": -1, "seen": "T1 Cloud Nine pressed before the lock, Bowser's fire hit (death, Life Shroom); T2 Charge burst never read (route stuck on T1's Charge step)" }
+}

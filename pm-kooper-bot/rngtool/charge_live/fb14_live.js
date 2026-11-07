@@ -34,9 +34,12 @@ const FB14_T5 = [8540, 9420];
 // the lever's screen: the first picture without its box shows the confirm + 1 (Cloud Nine's target, the マリオ name box) /
 // + 2 (Lakilester's Strategies panel) in the same renders (the page's VAN, from console clips of other fights, says 2 / 3)
 const FB14_VAN = { M: 1, S: 2 };
+// a Charge burst this long after the last one, on that turn's lever step, is the next turn's Charge (Bowser's turn alone
+// takes 15 s+ on console: T1 Cloud Nine -> T2 menu 18 s in the 2026-11-07 clip)
+const FB14_NEXTCHG = 8000, FB14_NEWATTEMPT = 120000;
 const FB14_HIDE = { jelly: 2, peach: 2 }, FB14_JSHIFTS = [[-1, 0.25], [0, 0.5], [1, 0.25]];
 var FB14 = { on: false };
-function fb14Reset(why) { Object.assign(FB14, { on: false, why: why || null, states: [], t0: null, rate: null, taps: [], vis: [], visFrom: null, turn: 0, M: {}, P: {}, plan: null, lockN: 0, log: [], pb: null, t6: null, hideWatch: null, doubt: 0, bg: 0, p4t: null, pend: [], pT: {}, charges: [], inputs: [] }); }
+function fb14Reset(why) { Object.assign(FB14, { on: false, why: why || null, states: [], t0: null, rate: null, taps: [], vis: [], visFrom: null, turn: 0, M: {}, P: {}, plan: null, lockN: 0, log: [], pb: null, t6: null, hideWatch: null, doubt: 0, bg: 0, p4t: null, pend: [], pT: {}, charges: [], inputs: [], lastBurst: null, gone: false, allOutLogged: false, prevPlan: null }); }
 fb14Reset();
 /* ---- the random numbers (fast, no arrays) ---- */
 let FBV = 0;
@@ -283,7 +286,7 @@ function fb14Weigh(h) {
     S.lw = lw; S.err = err; if (err > ZW_MAXERR) continue; out.push(S); mx = Math.max(mx, S.w * lw);
   }
   const keep = out.filter(S => S.w * S.lw >= mx * ZW_CUT), sum = keep.reduce((a, S) => a + S.w * S.lw, 0);
-  if (!keep.length && FB14.states.length && !FB14.allOutLogged) { FB14.allOutLogged = true; slog('fb14AllOut', { h, taps: tapF.filter(x => x < h).map(x => +x.toFixed(1)).slice(-20), vis: vis.map(v => v.map(x => +x.toFixed(1))).slice(-8), sample: FB14.states.slice(0, 4).map(S => ({ f: S.f, l: S.l, from: S.from, sh: S.sh.slice(-12), err: S.err })) }); }
+  if (!keep.length && FB14.states.length && !FB14.allOutLogged) { FB14.allOutLogged = true; FB14.gone = true; slog('fb14AllOut', { h, taps: tapF.filter(x => x < h).map(x => +x.toFixed(1)).slice(-20), vis: vis.map(v => v.map(x => +x.toFixed(1))).slice(-8), sample: FB14.states.slice(0, 4).map(S => ({ f: S.f, l: S.l, from: S.from, sh: S.sh.slice(-12), err: S.err })) }); }
   let nVis = 0; for (const [a, b] of vis) nVis += Math.max(0, b - Math.max(a, FB14.bgFrom || 0));
   const bg = tot0 * FB14.bg * Math.exp(-ZW_RHO * nVis);
   return { list: keep, doubt: keep.length ? bg / (bg + sum) : 1, sum };
@@ -322,6 +325,10 @@ function fb14Plan(cAt) {      // cAt (tests): plan as if the screen showed on cl
   if (!FB14.on) { st.msg = 'No Final Bowser lock: ' + fb14BlindText(turn) + '.'; FB14.plan = { none: 'no lock', turn }; fb14Show(); if (cAt == null) render(); return true; }
   const now = performance.now(), h = cAt != null ? cAt : fb14Horizon(now); fb14Advance(h);
   const Wg = fb14Weigh(h); FB14.doubt = Wg.doubt;
+  // v76: every state ruled out = the carried seed is gone (an off-route turn: an item instead of Charge / Cloud Nine, an
+  // unblocked attack, a Life Shroom; or a carry from an earlier attempt). Say so once and let the next Charge lock afresh
+  // (log 1794071163309, attempt A: no edge at doubt 1 for the rest of the fight).
+  if (!Wg.list.length && FB14.gone) { fb14CarryGone(); st.msg = 'The carried seed is gone: what the page saw since the last lock does not fit the route (an item or Life Shroom instead of Charge / Cloud Nine, an unblocked attack, or a lock from an earlier attempt). The next Super Charge locks again. ' + fb14BlindText(turn)[0].toUpperCase() + fb14BlindText(turn).slice(1) + '.'; FB14.plan = { none: 'gone', turn }; fb14Show(); if (cAt == null) render(); return true; }
   if (!Wg.list.length || Wg.doubt >= 0.5) { st.msg = 'No edge: the coin no longer fits the Final Bowser lock (' + Math.round(100 * Wg.doubt) + '% none of the states is the game\'s). ' + fb14BlindText(turn)[0].toUpperCase() + fb14BlindText(turn).slice(1) + '.'; FB14.plan = { none: 'doubt', turn, doubt: Wg.doubt }; slog('fb14NoEdge', { turn, doubt: +Wg.doubt.toFixed(3), states: Wg.list.length }); fb14Show(); if (cAt == null) { cancelBeeps(); render(); } return true; }
   const rate = fbRate(), W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
   let from = cAt != null ? Math.ceil(cAt + num('lead') * 1000 / rate + 1) : Math.max(h + 1, Math.ceil(fbPic(now) + 1));
@@ -334,7 +341,8 @@ function fb14Plan(cAt) {      // cAt (tests): plan as if the screen showed on cl
     st.msg = 'No edge: ' + Wg.list.length + ' possible states and no frame in the next ' + num('zwwin') + ' s works for enough of them (best ' + Math.round(100 * (C.p || 0)) + '%). ' + fb14BlindText(turn)[0].toUpperCase() + fb14BlindText(turn).slice(1) + '.'; slog('fb14NoEdge', { turn, best: C.p }); cancelBeeps(); fb14Show(); render(); return true; }
   const pl = { turn, target: C.target, p: C.p, pStates: C.pStates, doubt: +Wg.doubt.toFixed(3), states: Wg.list.length, ms, from, W, w: C.w, tPress: fbPressT(C.target), blind: fb14Blind(turn) };
   FB14.plan = pl; if (cAt != null) return pl;
-  cancelBeeps(); playBeeps(pl.tPress);
+  const prev = FB14.prevPlan, same = prev && prev.target === C.target && Math.abs(prev.tPress - pl.tPress) < 5;   // v76: a replan on the same frame keeps the beeps already scheduled
+  if (!same) { cancelBeeps(); playBeeps(pl.tPress); } else slog('fb14SameTarget', { target: C.target });
   const tLast = FB14.t0 - 1.2 * rate - num('vlag');      // pressTime(tLast, rate, F) = fbPressT(F)
   const a = C.a, tab = []; for (let F = from - 30; F <= from + W + 30; F++) tab.push(F >= a && F <= C.b ? C.share[F - a] >= 0.5 : false);
   st.plan = { tMade: now, w: C.w, target: C.target, tPress: pl.tPress, tLast, rate, carried: true, from, to: from + W, first: from - 30, prof: 'fb14', tab, tab4: null, type: C.type, beeps: nBeeps(),
@@ -346,11 +354,15 @@ function fb14Plan(cAt) {      // cAt (tests): plan as if the screen showed on cl
 function fb14Tick(t) {
   const P = st.plan; if (!P || !P.fb14 || P.stopped || P.tPress < performance.now() - 300) return;
   const h = fb14Horizon(performance.now()); if (FB14.tickH === h) return; FB14.tickH = h;
-  fb14Advance(h); const Wg = fb14Weigh(h), D = 1, sh = fb14Share(fb14Sample(Wg.list, 100), P.target - D, P.target + D, P.fb14, fb14Kind(P.fb14));
-  let v = 0; for (const [d, q] of (P.PD || PRESS_ERR)) v += q * (sh[d + D] || 0);
+  // v76: re-score exactly as the plan scored (log 1794071163309, Final Bowser T2: 37 plans in 9 s). The tick summed the press
+  // spread over -1..+1 only, while the plan's pressDist() reaches -4..+4 (the runner's spread, sd ~1.5): every re-score read
+  // ~0.6 of the plan's 0.93 and replanned the same frame every 250 ms, so the beeps never played through. Same states sample
+  // (150), same press spread.
+  fb14Advance(h); const Wg = fb14Weigh(h), PDt = P.PD || PRESS_ERR, D = Math.max(...PDt.map(x => Math.abs(x[0]))), sh = fb14Share(fb14Sample(Wg.list, 150), P.target - D, P.target + D, P.fb14, fb14Kind(P.fb14));
+  let v = 0; for (const [d, q] of PDt) v += q * (sh[d + D] || 0);
   const p = (1 - Wg.doubt) * v + Wg.doubt * fb14Blind(P.fb14); P.mix.pNow = +p.toFixed(3);
   if (Wg.doubt < 0.5 && p >= num('zwedge') && p >= P.mix.p - 0.15) return;
-  if (P.tPress - (nBeeps() - 1) * num('gapms') > performance.now() + 200) { slog('fb14Replan', { from: P.target, p: +p.toFixed(3) }); st.plan = null; fb14Plan(); return; }
+  if (P.tPress - (nBeeps() - 1) * num('gapms') > performance.now() + 200) { slog('fb14Replan', { from: P.target, p: +p.toFixed(3) }); FB14.prevPlan = P; st.plan = null; fb14Plan(); FB14.prevPlan = null; return; }
   cancelBeeps(); P.stopped = true; slog('beepsStopped', { from: P.target, why: 'fb14', p: +p.toFixed(3), doubt: +Wg.doubt.toFixed(3) });
   st.msg = 'Beeps stopped: the coin no longer supports the planned frame. ' + fb14BlindText(P.fb14)[0].toUpperCase() + fb14BlindText(P.fb14).slice(1) + '.'; render();
 }
@@ -399,6 +411,22 @@ function fb14T6Cands() {
 /* ---- route glue ---- */
 /* a T2 / T4 Charge's burst: its Mario confirm on the fight's clock, and its rays' creations into the carried states */
 function fb14Trigger() {
+  // v76 (console 2026-11-07 11:55, log 1794070564756): the route waited on T1's Charge step for the Mario target screen to
+  // close, and that screen was never saved, so the step never moved: no Cloud Nine step, and the reader stayed 'locked'
+  // through T2's Charge (no T2 lock, no Do Nothing plan). A Charge burst is proof enough of where the fight is: on T1's
+  // Charge step it is that Charge (the route goes to the Cloud Nine step); on a lever step after that turn's lock it is
+  // the next Charge (T2 / T4: the lever went by unseen, the route goes to that turn's step).
+  { let s = fb14Step(); const t = CHG.trig ? CHG.trig.t : performance.now(), lb = FB14.lastBurst, c1 = RT().findIndex(x => x.fb14 === 1 && x.fb14role === 'charge');
+    // a Charge this long after the last one is a new attempt (T1-T4's Charges are 20-60 s apart): the old carry goes
+    // (log 1794071163309, attempt A: a T1 lock from the attempt 5 minutes before was still carried and every state died)
+    if (s && lb && t - lb.t > FB14_NEWATTEMPT && c1 >= 0) { slog('fb14NewAttempt', { from: routeStep, after: Math.round(t - lb.t) }); fb14Reset('new attempt'); setStep(c1); s = fb14Step(); }
+    const lb2 = FB14.lastBurst;
+    if (s && s.fb14role === 'charge') { slog('fb14StepByBurst', { from: routeStep, turn: s.fb14 }); setStep(routeStep + 1); }
+    else if (s && s.fb14role === 'lever' && (!s.chg || (lb2 && lb2.turn === s.fb14 && t - lb2.t > FB14_NEXTCHG))) {
+      const j = RT().findIndex((x, i) => i > routeStep && x.fb14 && x.fb14 > s.fb14 && x.chg === 'fb1');
+      if (j >= 0) { slog('fb14StepByBurst', { from: routeStep, to: j, turn: RT()[j].fb14 }); setStep(j); }
+    }
+    const s2 = fb14Step(); if (s2) FB14.lastBurst = { turn: s2.fb14, t }; }
   const stp0 = fb14Step(); FB14.trigTurn = stp0 ? stp0.fb14 : null;
   if (FB14.t0 == null || !CHG.trig) return;
   const M = Math.round(fbPic(CHG.trig.t) - 16), stp = stp0, turn = stp ? stp.fb14 : null;
@@ -416,6 +444,20 @@ function fb14ArmOk(P, t) {
   if (!P || P.id !== 'fb2' || FB14.p4t == null) return true;
   if (FB14.pb) return t - FB14.pb.t > 20000;
   return t - FB14.p4t > 45000;
+}
+/* v76: the carry is gone (every state ruled out): the tracker off and its clock dropped, so the next Charge's lock is a
+ * fresh one (the reader is armed again if a lock left it 'locked') */
+function fb14CarryGone() {
+  if (!FB14.on && FB14.t0 == null) return;
+  slog('fb14CarryGone', { turn: (fb14Step() || {}).fb14 || null });
+  Object.assign(FB14, { on: false, t0: null, states: [], M: {}, P: {}, charges: [], gone: false, allOutLogged: false, why: 'the carried seed is gone (an off-route turn); the next Super Charge locks again' });
+  if (typeof CHG !== 'undefined' && ['locked', 'nolock', 'failed'].includes(CHG.state)) chgReset();
+}
+/* v76: after a T1-T4 lock the reader arms again at once, so the next turn's Charge is read even when no target screen moved
+ * the route (the burst then moves it, fb14Trigger). Only real bar hides arm it (bar up 0.6 s+), so Bowser's turn does not. */
+function fb14AfterLock() {
+  const s = fb14Step(); if (!s || FB14.refining || typeof CHG === 'undefined' || CHG.state !== 'locked') return;
+  slog('fb14ReaderRearmed', { turn: s.fb14, why: 'after the lock' }); chgReset();
 }
 /* a step change: the next turn's Charge needs the Charge reader armed again (it stays 'locked' after T1's) */
 function fb14StepChange(was) {
@@ -535,4 +577,4 @@ async function fb1Stage2(W, call, top, times, t3) {
   return { top: all.slice(0, 5), fb1: { hyps: hy, times } };
 }
 window.__fb14 = { FB14, fbStep, fbRun, fbClone, fbRi, fbAdv, plan: c => fb14Plan(c), weigh: h => fb14Weigh(h), input: (k, F, turn, sh) => fb14Input(k, F, turn, sh), lock: r => fb14Lock(r), reset: () => fb14Reset(), confirm: (t, s) => fb14Confirm(t, s), pic: t => fbPic(t), pressT: F => fbPressT(F), t6cands: () => fb14T6Cands(), peach: () => fb14Peach(), fbNew: o => fbNew(o),
-  sample: (b, w, h) => sample(b, w, h), reloadTargets: () => { targets = JSON.parse(localStorage.getItem('tot-targets') || '{}'); useTarget(); } };   // for tests
+  sample: (b, w, h) => sample(b, w, h), tick: t => { FB14.tickH = null; fb14Tick(t); }, carryGone: () => fb14CarryGone(), reloadTargets: () => { targets = JSON.parse(localStorage.getItem('tot-targets') || '{}'); useTarget(); } };   // for tests

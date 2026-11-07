@@ -134,6 +134,11 @@ function chgArenaProf(P0, real) {
   // after the fight are grey stone too, and no console clip of the fight exists to rule that out (jrI: the log only).
   if (P0 !== CHG_PROF.jr && real && A.a === 'jr' && jrI >= 0) slog('chargeArenaJrSeen', { step: routeStep, L: A.L, br: A.br, lbr: A.lbr });
   if (P0 === CHG_PROF.jr && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
+  // v76: a Duplighost retry. After Do Nothing the route moves on to Jr. Troopa by itself, and the runner often resets to the
+  // Duplighosts (console session 2026-11-07: two Duplighost Charges on the Jr. Troopa step were locked as Jr. Troopa's T1,
+  // jrFight / jrStart, and no Do Nothing was planned). The Duplighost room at a real bar hide is that fight; Jr. Troopa's
+  // arena never reads as it (grey floor, B - R below 0; the rule needs B - R above +2 and is tested first).
+  if (P0 === CHG_PROF.jr && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
   if (P0 === CHG_PROF.jr && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
   if ((P0 === CHG_PROF.fb2 || P0 === CHG_PROF.dup || P0 === CHG_PROF.fb1) && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
   if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
@@ -216,7 +221,7 @@ function chgFrame(t, present) {
         // browser dropped frame 3's pictures the first one above the menu is frame 4 (+12.5) or 5 (+19.4), and v69 took it
         // as frame 3 (or, at +19.4, did not trigger at all): every frame after it one or two off, no lock
         const d0 = m - base, cut = P.trigCut || [9.85, 15.95], n0 = P.trigN ? (d0 < cut[0] ? 3 : d0 < cut[1] ? 4 : 5) : 3;
-        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1 }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); if (P.id === 'fb1' && typeof fb14Trigger === 'function') fb14Trigger(); }
+        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1, d0, cut }; CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); if (P.id === 'fb1' && typeof fb14Trigger === 'function') fb14Trigger(); }
     }
     return;
   }
@@ -587,12 +592,22 @@ function chgSearch(maps, opts) {
  * of the burst (frames 9-17) leaves it with no skip to move. Those alternatives force a skip at frame 13, then 9, then
  * 17 (the identity assignment of that frame's picture banned). */
 const CHG_ALTS = 4, CHG_ALT_MS = 9000, CHG_FORCE = [13, 9, 17, 21];
+/* the shift retries in the order the trigger level suggests: a level under a cut by < 1.5 may be the next frame (shift -1:
+ * every picture one frame later), over a cut by < 1.5 the frame before (+1) */
+function chgShiftOrder(SA, T) {
+  if (!SA || !T || T.d0 == null || !T.cut) return SA;
+  let best = null; for (const c of T.cut) { const d = T.d0 - c; if (Math.abs(d) < 1.5 && (best == null || Math.abs(d) < Math.abs(best))) best = d; }
+  if (best == null) return SA;
+  const first = best < 0 ? -1 : 1; return SA.includes(first) ? [first].concat(SA.filter(x => x !== first)) : SA;
+}
 async function chgRetry() {
   try {
     // a profile with shift alternatives (fb1, fb14_live.js): the first retries put every picture one frame earlier / later
     // (the trigger picture's frame read from the burst's level is off by one when the burst is brighter or darker than
     // the curve), then the skip bans as below
-    const SA = chgP().shiftAlts, sh = SA && CHG.alt < SA.length ? SA[CHG.alt] : 0;
+    // v76: the side of the nearest frame cut the trigger level sat on goes first (Final Bowser console 2026-11-07: +15.8, 0.7
+    // under the 4 / 5 cut, was frame 5; the -1 shift locked it on the 2nd retry, 5.4 s after the rays, past Cloud Nine)
+    const SA = chgShiftOrder(chgP().shiftAlts, CHG.trig), sh = SA && CHG.alt < SA.length ? SA[CHG.alt] : 0;
     if (sh) { CHG.alt++; if (CHG.trigT0 == null) CHG.trigT0 = CHG.trig.t; CHG.frames = CHG.F0; const G0 = chgGameFrames(null); CHG.frames = []; CHG.trig.t = CHG.trigT0 + sh * FRAME; CHG.trig.n = 3 - sh;
       const G = fbShiftG(G0, sh), t1 = performance.now(), maps = chgMaps(G, CHG.cen, CHG_N); CHG.G = G; CHG.state = 'search'; CHG.tSearch = performance.now(); chgShow();
       slog('chargeRetry', { alt: CHG.alt, shift: sh, frames: G.slice(0, CHG_N).filter(Boolean).length, mapsMs: Math.round(CHG.tSearch - t1) });
@@ -629,7 +644,7 @@ function chgDecide() {
   }
   CHG.F0 = null;
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); fb2Lock(CHG.res); chgShow(); return; }
-  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); fb14Refine(CHG.res, G).then(r => fb14Lock(r)); chgShow(); return; }
+  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); fb14Refine(CHG.res, G).then(r => { fb14Lock(r); if (typeof fb14AfterLock === 'function') fb14AfterLock(); }); chgShow(); return; }
   // q hypotheses: every first-coin frame whose score is within CHG_QTOL of the best (late coins barely move the rays: v71
   // kept 0.5% and 6 at most, and on the Duplighost render 1234abcd the true q 42 was not among them), best first; the
   // turn-1 menu's coin then weighs them (chgQBack: a likelihood, not a filter) and the tracker's shines settle them

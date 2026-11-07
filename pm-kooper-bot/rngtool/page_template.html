@@ -1,4 +1,4 @@
-<title>Time Out Timer</title>
+<title>Paper Mario (Any% No ACE) (RNG Manipulation)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -48,6 +48,10 @@ h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; tex
 #detail { color: var(--muted); margin: 0; max-width: 62ch; }
 .count { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: clamp(2.6rem, 9vw, 3.6rem); font-weight: 700; line-height: 1; color: var(--gold); }
 .count small { font-size: .35em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+/* v76: the countdown sits in the strip's header row: it always takes its space (hidden = invisible, not removed) and has a
+ * fixed width, so showing it or changing its text never moves the strip (the status panel is below the strip for the same reason) */
+.count { min-width: 5em; text-align: right; white-space: nowrap; }
+.count[hidden] { display: block; visibility: hidden; }
 #shine { font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .08em; text-transform: uppercase;
   width: clamp(150px, 30vw, 200px); min-height: 150px; border-radius: 14px; border: 2px solid var(--gold); background: var(--gold-soft); color: var(--ink);
   cursor: pointer; display: grid; place-items: center; gap: 2px; padding: 12px; touch-action: manipulation; user-select: none; }
@@ -107,26 +111,9 @@ details[open] summary { margin-bottom: 10px; }
 <div class="layout">
 <main>
   <header>
-    <h1>Time Out <span>Timer</span></h1>
-    <div class="tag">Paper Mario (JP) · Hallway Bowser · STOP 30 vs rand_int(100) · <span id="ver">v75</span></div>
+    <h1>Paper Mario <span>(Any% No ACE)</span> (RNG Manipulation)</h1>
+    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v76</span></div>
   </header>
-
-  <section class="panel stage" aria-live="polite">
-    <div class="status">
-      <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
-      <div class="phase" id="phase">
-        <span class="chip" id="p-watch">Watch</span>
-        <span class="chip" id="p-lock">Seed</span>
-        <span class="chip" id="p-time">Window</span>
-      </div>
-      <p id="headline">Start watching (below), then play: the page reads the seed by itself.</p>
-      <p id="detail">On Hallway Bowser it reads the seed from Mario's Charge on turn 1 and beeps Time Out on turn 2.</p>
-      <div class="row">
-        <button class="b primary" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button>
-        <button class="b" id="reset">Reset</button>
-      </div>
-    </div>
-  </section>
 
   <section class="panel">
     <div class="row" style="justify-content:space-between; align-items:center">
@@ -162,6 +149,23 @@ details[open] summary { margin-bottom: 10px; }
           <button class="b" id="press-clear" style="justify-self:start">Clear measured presses</button>
         </div>
       </details>
+    </div>
+  </section>
+
+  <section class="panel stage" aria-live="polite">
+    <div class="status">
+      <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
+      <div class="phase" id="phase">
+        <span class="chip" id="p-watch">Watch</span>
+        <span class="chip" id="p-lock">Seed</span>
+        <span class="chip" id="p-time">Window</span>
+      </div>
+      <p id="headline">Start watching (below), then play: the page reads the seed by itself.</p>
+      <p id="detail">On Hallway Bowser it reads the seed from Mario's Charge on turn 1 and beeps Time Out on turn 2.</p>
+      <div class="row">
+        <button class="b primary" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button>
+        <button class="b" id="reset">Reset</button>
+      </div>
     </div>
   </section>
 
@@ -1232,7 +1236,9 @@ function makePlan() {
   if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (FB2.t7) fb2PlanT7(); else { st.msg = FB2.plan && !FB2.kObs ? 'FB2: waiting for the T6 popup A (the page reads the frame from the popup closing).' : 'No edge: no FB2 states to plan with. Press Power Bounce normally.'; render(); } return; }
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'Time Out is done for this attempt. The route stays on the Hallway until the next Charge (a retry) or Final Bowser\'s arena.'; render(); return; }
   if (zw.on && (PROF().id === 'timeout' || dupZw() || jrZw()) && zwPlan()) return;
-  if (dupStepNow() && !st.lock) { st.msg = dupNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }
+  // v76: on the Charge-lock route the Duplighosts are planned only from this fight's Charge tracker, never from a coin lock
+  // (console session 2026-11-07, t=579423: a walk lock from before the fight produced three Do Nothing plans and a beeped press)
+  if (dupStepNow() && !dupZw()) { st.msg = dupNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }
   if (jrStepNow() && PROF().group === 'jr') { st.msg = jrNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }   // Jr. Troopa: no lock, or no roll this turn
   if (!st.lock || !PROF().rolls.length) return;
   if (st.needResync) { st.msg = 'The last Close Call did not go as planned, so the seed has to be found again from a few shines.'; render(); return; }
@@ -1424,11 +1430,12 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v73';
+const VERSION = 'v76';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+{ const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
   const blob = new Blob([JSON.stringify({ version: 1, page: VERSION, saved: new Date().toISOString(), settings: (() => { const o = {}; SET.forEach(k => o[k] = $('s-' + k).value); return o; })(), route: routeStep, more: { zwwin: num('zwwin'), zwedge: num('zwedge'), chgcpu: num('chgcpu'), presses: presses.slice() }, events: SLOG, chargeCaptures: typeof CHG_CAPS !== 'undefined' ? CHG_CAPS : [] }, null, 0)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'timeout-timer-log-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pm-rng-log-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); a.remove();
 }
 function render() {
   { const k = st.lock ? (st.lock.seed >>> 0) + ':' + st.lock.seg : null;
@@ -1807,11 +1814,16 @@ function applyProfile() {
     routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
     $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
-    let k = 0;
+    // v76: one line per turn ("N. Tn: actions"; the runner read the step labels under each turn as the route repeated).
+    // The step's label is the line's tooltip; the line of the current step is highlighted. Step indices are unchanged: a
+    // turn's line carries its first step's index (Final Bowser T1's two steps share one line).
+    let k = 0; const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     $('route-list').innerHTML = endgameNow().map(f => '<li style="list-style:none; margin:8px 0 2px -1.4em; font-weight:600; color:var(--ink)">' + f.h + '</li>' +
-      f.turns.map(tu => '<li style="list-style:none; margin-left:-1.4em">' + tu.text + (tu.steps.length ? '<br>' : '') +
-        tu.steps.map(s => { const i = k++; const cur = i === routeStep;
-          return '<span data-i="' + i + '" class="chip' + (cur ? ' on' : '') + '" style="cursor:pointer; margin:2px 4px 2px 0; display:inline-block' + (cur ? '; font-weight:700' : '') + '">' + (i + 1) + '. ' + s.label + (s.prof ? ' ★' : '') + (s.optional ? ' (optional)' : '') + '</span>'; }).join('') + '</li>').join('')).join('');
+      f.turns.map(tu => {
+        if (!tu.steps.length) return '<li style="list-style:none; margin-left:-1.4em">' + tu.text + '</li>';
+        const i0 = k; k += tu.steps.length; const cur = routeStep >= i0 && routeStep < k;
+        return '<li style="list-style:none; margin-left:-1.4em"><span data-i="' + i0 + '" class="chip' + (cur ? ' on' : '') + '" title="' + esc(tu.steps.map((s, j) => (i0 + j + 1) + '. ' + s.label + (s.optional ? ' (optional)' : '')).join('\n')) + '" style="cursor:pointer; margin:2px 4px 2px 0; display:inline-block' + (cur ? '; font-weight:700' : '') + '">' + (i0 + 1) + '. ' + tu.text + '</span></li>';
+      }).join('')).join('');
   } else {
     $('target-label').textContent = P.id === 'timeout' ? "Time Out's Hand on Hallway" : "Bombette's do-nothing menu";
     $('fight-help').textContent = 'Target screen for this fight: ' + P.screen + '. Put the blue box on ' + P.box + ', then press Save target screen there. Each fight keeps its own.';
@@ -2073,6 +2085,7 @@ $('test-beep').onclick = () => {
 };
 // any click or key wakes the audio (browsers start it suspended until the page is used)
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => audio(), { passive: true }));
+const pressMaybeIn = P => !!(P && V.hudGone && V.hudGone > (P.tMade || 0) && V.hudGone > P.tPress - 3000);
 function autoPlan() {
   if (typeof fb14Step === 'function' && fb14Step() && fb14Step().fb14role === 'lever') { if (st.plan && performance.now() < st.plan.tPress + 600) return; if (st.planTry && performance.now() - st.planTry < 500) return; st.planTry = performance.now(); makePlan(); return; }
   if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (st.plan && performance.now() < st.plan.tPress + 600) return; makePlan(); return; }
@@ -2080,10 +2093,14 @@ function autoPlan() {
   // needs no search (live log 1793757328924, last attempt: the search started on the 2nd shine of the turn-2 menu and the
   // target screen stood 8 s without beeps)
   if (jrStepNow() && PROF().group === 'jr' && !jrZw()) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Jr. Troopa without a lock: say so
-  if (dupStepNow() && !st.lock && !dupZw()) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Charge-lock route, no lock (yet): say so
+  if (dupStepNow() && !dupZw()) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Charge-lock route, no lock (yet): say so
   if ((!st.lock && !zw.on) || (st.searching && !zw.on) || !PROF().rolls.length) return;
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) return;
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
+  // v76: never plan again once the runner may have pressed: the status bar hid after this plan was made and has not come
+  // back (Jr. Troopa T3, console 2026-11-07: the bar hid 343 ms after the beep, the hide is counted only 8 frames later, and
+  // a new jrcc_bomb plan with fresh beeps went out in between, t=918758). The confirm moves the step and clears the plan.
+  if (st.plan && pressMaybeIn(st.plan)) { if (!st.plan.heldLog) { st.plan.heldLog = true; slog('replanHeld', { why: 'bar hidden since the plan', hideAt: Math.round(V.hudGone) }); } return; }
   if (st.planTry && performance.now() - st.planTry < 500) return;     // no plan last time (No edge, no window): try again twice a second, not every frame
   const again = !!st.plan, P0 = st.plan; st.planTry = performance.now(); makePlan(); if (st.plan && st.plan !== P0) { st.plan.again = again; st.planTry = 0; }
 }
@@ -2093,7 +2110,7 @@ function autoPlan() {
   const dl = await window.claude.use('downloads'); if (!dl) return;
   const btn = $('save-standalone'); btn.hidden = false;
   btn.onclick = async () => {
-    try { const html = new TextDecoder().decode(Uint8Array.from(atob(src.textContent.trim()), c => c.charCodeAt(0))); await dl.save({ filename: 'time-out-timer.html', data: html }); camMsg('Saved. Open time-out-timer.html in Chrome or Edge, then press Start watching.'); }
+    try { const html = new TextDecoder().decode(Uint8Array.from(atob(src.textContent.trim()), c => c.charCodeAt(0))); await dl.save({ filename: 'pm-rng-manipulation.html', data: html }); camMsg('Saved. Open pm-rng-manipulation.html in Chrome or Edge, then press Start watching.'); }
     catch (e) { if (e && e.code !== 'declined') camMsg('Could not save the file (' + (e && e.code || 'error') + ').'); }
   };
 })();
@@ -2108,6 +2125,9 @@ window.__tot = { VERSION, JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrStepNow, jrReset
   jrTrackerAt: (seed, qs, trigT, k, hp10) => { chgReset(); jrReset(); const trig = { t: trigT }; Object.assign(JRT, { on: true, k: k || 0, t0: trigT, trigSeen: trig }, hp10 ? { hp10 } : {}); jrConfirm(k || 0, trigT - 16 * FRAME, 3, 'test'); Object.assign(CHG, { prof: CHG_PROF.jr, trig, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'jr'; },
   dupPlanAt, dupClasses, dupStatesAt: h => zwStatesAt(h).list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })), dupRoute, dupNoLockMsg, chgArena: () => chgArena(), chgProfNow: () => chgProfNow(), CHG_PROF,
   dupTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.dup, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'dup'; },
-  zwTap: t => zwTap(t), screenClosed, closeTick, hwStepByTarget, presses, calPreview, zwStates: n => zwStates(n), fastTable, pickRun, nBeeps, earliestFrame, pressTime, consoleRate, CR, stripData, CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep };   // for testing
+  zwTap: t => zwTap(t), screenClosed, closeTick, hwStepByTarget, presses, calPreview, zwStates: n => zwStates(n), fastTable, pickRun, nBeeps, earliestFrame, pressTime, consoleRate, CR, stripData, CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep,
+  // v76 (test_console_1107.js)
+  chgArenaProf: (P, real) => chgArenaProf(P, real), autoPlan: () => autoPlan(), fb14Trigger: () => fb14Trigger(), fb14AfterLock: () => fb14AfterLock(), chgShiftOrder: (a, t) => chgShiftOrder(a, t), render: () => render(),
+  withSample: (f, fn) => { const o = sample; sample = f; try { return fn(); } finally { sample = o; } } };   // for testing
 })();
 </script>

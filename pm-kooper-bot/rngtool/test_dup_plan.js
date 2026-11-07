@@ -47,7 +47,7 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     out.rta = { route: T.dupRoute(), step0: T.RT()[0].label, chg: T.RT()[0].chg || null, n: T.RT().length };
     setRoute('charge'); T.setStep(0);
     out.charge = { route: T.dupRoute(), step0: T.RT()[0].label, chg: T.RT()[0].chg || null, n: T.RT().length, prof: (T.chgProfNow() || {}).id,
-      list: document.getElementById('route-list').innerText.slice(0, 200), note: document.getElementById('duproute-note').textContent };
+      list: document.getElementById('route-list').innerText.slice(0, 400), note: document.getElementById('duproute-note').textContent };
     // 2. the model
     const res = [], cScr = 150, lo = 117, hi = 316;
     for (const c of FIX.cases) {
@@ -68,10 +68,10 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | RTA step 0: ' + r.rta.step0 + ' | Charge step 0: ' + r.charge.step0 + ' (profile ' + r.charge.prof + ')');
-  check(r.version === 'v73', 'version v73');
+  check(r.version === 'v76', 'version v76');
   check(r.rta.route === 'rta' && !r.rta.chg, 'RTA is the default and its step has no Charge profile');
   check(r.charge.route === 'charge' && r.charge.chg === 'dup' && r.charge.prof === 'dup' && r.charge.n === r.rta.n, 'Charge-lock route: step 0 has the dup profile, same number of steps');
-  check(/Charge; Bombette Do Nothing/.test(r.charge.list) && /Power Bomb/.test(r.charge.list), 'route list shows the Charge-lock turns');
+  check(/Charge; Bombette Do Nothing/i.test(r.charge.list) && /Power Bomb/i.test(r.charge.list), 'route list shows the Charge-lock turns');
   // 2. model checks
   let exact = 0, frames_ = 0, bad = [], real3 = 0, real4 = 0, cl3 = 0, cl4 = 0, n = 0, waits = [];
   r.model.forEach((m, i) => {
