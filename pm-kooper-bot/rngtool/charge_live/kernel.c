@@ -462,15 +462,30 @@ EXPORT("fb1scorev") float fb1scorev(uint32_t a, int vlo, int vhi) {
 /* every aura pattern of hypothesis (p, q, br) whose score is within tol of that hypothesis' best (the rays' faded and
  * offscreen respawns leave neighbouring residues' split open): up to max patterns into ALTS (20 counts each, rays frame
  * mod 20), by depth-first search on the dynamic programme's table with its best-prefix bound */
-static uint8_t ALTS[4096 * 20]; static int NALT, ALTMAX; static uint8_t CUR[20]; static float ABEST, ATOL;
+static uint8_t ALTS[4096 * 20]; static float ALTSC[4096]; static int NALT, ALTMAX; static uint8_t CUR[20]; static float ABEST, ATOL;
 EXPORT("altPtr") uint8_t *altPtr(void) { return ALTS; }
+EXPORT("altScPtr") float *altScPtr(void) { return ALTSC; }
 static void altdfs(int j, int P, float suffix) {
     if (NALT >= ALTMAX) return;
     float t = lterm(A3V, j, P); if (t < -1e29f) return; suffix += t;
-    if (j == 0) { if (P > A_CMAX) return; if (suffix < ABEST - ATOL) return; CUR[0] = (uint8_t)P; for (int i = 0; i < 20; i++) ALTS[NALT * 20 + i] = CUR[i]; NALT++; return; }
+    if (j == 0) { if (P > A_CMAX) return; if (suffix < ABEST - ATOL) return; CUR[0] = (uint8_t)P; for (int i = 0; i < 20; i++) ALTS[NALT * 20 + i] = CUR[i]; ALTSC[NALT] = AINIT[A3V] + suffix; NALT++; return; }
     for (int c = 0; c <= A_CMAX && c <= P; c++) { int Pp = P - c; float b = TD[j - 1][Pp]; if (b < -1e29f || b + suffix < ABEST - ATOL) continue; CUR[j] = (uint8_t)c; altdfs(j - 1, Pp, suffix); }
 }
 EXPORT("fb1alts") int fb1alts(int p, int q, int br, float tol, int max) {
     float r = fb1lanes(A3V, PAT[p], q, br, 0); if (r < -1e29f) return 0;
     ABEST = TD[19][16]; ATOL = tol; NALT = 0; ALTMAX = max > 4096 ? 4096 : max; altdfs(19, 16, 0); return NALT;
+}
+/* the score of a given aura pattern (XA[0..19], by rays frame mod 20) for candidate a with lightning pattern p, first
+ * coin q and second coin br: the rays of several Charges together tell the fight's one pattern apart where one Charge's
+ * respawns do not (fb14_live.js fb14Joint) */
+EXPORT("fb1cscore") float fb1cscore(uint32_t a, int p, int q, int br) {
+    if (AVA != a) { for (int w = 0; w <= A_VMAX; w++) AOK[w] = 0; AVA = a; }
+    const uint8_t *pt = PAT[p]; int c2 = br ? q + 24 : -1, P[20], acc = 0;
+    for (int j = 0; j < 20; j++) { acc += XA[j]; P[j] = acc; }
+    if (acc != 16) return -1e30f;
+    int v = (q <= 2) + (c2 >= 0 && c2 <= 2) + pt[1] + pt[2] + pt[3] + P[2]; if (v > A_VMAX) return -1e30f;
+    if (!AOK[v]) fb1variant(a, v);
+    float sc = AINIT[v]; int Bc = 0;
+    for (int n = 3; n < N; n++) { Bc += (n >= 4 ? pt[n] : 0) + (n == q) + (n == c2); int k = Bc + 16 * (n / 20) + P[n % 20] - P[2]; if (k < 0 || k > A_KM) return -1e30f; sc += AG[v][k][n]; }
+    return sc;
 }

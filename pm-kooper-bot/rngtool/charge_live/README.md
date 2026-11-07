@@ -1,3 +1,72 @@
+# Time Out Timer v75: Final Bowser T1-T4 carry and the T6 narrowed lock, fixed and run end to end (Nov 7)
+
+The two known problems of v74, reproduced first on the end-to-end renders (`fb2_route/fb14_e2e.py`, seed 1234abcd from
+T1 and 5eed0fb2 from T4; Glide64 -> `t6_capsim.py` -> the page, **fed in real time: a picture more than 25 ms late is
+dropped**, 3 workers on this 4-core machine), then fixed and run again.
+
+## 1. The T1 -> T2 carry
+**Reproduced.** The T1 lock found the true seed and first coin, but none of the states held the true aura pattern. Three
+causes, measured with the emulator's own seed on every frame (`truth.json` of the run):
+- **The burst's level puts the trigger picture a frame off.** Over this arena frame 2 read +6.5 above the menu (the curve
+  says 3.4), so the trigger (6.1) was taken as frame 3: every picture a frame late. The seed still locked (7101 at
+  2.7x) while the aura fit bent to absorb the frame, and the clock ran a frame off.
+- **One Charge's rays do not pin the pattern.** With the frames right, the true pattern scores 7316 against the best
+  fit's 7354 (0.5% below; one frame's respawn noise is ~200), outside v74's 0.2% and outside every split `fb1alts` gave.
+- **The T2 Charge's confirm is placed to +-1 frame** (1155 for the true 1156), and the T2 Charge's pictures were dropped
+  while thousands of states were tripled at its trigger (24 of 48 frames: no lock).
+**Fixed:**
+- the first retries of a no-lock place every picture one frame earlier / later (`shiftAlts`), and after a lock the
+  placements one frame either side are scored with the locked seed (`fb14Refine`; the better one is kept with its trigger
+  time). End-to-end T1: the shift retry locked the true seed at 7358 / 2.85x.
+- the fits are kept within 0.8% and weighed by their score (exp((score - best) / 0.4% of best)) and by a binomial prior on
+  the counts, the top 1200 fit x split combinations.
+- **the pattern from several Charges** (`fb14Joint`, kernel `fb1cscore`): at T2 (and T4) every candidate pattern (the
+  carried states', the new fits' splits at M - 1 / M / M + 1, and patterns one or two moved counts from those) is scored
+  on the earlier Charge's rays and this one's together; the frame offset of this Charge that fits best fixes the clock.
+  End-to-end T2 (replayed feed with the emulator's truth): **the true pattern is the joint best** (17 and 49 points below
+  each Charge's own best fit), and the new states hold it with the true seed.
+- inputs seen before a slow lock (T2's Do Nothing confirm, T3's Jelly) are replayed onto the fresh states; the Charge's
+  creations are added to the carried states after the rays are captured, not at the trigger; at most 8000 states.
+**After:** on the same T1 -> T3 feed T3 is now planned (Do Nothing +2237, 97%, doubt 1%) where v74 played it blind
+(every state ruled out by the coin). **Still open:** T1 itself (one Charge) and the stretch to T2's lock run on the T1 fits
+without the true pattern; in the full end-to-end run the T2 beep (claimed 62%) was a hit, which ends the route (Peach's
+heal is not modelled), so T3-T6 of that run were not usable. T2's carry check (exact match of the carried states) still
+finds no match; the joint pattern makes the fresh T2 states right instead.
+
+## 2. T4 -> T6 -> T7 end to end
+**Reproduced:** v74's T4 feed died (debug dumps of 20000 states per lock). Removed: the test now asks the page only for
+the states that hold a given true seed. From T4 (`START=4`, seed 5eed0fb2): T4 locked (a077ab8e, 2.3x, 3.4 s after the
+rays), its beep made the wave come and miss (and +-1 too); the Peach Beam was read; at T6 the narrowed search **had the
+true seed among its 883 candidates but did not lock**, and the full search did not either.
+**Causes and fixes:**
+- the narrowed candidates were ranked by the stage-2 upper bound alone (any lightning, any insertion count): now by their
+  initial rays first, as the full search ranks its stage-1 bests;
+- the narrowed candidates are runs of consecutive seeds, so the runner-up was the true seed's neighbour (same B rays and
+  respawns): the ratio is now taken against the best candidate off the best one's stream (+-48 steps);
+- the FB2 profile reused a raster when two pictures had the same coarse brightness; two game frames in a row did, the
+  second became a copy of the first and a skipped frame: now only right after a fresh grab;
+- one-frame placement retries for the narrowed search (a second each).
+**After** (the same T6 feed, real time): **the narrowed search locks the true seed (25a60913) 1.5-1.6 s after the rays**
+(search 1.1 s, 3-6 states instead of hundreds), at 3, 4 and 5 workers alike. That is still past the popup window here:
+the plan's first frame came out as +138 (the window closes at +136, with 3 beeps 0.3 s apart ahead of the press), so no
+popup beep; K was read from the popup (137, closed by itself). **T7:** in the run with the popup pressed on K = 100 the
+page read the popup as 137 ("to the end"), so the T7 states were wrong and the T7 plan said no edge (doubt 100%, no
+beeps; pressed blind: 4 bounces). The popup reading at that point is not fixed.
+
+## 3. Lock times (this 4-core machine, real-time feed, the page's own load ~2-3)
+| workers | T1 (aura) lock after the rays | one search (stage 1) | T6 narrowed lock after the rays |
+|---|---|---|---|
+| 3 | 5.3 s no lock, 9.2 s on the shift retry | 3.7-5.0 s (2.2-3.6) | 1.58 s |
+| 4 | 4.7 s | 4.2 s (2.9) | 1.47 s |
+| 5 | 5.5 s | 5.0 s (3.3) | 1.47 s |
+5 workers on 4 cores is oversubscribed here; on the runner's 6-core PC (5 workers if it has 6 logical cores, 11 with 12
+logical) stage 1 should split further: ~4 CPU-s / workers, so ~1-1.5 s a search on free cores (projection). The T6
+narrowed lock barely depends on the worker count (884 candidates).
+
+## Tests
+`test_fb14_model.js` (32 / 32 logs exact) and `test_fb14_plan.js` (exact-lock odds unchanged) in `run_suite.sh`; the
+end-to-end runs as above.
+
 # Time Out Timer v74: Final Bowser phase 2, T1 -> T4 manipulated from the T1 Charge (Nov 6)
 
 The route (the runner's): T1 Super Charge, Cloud Nine; T2 Super Charge; T3 Jammin' Jelly; T4 Super Charge (block the

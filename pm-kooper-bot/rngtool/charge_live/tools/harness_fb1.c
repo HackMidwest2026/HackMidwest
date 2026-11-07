@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
       int dup = 0; for (int k = 0; k < np && !dup; k++) if (!memcmp(PAT[k], row, N)) dup = 1;
       if (!dup && np < NPATMAX) memcpy(PAT[np++], row, N); }
     setPatterns(np); int *P = fb1path(J[0].a); int v = P[0]; double t4 = now(); float b = fb1struct(J[0].a, v); double t5 = now();
-    int nk = 0; for (int i = 0; i < np * 96; i++) if (SC3[i] >= b * 0.998f) nk++;
-    printf("struct: v %d best %.1f (relaxed %.1f) %.2fs, within 0.2%%: %d\n", v, b, J[0].sc, t5 - t4, nk);
+    int nk = 0, nk1 = 0; for (int i = 0; i < np * 96; i++) { if (SC3[i] >= b * 0.998f) nk++; if (SC3[i] >= b * 0.99f) nk1++; }
+    printf("struct: v %d best %.1f (relaxed %.1f) %.2fs, within 0.2%%: %d, 1%%: %d\n", v, b, J[0].sc, t5 - t4, nk, nk1);
     int shown = 0; for (int i = 0; i < np * 96 && shown < 6; i++) if (SC3[i] >= b * 0.998f) { int p = i / 96, q = (i % 96) / 2, br = i % 2; float x = fb1aura(p, q, br);
       printf("  p %d q %d br %d %.1f aura(rays j)", p, q, br, x); for (int j = 0; j < 20; j++) printf("%d", XA[j]); printf(" bolts"); for (int n = 0; n < N; n++) if (PAT[p][n]) printf(" %d", n); printf("\n"); shown++; } }
   if (truth) { printf("true A initial %.0f (heap thr %.0f, UB of its base %.0f), true B initial %.0f (v=%d)\n", s1score(0, ta), thr(0), UB[0][ta / D360], s1score(1, fwd(ta, 24 + 1)), 1);

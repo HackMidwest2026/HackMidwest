@@ -21,7 +21,7 @@
  * confirm; the beam itself is not modelled, but it takes 8654-9351 more random numbers than frames to T6's Charge
  * (fb2_route/t5_steps.py, 120 emulator runs), so the T6 Charge is searched only on that stretch of the carried stream
  * (charge_live.js chgSearch opts.cands) instead of all 2^32 seeds: no slow fresh lock at T6. */
-const FB14_TOL = 0.002, FB14_MAXH = 16000, FB14_LAGS = [[0, 0.75], [1, 0.25]];
+const FB14_TOL = 0.008, FB14_SIG = 0.004, FB14_COMBOS = 1200, FB14_MAXH = 8000, FB14_LAGS = [[0, 0.75], [1, 0.25]];
 const FB14_DELTA = { slam: 52, claw: 62, fire: 55, wave: 72 }, FB14_AIAFTER = { cn: 332, nothing: 13 }, FB14_JELLY = 118;
 const FB14_WAVE_POST = (() => { const o = { 66: 1, 68: 2, 70: 3, 72: 4, 74: 5, 76: 6, 78: 7, 80: 8, 126: 8, 128: 7, 130: 6, 132: 5, 134: 4, 136: 3, 138: 2, 140: 1 }; for (let d = 82; d <= 124; d += 2) o[d] = 9; return o; })();
 // blind chances per lever frame (fb2_route/README.md section 3: route_build miss strings and the 20000-window study)
@@ -36,7 +36,7 @@ const FB14_T5 = [8540, 9420];
 const FB14_VAN = { M: 1, S: 2 };
 const FB14_HIDE = { jelly: 2, peach: 2 }, FB14_JSHIFTS = [[-1, 0.25], [0, 0.5], [1, 0.25]];
 var FB14 = { on: false };
-function fb14Reset(why) { Object.assign(FB14, { on: false, why: why || null, states: [], t0: null, rate: null, taps: [], vis: [], visFrom: null, turn: 0, M: {}, P: {}, plan: null, lockN: 0, log: [], pb: null, t6: null, hideWatch: null, doubt: 0, bg: 0, p4t: null, pend: [], pT: {} }); }
+function fb14Reset(why) { Object.assign(FB14, { on: false, why: why || null, states: [], t0: null, rate: null, taps: [], vis: [], visFrom: null, turn: 0, M: {}, P: {}, plan: null, lockN: 0, log: [], pb: null, t6: null, hideWatch: null, doubt: 0, bg: 0, p4t: null, pend: [], pT: {}, charges: [], inputs: [] }); }
 fb14Reset();
 /* ---- the random numbers (fast, no arrays) ---- */
 let FBV = 0;
@@ -98,16 +98,29 @@ function fb14Lock(res) {
   if (!H || !H.hy.length) { FB14.why = 'no hypotheses from the rays'; fb14Show(); return; }
   const rate = chgRate(), P = fb2Patterns(), first = !FB14.on || FB14.t0 == null;
   FB14.menuT = CHG.menuSince || null;      // the bar up in Mario's menu before this Charge (charge_live.js chgFrame)
-  if (first) { FB14.rate = rate; FB14.t0 = CHG.trig.t - 16 * rate; }
-  const M = first ? 0 : Math.round((CHG.trig.t - FB14.t0) / fbRate() - 16);
-  FB14.t0 = CHG.trig.t - (M + 16) * fbRate();            // the burst fixes the clock again (drift)
+  const trigT = res.trigT != null ? res.trigT : CHG.trig.t;     // (the reader may have been reset for the next Charge meanwhile)
+  if (first) { FB14.rate = rate; FB14.t0 = trigT - 16 * rate; }
+  const M = first ? 0 : Math.round((trigT - FB14.t0) / fbRate() - 16) + (res.joint && res.joint.dM ? res.joint.dM : 0);   // (fb14Joint: the frame the Charges' rays agree on)
+  FB14.t0 = trigT - (M + 16) * fbRate();            // the burst fixes the clock again (drift)
   let fresh = []; const seen = new Set();
   // the menu's coin before the Charge: back to 1 s after the bar came up for that menu (at most 15 s)
   const menuF = FB14.menuT != null ? Math.min(M, Math.max(M - 450, Math.ceil(fbPic(FB14.menuT) + 30))) : M;
   const back0 = (x0, F0, q, c, pa) => { const r = fbBackShines(x0, F0, q, c, pa, menuF); return { ok: r.ok, sh: r.sh.sort((a, b) => a - b), from: Math.min(menuF, F0) }; };
-  for (const h of H.hy) {
+  // the fits x their aura splits, the likeliest FB14_COMBOS by weight (0.8% of the best keeps thousands of fits)
+  const combos = [];
+  const J = res.joint && res.joint.keep && res.joint.keep.size ? res.joint : null;
+  // with the joint patterns: every kept pattern on its share of this Charge's best fits (a pattern the coin may still
+  // prefer must not be crowded out by the joint score's favourite)
+  const hyJ = J ? H.hy.filter(h => Math.abs(h.esc - h.sc) <= 2).sort((x, y) => y.sc - x.sc).slice(0, Math.max(4, Math.ceil(FB14_COMBOS / J.keep.size))) : null;
+  if (J) for (const h of hyJ) { const sig = Math.max(1, FB14_SIG * H.best), wf = Math.exp((h.sc - H.best) / sig);
+    for (const [k, d] of J.keep) { const aura = new Array(20); for (let j = 0; j < 20; j++) aura[j] = +k[mod20(M + 13 + j)]; combos.push([h, { aura, w: wf * Math.exp(d / Math.max(1, FB14_JSIG * J.tot)) }]); } }
+  for (const h of (J ? [] : H.hy)) {
     if (Math.abs(h.esc - h.sc) > 2) continue;              // the second coin assumed by the fit is not the one the seed draws
-    for (const AV of fbAuraVariants(h)) {
+    for (const AV of fbAuraVariants(h, H.best)) combos.push([h, AV]);
+  }
+  combos.sort((x, y) => y[1].w - x[1].w); const wTop = combos.length ? combos[0][1].w : 1;
+  for (const [h, AV0] of (J ? combos : combos.slice(0, FB14_COMBOS))) {
+    { const AV = { aura: AV0.aura, w: AV0.w / wTop };
     const c = new Uint8Array(20); for (let j = 0; j < 20; j++) c[mod20(M + 13 + j)] = AV.aura[j];
     for (const ph of P.list[h.p].ph) {
       const pa = [(((ph[0] - M) % 130) + 130) % 130, (((ph[1] - M) % 220) + 220) % 220];
@@ -123,7 +136,7 @@ function fb14Lock(res) {
   }
   // the aura pattern is the fight's: a fresh fit after an earlier lock keeps only the patterns the carried states still
   // hold (when any is among them)
-  if (!first && FB14.states.length) { const cs = new Set(FB14.states.map(S => S.c.join(''))), f2 = fresh.filter(S => cs.has(S.c.join(''))); if (f2.length) fresh = f2; slog('fb14AuraKeep', { turn, fits: fresh.length, of: seen.size }); }
+  if (!J && !first && FB14.states.length) { const cs = new Set(FB14.states.map(S => S.c.join(''))), f2 = fresh.filter(S => cs.has(S.c.join(''))); if (f2.length) fresh = f2; slog('fb14AuraKeep', { turn, fits: fresh.length, of: seen.size }); }
   let keep = fresh, how = 'fresh';
   if (!first && FB14.states.length) {      // the carried states: those that drew these very rays
     const a = H.a >>> 0, match = [];
@@ -137,14 +150,14 @@ function fb14Lock(res) {
     }
     if (match.length) { keep = match; how = 'carried';
       const by = {}; for (const T of match) by[T.mk] = (by[T.mk] || 0) + T.w; const Mt = +Object.keys(by).sort((x, y) => by[y] - by[x])[0];
-      if (Mt !== M && Number.isFinite(Mt)) { slog('fb14ClockFix', { turn, M, Mt }); FB14.t0 = CHG.trig.t - (Mt + 16) * fbRate(); }
+      if (Mt !== M && Number.isFinite(Mt)) { slog('fb14ClockFix', { turn, M, Mt }); FB14.t0 = trigT - (Mt + 16) * fbRate(); }
     }
     slog('fb14Check', { turn, M, carried: FB14.states.length, matched: match.length, fresh: fresh.length });
   }
   const sum = keep.reduce((x, S) => x + S.w, 0); keep.forEach(S => { S.w /= sum; S.lw = 1; S.err = 0; });
   // the menu's coin before the Charge weighs the fits now (fbBackShines), before any are dropped for the cap: with the
   // weights all equal an even sample would lose the true one (T2 render: 1605 fits x their lightning phases x 2 lags)
-  if (window.__fb14dbg) window.__fb14dbg.push({ pre: true, turn, M, states: keep.slice(0, 20000).map(S => ({ s: S.s >>> 0, nc: S.nc, c: Array.from(S.c).join(''), ph: S.ph, l: S.l, w: S.w, sh: S.sh })) });
+  if (window.__fb14dbg) { const T = window.__fb14truth; window.__fb14dbg.push({ pre: true, turn, M, n: keep.length, truth: T ? keep.filter(S => S.s === T.s && (T.nc == null || S.nc === T.nc)).map(S => ({ c: Array.from(S.c).join(''), ph: S.ph, l: S.l, w: S.w, sh: S.sh })) : null }); }
   FB14.states = keep; let n0 = keep.length;
   if (how === 'fresh' && keep.length > 1) { const Wg = fb14Weigh(M + 61); if (Wg.list.length) keep = Wg.list; }
   keep.sort((x, y) => y.w * y.lw - x.w * x.lw);
@@ -153,10 +166,15 @@ function fb14Lock(res) {
   FB14.states = keep; FB14.n0 = n0;
   Object.assign(FB14, { on: true, why: null, turn, lockN: FB14.lockN + 1, plan: null, bg: ZW_BG0 / (1 - ZW_BG0), bgFrom: Math.min(M + 61, menuF), how });
   FB14.M[turn] = M;
+  if (res.joint && res.joint.cur) { res.joint.cur.M = M; FB14.charges = (FB14.charges || []).filter(c => c.M !== M).concat([res.joint.cur]).slice(-2); }
   // confirms the page saw before this lock landed (a slow lock): their frames from the clock the lock has just fixed
+  // the inputs of this turn the page saw before this lock landed (a slow lock: the partner's confirm, T3's Jelly), onto
+  // fresh states (carried ones have them already)
+  if (how === 'fresh') for (const x of (FB14.inputs || []).map(x => Object.assign({}, x, { F: x.t != null ? Math.round(fbPic(x.t) - x.off) : x.F })).filter(x => x.F > M + 13 && x.turn >= turn).sort((a, b) => a.F - b.F)) { fb14Input(x.kind, x.F, x.turn, x.shifts, x.t, x.off); slog('fb14Replay', { kind: x.kind, F: x.F, turn: x.turn }); }
   const pend = (FB14.pend || []).filter(x => x.turn >= turn); FB14.pend = [];
-  for (const x of pend) { const c = fbPic(x.tObs) - (FB14_VAN[x.cat] || 2) - num('pfix'), F = Math.round(c); FB14.P[x.turn] = F; fb14Input(fb14Kind(x.turn), F, x.turn, FB14_SHIFTS); slog('fb14LateConfirm', { turn: x.turn, F }); }
-  if (window.__fb14dbg) window.__fb14dbg.push({ turn, M, how, states: FB14.states.slice(0, 3000).map(S => ({ s: S.s >>> 0, nc: S.nc, f: S.f, l: S.l, c: Array.from(S.c).join(''), ph: S.ph, w: S.w, lw: S.lw, sh: S.sh })) });
+  for (const x of pend) { const c = fbPic(x.tObs) - (FB14_VAN[x.cat] || 2) - num('pfix'), F = Math.round(c); FB14.P[x.turn] = F; fb14Input(fb14Kind(x.turn), F, x.turn, FB14_SHIFTS, x.tObs, (FB14_VAN[x.cat] || 2) + num('pfix')); slog('fb14LateConfirm', { turn: x.turn, F }); }
+  if (window.__fb14dbg) { const T = window.__fb14truth; window.__fb14dbg.push({ turn, M, how, n: FB14.states.length, truth: T ? FB14.states.filter(S => S.s === T.s && (T.nc == null || S.nc === T.nc)).map(S => ({ c: Array.from(S.c).join(''), ph: S.ph, l: S.l, w: S.w, lw: S.lw })) : null }); }
+  if (false) window.__fb14dbg.push({ turn, M, how, states: FB14.states.slice(0, 3000).map(S => ({ s: S.s >>> 0, nc: S.nc, f: S.f, l: S.l, c: Array.from(S.c).join(''), ph: S.ph, w: S.w, lw: S.lw, sh: S.sh })) });
   slog('fb14Lock', { turn, M, how, hyps: H.hy.length, n: H.n, fits: FB14.n0, states: FB14.states.length, best: Math.round(H.best), a: (H.a >>> 0).toString(16) });
   fb14Show();
 }
@@ -166,10 +184,13 @@ function fb14Lock(res) {
  * within the lock's tolerance (fb1alts); they are weighed by a star's chance to restart on a given frame (16 stars, 1/20
  * each: binomial) and the likeliest FB14_AV kept, each with its prior share. */
 const FB14_AV = 48, FB14_BIN = [0.440, 0.371, 0.146, 0.036, 0.0061];
-function fbAuraVariants(h) {
-  const L = (h.alts && h.alts.length ? h.alts : [h.aura]).map(aura => ({ aura, w: aura.reduce((x, c) => x * (FB14_BIN[c] || 1e-4), 1) }));
-  L.sort((x, y) => y.w - x.w); const top = L.slice(0, FB14_AV), tot = top.reduce((x, o) => x + o.w, 0) || 1;
-  return top.map(o => ({ aura: o.aura, w: o.w / tot }));
+// each split weighed by its prior and by its score: exp((score - best) / (FB14_SIG x best)). The true fit scores within a
+// few tenths of a percent of the best but not always inside 0.2% (render e2e 1234abcd: 7316 against 7354, the noise of
+// one frame's respawns is ~200), so the lock keeps every fit within FB14_TOL (0.8%) and lets the score weigh them.
+function fbAuraVariants(h, best) {
+  const sig = Math.max(1, FB14_SIG * best), L = (h.alts && h.alts.length ? h.alts.map((aura, i) => [aura, h.altSc[i]]) : [[h.aura, h.sc]])
+    .map(([aura, sc]) => ({ aura, w: aura.reduce((x, c) => x * (FB14_BIN[c] || 1e-4), 1) * Math.exp((sc - best) / sig) }));
+  L.sort((x, y) => y.w - x.w); return L.slice(0, FB14_AV);
 }
 /* The coin before the Charge (Mario's menu): from a hypothesis' seed at the rays' frame 0 the earlier coin draws follow
  * backwards, as chgQBack does on the Hallway, now with the aura's and the lightning's draws of each frame known from the
@@ -198,7 +219,8 @@ function fbBackShines(sR0, F0, q, c, ph, fromF) {
 }
 /* a Charge's trigger with the tracker on (T2, T4): the carried states get that Charge's rays (their creations), so the
  * new lock can be checked against them; T3's Jelly and the partner confirms come in the same way */
-function fb14Input(kind, Fc, turn, shifts) {
+function fb14Input(kind, Fc, turn, shifts, tRef, off) {
+  if (kind !== 'chg') { FB14.inputs = (FB14.inputs || []).filter(x => !(x.kind === kind && x.turn === turn)).concat([{ kind, F: Fc, turn, shifts, t: tRef, off }]); }   // (replayed onto a lock that lands later)
   if (!FB14.on) return;
   const out = [];
   for (const S of FB14.states) for (const [d, wd] of (shifts || [[0, 1]])) {
@@ -226,7 +248,8 @@ function fb14Cap(L) {
 function fb14Tap(t) { FB14.taps.push(t); if (FB14.taps.length > 400) FB14.taps.shift(); }
 function fb14Frame(t, present) {
   FB14.lastT = t;
-  if (FB14.rearm && ['locked', 'nolock', 'failed'].includes(CHG.state)) { const n = fb14Step(); if (n && n.fb14 === FB14.rearm && n.chg === 'fb1') { slog('fb14ReaderRearmed', { turn: n.fb14 }); chgReset(); } FB14.rearm = null; }
+  if (FB14.pendChg && !['armed', 'capture'].includes(CHG.state)) { const { M, turn } = FB14.pendChg; FB14.pendChg = null; fb14Advance(Math.min(fb14Horizon(performance.now()), M + 11)); fb14Input('chg', M, turn, [[-1, 0.25], [0, 0.5], [1, 0.25]]); }
+  if (FB14.rearm && !FB14.refining && ['locked', 'nolock', 'failed'].includes(CHG.state)) { const n = fb14Step(); if (n && n.fb14 === FB14.rearm && n.chg === 'fb1') { slog('fb14ReaderRearmed', { turn: n.fb14 }); chgReset(); } FB14.rearm = null; }
   if (!FB14.on && !fb14Step()) return;
   if (present && FB14.visFrom == null) FB14.visFrom = t;
   if (!present && FB14.visFrom != null) { FB14.vis.push([FB14.visFrom, t]); if (FB14.vis.length > 200) FB14.vis.shift(); FB14.visFrom = null; }
@@ -240,7 +263,7 @@ function fb14HideWatch(t, present) {
   if (!W.gone) W.gone = t; if (t - W.gone < 8 * FRAME) return;              // gone for 8 frames: not a flicker
   if (!W.up) return; const upMs = W.gone - W.up; W.up = 0; t = W.gone; if (upMs < 600 || FB14.t0 == null) return;
   const stp = fb14Step(), F = fbPic(t);
-  if (stp && stp.fb14 === 3 && FB14.M[3] == null && FB14.pT && FB14.pT[2] != null && t - FB14.pT[2] > 3000) { FB14.M[3] = Math.round(F - FB14_HIDE.jelly); fb14Input('jelly', FB14.M[3], 3, FB14_JSHIFTS); slog('fb14Jelly', { M: FB14.M[3] }); }
+  if (stp && stp.fb14 === 3 && FB14.M[3] == null && FB14.pT && FB14.pT[2] != null && t - FB14.pT[2] > 3000) { FB14.M[3] = Math.round(F - FB14_HIDE.jelly); fb14Input('jelly', FB14.M[3], 3, FB14_JSHIFTS, t, FB14_HIDE.jelly); slog('fb14Jelly', { M: FB14.M[3] }); }
   else if (FB14.p4t != null && !FB14.pb && t - FB14.p4t > 5000) { FB14.pb = { F: Math.round(F - FB14_HIDE.peach), t }; slog('fb14Peach', { F: FB14.pb.F }); if (!['search', 'maps', 'idle'].includes(CHG.state)) chgReset(); fb14Peach(); }   // nothing before the T6 menu is the T6 Charge
 }
 /* the states' weights from the coin since their lock (as fb2Prune / zwUpdate): a seen shine a state has, a predicted
@@ -342,7 +365,7 @@ function fb14Confirm(tObs, stp) {
   const c = fbPic(tObs) - (FB14_VAN[stp.cat] || 2) - num('pfix'), F = Math.round(c);
   FB14.P[turn] = F; if (turn === 4) FB14.p4t = tObs; const P = st.plan && st.plan.fb14 === turn ? st.plan : null;
   slog('fb14Confirm', { turn, F, c: +c.toFixed(2), planned: P ? P.target : null, err: P ? +(c - P.target).toFixed(2) : null });
-  if (FB14.on) { const h = fb14Horizon(performance.now()); fb14Advance(Math.min(h, F - 3)); fb14Input(fb14Kind(turn), F, turn, FB14_SHIFTS); }
+  if (FB14.on) { const h = fb14Horizon(performance.now()); fb14Advance(Math.min(h, F - 3)); fb14Input(fb14Kind(turn), F, turn, FB14_SHIFTS, tObs, (FB14_VAN[stp.cat] || 2) + num('pfix')); }
   fb14Show();
 }
 /* ---- T5: the Peach Beam confirm; T6: the Charge searched on the carried stream ---- */
@@ -369,6 +392,7 @@ function fb14T6Cands() {
     if (!g) groups.push({ s: b.s, lo, hi });
   }
   for (const G of groups) { let x = G.s; for (let i = 0; i < G.lo; i++) x = fbAdv(x); for (let n = G.lo; n <= G.hi; n++) { out.add(x >>> 0); x = fbAdv(x); } }
+  if (window.__fb14truthT6 != null) { let x = window.__fb14truthT6 >>> 0, hit = -1; for (let k = 0; k < 3; k++) { if (out.has(x >>> 0)) hit = k; x = fbAdv(x); } slog('fb14T6Truth', { inCands: hit >= 0, bolts: hit }); }
   slog('fb14T6Cands', { M6, groups: groups.length, cands: out.size });
   return out.size ? [...out] : null;
 }
@@ -381,7 +405,9 @@ function fb14Trigger() {
   if (!FB14.on || turn == null || turn === 1 || FB14.M[turn] != null) return;
   // the burst places the confirm on the clock to about a frame (the trigger picture's time, dropped pictures): every
   // carried state gets the Charge at M - 1, M and M + 1; the lock keeps the ones that drew these rays
-  FB14.M[turn] = M; fb14Advance(Math.min(fb14Horizon(performance.now()), M + 11)); fb14Input('chg', M, turn, [[-1, 0.25], [0, 0.5], [1, 0.25]]);
+  // (applied once the pictures of the rays are captured: tripling thousands of states at the trigger stalled the page's
+  // thread and dropped half the rays' pictures in the end-to-end run)
+  FB14.M[turn] = M; FB14.pendChg = { M, turn };
 }
 /* the FB2 profile (T6) arms on any bar hide: not during T4's Bowser turn and T5's Peach Beam turn (the wave and the beam
  * flash the arena), only from the T6 menu on: 20 s after the Peach Beam confirm (its turn takes 22 s+), or 45 s after
@@ -408,6 +434,88 @@ function fb14Show() {
   el.innerHTML = '<b>FB2 T1 → T4</b> (' + FB14.states.length + ' RNG states, ' + (FB14.how === 'carried' ? 'the carried seed fits the last Charge' : 'from the last Charge') + (FB14.doubt ? ', doubt ' + pc(FB14.doubt) : '') + ')' +
     (P && !P.none && P.turn ? '<br>T' + P.turn + ': ' + (P.turn === 1 ? 'Cloud Nine' : 'Do Nothing') + ' on the beep (+' + P.target + '): ' + fb14Goal(P.turn) + ' ' + pc(P.p) + ' (blind ' + pc(P.blind) + ')' : P && P.none ? '<br>T' + P.turn + ': no edge (' + P.none + '): ' + fb14BlindText(P.turn) : '') +
     (FB14.t6 ? '<br>T6: the Charge is searched on the carried stream (' + FB14.t6.bases.length + ' seeds at the Peach Beam)' : '');
+}
+/* The burst places its pictures on game frames by brightness (CHG_BRIGHT_FB1), but over this arena it varies from run to
+ * run by a few levels (the stars, the lightning, Lakilester): on the end-to-end render 1234abcd frame 2 read +6.5 above
+ * the menu where the curve has 3.4, so the trigger picture (6.1) was taken as frame 3 and every picture sat one frame
+ * late. The seed still locked (7101 at 2.7x), but the aura fit bent to absorb the frame (the true pattern was in none of
+ * the 21312 states) and the clock ran a frame off. With the seed known, the pictures one frame earlier and later are
+ * scored too (the same seed, every aura / lightning / coin path: fb1score); the best of the three placements is kept, its
+ * fit redone, and the trigger time moved with it. */
+/* the pictures of a placement one frame earlier (d = -1) or later (d = +1): game frame n gets the picture placed on n + d
+ * (G: frames 0 .. CHG_N + 1, then frames -2, -1) */
+function fbShiftG(G, d) {
+  const N = CHG_N, at = m => (m >= 0 && m < N + 2 ? G[m] : m === -1 ? G[N + 3] : m === -2 ? G[N + 2] : null), out = new Array(G.length).fill(null);
+  for (let n = 0; n < N + 2; n++) out[n] = at(n + d); out[N + 2] = at(-2 + d); out[N + 3] = at(-1 + d); return out;
+}
+/* The fight's aura pattern from every Charge so far: the rays of one Charge leave it open where its respawns are faint or
+ * missing and a frame's noise (~200) can outscore the true split (the end-to-end render: the true pattern 0.5% below the
+ * best fit of T1, outside every T1 fit kept). Each Charge sees the pattern at another rotation (its confirm's frame mod
+ * 20), so a pattern scored on the earlier Charges' rays and this one's together is far better pinned. The candidates: the
+ * carried states' patterns and this Charge's fits' splits; each is scored as the best over the top fits of every Charge
+ * (kernel fb1cscore); returned: the patterns within FB14_JTOL of the best sum, with their joint score. */
+const FB14_JTOL = 0.025, FB14_JSIG = 0.01, FB14_JC = 600, FB14_JH = 20;
+async function fb14Joint(res, maps, one) {
+  const H = res.fb1 && res.fb1.hyps; if (!H || !H.hy.length || res.trigT == null) return null;
+  const M = FB14.t0 == null ? 0 : Math.round((res.trigT - FB14.t0) / fbRate() - 16);
+  const cur = { maps, a: H.a >>> 0, M, hyps: H.hy.slice().sort((x, y) => y.sc - x.sc).slice(0, FB14_JH).map(h => [h.p, h.q, h.br]), best: H.best };
+  const prev = (FB14.charges || []).filter(c => c.M !== M).slice(-2);
+  if (!FB14.on || !prev.length) return { cur };
+  const cand = new Map(), add = (k, w) => { if (!cand.has(k) || cand.get(k) < w) cand.set(k, w); };
+  for (const S of FB14.states.slice().sort((x, y) => y.w * y.lw - x.w * x.lw).slice(0, FB14_JC)) add(S.c.join(''), S.w * S.lw);
+  // (this Charge's fits at each of the three frames its confirm may be on: M - 1, M, M + 1)
+  for (const dM of [0, -1, 1]) for (const h of H.hy.slice(0, 200)) for (const AV of fbAuraVariants(h, H.best)) { const c = new Array(20); for (let j = 0; j < 20; j++) c[mod20(M + dM + 13 + j)] = AV.aura[j]; add(c.join(''), AV.w); }
+  // and their neighbours: one count moved to a residue 1-2 frames away (all), two moves (the likeliest few): the true pattern
+  // sat 2-3 such moves from every T1 fit in the end-to-end run
+  const base = [...cand.entries()].sort((x, y) => y[1] - x[1]).map(([k]) => k);
+  const moves = k => { const out = [], p = k.split('').map(Number); for (let j = 0; j < 20; j++) if (p[j] > 0) for (const dj of [-2, -1, 1, 2]) { const i = (j + dj + 20) % 20; if (p[i] >= 4) continue; const q = p.slice(); q[j]--; q[i]++; out.push(q.join('')); } return out; };
+  const all = new Set(base); for (const k of base) for (const k2 of moves(k)) all.add(k2);
+  for (const k of base.slice(0, 4)) for (const k2 of moves(k)) for (const k3 of moves(k2)) all.add(k3);
+  const keys = [...all], tot = prev.concat([cur]).reduce((x, c) => x + c.best, 0);
+  const scoreOf = async (ch, dM) => { const B = new Uint8Array(keys.length * 20); keys.forEach((k, i) => { for (let j = 0; j < 20; j++) B[i * 20 + j] = +k[mod20(ch.M + dM + 13 + j)]; });
+    const r = await one(ch.maps, [{ type: 'cscore', a: ch.a, hyps: ch.hyps, cands: B }]); return Array.from(r[0].out, x => x - ch.best); };
+  const sp = new Float64Array(keys.length);
+  for (const ch of prev) (await scoreOf(ch, 0)).forEach((x, i) => { sp[i] += x; });
+  // this Charge's confirm on the clock is good to a frame (the trigger picture): each of M - 1, M, M + 1 is tried
+  let bestD = 0, bestMx = -1e30, bestS = null;
+  for (const dM of [0, -1, 1]) { const sc = await scoreOf(cur, dM), S = sc.map((x, i) => x + sp[i]), mx = Math.max(...S); if (mx > bestMx + 1e-6) { bestMx = mx; bestD = dM; bestS = S; } }
+  const keep = new Map(); keys.forEach((k, i) => { if (bestS[i] >= bestMx - FB14_JTOL * tot) keep.set(k, bestS[i] - bestMx); });
+  if (keep.size > 64) { const top = [...keep.entries()].sort((x, y) => y[1] - x[1]).slice(0, 64); keep.clear(); for (const [k, v] of top) keep.set(k, v); }
+  slog('fb14Joint', { charges: prev.length + 1, cands: keys.length, kept: keep.size, best: Math.round(bestMx), dM: bestD });
+  if (window.__fb14truthAura) { const i = keys.indexOf(window.__fb14truthAura); slog('fb14JointTruth', { inCands: i >= 0, rel: i >= 0 ? Math.round(bestS[i] - bestMx) : null, tot: Math.round(tot), perCharge: i >= 0 ? Math.round(bestS[i] - sp[i]) + ' / ' + Math.round(sp[i]) : null }); }
+  return { cur, keep, tot, dM: bestD };
+}
+async function fb14Refine(res, G) {
+  FB14.refining = true;
+  try { return await fb14Refine1(res, G); } finally { FB14.refining = false; }
+}
+async function fb14Refine1(res, G) {
+  res.trigT = CHG.trig ? CHG.trig.t : null;
+  try {
+    const top = res.top && res.top[0]; if (!top || !G || !CHG.cen || !chgSearch.mod) return res;
+    const shifted = d => fbShiftG(G, d);
+    const one = (maps, msgs) => new Promise((resolve, reject) => {
+      const w = new Worker(chgSearch.url), out = []; let k = -1;
+      const next = () => { k++; if (k >= msgs.length) { w.terminate(); resolve(out); return; } w.postMessage(msgs[k]); };
+      w.onmessage = e => { if (e.data.type === 'error') { w.terminate(); reject(new Error(e.data.msg)); return; } if (e.data.type !== 'ready') out.push(e.data); next(); };
+      w.onerror = e => { w.terminate(); reject(new Error(e.message || 'worker')); };
+      w.postMessage({ type: 'init', mod: chgSearch.mod, S: maps.S, C: maps.C, N: CHG_N, ND: CHG_ND, K: 16, pat: fb2Patterns().bytes });
+    });
+    const t0 = performance.now(), sc = { 0: top.sc }, alt = {};
+    for (const d of [-1, 1]) { const M = chgMaps(shifted(d), CHG.cen, CHG_N); alt[d] = M; const r = await one(M, [{ type: 'fb1', seeds: [top.seed], v: null }]); sc[d] = r[0].out[0].sc; }
+    let best = 0; for (const d of [-1, 1]) if (sc[d] > sc[best] * 1.03) best = d;
+    slog('fb14Placement', { scores: { '-1': Math.round(sc[-1]), 0: Math.round(sc[0]), '+1': Math.round(sc[1]) }, kept: best, ms: Math.round(performance.now() - t0) });
+    let out = res, maps = best ? alt[best] : chgMaps(G, CHG.cen, CHG_N);
+    if (best) {
+      const r = await one(alt[best], [{ type: 'fb1h', s0: top.seed, tol: FB14_TOL, max: 4000 }]);
+      if (CHG.trig) { CHG.trig.t += best * FRAME; CHG.trig.n = (CHG.trig.n || 3) - best; }     // the trigger picture was frame 3 - best
+      res.trigT += best * FRAME;
+      CHG.info.placementShift = best;
+      out = Object.assign({}, res, { fb1: Object.assign({}, res.fb1, { hyps: r[0] }) }); out.trigT = res.trigT;
+    }
+    out.maps0 = maps; out.joint = await fb14Joint(out, maps, one).catch(e => { slog('fb14JointError', { msg: String(e && e.message || e) }); return null; });
+    return out;
+  } catch (e) { slog('fb14PlacementError', { msg: String(e && e.message || e) }); return res; }
 }
 /* FB2 profile 'fb1' stage 2 (charge_live.js chgSearch): the relaxed score of every candidate, then the structured fit of
  * the best one */

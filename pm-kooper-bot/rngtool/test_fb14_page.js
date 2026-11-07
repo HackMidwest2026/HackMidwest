@@ -24,14 +24,14 @@ const fs = require('fs');
   });
   await p.goto(base + '/tot.html');
   const out = await p.evaluate(async ({ dbg, base, M, crate, cpus, t5 }) => {
-    const T = window.__tot, F = window.__fb14; if (dbg) { window.__fb14dbg = []; window.__chgDebug = true; } document.getElementById('s-crate').value = crate; if (cpus) document.getElementById('s-chgcpu').value = cpus;
+    const T = window.__tot, F = window.__fb14; if (dbg) { window.__fb14dbg = []; window.__chgDebug = true; if (M.truth) window.__fb14truth = M.truth; if (M.truthAura) window.__fb14truthAura = M.truthAura; if (M.truthT6) window.__fb14truthT6 = parseInt(M.truthT6, 16); } document.getElementById('s-crate').value = crate; if (cpus) document.getElementById('s-chgcpu').value = cpus;
     if (t5) document.getElementById('s-fb2t5').value = t5;
-    const BOX = { M: { x: 0.36, y: 0.265, w: 0.08, h: 0.06 }, S: { x: 0.33, y: 0.317, w: 0.176, h: 0.1 } };
+    const BOX = { M: { x: 0.36, y: 0.265, w: 0.08, h: 0.06 }, B: { x: 0.36, y: 0.265, w: 0.08, h: 0.06 }, S: { x: 0.33, y: 0.317, w: 0.176, h: 0.1 } };
     const bmp = new Map(); let next = 0; const nf = M.frames.length;
     const want = i => { while (next < Math.min(nf, i + 90)) { const k = next++; bmp.set(k, fetch(base + '/' + M.frames[k]).then(r => r.blob()).then(x => createImageBitmap(x))); } };
     // the two screens, saved from the capture (as the runner's Save target screen does)
     const refs = {};
-    for (const [cat, i] of [['M', M.refM], ['S', M.refS]]) { if (i == null) continue;
+    for (const [cat, i] of [['M', M.refM], ['S', M.refS], ['B', M.refB]]) { if (i == null) continue;
       const im = await fetch(base + '/' + M.frames[i]).then(r => r.blob()).then(x => createImageBitmap(x)), vf = new VideoFrame(im, { timestamp: 0 });
       T.V.src = vf; const g = F.sample(BOX[cat], 24, 16), ref = []; for (let k = 0; k < g.length; k += 4) ref.push((g[k] + g[k + 1] + g[k + 2]) / 3); T.V.src = null; vf.close(); im.close();
       refs[cat] = ref; }
@@ -48,6 +48,7 @@ const fs = require('fs');
       if (dbg) trace.push([i, +(T.V.score || 0).toFixed(3), T.V.present ? 1 : 0, T.step()]);
     }
     for (let k = 0; k < 100 && ['maps', 'search', 'capture'].includes(T.CHG.state); k++) await new Promise(r => setTimeout(r, 100));
+    if (M.waitMs) await new Promise(r => setTimeout(r, M.waitMs));
     const S = T.SLOG, ev = n => S.filter(x => x.ev === n), C = T.CHG, cf = t => +((t - t0) * 60 / 1000).toFixed(1);   // capture frame of a page time
     const fbe = S.filter(x => /^fb14|^fb2|^charge(Lock|NoLock|Trigger|Narrow|NotSeen|Retry|Error|Arena)|^step$|^beepsStopped|^screenClosed/.test(x.ev));
     const plans = ev('fb14Plan').map(x => Object.assign({}, x, { tPressCap: x.tPress != null ? cf(x.tPress) : null }));

@@ -71,7 +71,7 @@ const CHG_PROF = {
   // both effects in stage 1 (A's initial rays alone ranked the true seed below 65536 on the T1 render: Lakilester and the
   // stars cover part of them), B's base draw 24 .. 38 steps after A's (the aura's draws on frames 0-2); the lock starts the
   // T1-T4 tracker (fb14_live.js). A real bar hide arms it, as on the Hallway.
-  fb1: { id: 'fb1', turn: null, cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB1, bolts: false, aura: true, early: false, offs: Array.from({ length: 15 }, (_, i) => 24 + i), effects: [0, 1], trigLo: 6, trigHi: 20, trigN: true, trigCut: [10.9, 16.5], tol: tb => 4 + 0.3 * Math.abs(tb), trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 12000 },
+  fb1: { id: 'fb1', turn: null, cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB1, bolts: false, aura: true, early: false, offs: Array.from({ length: 15 }, (_, i) => 24 + i), effects: [0, 1], trigLo: 6, trigHi: 20, trigN: true, trigCut: [10.9, 16.5], shiftAlts: [1, -1], tol: tb => 4 + 0.3 * Math.abs(tb), trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 12000 },
   dup: { id: 'dup', turn: null, cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT_DUP, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 6000 },
   // jr: the Jr. Troopa steps (chg 'jr'). The lock goes to jrLock (jr_live.js): the T1 lock starts the tracker that carries it
   // through the fight; the T3 / T5 locks check the carry or start it again.
@@ -165,7 +165,7 @@ function chgPendResolve() {
   CHG.preUsed = CHG.trig.t; V.preDone = V.preDone || {}; V.preDone[hi + ':' + hidePre] = true;
   slog('chargeConfirm', { at: Math.round(tObs), from: P ? 'bar' : 'burst' }); preConfirm(hwPre, tObs);
 }
-function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null, armP: null, G: null, F0: null, skips: null, alt: 0, forced: 0 }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
+function chgReset(why) { if (CHG.pend) chgPendDrop('reset'); if (CHG.workers) CHG.workers.forEach(w => w.terminate()); Object.assign(CHG, { state: 'idle', ring: [], frames: [], res: null, workers: null, means: [], trig: null, why: why || null, taps: [], pres: [], spiny: null, prof: null, early: null, info: null, armP: null, G: null, F0: null, skips: null, alt: 0, forced: 0, trigT0: null }); if (typeof fb2Reset === 'function') fb2Reset(); chgShow(); }
 chgReset();
 let chgCv = null, chgCtx = null;
 function chgCanvas() { if (!chgCv) { chgCv = document.createElement('canvas'); chgCv.width = 640; chgCv.height = 480; chgCtx = chgCv.getContext('2d', { willReadFrequently: true }); } return chgCtx; }
@@ -199,8 +199,11 @@ function chgFrame(t, present) {
   if (CHG.state === 'idle' || CHG.state === 'notseen') { const P = CHG.armP || chgProfNow(); if (t - CHG.hideT > P.trigMax) return; if (typeof fb14ArmOk === 'function' && !fb14ArmOk(P, t)) return; CHG.state = 'armed'; CHG.ring = []; CHG.means = []; CHG.prof = P; }
   const g = sample(chgGame(), 32, 24); let m = 0; for (let i = 0; i < g.length; i += 4) m += 0.299 * g[i] + 0.587 * g[i + 1] + 0.114 * g[i + 2]; m /= 768;
   const tg = performance.now(), last = CHG.state === 'capture' ? CHG.frames[CHG.frames.length - 1] : CHG.ring[CHG.ring.length - 1];
-  const rep = chgP().id === 'fb2' && last && Math.abs(last.m - m) < 0.02;     // FB2: a repeated picture (same coarse brightness) reuses the raster: half the grabs
-  const fr = { t, m, Y: rep ? last.Y : chgGrab() }; if (!rep) CHG.grabMs = (CHG.grabMs || 0) * 0.9 + 0.1 * (performance.now() - tg);
+  // FB2: a repeated picture (same coarse brightness) reuses the raster: half the grabs. v75: only right after a fresh grab
+  // (each game frame shows on 2 captures): two game frames in a row with the same coarse brightness made the second a
+  // copy of the first, a skipped frame in the placement, and the T6 Charge of an end-to-end run never locked
+  const rep = chgP().id === 'fb2' && last && !last.rep && Math.abs(last.m - m) < 0.02;
+  const fr = { t, m, Y: rep ? last.Y : chgGrab(), rep }; if (!rep) CHG.grabMs = (CHG.grabMs || 0) * 0.9 + 0.1 * (performance.now() - tg);
   if (CHG.state === 'armed') {
     CHG.ring.push(fr); if (CHG.ring.length > 16) CHG.ring.shift(); CHG.means.push(m); if (CHG.means.length > 12) CHG.means.shift();
     const P0 = CHG.prof || CHG_PROF.hw;
@@ -382,14 +385,19 @@ onmessage = async e => {
       const a = fwd(m.s0 >>> 0, 1), P = X.fb1path(a), v = new Int32Array(X.memory.buffer, P, 52)[0], best = X.fb1struct(a, v), n = X.fb2npat();
       const S3 = new Float32Array(X.memory.buffer, X.sc3Ptr(), n * 96), out = [];
       for (let i = 0; i < n * 96; i++) if (S3[i] > -1e29 && S3[i] >= best * (1 - m.tol)) out.push(i);
+      out.sort((x, y) => S3[y] - S3[x]);      // the best first (the list is cut at m.max)
       const hy = out.slice(0, m.max || 4000).map(i => { const p = (i / 96) | 0, q = ((i % 96) / 2) | 0, br = i % 2, sc = X.fb1aura(p, q, br), A = Array.from(new Uint8Array(X.memory.buffer, X.xaPtr(), 20));
         const XB = new Uint8Array(X.memory.buffer, X.xbPtr(), 60), XA = new Uint8Array(X.memory.buffer, X.xaPtr(), 60), PT = new Uint8Array(X.memory.buffer, X.patPtr() + p * 52, 52);
         for (let n2 = 0; n2 < 60; n2++) { XB[n2] = n2 < 48 ? PT[n2] : 0; XA[n2] = A[n2 % 20]; }
         X.fb1end(a, q, 48); const E = new Uint32Array(X.memory.buffer, X.endPtr(), 3), esc = new Float32Array(E.buffer, E.byteOffset + 8, 1)[0];
-        const na = X.fb1alts(p, q, br, Math.max(1, best * m.tol), 600), AL = new Uint8Array(X.memory.buffer, X.altPtr(), na * 20), alts = [];
-        for (let i = 0; i < na; i++) alts.push(Array.from(AL.subarray(i * 20, i * 20 + 20)));
-        return { p, q, br, sc, aura: A, alts, s48: E[0] >>> 0, nc48: E[1], esc }; });
+        const na = X.fb1alts(p, q, br, Math.max(1, best * m.tol - (best - sc)), 600), AL = new Uint8Array(X.memory.buffer, X.altPtr(), na * 20), AS = new Float32Array(X.memory.buffer, X.altScPtr(), na), alts = [], altSc = [];
+        for (let i = 0; i < na; i++) { alts.push(Array.from(AL.subarray(i * 20, i * 20 + 20))); altSc.push(AS[i]); }
+        return { p, q, br, sc, aura: A, alts, altSc, s48: E[0] >>> 0, nc48: E[1], esc }; });
       postMessage({ type: 'fb1h', a, v, best, n: out.length, hy });
+    } else if (m.type === 'cscore') {     // fb14_live.js fb14Joint: each aura pattern's best score over the given fits
+      const XA = new Uint8Array(X.memory.buffer, X.xaPtr(), 60), n = m.cands.length / 20, out = new Float32Array(n);
+      for (let i = 0; i < n; i++) { for (let j = 0; j < 20; j++) XA[j] = m.cands[i * 20 + j]; let b = -1e30; for (const [p, q, br] of m.hyps) { const x = X.fb1cscore(m.a >>> 0, p, q, br); if (x > b) b = x; } out[i] = b; }
+      postMessage({ type: 'cscore', out });
     } else if (m.type === 'hyps') {
       const a = fwd(m.s0 >>> 0, 1), best = X.fb2best(a), n = X.fb2npat(), S2 = new Float32Array(X.memory.buffer, X.sc2Ptr(), n * 48), out = [];
       for (let i = 0; i < n * 48; i++) if (S2[i] >= best * (1 - m.tol)) out.push([(i / 48) | 0, i % 48, S2[i]]);
@@ -437,8 +445,16 @@ if (window.__chgDebug) {
     let res;
     const cands = !E && chgP().id === 'fb2' && typeof fb14T6Cands === 'function' ? fb14T6Cands() : null;
     if (cands) {        // T6 with the seed carried from T1-T4: only the carried stream's stretch (fb14_live.js); the full search if it does not lock
-      res = await chgSearch(maps, { cands }); const T = res.top, ok = T[0] && T[0].sc >= CHG_MIN && T[0].sc / ((T.slice(1).find(x => x.sc > -1e29) || { sc: T[0].sc / (CHG_RATIO * 1.0001) }).sc) >= CHG_RATIO;
-      CHG.info.narrow = { cands: cands.length, ms: Math.round(performance.now() - CHG.tSearch), locked: !!ok };
+      // the runner-up off the best one's stream: the candidates here are runs of consecutive seeds, and one a few steps away
+      // shares B's rays and every respawn (the true T6 seed of the end-to-end run, 4753, against its neighbour's ~4700)
+      const near = a => { const S = new Set(); let x = a >>> 0, y = a >>> 0; for (let k = 0; k <= 48; k++) { S.add(x); S.add(y); x = chgFwd(x, 1); y = chgBack(y, 1); } return S; };
+      const okOf = r => { const T = r.top; if (!T[0] || T[0].sc < CHG_MIN) return false; const N0 = near(T[0].seed); const b = T.slice(1).find(x => x.sc > -1e29 && !N0.has(x.seed >>> 0));
+        return T[0].sc / (b ? b.sc : T[0].sc / (CHG_RATIO * 1.0001)) >= CHG_RATIO; };
+      res = await chgSearch(maps, { cands }); let ok = okOf(res), sh = 0;
+      // (a second's work each: the pictures one frame earlier / later, before the full search)
+      for (const d of [1, -1]) { if (ok || typeof fbShiftG !== 'function') break; const r2 = await chgSearch(chgMaps(fbShiftG(G, d), cen, CHG_N), { cands }); slog('chargeNarrowShift', { d, best: r2.top[0] && Math.round(r2.top[0].sc), seed: r2.top[0] && (r2.top[0].seed >>> 0).toString(16) }); if (okOf(r2)) { res = r2; ok = true; sh = d; CHG.trig.t += d * FRAME; } }
+      CHG.info.narrow = { cands: cands.length, ms: Math.round(performance.now() - CHG.tSearch), locked: !!ok, shift: sh };
+      if (ok) { const N0 = near(res.top[0].seed); res.top = [res.top[0]].concat(res.top.slice(1).filter(x => !N0.has(x.seed >>> 0))); }
       slog('chargeNarrow', CHG.info.narrow);
       if (!ok) { CHG.tSearch = performance.now(); res = await chgSearch(maps); }
     } else if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
@@ -463,7 +479,19 @@ function chgSearch(maps, opts) {
     let finishing = false;
     // a narrowed search (FB2 T6 after a carried seed, fb14_live.js): no stage 1; the candidates (seeds before A's base-angle
     // draw) go straight to stage 2
-    const finishN = () => { finishing = true; times.stage1 = 0; times.joint = 0; stage2(opts.cands.slice()); };
+    // they are ranked by their initial rays first (A's, and B's at each offset), as the full search ranks its stage-1 bests:
+    // the upper bound alone (any lightning, any insertion count) ranks hundreds of wrong ones above the true one
+    const finishN = async () => { finishing = true; times.stage1 = 0; const tj = performance.now();
+      try {
+        const cs = opts.cands, per = Math.ceil(cs.length / W.length), sc = new Float32Array(cs.length), parts = [];
+        for (let k = 0; k < W.length; k++) { const idx = [], s0 = []; for (let i = k * per; i < Math.min(cs.length, (k + 1) * per); i++) { idx.push(i); s0.push(cs[i]); } if (!idx.length) continue;
+          // e 0: B's best initial rays over the offsets; e 1: A's (the worker adds the given score: 0 here), summed
+          const e = new Uint8Array(2 * idx.length); e.fill(1, idx.length); const S0 = Uint32Array.from(s0.concat(s0));
+          parts.push(call(W[k], { type: 'joint', e, s0: S0, sc: new Float32Array(2 * idx.length), offs: P.offs }, 'joint').then(r => r.sc.forEach((v, i) => { sc[idx[i % idx.length]] += v; }))); }
+        await Promise.all(parts);
+        const order = cs.map((x, i) => i).sort((a, b) => sc[b] - sc[a]); times.joint = Math.round(performance.now() - tj);
+        stage2(order.slice(0, CHG_M2).map(i => cs[i]));
+      } catch (err) { fail(String(err && err.message || err)); } };
     const finish = async () => {
       if (finishing) return; finishing = true; times.stage1 = Math.round(performance.now() - tS);
       const t2 = performance.now();
@@ -516,7 +544,8 @@ function chgSearch(maps, opts) {
       const split = async (list, type, extra) => { const ps = []; for (let k = 0; k < W.length; k++) { const sd = list.filter((x, i) => i % W.length === k); if (sd.length) ps.push(call(W[k], Object.assign({ type, seeds: sd }, extra), type).then(r => r.out.map((o, i) => Object.assign({ seed: sd[i] }, o)))); } return [].concat(...(await Promise.all(ps))); };
       const ubs = (await split(top, 'ub2')).sort((a, b) => b.ub - a.ub), all = [];
       let best = -1e30, i0 = 0;
-      while (i0 < ubs.length && ubs[i0].ub > best / CHG_RATIO) { const batch = ubs.slice(i0, i0 + W.length).filter(o => o.ub > best / CHG_RATIO); i0 += W.length;
+      const cap2 = opts.cands ? 160 : 1e9;      // the narrowed T6 search: its best bounds only (a wrong carry must not delay the full search)
+      while (i0 < ubs.length && i0 < cap2 && ubs[i0].ub > best / CHG_RATIO) { const batch = ubs.slice(i0, i0 + W.length).filter(o => o.ub > best / CHG_RATIO); i0 += W.length;
         for (const o of await split(batch.map(o => o.seed), 'q2', { thr: -1e30 })) { all.push(o); best = Math.max(best, o.sc); } }
       for (const o of ubs.slice(i0)) if (!all.some(x => x.seed === o.seed)) all.push({ seed: o.seed, sc: -1e30, p: 0, q: 0 });
       all.sort((a, b) => b.sc - a.sc);
@@ -524,7 +553,7 @@ function chgSearch(maps, opts) {
       const top1 = all[0], hy = top1 && top1.sc > -1e29 ? await call(W[0], { type: 'hyps', s0: top1.seed, tol: FB2_TOL }, 'hyps') : null;
       times.hyps = Math.round(performance.now() - t4);
       W.forEach(w => w.terminate()); CHG.workers = null;
-      resolve({ top: all.slice(0, 5), stats, workers: W.length, thr: gthr.slice(), s1, fb2: { hyps: hy, times, scored: all.filter(x => x.sc > -1e29).length } });
+      resolve({ top: all.slice(0, opts.cands ? 40 : 5), stats, workers: W.length, thr: gthr.slice(), s1, fb2: { hyps: hy, times, scored: all.filter(x => x.sc > -1e29).length } });
       } catch (err) { fail(String(err && err.message || err)); }
     };
     for (let k = 0; k < nw; k++) {
@@ -560,6 +589,17 @@ function chgSearch(maps, opts) {
 const CHG_ALTS = 4, CHG_ALT_MS = 9000, CHG_FORCE = [13, 9, 17, 21];
 async function chgRetry() {
   try {
+    // a profile with shift alternatives (fb1, fb14_live.js): the first retries put every picture one frame earlier / later
+    // (the trigger picture's frame read from the burst's level is off by one when the burst is brighter or darker than
+    // the curve), then the skip bans as below
+    const SA = chgP().shiftAlts, sh = SA && CHG.alt < SA.length ? SA[CHG.alt] : 0;
+    if (sh) { CHG.alt++; if (CHG.trigT0 == null) CHG.trigT0 = CHG.trig.t; CHG.frames = CHG.F0; const G0 = chgGameFrames(null); CHG.frames = []; CHG.trig.t = CHG.trigT0 + sh * FRAME; CHG.trig.n = 3 - sh;
+      const G = fbShiftG(G0, sh), t1 = performance.now(), maps = chgMaps(G, CHG.cen, CHG_N); CHG.G = G; CHG.state = 'search'; CHG.tSearch = performance.now(); chgShow();
+      slog('chargeRetry', { alt: CHG.alt, shift: sh, frames: G.slice(0, CHG_N).filter(Boolean).length, mapsMs: Math.round(CHG.tSearch - t1) });
+      const res = await chgSearch(maps); CHG.res = res; CHG.tLock = performance.now();
+      Object.assign(CHG.info, { alt: CHG.alt, shift: sh, searchMs: Math.round(CHG.tLock - CHG.tSearch), lockAfterRaysMs: Math.round(CHG.tLock - CHG.tEnd) });
+      chgDecide(); return; }
+    if (CHG.trigT0 != null) { CHG.trig.t = CHG.trigT0; CHG.trig.n = 3; }
     CHG.alt++; const path0 = (CHG.skips || []).slice(); for (const k of path0) for (let d = 0; d <= 2; d++) CHG.ban.add(k + d * 65);   // the skip's picture and the next two, at their frames
     if (!path0.length) { const m = CHG_FORCE[(CHG.forced = (CHG.forced || 0) + 1) - 1]; if (m != null) CHG.ban.add((m - 3) * 64 + m); }
     CHG.frames = CHG.F0; const G = chgGameFrames(CHG.ban); CHG.frames = [];
@@ -589,7 +629,7 @@ function chgDecide() {
   }
   CHG.F0 = null;
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); fb2Lock(CHG.res); chgShow(); return; }
-  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); fb14Lock(CHG.res); chgShow(); return; }
+  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); fb14Refine(CHG.res, G).then(r => fb14Lock(r)); chgShow(); return; }
   // q hypotheses: every first-coin frame whose score is within CHG_QTOL of the best (late coins barely move the rays: v71
   // kept 0.5% and 6 at most, and on the Duplighost render 1234abcd the true q 42 was not among them), best first; the
   // turn-1 menu's coin then weighs them (chgQBack: a likelihood, not a filter) and the tracker's shines settle them
