@@ -94,6 +94,7 @@ function jrFrame(t, present) {
  * emulator renders, jr_charge/README.md): the share of white glyph pixels there */
 const JR_TENS = [61, 27, 67, 36];
 function jrTens() {
+  if (window.__jrTensTest) return window.__jrTensTest();     // (tests)
   const [SX, OX, SY, OY] = chgMap(), b = { x: (OX + JR_TENS[0] * SX) / 1280, y: (OY + JR_TENS[1] * SY) / 720, w: (JR_TENS[2] - JR_TENS[0]) * SX / 1280, h: (JR_TENS[3] - JR_TENS[1]) * SY / 720 };
   const g = sample(b, 12, 12); let n = 0;
   for (let i = 0; i < g.length; i += 4) if (g[i] > 150 && g[i + 1] > 150 && g[i + 2] > 150) n++;
@@ -136,6 +137,7 @@ function jrConfirm(k, t, h, src) {
   if (JRT.ccPend && JRT.ccPend.k < k) jrSettle('next confirm');
   const s = JR_SEQ[k]; let id = s.id; if (s.hit && JRT.hp10[k]) id = s.hit;
   const inp = { k, id, t, h, src }; JRT.inputs.push(inp);
+  jrPress(inp);
   if (s.charge) JRT.chargeK = k;
   if (zw.on && zw.fight === 'jr') jrApply(inp);
   if (s.cc && id === s.id) JRT.ccPend = { k, t: t - h * jrRate() };
@@ -210,7 +212,7 @@ function jrDeath(k, fr) {
 }
 /* an input in the tracker: like zwInput, with the confirm frame -2..+1 (JR_SHIFTS) and, on a Close Call confirm, whether
  * each state's roll dodges (p.cc[k]), so the outcome seen later can drop the ones that would have died */
-function jrApply(inp) {
+function jrApply(inp, re) {
   const s = JR_SEQ[inp.k], c = Math.round(zwF(inp.t, inp.h + num('pfix')));
   inp.c = c;
   zwSeen(performance.now());
@@ -226,7 +228,7 @@ function jrApply(inp) {
   zw.parts = out;
   if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
   else zwBgAdd(ZW_BGIN);
-  slog('jrInput', { k: inp.k, id: inp.id, c, src: inp.src, particles: zw.parts.length });
+  slog('jrInput', { k: inp.k, id: inp.id, c, src: inp.src, particles: zw.parts.length, re: re || undefined });   // re: replayed onto a new lock (jrStartFrom), in its clock
 }
 // one state x the confirm frame c + sh for each shift: the input's events in, and on a Close Call confirm the roll's
 // outcome (q.cc[k]); the outcome is part of the state (zwUpdate merges only states with the same outcomes)
@@ -380,9 +382,46 @@ function jrStartFrom(k, seed, qs, qw) {
   const P = st.plan; if (old && P && P.mix && P.mix.zw && P.zwAbs != null) { P.zwAbs = Math.round(P.zwAbs + (old.t0 - zw.t0) / zw.rate); P.zwKey = null; }
   // the confirms since this Charge (the runner may have gone on before the lock landed): in order, in the new clock
   const since = JRT.inputs.filter(x => x.k > k);
-  for (const inp of since) jrApply(inp);
+  for (const inp of since) jrApply(inp, true);
   JRT.dead = null; JRT.recon = null; JRT.shineRec = null; JRT.lost = null; JRT.lostF = null; JRT.origin = k; JRT.lastLock = { k, seed: seed >>> 0, t0: zw.t0 }; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
   slog('jrStart', { k, since: since.map(x => x.k), particles: zw.parts.length });
+}
+/* v82 (log 1794169121337, the middle fight's T3): the plan from the tracker as soon as its states allow, before the target
+ * screen shows. v81 planned only once that screen had been up 0.3 s; the runner confirmed the Bomb 0.4 s after the menu
+ * opened, before any plan (it came 175 ms after the bar hid). The plan's frame is never earlier than a plan made on the
+ * screen would allow: the previous confirm + the frames until the menu opens (the bar back: Charge 110-113 frames, the
+ * T4 Bomb 160-162, both on every fight of that log; after a Close Call the menu after a dodge, JR_SEQ next) + the beep
+ * lead + 10. The doubt and edge rules are zwPlan's; a lock that lands later re-scores it (zwTick, "Seed changed"). */
+const JR_MENU_CHG = 110, JR_MENU_BOMB = 160;
+function jrPlanFloor() {
+  if (!(zw.on && zw.fight === 'jr') || JRT.k < 1 || JRT.k >= JR_SEQ.length || !JR_SEQ[JRT.k].prof) return null;
+  const k = JRT.k, ps = JR_SEQ[k - 1], prev = JRT.inputs.filter(x => x.k === k - 1).pop();
+  if (!prev || prev.c == null || !ps) return null;
+  const gap = ps.charge ? JR_MENU_CHG : ps.next ? ps.next : ps.id === 'jr_bomb' ? JR_MENU_BOMB : null;
+  return gap == null ? null : prev.c + gap + Math.ceil(earliestPress(0) / zw.rate) + 10;
+}
+function jrEarlyPlan(t) {
+  if (V.wasOn || !jrZw() || JRT.k >= JR_SEQ.length || PROF().id !== JR_SEQ[JRT.k].prof || jrPlanFloor() == null) return;   // the screen up: autoPlan as before
+  if (st.plan && performance.now() < st.plan.tPress + 600) return;
+  if (st.planTry && performance.now() - st.planTry < 500) return;
+  st.planEarly = true; try { autoPlan(); } finally { st.planEarly = false; }
+}
+/* v82: every beeped Jr. Troopa confirm is measured against its plan at the confirm the tracker reads (the bar hiding, or
+ * Do Nothing's Strategies screen closing): v81 measured only on a target screen closing, before the route moved, so the
+ * T3 Bomb (its screen not watched) and T5 Do Nothing (the step moved before the measure) had none. The tracker's frame is
+ * the one the Close Call outcomes have fitted; the target screen read ran ~3 frames later on T4 / T6 in that log. A press
+ * more than 5 frames off the beeps (or after the beeps were stopped) is logged but kept out of the press spread. */
+function jrPress(inp) {
+  const P = st.plan, s = JR_SEQ[inp.k];
+  if (!P || !P.mix || !P.mix.zw || P.zwAbs == null || P.measured || !s || !s.prof || PROF().id !== s.prof || !(zw.on && zw.fight === 'jr')) return;
+  const rate = zw.rate; if (inp.t - inp.h * rate < (P.tMade || 0)) return;      // the plan came after the press
+  const c = zwF(inp.t, inp.h + num('pfix')), f = Math.round(c), err = c - P.zwAbs, onBeeps = Math.abs(err) <= 5 && !P.stopped;
+  const d = f - P.zwAbs, inWin = P.target + d >= P.w.start && P.target + d <= P.w.end;
+  if (onBeeps) { presses.push(err); while (presses.length > 8) presses.shift(); try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {} }
+  V.pressNote = null; P.measured = { frame: f, c, err, inWin, works: inWin, likely: false, tObs: inp.t, onBeeps };
+  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works: inWin, likely: false, near: [], onBeeps, src: inp.src, k: inp.k });
+  st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  if (typeof showPresses === 'function') showPresses();
 }
 /* the fight is over or left: the tracker off (the Hallway's walk tracker can start) */
 function jrEnd(why) { if (zw.on && zw.fight === 'jr') zw.on = false; JRT.on = false; slog('jrEnd', { why }); }

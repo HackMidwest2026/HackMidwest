@@ -52,15 +52,20 @@ const CHG_BRIGHT_DUP = [7.0, 12.3, 18.8, 27.3, 35.2, 41.8, 47.3, 49.0, 50.6, 54.
 /* Jr. Troopa T1 / T3 / T5 (jr_charge/README.md section 5): the battle camera is bit-identical to the Hallway's (all 48
  * frames, any turn, any seed; readouts/data/charge_cams_mario_jr.json), so the Hallway table is used; the Hallway capture
  * Mario patch matches the Jr. render at NCC 0.88 (dy -3). The burst over this arena: the page's Hallway curve plus the
- * emulator's Jr. - Hallway difference (charge_jr_reader.json CHG_BRIGHT_jr_suggested: unverified on a capture). No
- * nuisance draws in the rays. */
-const CHG_BRIGHT_JR = [6.3, 11.6, 18.3, 26.5, 34.0, 40.2, 45.9, 47.2, 48.8, 52.5, 54.9, 55.8, 57.2, 59.5, 59.4, 59.3, 58.1, 59.9, 58.5, 56.1, 55.1, 49.7, 45.2,
-  40.4, 29.7, 20.5, 14.7, 8.2, 3.2, 1.8, 3.7, 3.1, 3.0, 3.0, 3.1, 3.0, 2.9, 2.9, 3.0, 2.8, 2.7, 2.8, 2.7];   // frames 3..45
-/* Final Bowser phase 2, T1-T4 (Bowser's star aura up; fb14_live.js): the burst over the arena with Lakilester beside Mario
- * (emulator T1 render through the capture simulation, fb2_route/t14_log.py SHOTS + t6_capsim.py: frames 0-2 read -1.0,
- * 0.9, 3.4; frame 3 is the trigger at 6 above the menu; unverified on console) */
-const CHG_BRIGHT_FB1 = [8.3, 13.5, 19.5, 25.2, 30.4, 34.8, 38.2, 38.6, 39.4, 42.0, 43.2, 43.4, 44.9, 46.6, 46.2, 46.2, 44.1, 44.5, 42.3, 40.9, 40.0, 37.7,
-  34.8, 31.6, 24.3, 17.5, 10.8, 6.1, 1.9, -1.9, -0.8, 2.1, -2.7, -6.0, -6.5, -6.7, -7.1, -7.7, -7.9, -8.2, -8.3, -8.6, -8.5];   // frames 3..45
+ * emulator's Jr. - Hallway difference until v81. v82: measured on the console (log 1794169121337, 9 Jr. Charges, one picture per
+ * game frame from the trigger, the median per frame; the two Charges with a frame of no picture of their own cut there).
+ * The emulator curve was 2-4 levels darker on frames 7-26, so the placement moved a skip into the rise and back out at
+ * frame ~21 (13 frames one off): 4 of 9 first reads no-locked (ratio 1.0x) and locked only on a re-read 1.4-1.6 s later.
+ * No nuisance draws in the rays. */
+const CHG_BRIGHT_JR = [7.1, 12.9, 19.5, 28.0, 36.5, 43.6, 48.6, 50.0, 51.5, 54.4, 57.2, 58.0, 60.0, 62.2, 61.7, 61.3, 61.6, 64.2, 60.8, 60.1, 58.4, 53.2, 47.8,
+  42.2, 31.0, 21.3, 15.4, 8.9, 3.6, 1.9, 4.1, 2.4, 2.7, 3.7, 1.8, 1.6, 1.6, 1.4, 1.4, 1.3, 1.4, 1.2, 1.1];   // frames 3..45   // frames 3..45
+/* Final Bowser phase 2, T1-T4 (Bowser's star aura up; fb14_live.js): the burst over the arena with Lakilester beside Mario.
+ * v74-v81: the emulator T1 render through the capture simulation (fb2_route/t14_log.py SHOTS + t6_capsim.py), never seen
+ * on a console. v82: the console (log 1794169517521, the T1 Charge as its lock placed it, frame 10 and 44 interpolated)
+ * reads the same shape about 1.2x as bright (plateau 55 against 46.6): the T2 Charge of that fight peaked at +58, more
+ * than 10 over the emulator curve on 4 pictures, so the shape check called it a false trigger and the T2 lock never ran. */
+const CHG_BRIGHT_FB1 = [9.6, 15.4, 24.6, 32.1, 39.0, 44.7, 45.4, 45.5, 45.7, 47.7, 49.9, 50.1, 53.0, 55.0, 55.2, 54.9, 53.9, 55.8, 51.2, 49.2, 46.9,
+  42.2, 37.8, 33.9, 24.1, 15.9, 11.5, 5.2, 1.9, 3.5, 6.7, 3.7, -1.3, -2.5, -2.7, -2.5, -3.1, -2.9, -3.8, -3.6, -4.3, -4.6, -4.9];   // frames 3..45
 const CHG_PROF = {
   hw: { id: 'hw', turn: 'hw_spiny', cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true },
   fb2: { id: 'fb2', turn: 'fb2_pb', cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB2 || CHG_BRIGHT, bolts: true, early: true, offs: [24, 25, 26, 27], effects: [0], trigLo: 7.5, trigHi: 20, tol: tb => 1.5 + 0.08 * Math.abs(tb), trigMin: 0, trigMax: 4000 },
@@ -71,7 +76,7 @@ const CHG_PROF = {
   // both effects in stage 1 (A's initial rays alone ranked the true seed below 65536 on the T1 render: Lakilester and the
   // stars cover part of them), B's base draw 24 .. 38 steps after A's (the aura's draws on frames 0-2); the lock starts the
   // T1-T4 tracker (fb14_live.js). A real bar hide arms it, as on the Hallway.
-  fb1: { id: 'fb1', turn: null, cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB1, bolts: false, aura: true, early: false, offs: Array.from({ length: 15 }, (_, i) => 24 + i), effects: [0, 1], trigLo: 6, trigHi: 20, trigN: true, trigCut: [10.9, 16.5], shiftAlts: [1, -1], tol: tb => 4 + 0.3 * Math.abs(tb), trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 12000 },
+  fb1: { id: 'fb1', turn: null, cams: () => CHG_CAMS_FB2 || CHG_CAMS, mario: () => CHG_MARIO_FB2 || CHG_MARIO, bright: () => CHG_BRIGHT_FB1, bolts: false, aura: true, early: false, offs: Array.from({ length: 15 }, (_, i) => 24 + i), effects: [0, 1], trigLo: 6, trigHi: 27, trigN: true, trigCut: [12.5, 20.0], shapeUp: 0.2, shiftAlts: [1, -1], tol: tb => 4 + 0.3 * Math.abs(tb), trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 12000 },
   dup: { id: 'dup', turn: null, cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT_DUP, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true, altMs: 6000 },
   // jr: the Jr. Troopa steps (chg 'jr'). The lock goes to jrLock (jr_live.js): the T1 lock starts the tracker that carries it
   // through the fight; the T3 / T5 locks check the carry or start it again.
@@ -231,7 +236,7 @@ function chgFrame(t, present) {
   // hw: every picture of the burst (game frames 5..27 by time) must sit on CHG_BRIGHT, within +-1.5 frames and 10 levels
   if (chgP().shape) { const n = 3 + (t - CHG.trig.t) / FRAME, BRS = chgP().bright();
     if (n >= 5 && n <= 27) { let lo = 1e9, hi = -1e9; for (let k = Math.max(3, Math.floor(n - 1.5)); k <= Math.min(45, Math.ceil(n + 1.5)); k++) { lo = Math.min(lo, BRS[k - 3]); hi = Math.max(hi, BRS[k - 3]); }
-      const d = m - CHG.trig.base; if (d < lo - 10 || d > hi + 10) CHG.shapeBad++; } }
+      const d = m - CHG.trig.base; if (d < lo - 10 || d > hi + 10 + (chgP().shapeUp || 0) * Math.abs(hi)) CHG.shapeBad++; } }
   if ((dt > 330 && dt < 400 && m < CHG.trig.base + 15) || CHG.shapeBad > 3) { slog('chargeFalseTrigger', { m: +m.toFixed(1), shapeBad: CHG.shapeBad || 0 }); CHG.state = 'armed'; CHG.ring = CHG.frames.slice(-16); CHG.frames = []; return; }
   if (chgP().early && !CHG.early && dt > (CHG_EARLY_N - 3 + 1.5) * FRAME) { if (typeof FB14 !== 'undefined' && FB14.t6 && chgP().id === 'fb2') CHG.early = { narrow: true }; else { CHG.early = { t }; setTimeout(chgEarly, 0); } }   // stage 1 while the rays go on
   if (dt > CHG_N * FRAME) { CHG.state = 'maps'; CHG.tEnd = t; CHG.taps = []; CHG.pres = []; setTimeout(chgSolve, 0); }
@@ -719,6 +724,8 @@ function chgDecide() {
     CHG.F0 = null; chgShow(); if (CHG.replay) chgReplayDone({ state: 'nolock' }); else chgRecEnd('nolock'); return;
   }
   CHG.F0 = null;
+  // v82 (tests): a Final Bowser read replayed into the tracker, as live (fb14Refine, fb14Lock), for the log replays
+  if (CHG.replay && CHG.replay.fb14 && CHG.res.fb1) { CHG.state = 'locked'; fb14Refine(CHG.res, G).then(r => { fb14Lock(r); chgReplayDone({ state: 'locked', fb14: FB14.states.length }); }); return; }
   if (CHG.replay) { const qs = []; if (a.qs) a.qs.forEach((s, q) => { if (s >= a.sc * (1 - CHG_QTOL)) qs.push(q); }); CHG.state = 'locked'; chgReplayDone({ state: 'locked', qsRays: qs }); return; }
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); chgRecEnd('lock'); fb2Lock(CHG.res); chgShow(); return; }
   if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); chgRecEnd('lock'); fb14Refine(CHG.res, G).then(r => { fb14Lock(r); if (typeof fb14AfterLock === 'function') fb14AfterLock(); }); chgShow(); return; }
@@ -819,7 +826,7 @@ function chgShow() {
   el.innerHTML = '<b>Charge lock: ' + lock + '</b>' + (s === 'nolock' || s === 'failed' || s === 'notseen' ? ' (' + (CHG.why || '') + ')' : '') +
     '<br>Time to lock: ' + t + (I.searchMs != null ? ' (search ' + (I.searchMs / 1000).toFixed(1) + ' s, ' + (CHG.res ? CHG.res.workers : '?') + ' threads)' : '') +
     '<br>Hypotheses left: ' + (h != null ? h + (zw.dead ? ' (none fit: No edge)' : '') : '–') +
-    (s === 'locked' && zw.on && zw.src === 'charge' && !zw.dead ? ' · fit ' + Math.round(100 * (1 - dz)) + '%' + (errs ? ' (best state: ' + errs + ' shine' + (errs > 1 ? 's' : '') + ' did not fit)' : '') : '') +
+    (s === 'locked' && zw.on && zw.src === 'charge' && !zw.dead ? ' · seed confidence ' + Math.round(100 * (1 - dz)) + '%' + (errs ? ' (best state: ' + errs + ' shine' + (errs > 1 ? 's' : '') + ' did not fit)' : '') : '') +
     (doubt ? '<br><b style="color:var(--warn)">Lock doubtful: the coin fits the tracked states badly (' + errs + ' missed or extra shines on the best one). No beeps; press normally.</b>' : '') +
     (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
     (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost || doubt) : '') +
@@ -833,7 +840,7 @@ function dupStatusLine(s, lost) {
   const P = st.plan, pc = x => Math.round(100 * x) + '%';
   if (s === 'nolock' || s === 'failed' || s === 'notseen' || lost) return '<br><b>Duplighosts: play it blind.</b> Do Nothing whenever you like: 3+ copies about ' + pc(DUP_BLIND.p3) + ', all 4 about ' + pc(DUP_BLIND.p4) + ' (the same as the RTA Surge route with no lock).';
   if (P && P.mix && P.mix.p4 != null) return '<br><b>Do Nothing on the beep:</b> 3+ copies ' + pc(P.mix.p) + ', all 4 ' + pc(P.mix.p4) + ' (blind: ' + pc(DUP_BLIND.p3) + ' / ' + pc(DUP_BLIND.p4) + ')';
-  if (s === 'locked') return '<br>Duplighosts: locked. The beeps start on Bombette\'s Strategies screen (hand on Do Nothing).';
+  if (s === 'locked') return '<br>Duplighosts: locked. The beeps start on the Partner’s Strategies screen (hand on Do Nothing).';
   return '';
 }
 /* for tests and the session log: the weighted share of the tracker's states for which confirming Time Out on clock

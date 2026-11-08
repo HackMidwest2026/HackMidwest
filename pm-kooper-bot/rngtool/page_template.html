@@ -1,4 +1,5 @@
-<title>Paper Mario (Any% No ACE) (RNG Manipulation)</title>
+<meta charset="utf-8">
+<title>Paper Mario Any% (No ACE) (RNG Manipulation)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -46,7 +47,7 @@ h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; tex
 .chip.ok { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
 .chip.err { border-color: var(--warn); color: var(--warn); }
 #headline { font-family: var(--display); font-weight: 600; font-size: clamp(1.25rem, 3.6vw, 1.6rem); line-height: 1.25; margin: 0; text-wrap: balance; }
-#detail { color: var(--muted); margin: 0; max-width: 62ch; }
+#detail { color: var(--muted); margin: 0; max-width: 62ch; font-variant-numeric: tabular-nums; }
 .count { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: clamp(2.6rem, 9vw, 3.6rem); font-weight: 700; line-height: 1; color: var(--gold); }
 .count small { font-size: .35em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
 /* v76: the countdown sits in the strip's header row: it always takes its space (hidden = invisible, not removed) and has a
@@ -124,8 +125,8 @@ details[open] summary { margin-bottom: 10px; }
 <div class="layout">
 <main>
   <header>
-    <h1>Paper Mario <span>(Any% No ACE)</span> (RNG Manipulation)</h1>
-    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v81</span></div>
+    <h1>Paper Mario Any% <span>(No ACE)</span> (RNG Manipulation)</h1>
+    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v82</span></div>
   </header>
 
   <section class="panel">
@@ -168,6 +169,12 @@ details[open] summary { margin-bottom: 10px; }
 
   <section class="panel stage" aria-live="polite">
     <div class="status">
+      <!-- v82 (the runner: the progress line and the status text moved the buttons): the buttons first, above everything
+           whose length changes (the chips, the headline, the detail and its progress line) -->
+      <div class="row" id="status-btns">
+        <button class="b primary" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button>
+        <button class="b" id="reset">Reset</button>
+      </div>
       <select id="s-prof" hidden aria-hidden="true"><option value="endgame">Endgame</option></select>
       <div class="phase" id="phase">
         <span class="chip" id="p-watch">Watch</span>
@@ -176,10 +183,6 @@ details[open] summary { margin-bottom: 10px; }
       </div>
       <p id="headline">Start watching (below), then play: the page reads the seed by itself.</p>
       <p id="detail">On Hallway Bowser it reads the seed from Mario's Charge on turn 1 and beeps Time Out on turn 2.</p>
-      <div class="row">
-        <button class="b primary" id="dl-log" title="Every shine, gap, lock, plan and press of this session, with times: send it to have a practice run analysed">Download session log</button>
-        <button class="b" id="reset">Reset</button>
-      </div>
     </div>
   </section>
 
@@ -323,7 +326,7 @@ details[open] summary { margin-bottom: 10px; }
         <div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div>
         <ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol>
         <details id="route-details"><summary>Details</summary><div>
-          <p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save Bombette's Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p>
+          <p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save the Partner’s Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p>
           <p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb14-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turns 1-4: the aura Charge lock, the beeped Cloud Nine / Do Nothing (Bowser misses), and the seed carried to the Peach Beam"><b>FB2 T1 → T4:</b> waiting for the T1 Super Charge lock</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p>
         </div></details>
       </div>
@@ -398,9 +401,9 @@ function fastTable(s, nc, g, a, b, prof) {
   return out;
 }
 // Jr. Troopa route: every target screen of the route in order. cat: which saved screen it looks like (M = target on
-// Mario, K = target on Jr. Troopa, S = Bombette's Strategies menu). prof: the table for the presses that decide a roll.
+// Mario, K = target on Jr. Troopa, S = the partner's Strategies menu (Bombette, or Lakilester at Final Bowser)). prof: the table for the presses that decide a roll.
 // Routes: every target screen in order. cat = which saved screen it looks like (shared by all routes):
-// M = target on Mario, K = target on Jr. Troopa, B = target on Bowser, S = Bombette's Strategies menu.
+// M = target on Mario, K = target on Jr. Troopa, B = target on Bowser, S = the partner's Strategies menu (Bombette, or Lakilester at Final Bowser).
 // prof = the table for presses that decide a roll; optional = may not happen (then the next step's screen skips it).
 const JR = [
   { t: 'Jr T1', label: 'Super Charge (hand on Mario)', cat: 'M' }, { t: 'Jr T1', label: 'Bombette: Bomb (hand on Jr.)', cat: 'K' },
@@ -479,7 +482,7 @@ const ENDGAME_BY = {}, endgameSteps = () => { const k = dupRoute() + ':' + jrRou
 const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge, an item on Mario)', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
   B: { screen: 'a target screen with the hand on Bowser (Spiny Flip or Time Out)', box: 'the クッパ name box in the top-left' },
-  S: { screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' } };
+  S: { screen: 'the Partner’s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' } };
 const NOPLAN = { id: 'none', name: 'no roll on this step', short: 'nothing to plan', effects: {}, rolls: [], vanish: 2, minRun: 2 };
 const isRoute = () => !!ROUTES[$('s-prof').value];
 const RT = () => ($('s-prof').value === 'endgame' ? endgameSteps() : ROUTES[$('s-prof').value]) || JR;
@@ -1189,7 +1192,11 @@ function zwPlan(why) {
     st.msg = 'No edge: the coin no longer fits the Charge lock (' + Math.round(S.doubt * 100) + '% that none of the ' + S.list.length + ' tracked states is the game\'s: missed or extra shines, or an input the page did not see). ' + F.normal + '.';
     slog('zwDoubt', { doubt: +S.doubt.toFixed(3), parts: S.list.length }); render(); if (typeof chgShow === 'function') chgShow(); return true;
   }
-  const rate = zw.rate, from = Math.max(S.h + 1, earliestFrame(zw.t0, rate, now)), W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
+  const rate = zw.rate, W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
+  let from = Math.max(S.h + 1, earliestFrame(zw.t0, rate, now));
+  // v82: a Jr. Troopa plan made before the target screen shows (jrEarlyPlan): no earlier than a plan made on that screen
+  const early = (st.planEarly || (st.plan && st.plan.early && zw.fight === 'jr')) && typeof jrPlanFloor === 'function' ? jrPlanFloor() : null;   // (a re-score of an early plan keeps its floor)
+  if (early != null) from = Math.max(from, early);
   const pid = PROF().id, adj = { d: S.doubt, b3: ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31, b4: R.TOP[pid] && ZW_BLIND[R.TOP[pid]] != null ? ZW_BLIND[R.TOP[pid]] : ZW_BLIND.dup4 };
   const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj), type = C.type;
   if (C.none === 'edge') {
@@ -1206,9 +1213,9 @@ function zwPlan(why) {
   for (let c = Math.max(a, disp.first); c <= Math.min(b - D, disp.first + tab.length - 1); c++) { tab[c - disp.first] = share[c - a] >= 0.5; if (tab4) tab4[c - disp.first] = C.share4[c - a] >= 0.5; }   // the window part from every state
   cancelBeeps();
   st.plan = { tMade: now, w: { start: w.start - Fa, end: w.end - Fa, length: w.length }, target: target - Fa, aim4: false, tPress, tLast, rate, seedBL: A.seedBL, baseF: Fa, carried: true, from: from - Fa, to: from + W - Fa, first, prof: PROF().id,
-    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
+    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, early: early != null, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
   playBeeps(tPress);
-  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
+  slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, early: early != null || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
   st.msg = null; render(); if (typeof chgShow === 'function') chgShow(); return true;
 }
 /* Duplighosts on the Charge-lock route: the step, whether the tracker belongs to it, and what to say without one */
@@ -1487,7 +1494,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v81';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v82';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -1571,22 +1578,32 @@ function stripData() {
 function lockBadgeState() {
   const stp = isRoute() ? RT()[routeStep] : null, pc = x => Math.round(100 * x) + '%';
   if (stp && stp.fb14 && typeof FB14 !== 'undefined') {
+    if (FB14.hit) return { state: 'no', why: 'Mario hit on T' + FB14.hit };
     if (!FB14.on || !FB14.states || !FB14.states.length) return { state: 'no', why: FB14.why && /gone/.test(FB14.why) ? 'carried seed gone' : 'no Charge lock' };
-    return (FB14.doubt || 0) >= 0.5 ? { state: 'doubt', why: 'doubt ' + pc(FB14.doubt) } : { state: 'ok', why: 'Charge lock · ' + FB14.states.length + ' states' };
+    // v82 (log 1794170840652: green "8000 states" on T1): FB14.doubt is the lock's prior until the coin has weighed it
+    // (fb14Prior: a weak or contradicted read starts doubtful); amber at 50%+ (no beeps), on a weak read the coin has not yet
+    // confirmed (20%+ after a weak prior), and on a set at the state cap (the rays did not narrow it)
+    const d = FB14.doubt || 0, weak = FB14.prior && FB14.prior.d > ZW_BG0 && d > 0.2, cap = FB14.states.length >= 0.95 * FB14_MAXH;
+    const conf = 'seed confidence ' + pc(1 - d);   // v82: the number that decides the beeps (50%+), not the read's ratio
+    if (d >= 0.5) return { state: 'doubt', why: conf };
+    if (weak) return { state: 'doubt', why: conf + ' · weak read' };
+    if (cap) return { state: 'doubt', why: conf + ' · broad' };
+    return { state: 'ok', why: conf };
   }
   if (stp && stp.turn === 'fb2_pb' && typeof FB2 !== 'undefined') {
-    if (FB2.on && FB2.hyps && FB2.hyps.length) return { state: 'ok', why: 'T6 Charge lock · ' + FB2.hyps.length + ' states' };
+    const d2 = FB2.t7 && FB2.t7.plan && FB2.t7.plan.doubt != null ? FB2.t7.plan.doubt : null;     // v82: the T7 plan's doubt, once made
+    if (FB2.on && FB2.hyps && FB2.hyps.length) return d2 != null ? { state: d2 >= 0.5 ? 'doubt' : 'ok', why: 'seed confidence ' + pc(1 - d2) } : { state: 'ok', why: 'T6 Charge lock · ' + FB2.hyps.length + ' states' };
     return { state: 'no', why: 'no T6 Charge lock' };
   }
   if (zw.on) {
     if (zw.dead || !zw.parts || !zw.parts.length) return { state: 'no', why: 'seed lost' };
     const d = zwDoubt();
-    if (d >= 0.5) return { state: 'doubt', why: 'doubt ' + pc(d) };
+    if (d >= 0.5) return { state: 'doubt', why: 'seed confidence ' + pc(1 - d) };
     if (zw.fight === 'jr' && typeof JRT !== 'undefined') {
       if (JRT.recon && !jrReconOk()) return { state: 'doubt', why: 'rebuilt · not confirmed' };
       if (JRT.shineRec && !jrShineRecOk()) return { state: 'doubt', why: 'found again · not confirmed' };
     }
-    return { state: 'ok', why: (zw.fight === 'walk' ? 'shine lock' : 'Charge lock') + ' · doubt ' + pc(d) };
+    return { state: 'ok', why: 'seed confidence ' + pc(1 - d) + (zw.fight === 'walk' ? ' · shine lock' : '') };
   }
   if (typeof JRT !== 'undefined' && JRT.dead && typeof jrStepNow === 'function' && jrStepNow()) return { state: 'no', why: 'carry broken' };
   if (st.lock && st.clock) return { state: 'ok', why: 'shine lock' };
@@ -1615,7 +1632,7 @@ function stripState(d) {
   }
   if (d.src === 'zw' && d.doubt) return { cls: 'stale', text: 'Lock doubtful – the coin fits the tracked states badly (missed or extra shines). Press normally.', overlay: 'Lock doubtful' };
   if (d.src === 'zw') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (what the coin did fits none of the tracked states).', overlay: 'Seed lost – old prediction' }
-    : { cls: 'live', text: 'Tracking ' + (ZWD.done ? ZWD.done.n : '?') + ' possible state' + (ZWD.done && ZWD.done.n === 1 ? '' : 's') + ' – the beeps start on ' + (PROF().id === 'dup3' ? 'Bombette\'s Strategies screen (hand on Do Nothing)' : PROF().group === 'jr' ? 'this turn\'s target screen (' + PROF().short + ')' : 'Time Out\'s target screen') };
+    : { cls: 'live', text: 'Tracking ' + (ZWD.done ? ZWD.done.n : '?') + ' possible state' + (ZWD.done && ZWD.done.n === 1 ? '' : 's') + ' – the beeps start on ' + (PROF().id === 'dup3' ? 'the Partner’s Strategies screen (hand on Do Nothing)' : PROF().group === 'jr' ? 'this turn\'s target screen (' + PROF().short + ')' : 'Time Out\'s target screen') };
   if (d.src === 'clock') return d.stale ? { cls: 'stale', text: 'Seed lost – showing old prediction (resyncing from the next shines).', overlay: 'Seed lost – old prediction' } : { cls: 'live', text: 'Locked – live frames; the beeps start on the target screen' };
   const cs = typeof CHG !== 'undefined' ? CHG.state : 'idle';
   if (zw.on && !zw.dead && !d.tab.length && zw.parts.length) return { cls: 'wait', text: 'Following the turn (Bowser\'s attack is being simulated)…', overlay: 'Following the turn…' };
@@ -1813,6 +1830,7 @@ function onFrame(t) {
   if (steady) V.steadyT = t;
   chgFrame(t, present);
   if (typeof jrFrame === 'function') jrFrame(t, present);
+  if (typeof jrEarlyPlan === 'function') jrEarlyPlan(t);
   if (typeof hwHpFrame === 'function') hwHpFrame(t, present);     // Hallway T1: Mario's HP, the Life Shroom watch (hwcc_live.js)
   if (typeof fb14Frame === 'function') fb14Frame(t, present);     // Final Bowser T1-T4 and the T5 carry (fb14_live.js)
   // target screen
@@ -1852,8 +1870,8 @@ function onFrame(t) {
     });
     V.onFor = on ? (V.onFor || 0) + (t - (V.lastT || t)) : 0; V.lastT = t;
     V.wasOn = on;
-    if (on) { V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
-    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 1000 && st.plan && st.plan.tPress > performance.now()) cancelPlan(); }
+    if (on) { V.onAt = t; V.lostSince = 0; if (!V.matchSince) V.matchSince = t; if (t - V.matchSince > 300) autoPlan(); }
+    else { V.matchSince = 0; if (!V.lostSince) V.lostSince = t; if (t - V.lostSince > 1000 && st.plan && st.plan.tPress > performance.now() && !(st.plan.early && !((V.onAt || 0) > st.plan.tMade))) cancelPlan(); }   // v82: an early plan (made before its screen showed) stays until the screen has been seen and gone
   }
   // readouts and preview (throttled)
   if (V.frames % 10 === 0 && st.lock && !st.plan && !st.searching) render();   // keep the 'no beeps yet' match % current
@@ -1908,8 +1926,8 @@ function applyProfile() {
   $('route').hidden = !isRoute(); $('legend4').hidden = !R.TOP[PROF().id]; $('legend4-text').textContent = PROF().id === 'jrpb5' ? 'top band: 6+ bounces' : 'top band: all 4 copy';
   if (isRoute()) {
     routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
-    $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Bombette\'s Strategies' }[S.cat];
-    $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, Bombette\'s Strategies) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
+    $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Partner’s Strategies' }[S.cat];
+    $('fight-help').textContent = 'Now: ' + S.t + ' ' + S.label + '. This step\'s screen is ' + C.screen + '; its box goes on ' + C.box + '. Each kind of screen (on Mario, on Jr. Troopa, on Bowser, the Partner’s Strategies menu) is saved once, the first time a step needs it; after each confirm the page moves to the next step by itself.';
     // v76: one line per turn ("N. Tn: actions"; the runner read the step labels under each turn as the route repeated).
     // The step's label is the line's tooltip; the line of the current step is highlighted. Step indices are unchanged: a
     // turn's line carries its first step's index (Final Bowser T1's two steps share one line).
@@ -1927,7 +1945,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) {
-  slog('step', { to: i }); const was = routeStep; st.hwDone = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); if (typeof fb14StepChange === 'function') fb14StepChange(was); if (typeof hwHpStepChange === 'function') hwHpStepChange(); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
+  slog('step', { to: i }); const was = routeStep; st.hwDone = false; st.hwBackHeld = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); if (typeof fb14StepChange === 'function') fb14StepChange(was); if (typeof hwHpStepChange === 'function') hwHpStepChange(); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
   if (RT()[was] && /^Hallway Bowser/.test(RT()[was].t || '') && !/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '') && routeStep > was) st.hwLeft = { at: performance.now(), hides: 0 };
   else if (/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) st.hwLeft = null; if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
@@ -1994,6 +2012,11 @@ function hwRetry(hiddenMs) {
   if (!isRoute() || hiddenMs == null || hiddenMs < ZW_GAP) return;
   const hi = RT().findIndex(x => x.turn === 'hw_spiny'), s = RT()[routeStep]; if (hi < 0 || routeStep <= hi) return;
   if (!(/^Hallway Bowser/.test(s.t || '') || (st.hwLeft && st.hwLeft.hides < 3))) return;
+  // v82 (logs 1794169517521 t=1152710, 1794170254406 t=2011596): after Time Out (hallwayDone) the battle goes on; Bowser's
+  // turn and Mario's attacks hide the coin ~13.6 s, which stepped the route back to T1 and read every later bar hide as a
+  // Charge. A new attempt always starts with T1's Charge, whose burst sets T1 (chgPendResolve): only that may, while the
+  // Charge reader is on
+  if (st.hwDone && typeof chgEnabled === 'function' && chgEnabled()) { if (!st.hwBackHeld) { st.hwBackHeld = true; slog('stepBackHeld', { from: routeStep, hiddenMs: Math.round(hiddenMs), why: 'Time Out done: the rest of the battle' }); } return; }
   slog('stepBackToHallway', { from: routeStep, to: hi, hiddenMs: Math.round(hiddenMs) }); zw.on = false; st.hwLeft = null; setStep(hi);
 }
 function coinBack(hiddenMs) {
@@ -2063,7 +2086,7 @@ const presses = (function () { try { return JSON.parse(localStorage.getItem('tot
 // Fine offset suggestion). Locked but no plan: the frame you confirmed on and whether Time Out works there.
 function checkPress(tObs) {
   if (typeof fb14Confirm === 'function' && isRoute()) fb14Confirm(tObs, RT()[routeStep]);     // Final Bowser T1-T4: the lever's frame
-  if (typeof jrStepNow === 'function' && jrStepNow()) { slog('screenClosed', { at: Math.round(tObs), step: routeStep, jr: true }); jrScreenClosed(tObs); checkPress_(tObs); return; }   // Jr. Troopa: the bar count moves the route
+  if (typeof jrStepNow === 'function' && jrStepNow()) { slog('screenClosed', { at: Math.round(tObs), step: routeStep, jr: true }); jrScreenClosed(tObs); return; }   // v82: the press is measured at the confirm (jrPress)   // Jr. Troopa: the bar count moves the route
   { const z = isRoute() && RT()[routeStep];
     // the hide the Charge capture armed on is the Charge confirm itself (its pre was used up by an earlier hide, e.g. the
     // step set before the battle): not the Spiny Flip, so the step stays
@@ -2116,7 +2139,7 @@ function measurePress(tObs) {
   P.measured = { frame: f, c, err, inWin, works, likely, tObs, onBeeps };
   slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, likely, near, onBeeps }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
-  if (stp && stp.turn && !unmodeledAfter(P.tLast)) { if (near.length) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.', null, near, 'press'); else { st.needResync = true; st.turnEv = []; } }
+  if (stp && stp.turn && !unmodeledAfter(P.tLast) && !(P.mix && P.mix.zw && !onBeeps)) { if (near.length) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.', null, near, 'press'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
 }
 function showPresses() {
@@ -2224,6 +2247,8 @@ window.__tot = { VERSION, lockBadge: () => lockBadgeShow(), lockBadgeState: () =
   jrClasses: (s, nc, g, a, b, pid) => { if (pid === 'jrpb5') { const t5 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb5), t6 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb6); return t5.map((x, i) => (t6[i] ? 6 : x ? 5 : 4)); } return fastTable(s, nc, g, a, b, R.PROFILES[pid]).map(x => (x ? 1 : 0)); },
   jrLockAt: (seed, qs, k) => { const c = JRT.inputs.filter(x => x.k === k).pop().c, trig = { t: zw.t0 + num('vlag') + (c + 13 + 4.2) * zw.rate }; Object.assign(CHG, { prof: CHG_PROF.jr, trig, taps: [], pres: [], state: 'locked', qs }); JRT.trigSeen = trig; JRT.chargeK = k; chgStartTracker(seed >>> 0, qs); return { cross: JRT.cross, t0: zw.t0, rate: zw.rate }; },
   saveTarget: (key, box) => { const g = sample(box, 24, 16), ref = []; for (let i = 0; i < g.length; i += 4) ref.push((g[i] + g[i + 1] + g[i + 2]) / 3); targets[key] = { box, ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} if (TKEY() === key) useTarget(); return ref.length; },
+  fb14Frame: (t, pr) => fb14Frame(t, pr), PROF: () => PROF(),
+  jrEarlyPlan: t => jrEarlyPlan(t), jrPlanFloor: () => jrPlanFloor(),
   jrStatesAt: h => zwStatesAt(h).list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })),
   jrTrackerAt: (seed, qs, trigT, k, hp10) => { chgReset(); jrReset(); const trig = { t: trigT }; Object.assign(JRT, { on: true, k: k || 0, t0: trigT, trigSeen: trig }, hp10 ? { hp10 } : {}); jrConfirm(k || 0, trigT - 16 * FRAME, 3, 'test'); Object.assign(CHG, { prof: CHG_PROF.jr, trig, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'jr'; },
   dupPlanAt, dupClasses, dupStatesAt: h => zwStatesAt(h).list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })), dupRoute, dupNoLockMsg, chgArena: () => chgArena(), chgProfNow: () => chgProfNow(), CHG_PROF,

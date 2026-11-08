@@ -212,7 +212,7 @@ async function chgReplay(cap, opts) {
   opts = opts || {};
   if (['capture', 'maps', 'search'].includes(CHG.state) || CHG.replay) throw new Error('a Charge read is running');
   chgReset();
-  const P = CHG_PROF[cap.prof] || CHG_PROF.hw, T0 = performance.now() - 5000;
+  const P = CHG_PROF[cap.prof] || CHG_PROF.hw, T0 = opts.t0 != null ? opts.t0 : performance.now() - 5000;   // t0 (tests): the trigger picture's page time
   let F, trig, Gfix = null;
   if (!cap.v) { Gfix = await chgV1Frames(cap, T0); F = Gfix.filter(Boolean).sort((a, b) => a.t - b.t); trig = { t: T0, tRaw: T0, n: 3, base: cap.base, i: Math.max(0, F.indexOf(Gfix[3])) }; }
   else {
@@ -224,7 +224,7 @@ async function chgReplay(cap, opts) {
   const cands = cap.cands ? Array.from(new Uint32Array(chgUnB64(cap.cands).buffer)) : null;
   return new Promise(resolve => {
     Object.assign(CHG, { prof: P, trig, frames: F, Gfix, menu: null, taps: [], pres: [], tEnd: performance.now(), early: null });
-    CHG.replay = { resolve, maxAlts: opts.maxAlts, clock: !!opts.clock, cands, attempts: [], t0: performance.now() };
+    CHG.replay = { resolve, fb14: !!opts.fb14, maxAlts: opts.maxAlts, clock: !!opts.clock, cands, attempts: [], t0: performance.now() };
     if (P.early && !cands) { CHG.state = 'capture'; CHG.early = { t: performance.now() }; chgEarly(); }   // FB2: stage 1 from the early maps, as live
     CHG.state = 'maps'; chgSolve();
   });

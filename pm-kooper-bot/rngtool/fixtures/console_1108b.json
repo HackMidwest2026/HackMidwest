@@ -1,0 +1,190 @@
+{
+ "about": "v82 regression numbers from the console logs 1794169121337 (A), 1794169517521 (C), 1794170011547 (D), 1794170254406 (E), Time Out Timer v81; events and numbers only, no pictures",
+ "hallway": {
+  "events": [
+   {
+    "t": 1123085,
+    "ev": "chargeConfirm",
+    "at": 1120857
+   },
+   {
+    "t": 1125133,
+    "ev": "screenClosed",
+    "at": 1124841
+   },
+   {
+    "t": 1138106,
+    "ev": "screenClosed",
+    "at": 1138057
+   },
+   {
+    "t": 1152712,
+    "ev": "coinBack",
+    "hiddenMs": 13600
+   },
+   {
+    "t": 1158911,
+    "ev": "coinBack",
+    "hiddenMs": 3167
+   },
+   {
+    "t": 1165404,
+    "ev": "coinBack",
+    "hiddenMs": 4067
+   },
+   {
+    "t": 1186970,
+    "ev": "coinBack",
+    "hiddenMs": 3917
+   },
+   {
+    "t": 1201903,
+    "ev": "coinBack",
+    "hiddenMs": 2133
+   },
+   {
+    "t": 1960809,
+    "ev": "coinBack",
+    "hiddenMs": 1733
+   },
+   {
+    "t": 1982787,
+    "ev": "chargeConfirm",
+    "at": 1980604
+   },
+   {
+    "t": 1984990,
+    "ev": "screenClosed",
+    "at": 1984687
+   },
+   {
+    "t": 1996992,
+    "ev": "screenClosed",
+    "at": 1996954
+   },
+   {
+    "t": 2011598,
+    "ev": "coinBack",
+    "hiddenMs": 13583
+   },
+   {
+    "t": 2035640,
+    "ev": "coinBack",
+    "hiddenMs": 3250
+   },
+   {
+    "t": 2040311,
+    "ev": "coinBack",
+    "hiddenMs": 3167
+   }
+  ],
+  "stepBackAt": [
+   1152710,
+   2011596
+  ],
+  "hallwayDoneAt": [
+   1138107,
+   1996992
+  ]
+ },
+ "jrMiddle": {
+  "seed": "0de88eda",
+  "qs": [
+   4,
+   7,
+   8,
+   9,
+   10
+  ],
+  "c": {
+   "1": 106,
+   "2": 402,
+   "3": 592,
+   "4": 866
+  },
+  "bombAt": {
+   "menuBack": 682266,
+   "barHide": 682665,
+   "planV81": 682840,
+   "c": 990,
+   "targetV81": 1080
+  },
+  "note": "T1 lock 653034; the T3 Bomb (k5) confirmed 0.4 s after the menu opened; v81 planned 175 ms after that bar hide"
+ },
+ "fb": {
+  "seed": "31fe2969",
+  "trigger": 1249307,
+  "cloudNineBarHide": 1252907,
+  "inputs": [
+   [
+    "chg",
+    613,
+    2
+   ],
+   [
+    "nothing",
+    897,
+    2
+   ],
+   [
+    "jelly",
+    1406,
+    3
+   ]
+  ],
+  "taps": [
+   806.4,
+   926.1,
+   1000.9,
+   1141.5,
+   1309.5
+  ],
+  "vis": [
+   [
+    -6.4,
+    -3
+   ],
+   [
+    110.5,
+    120.2
+   ],
+   [
+    411.5,
+    609.8
+   ],
+   [
+    723.6,
+    1403.5
+   ]
+  ],
+  "t2": {
+   "trigger": 1269782,
+   "falseAt": 1270247,
+   "m": 140.8,
+   "base": 82.7
+  },
+  "note": "T2 Bowser hit Mario at F 897 (fire breath, HP 10 -> 0, Life Shroom: clip 15-24-14 ~33-46 s); the AllOut at 1302042 follows from it"
+ },
+ "jrCaptures": {
+  "A": [
+   1,
+   5,
+   8,
+   9,
+   10
+  ],
+  "D": [
+   15
+  ],
+  "seedsA": {
+   "1": "70d0954d",
+   "5": "c36a7fac",
+   "8": "11b14e27",
+   "9": "395bbf95",
+   "10": "7030ac47"
+  },
+  "seedsD": {
+   "15": "cb46fac3"
+  }
+ }
+}

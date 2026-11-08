@@ -1,3 +1,99 @@
+# Time Out Timer v82: the console logs of Nov 8 evening (Jr. Troopa, Hallway, Final Bowser), the status card (Nov 8)
+
+Logs (v81, N64 -> S-Video -> GV-USB2 -> OBS 1280x720 60 fps): A 1794169121337 (three Jr. Troopa fights, a Hallway lock),
+B 1794168471055 (A's first fight), C 1794169517521, D 1794170011547, E 1794170254406, F 1794170840652 (each a superset of
+the one before: Hallway + Final Bowser, another Jr. Troopa fight, another Hallway, another Final Bowser); clips 15-24-14
+and 15-46-32 (the two Final Bowser fights). Numbers in `../fixtures/console_1108b.json`; checks in `../test_console_1108b.js`
+(the Charge reads are pictures: read from the uploads at run time, skipped when absent). No video or frames committed.
+
+## 1. Jr. Troopa: the first Charge read failed on 5 of 12 Charges (the re-read cost 1.3-1.9 s)
+Live: A's middle T3 (c36a7fac), A's third fight T1 / T3 / T5 (11b14e27, 395bbf95, 7030ac47), D's T5 (cb46fac3): best
+1.0-1.2x on the first placement, a lock on the re-read (2.8-3.5 s after the rays). Replayed through the page
+(`chgReplay`) they fail the same way. **Cause: the brightness curve.** `CHG_BRIGHT_JR` was the emulator's (Hallway curve +
+the emulator's Jr. - Hallway difference, "unverified on a capture"); the console reads 2-4 levels brighter on frames 7-26
+(plateau 64 vs 60). The placement (dynamic programming over brightness and picture times) then preferred a skipped frame
+in the rise (frame 8) and a doubled one at ~21: 13 frames one off. The pictures themselves show one picture per game frame
+(the same 30 values as a first-read lock, picture for picture), and the re-read's lock was a placement 8 frames off that
+still scored. **Fix:** the curve measured on the console (A's 9 Jr. Charges, one picture per game frame from the trigger,
+the median; the two Charges with a real frame of no picture cut there). Replayed: all 12 Jr. reads of A and D (and the
+two of 1794154120837, out of sample) lock on the first placement on the live seed; 4 of those 12 had needed a re-read live.
+
+## 2. Jr. Troopa T3 (A, middle fight): no beeps
+The tracker carried the T1 seed (the T3 lock later agreed: jrCrossCheck). v81 planned only once the target screen had
+matched for 0.3 s; the runner confirmed the Bomb 0.4 s after the menu opened, and the plan came 175 ms after that bar hide
+(after the press: no beeps; the Close Call missed). In the perfect third fight the runner waited 3.5 s on the menu.
+**Now** (`jrEarlyPlan`): on a Jr. Troopa roll step the plan is made from the tracker as soon as its states settle (the
+Charge's rays end +61), without the target screen; its frame is never earlier than a plan made on the screen: previous
+confirm + frames to the menu (bar back: Charge 110, the T4 Bomb 160 on every fight of A; after a Close Call the menu after a
+dodge, `JR_SEQ.next`) + the lead + 10. Logged `plan ... early: true`. An early plan is not cancelled by "target screen
+lost" until its screen has been seen. The doubt / edge rules are zwPlan's; a later lock re-scores it ("Seed changed").
+On the middle fight that gives a plan ~1 s before the menu opened.
+- The double jrInput k5 (c 990, then c 111): the first in the T1 tracker's clock, the second the same confirm re-applied
+  in the T3 lock's clock (`jrStartFrom`, "since [5]"). Checked: Charge confirm -> Bomb confirm is 124 frames in the old clock
+  and 125 in the new (the third fight: 215 / 215): the right frame. Now logged with `re: true`.
+- zwInconsistent at 696951: the Bomb at c 111 was a hit (all states said so); Mario died at ~+420 frames and the Life
+  Shroom's draws broke the coin before the "10 HP" read confirmed the death at +595 (jrCarryEnds). Harmless.
+
+## 3. Presses (issues 2 and 3)
+v81 measured a Jr. Troopa press only when a target screen closed, and before the route moved: none for the T3 Bomb (its
+screen not watched) or T5 Do Nothing (the step had moved). **Now** every beeped Jr. confirm is measured at the confirm the
+tracker reads (`jrPress`: the bar hide, or the Strategies screen closing), against the plan's frame in the tracker's clock.
+The screen read ran ~3 frames late on those screens: A T4 +2.03 vs the tracker's -1, T6 +2.04 vs -1; D T4 +5.03 (counted
+"off the beeps") vs +2 (the Close Call happened), T6 +2.63 vs 0. A press more than 5 frames off (A t=872115: -44, the
+runner pressed 1.3 s after the first plan's last beep) or after the beeps stopped is logged but kept out of the press
+spread, and an off-beep press on a tracker plan no longer goes into the shine-lock carry. (Presses already in a browser's
+list from v81 Jr. screens carry that +3.)
+
+## 4. Hallway: the step back after Time Out (C t=1152710, E t=2011596)
+After Time Out (hallwayDone) the battle goes on: the coin hid 13.6 s, `hwRetry` stepped back to T1 and every later bar
+hide was read as a Hallway Charge. A new attempt always starts with T1's Charge, whose burst sets T1: so after Time Out
+the long hide is held (`stepBackHeld`) while the Charge reader is on.
+
+## 5. Final Bowser (C and F; both fights failed)
+- **T1's Cloud Nine confirm was never read** (no target screen matched on T1 in either log; the runner confirmed ~1 s before
+  the T1 lock). The carry had no Cloud Nine (its puffs, Bowser's AI). C's T1 lock replayed with C's coin: T2's doubt 63%
+  without it (as logged), 1.5% with it at the bar hide (17% with the new prior below). **Now** the bar hiding on T1's lever
+  step is the Cloud Nine confirm when no screen was read (`fb14CloudNineByBar`; bar = A + 2 as Lakilester's Spiny Flip,
+  -2..+2 carried: not measured for Cloud Nine).
+- **Bowser hit Mario** (clips): C on T2 (fire, HP 10 -> 0, Life Shroom), F on T1. Neither is modelled; C's carry then died
+  at T3 (fb14AllOut: correct), F's T2 Charge matched none of the carried states and v81 planned T2 from the fresh T2 lock at
+  doubt 0.7% (70%, a 10-frame window): Bowser hit again. With Cloud Nine, C's T2 states agree no frame near 897 makes Bowser
+  miss (best 1-12%): T2 would have said no edge. **Now:** Mario's HP tens place (the Hallway's console-checked read): "1" on
+  the steady bar before the lever, blank for 10 frames after it (T1-T3) = a hit: no edge for the rest of the attempt, red
+  badge "Mario hit". A lock's prior doubt (`fb14Prior`): ratio under 3.5 (these locks: 2.3-2.6; Jr. / Hallway 3-5) up to
+  42%, a placement one frame off within 10% +10%, a fresh lock that contradicts the carry (none of its states drew the rays)
+  50%: no beeps until the coin confirms it. F's T2: doubt 50%, no plan.
+- **T2 Charge not read in C** (chargeFalseTrigger): the burst peaked at +58, over the emulator `CHG_BRIGHT_FB1` + 10 (56.6) on
+  4 pictures. The console reads the same shape ~1.2x as bright: the curve is now C's T1 read (as placed by its lock); the
+  shape bound gets +20% upward room for this profile (lightning), trigger cuts 12.5 / 20.0, trigHi 27. Not verified end to
+  end: the T2 pictures were not kept.
+- **T1: nothing for 21 s** (F): no plan, no message (the plan waited for the target screen). **Now** `fb14EarlyPlan`: on a
+  lever step the plan is made as soon as the turn's lock is in (and the partner's menu can be up), else "No beeps yet: the
+  rays are being read ... wait on Cloud Nine's target", "No edge ...", or "Cloud Nine was confirmed before the seed was read".
+- `fb14Input chg` (613 / 883): the T2 Charge from its trigger (M = trigger - 16, -1..+1): with Cloud Nine, C's carried states
+  stay consistent with the coin through T2: right.
+- Lock badge on Final Bowser: green only below 50% doubt, the read not weak-and-unconfirmed (prior raised and doubt still
+  20%+), and the set not at the state cap; FB14.doubt is the prior until the coin weighs it.
+
+## 6. The page
+- The badge's second line and the Charge / FB status lines say **seed confidence NN%** = 100 x (1 - the tracker's doubt), the
+  number that decides the beeps (50%+); the raw score / ratio stays in Details and the log.
+- The status card: Download session log and Reset sit above the chips, headline and detail (they never move);
+  tabular figures in the detail line. `test_status_btns.js`: 8 texts x phone / desktop, identical button boxes.
+- The name: "Paper Mario Any% (No ACE) (RNG Manipulation)" (title and header). `<meta charset="utf-8">` added.
+- "Partner’s Strategies" for the S screens (Lakilester's Strategies at Final Bowser matched the saved template in C and F:
+  T2's plan and confirm came from it).
+
+## Judged harmless
+Duplighost lock 3.0 s (search 2.9 s, alt 0; replays the same; in time: re-reads until 7.5 s). The Hallway locks
+(1.5-1.7 s). A's / B's first fight, T5 (the miss the runner reported): planned frame 181 at 58.5% (doubt 5%), confirmed on
+180 (one frame early by the tracker's read): a 41% miss the plan stated, not a wrong seed (the T5 lock agreed with the
+carry).
+
+## Tests
+`test_console_1108b.js` (new), `test_status_btns.js` (new), both in `run_suite.sh`. Version checks moved to v82
+(test_dup_plan, test_jr_plan, test_console_1107 (+ the new name), test_hw_hp, test_hw_v77, test_lock_badge).
+
 # Time Out Timer v81: the Jr. Troopa fixes merged, the lock badge, the route panel reordered (Nov 8)
 
 Three things: branch `wt-jr` (the Jr. Troopa fixes from the console session of Nov 8, built on v79) merged into v80 (A);

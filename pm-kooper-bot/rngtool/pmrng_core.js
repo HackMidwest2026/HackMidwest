@@ -133,7 +133,7 @@
     // no other draws (13 seeds checked, every roll matched).
     dup4: { id: 'dup4', name: 'Duplighosts: all 4 copy Bombette', short: 'all 4 Duplighosts copy', effects: {},
       rolls: [13, 110, 207, 304].map(at => ({ at, max: 1000, ok: v => v < 600 })), vanish: 3, minRun: 2,
-      screen: 'Bombette\'s Strategies menu with the hand on なにもしない (do nothing)', box: 'the Strategies panel (both lines and a little below)' },
+      screen: 'the Partner’s Strategies menu with the hand on なにもしない (do nothing)', box: 'the Strategies panel (both lines and a little below)' },
     // Final Jr. Troopa (battle 0x0207), Bombette (Super), Mario at 2 HP (Close Call active under 6 HP). Close Call is
     // rand_int(100) < 30 when his attack hits (he only attacks Mario; in base form always Leap, no attack-choice roll).
     // Each model matched the emulator on 8-9 seeds (every roll value). The Bomb mash meter does not matter (tested).
@@ -145,7 +145,7 @@
       screen: 'Maple Syrup target screen (hand on Mario)', box: 'the マリオ name box in the top-left' },
     jrcc_nothing: { id: 'jrcc_nothing', name: 'Jr. Troopa: Close Call after Bombette does nothing', short: 'Close Call', group: 'jr',
       effects: {}, rolls: [{ at: 26, max: 100, ok: v => v < 30 }], vanish: 3, minRun: 2,
-      screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' },
+      screen: 'the Partner’s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' },
     // Power Bounce vs Jr. Troopa (chance 70: 140, 98, 68, 47, 32...): 6+ hits = the first four cap rolls pass. Rolls
     // every 27 frames; hit-effect draws one frame after each. AC press timing inside the windows does not matter.
     jrpb6: { id: 'jrpb6', name: 'Jr. Troopa: Power Bounce 6+ hits', short: '6+ bounces', group: 'jr',
