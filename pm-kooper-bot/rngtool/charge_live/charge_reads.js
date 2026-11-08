@@ -63,6 +63,7 @@ async function chgCapEncode(R, fmt0) {
       for (let i = 0; i < ti; i++) if (bi == null || Math.abs(F[i].t - want) < Math.abs(F[bi].t - want)) bi = i;
       if (bi != null && Math.abs(F[bi].t - want) < 0.75 * FRAME) keep.add(bi);
     }
+    for (let i = 0; i < ti; i++) if (R.fresh[i] && (F[i].t - tT) / FRAME >= CHG_MARIO_WIDE[0] - 0.25) keep.add(i);     // v80: the pictures the wider Mario check reads (chgMarioWide)
     for (const A of R.attempts) if (A.G) for (const i of A.G) if (i != null && i >= 0) keep.add(i);
   }
   let fmt = Object.assign({}, fmt0); const picOf = new Map(), pics = [];

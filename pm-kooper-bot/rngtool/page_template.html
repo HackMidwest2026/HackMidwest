@@ -979,7 +979,10 @@ function zwUpdate(to) {
   for (const p of zw.parts) {
     if (!zwStep(p, to, L)) continue;
     if (to > p.evMax && !p.S.inst.length && !(p.S.extra && p.S.extra.size) && p.g >= (p.pauseAt || 0) + (p.pause || 0)) {
-      const k = p.S.s + ':' + p.S.nc + ':' + p.g; const q = keep.get(k);
+      // Jr. Troopa: a Close Call's outcome (p.cc, jr_live.js) is part of the state. The confirm shifts -2..+1 meet in one
+      // RNG state after the roll (the roll and the coin draw swap, the count is the same) while their rolls differ: merged
+      // on the RNG state alone they kept the first shift's outcome (console 2026-11-08 T3: every state said hit, a dodge)
+      const k = p.S.s + ':' + p.S.nc + ':' + p.g + (p.cc ? ':' + Object.keys(p.cc).map(x => x + (p.cc[x] ? 'd' : 'h')).join() : ''); const q = keep.get(k);
       if (q) { q.w += p.w; q.err = Math.min(q.err, p.err); continue; } keep.set(k, p);
     }
     out.push(p);
@@ -2147,7 +2150,11 @@ applyProfile(); requestAnimationFrame(loop);
 window.__tot = { VERSION, HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
-  JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrStepNow, jrReset, jrConfirm: (k, t, h) => jrConfirm(k, t, h, 'test'), jrSettle, jrDeath, jrTens, jrStepFor, jrStepAt10,
+  JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },
+  // v80 (test_console_1108.js): Mario's match on one raster; a capture handed to the live read (not a replay: kept as live)
+  chgMarioNcc: Y => chgMarioShift([Y]).ncc, chgMarioRef: () => { const M = CHG_MARIO; return { w: M.w, h: M.h, x0: M.x0, y0: M.y0, b64: M.b64 }; },
+  chgSolveTest: (frames, trig, prof) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF[prof], trig, trig0: Object.assign({}, trig), frames, menu: null, taps: [], pres: [], tEnd: performance.now(), early: null, state: 'maps', shapeBad: 0 }); return chgSolve(); },
+  jrStepNow, jrReset, jrConfirm: (k, t, h) => jrConfirm(k, t, h, 'test'), jrSettle, jrDeath, jrTens, jrStepFor, jrStepAt10,
   jrConfirmClock: (k, c) => { const h = JR_SEQ[k].hide; jrConfirm(k, zw.t0 + num('vlag') + (c + h + num('pfix')) * zw.rate, h, 'test'); },
   jrClasses: (s, nc, g, a, b, pid) => { if (pid === 'jrpb5') { const t5 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb5), t6 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb6); return t5.map((x, i) => (t6[i] ? 6 : x ? 5 : 4)); } return fastTable(s, nc, g, a, b, R.PROFILES[pid]).map(x => (x ? 1 : 0)); },
   jrLockAt: (seed, qs, k) => { const c = JRT.inputs.filter(x => x.k === k).pop().c, trig = { t: zw.t0 + num('vlag') + (c + 13 + 4.2) * zw.rate }; Object.assign(CHG, { prof: CHG_PROF.jr, trig, taps: [], pres: [], state: 'locked', qs }); JRT.trigSeen = trig; JRT.chargeK = k; chgStartTracker(seed >>> 0, qs); return { cross: JRT.cross, t0: zw.t0, rate: zw.rate }; },

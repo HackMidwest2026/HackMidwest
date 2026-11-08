@@ -43,18 +43,22 @@ const JR_DEATH = 359;          // frames a death and the Life Shroom revive add 
 // a confirm read from the bar hiding: -2..+1 frames, as the Spiny Flip's (CHG_SHIFTS): a dropped picture only ever reads it
 // late (the frame-fed end to end under load read the T3 Bomb 2 frames late and the T3 Charge 1-2 late)
 const JR_SHIFTS = [[-2, 0.15], [-1, 0.25], [0, 0.4], [1, 0.2]];
+/* when the outcome seen (a dodge) fits none of the states, the Close Call confirm is tried again -4..+4 from the states
+ * before it (jrRecover): the states left are a reconstruction, never beeped on until the coin confirms them (jrReconOk) */
+const JR_SHIFTS_WIDE = [[-4, 0.03], [-3, 0.07], [-2, 0.15], [-1, 0.2], [0, 0.25], [1, 0.15], [2, 0.08], [3, 0.05], [4, 0.02]];
+const JR_RECON_TAPS = 2;       // shines the heaviest reconstructed state must have matched (and none missed) before a beep
 const JR_UPMIN = 300;          // ms of bar up before a hide counts as a confirm (Whacka can follow the Bomb quickly)
 /* blind odds (jr_charge/README.md, jc_odds.py): Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32.2% */
 const JR_BLIND = { cc: 0.30, p5: 0.675, p6: 0.322 };
 const JRT = { bar: {} };
 function jrReset(why) {
-  Object.assign(JRT, { on: false, k: 0, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null });
+  Object.assign(JRT, { on: false, k: 0, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null, ccSnap: null, recon: null, lost: null, lastLock: null, lostF: null, shineTry: 0, shineRec: null });
   if (zw.on && zw.fight === 'jr') zw.on = false;
 }
 jrReset();
 var JR_READY = true;     // (var: charge_live.js's chgShow runs at load, before this file's consts exist)
 const jrStepNow = () => isRoute() && !!RT()[routeStep] && RT()[routeStep].jr != null;
-const jrZw = () => zw.on && zw.fight === 'jr' && jrStepNow() && PROF().group === 'jr' && !jrStepAt10();
+const jrZw = () => zw.on && zw.fight === 'jr' && jrStepNow() && PROF().group === 'jr' && !jrStepAt10() && jrReconOk();
 /* the route step for the next confirm k: the first Jr. Troopa step whose confirm is k or later (past the last: the step
  * after the fight) */
 function jrStepFor(k) {
@@ -84,6 +88,7 @@ function jrFrame(t, present) {
   }
   jrOutcomeWatch(t, present);
   jrTick(t);
+  jrShineTry();
 }
 /* Mario's HP tens place in the status bar (320-space x 61..67, y 27..36: blank at 2 HP, the "1" of 10 after a revive;
  * emulator renders, jr_charge/README.md): the share of white glyph pixels there */
@@ -147,9 +152,44 @@ function jrDodge(k) {
   if (!(zw.on && zw.fight === 'jr')) return;
   let gone = 0; const keep = [];
   for (const p of zw.parts) { if (p.cc && p.cc[k] === false) gone += p.w; else keep.push(p); }
-  if (keep.length) { zw.parts = keep; zw.bg = (zw.bg || 0) * JR_BLIND.cc; }
-  else { zw.parts = []; zw.dead = true; zw.deadAt = null; }
-  slog('jrDodge', { k, dropped: +gone.toFixed(4), left: zw.parts.length });
+  slog('jrDodge', { k, dropped: +gone.toFixed(4), left: keep.length });
+  if (keep.length) { zw.parts = keep; zw.bg = (zw.bg || 0) * JR_BLIND.cc; return; }
+  jrRecover(k);
+}
+/* the dodge fits none of the states (console 2026-11-08 T3: the merge bug, zwUpdate): rebuild them from the states before
+ * that Close Call confirm with the confirm -4..+4, keep the ones that dodge, and apply the confirms since. The result is a
+ * reconstruction: the background takes half the weight and no beep goes out until the coin confirms a state (jrReconOk).
+ * Nothing dodges: no edge for the rest of the fight, until a Charge locks again (jrLock starts afresh on a dead tracker). */
+function jrRecover(k) {
+  const P = JRT.ccSnap, inp = P && P.k === k ? JRT.inputs.filter(x => x.k === k).pop() : null;
+  if (inp && P.list.length) {
+    const s = JR_SEQ[k], out = [];
+    for (const p of P.list) for (const q of jrSplit(p, inp, P.c, JR_SHIFTS_WIDE, s)) if (q.cc[k]) { q.err = 0; out.push(q); }
+    if (out.length) {
+      zw.parts = out; zw.dead = false; zw.deadAt = null;
+      const since = JRT.inputs.filter(x => x.k > k);
+      for (const x of since) jrApply(x);
+      if (zw.parts.length && !zw.dead) {
+        let sw = 0; for (const p of zw.parts) sw += p.w; zw.bg = Math.max(zw.bg || 0, sw);       // doubt 50%: the coin has to confirm
+        JRT.recon = { k, taps0: zw.taps.length, at: performance.now() };
+        slog('jrRecover', { k, c: P.c, particles: zw.parts.length, since: since.map(x => x.k), shifts: [...new Set(out.map(q => q.sh))].sort((a, b) => a - b) });
+        if (typeof chgShow === 'function') chgShow(); return;
+      }
+    }
+  }
+  zw.parts = []; zw.dead = true; zw.deadAt = null; JRT.lostF = Math.floor(zwHorizon(performance.now()));
+  JRT.lost = JR_SEQ[k].t + ': the ' + (JR_SEQ[k].what || 'press') + ' dodged, which none of the carried states allows';
+  slog('jrLost', { k, why: 'outcome fits no state, even with the confirm -4..+4' });
+  if (typeof chgShow === 'function') chgShow();
+}
+/* a reconstructed state beeps only once the coin confirms it: the heaviest state has matched JR_RECON_TAPS shines seen
+ * after the reconstruction, with no shine missed or extra (its errors since then) */
+function jrReconOk() {
+  const R0 = JRT.recon; if (!R0) return true;
+  if (!(zw.on && zw.fight === 'jr') || zw.dead || !zw.parts.length) return true;     // zwPlan says the seed is lost
+  let top = null; for (const p of zw.parts) if (!top || p.w > top.w) top = p;
+  let n = 0; for (const i of top.m) if (i >= R0.taps0) n++;
+  return n >= JR_RECON_TAPS && !top.err;
 }
 function jrDeath(k, fr) {
   JRT.out[k] = 'death';
@@ -169,18 +209,28 @@ function jrApply(inp) {
   zw.visLocked = true;
   zwUpdate(Math.min(c - 3, zwHorizon(performance.now())));
   if (s.charge) JRT.snap = { k: inp.k, c, list: zw.parts.slice(0, 400).map(zwClone) };      // the carried states before this Charge (jrLock checks its lock on them)
+  const cc = s.cc && inp.id === s.id;
+  // a Close Call confirm: the states before it are kept, in case the outcome seen fits none of the split (jrRecover)
+  if (cc) JRT.ccSnap = { k: inp.k, c, list: zw.parts.map(p => Object.assign(zwClone(p), { cc: p.cc ? Object.assign({}, p.cc) : null })) };
+  const out = [];
+  for (const p of zw.parts) out.push(...jrSplit(p, inp, c, JR_SHIFTS, s));
+  zw.parts = out;
+  if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
+  else zwBgAdd(ZW_BGIN);
+  slog('jrInput', { k: inp.k, id: inp.id, c, src: inp.src, particles: zw.parts.length });
+}
+// one state x the confirm frame c + sh for each shift: the input's events in, and on a Close Call confirm the roll's
+// outcome (q.cc[k]); the outcome is part of the state (zwUpdate merges only states with the same outcomes)
+function jrSplit(p, inp, c, shifts, s) {
   const out = [], cc = s.cc && inp.id === s.id;
-  for (const p of zw.parts) for (const [sh, ws] of JR_SHIFTS) {
-    const q = zwClone(p); q.w = p.w * ws; q.cc = p.cc ? Object.assign({}, p.cc) : null;
+  for (const [sh, ws] of shifts) {
+    const q = zwClone(p); q.w = p.w * ws; q.cc = p.cc ? Object.assign({}, p.cc) : null; q.sh = sh;
     const ev = R.buildEv([{ f: c + sh, id: inp.id }]);
     zwMerge(q.ev, ev); q.evMax = Math.max(q.evMax, ...ev.keys(), ...[...ev.values()].flatMap(e => e.eio.map(x => x[0])));
     if (cc) (q.cc = q.cc || {})[inp.k] = jrRollOk(q, c + sh + s.cc);
     out.push(q);
   }
-  zw.parts = out;
-  if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
-  else zwBgAdd(ZW_BGIN);
-  slog('jrInput', { k: inp.k, id: inp.id, c, src: inp.src, particles: zw.parts.length });
+  return out;
 }
 // does this state's Close Call roll (the first draw on frame f) dodge? (simulated on a copy, the particle's clock)
 function jrRollOk(q, f) {
@@ -188,6 +238,80 @@ function jrRollOk(q, f) {
   let g = q.g;
   while (g < f) { if (q.pause && g === q.pauseAt) { S.nc += q.pause; g += q.pause; continue; } R.frameEv(S, g, q.ev); g++; }
   return R.randInt(S.s, 100)[1] < 30;
+}
+/* ---------- the seed found again from the coin (v80) ----------
+ * The tracker is dead (an outcome that fits no state, or the coin ruled every state out) but this fight had a good Charge
+ * lock: the game's RNG is still that seed stepped on some number of times, bounded by the frames since the lock (one step
+ * a frame, a coin draw every 24-48 frames, the modelled inputs' draws, plus a margin). Every position in that range x the
+ * first shine's coin frame x the confirms' shifts in the stretch is simulated over the shines seen since the tracker died
+ * (R.frameEv, the inputs' events); a position must explain every shine and show none where the coin was watched. Exactly
+ * one cluster of such positions (a few steps apart, at most JR_SHINE_MAXSTATES states), from JR_SHINE_MIN shines or more
+ * and with few wrong clusters expected (JR_SHINE_P): the tracker starts again from its states (zwPlan's doubt and edge
+ * rules decide the beeps). Otherwise: no
+ * edge, and the next Charge locks again.
+ * Console 2026-11-08 (log 1794154120837): the T3 tracker died; the T4 menu (252 s) showed 78 shines and the T5 / T6 menus 8. */
+const JR_SHINE_MIN = 5, JR_SHINE_USE = 12, JR_SHINE_MARGIN = 300, JR_SHINE_CLUSTER = 8, JR_SHINE_MAXSTATES = 12;
+/* the evidence: a wrong position explains n shines about JR_SHINE_P^n of the time (this log: 5 wrong of 28352 positions x
+ * frames x shifts at 5 shines, none at 6), so tried x JR_SHINE_P^n wrong clusters are expected. The tracker starts again
+ * only below JR_SHINE_EMAX, with that share as its doubt (at least 10%) */
+const JR_SHINE_P = 0.18, JR_SHINE_EMAX = 0.5;
+function jrShineTry() {
+  if (!(zw.on && zw.fight === 'jr' && zw.dead) || !JRT.on || !JRT.lastLock || JRT.lastLock.t0 !== zw.t0) return;
+  if (zw.taps.length === JRT.shineTry) return;
+  JRT.shineTry = zw.taps.length;
+  try { jrShineSearch(zwHorizon(performance.now())); } catch (e) { slog('jrShineError', { msg: String(e && e.message || e) }); }
+}
+function jrShineSearch(hor) {
+  const L = JRT.lastLock, now = performance.now(), late = zw.tapLate || 3.5;
+  // the stretch: shines after the tracker died and after the rays of any Charge since (their parts draw on their own)
+  const ins = JRT.inputs.filter(x => x.c != null && x.k > L.k), chg = ins.filter(x => JR_SEQ[x.k].charge).map(x => x.c + 75);
+  const lo = Math.max(JRT.lostF != null ? JRT.lostF : (zw.deadAt || 0), ...chg);
+  const idx = zw.taps.map((f, i) => i).filter(i => zw.taps[i] > lo && zw.taps[i] < hor - late).sort((a, b) => zw.taps[a] - zw.taps[b]).slice(0, JR_SHINE_USE);
+  if (idx.length < JR_SHINE_MIN) return;
+  const T = idx.map(i => zw.taps[i]), Fref = Math.floor(T[0] - late - 1), Fend = Math.ceil(T[T.length - 1] + 2);
+  // the inputs whose events fall in the stretch, each with its confirm shifts (the outcome: a dodge, as the tracker assumes)
+  const near = ins.filter(x => { const e = R.buildEv([{ f: x.c, id: x.id }]); return [...e.keys()].some(f => f >= Fref - 2 && f <= Fend + 2); });
+  let combos = [[]]; for (const x of near) { const nx = []; for (const cmb of combos) for (const [sh] of JR_SHIFTS) nx.push(cmb.concat([{ f: x.c + sh, id: x.id }])); combos = nx; if (combos.length > 64) return; }
+  const evs = combos.map(cmb => (cmb.length ? R.buildEv(cmb) : new Map()));
+  if (evs.some(ev => [...ev.entries()].some(([f, e]) => f >= Fref && f < Fend && e.eio.length))) return;
+  // the range of positions: frames since the lock's frame 0, the coin's draws, the modelled draws since (x1.5), a margin
+  let D = 0; for (const x of ins) for (const e of R.buildEv([{ f: x.c, id: x.id }]).values()) D += e.pre.length + e.post.length + e.eio.length * 100;
+  const nLo = Math.max(0, Fref + Math.floor(Fref / 48) - 20), nHi = Fref + Math.ceil(Fref / 24) + Math.ceil(1.5 * D) + JR_SHINE_MARGIN;
+  const groups = new Map(); let s = L.seed >>> 0, tried = 0;
+  for (let n = 0; n <= nHi; n++, s = R.adv(s)) {
+    if (n < nLo) continue;
+    for (let nc0 = Math.floor(T[0] - late); nc0 <= Math.ceil(T[0] + 1.5); nc0++) for (let v = 0; v < evs.length; v++) {
+      tried++;
+      const S = { s, nc: nc0, inst: [] }, m = []; let j = 0, ok = true;
+      for (let f = Fref; f < Fend && ok; f++) {
+        const r = R.frameEv(S, f, evs[v]);
+        if (r === true) { if (j < T.length && T[j] - f >= -1.5 && T[j] - f <= late) { m.push(idx[j]); j++; } else if (zwVisible(f)) ok = false; }
+        if (j < T.length && T[j] < f - 2) ok = false;        // a shine seen that this position does not have
+      }
+      if (!ok || j < T.length) continue;
+      const key = (S.s >>> 0) + ':' + S.nc, G = groups.get(key);
+      if (G) G.n++; else groups.set(key, { S, n: 1, pos: n, nc0, v, m });
+    }
+  }
+  // positions a few steps apart explain the same shines (a step more is a coin frame later): one cluster of them is one
+  // place in the sequence, carried as the tracker's states (zwPlan beeps only a frame that works for enough of them)
+  const G = [...groups.values()].sort((a, b) => a.pos - b.pos), C = [];
+  for (const g of G) { const c = C[C.length - 1]; if (c && g.pos - c[c.length - 1].pos <= JR_SHINE_CLUSTER) c.push(g); else C.push([g]); }
+  slog('jrShineSearch', { taps: T.length, from: Fref, to: Fend, nLo, nHi, tried, groups: G.length, clusters: C.map(c => c[0].pos + (c.length > 1 ? '..' + c[c.length - 1].pos : '')).slice(0, 6), expectWrong: +(tried * Math.pow(JR_SHINE_P, T.length)).toFixed(3) });
+  const E = tried * Math.pow(JR_SHINE_P, T.length);
+  if (C.length !== 1 || C[0].length > JR_SHINE_MAXSTATES || E >= JR_SHINE_EMAX) return;
+  const mAll = new Set(zw.taps.map((f, i) => i).filter(i => zw.taps[i] < Fend));
+  zw.parts = C[0].map(g => { const ev = new Map(); for (const [f, e] of evs[g.v]) if (f >= Fend) ev.set(f, e);
+    return { S: { s: g.S.s, nc: g.S.nc, inst: [] }, g: Fend, ev, evMax: Math.max(Fend, ...ev.keys()), pauseAt: null, pause: 0, w: g.n, m: new Set(mAll), fx: new Set(), err: 0 }; });
+  let sw = 0; for (const q of zw.parts) sw += q.w;
+  const d = Math.max(0.1, E / (1 + E));
+  zw.dead = false; zw.deadAt = null; zw.bg = sw * d / (1 - d); zw.bgTo = Fend;      // zwPlan's rules (doubt < 0.5, zwedge) decide the beeps
+  const g = C[0][0];
+  JRT.recon = null; JRT.lost = null; JRT.lostF = null; JRT.shineRec = { pos: g.pos, n: C[0].length, taps: T.length, at: now };
+  // the confirms after the stretch (none, usually: the search runs on the menu after them) go in as live
+  for (const x of JRT.inputs.filter(x => x.c != null && x.c >= Fend)) jrApply(x);
+  slog('jrShineRecover', { pos: C[0].map(x => x.pos), states: zw.parts.map(q => (q.S.s >>> 0).toString(16) + ':' + q.S.nc), g: Fend, taps: T.length, nLo, nHi, expectWrong: +E.toFixed(3), doubt: +d.toFixed(3) });
+  if (typeof chgShow === 'function') chgShow();
 }
 /* ---------- the Charges ---------- */
 // a Charge with the jr profile, once its capture showed Mario in the Charge (the search started; a false trigger or a
@@ -248,7 +372,7 @@ function jrStartFrom(k, seed, qs, qw) {
   // the confirms since this Charge (the runner may have gone on before the lock landed): in order, in the new clock
   const since = JRT.inputs.filter(x => x.k > k);
   for (const inp of since) jrApply(inp);
-  JRT.dead = null; JRT.origin = k; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
+  JRT.dead = null; JRT.recon = null; JRT.lost = null; JRT.lostF = null; JRT.origin = k; JRT.lastLock = { k, seed: seed >>> 0, t0: zw.t0 }; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
   slog('jrStart', { k, since: since.map(x => x.k), particles: zw.parts.length });
 }
 /* the fight is over or left: the tracker off (the Hallway's walk tracker can start) */
@@ -275,6 +399,7 @@ function jrFight() {
 function jrNoLockMsg() {
   const p = PROF().id, s = RT()[routeStep], bl = jrBlindText(p), cs = CHG.state;
   if (jrStepAt10()) return 'No roll this turn: Mario is at 10 HP after the Life Shroom, so Jr. Troopa\'s hit has no Close Call. ' + ((JR_SEQ[s.jr] || {}).what || 'Press') + ' whenever you like; the T5 Charge locks the seed again.';
+  if (JRT.recon && !jrReconOk()) return 'No edge yet: the ' + JR_SEQ[JRT.recon.k].t + ' ' + (JR_SEQ[JRT.recon.k].what || 'press') + ' outcome fit none of the carried states, so the page rebuilt them (its confirm read again, -4..+4 frames). No beep until the coin confirms them (' + JR_RECON_TAPS + ' shines on the menu). Play it blind: ' + bl + '.';
   if (JRT.dead) return 'No beeps: ' + JRT.dead + '. Play it blind: ' + bl + '. The next Charge locks again.';
   if (cs === 'capture' || cs === 'maps' || cs === 'search') return 'No beeps yet: the Charge rays are still being read. Stay on the target screen; the beeps start when the seed locks (or play it blind: ' + bl + ').';
   if (cs === 'nolock' || cs === 'failed' || cs === 'notseen') return 'No Charge lock (' + (CHG.why || 'no clear seed') + '): play it blind. ' + bl[0].toUpperCase() + bl.slice(1) + '.';
@@ -288,6 +413,8 @@ function jrStatusLine(s, lost) {
   const head = '<br><b>Jr. Troopa' + (JRT.on ? ' ' + (JR_SEQ[Math.min(JRT.k, JR_SEQ.length - 1)] || {}).t : '') + ':</b> ';
   let body = '';
   if (JRT.dead) body = JRT.dead + '. ';
+  if (JRT.lost && zw.dead) body += 'No edge: ' + JRT.lost + ' (until the next Charge locks, or the coin finds the seed again). ';
+  if (JRT.shineRec && !zw.dead) body += 'seed found again from ' + JRT.shineRec.taps + ' shines. ';
   if (JRT.cross) body += 'the ' + JR_SEQ[JRT.cross.k].t + ' Charge ' + (JRT.cross.agree ? 'confirmed the carried seed. ' : 'did not fit the carry: tracking from its lock. ');
   if (P && P.mix && stp && PROF().group === 'jr') body += (PROF().id === 'jrpb5' ? 'Power Bounce on the beep: 5+ ' + pc(P.mix.p) + ', 6+ ' + pc(P.mix.p4 || 0) + ' (blind 67.5% / ' + pc(JR_BLIND.p6) + ')' : (JR_SEQ[stp.jr] || {}).what + ' on the beep: Close Call ' + pc(P.mix.p) + ' (blind ' + pc(JR_BLIND.cc) + ')');
   else if ((s === 'nolock' || s === 'failed' || s === 'notseen' || lost) && !(zw.on && zw.fight === 'jr' && !zw.dead)) body += 'play it blind (Close Call ' + pc(JR_BLIND.cc) + '; Power Bounce 5+ 67.5%, 6+ ' + pc(JR_BLIND.p6) + ').';

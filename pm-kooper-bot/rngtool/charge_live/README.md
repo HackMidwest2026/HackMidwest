@@ -1,3 +1,66 @@
+# Time Out Timer v81: the Jr. Troopa fixes merged, the lock badge, the route panel reordered (Nov 8)
+
+(The lock badge and the route panel follow in the next commit.)
+
+## A. Jr. Troopa: the T3 Close Call that killed the seed, the T5 Charge "no Mario", the seed from the coin
+
+(Built on v79 in branch `wt-jr` and merged into v80; the page code's own comments say "v80" for the test hooks.)
+
+Console session 2026-11-08 (logs 1794153816860 and 1794154120837, clips 11-02-38 and 11-08-04; no video committed;
+numbers in `../fixtures/console_1108.json`, checks in `../test_console_1108.js`, in `run_suite.sh`).
+
+### 1. T3: "close call into turn 4, seed lost"
+T3's Charge locked 5cde8fa6 q32 (the T1 carry agreed), the plan aimed at 189 (71%), the bar hide read the Bomb confirm
+at 188, the runner got the Close Call, and at the next confirm the page dropped every state ("dropped 18.19, left 0").
+- **Not the confirm frame**: on the clip the name box goes 2 game frames before the bar (confirm +2 / +4, as modelled),
+  and the Bomb confirm is 200 +-1 game frames after the T3 Charge confirm (clock ~187): inside the -2..+1 read.
+- **Not the HP read**: HP 3/10 before and after Jr. Troopa's attack (a dodge; Mario at 3 HP, not 2: the roll is the same).
+- **Not the model**: from the lock, the Bomb confirms that dodge are 180-182, 187-189, 191, 192, 194, 202, ... (lag 0) and
+  181-183, 188-190, ... (lag 1): 188 dodges in both, and 6 of the 8 states the page made (shifts -2..+1 x lag) dodge.
+- **The cause: the state merge.** `zwUpdate` merges states with the same RNG state. The shifts -2..+1 meet in one RNG
+  state after the roll (the roll and a coin draw swap places, the count of steps is the same) although their rolls differ;
+  merged, each kept the first shift's outcome (-2: 186, a hit), so every state said hit. The outcome (`p.cc`) is now part
+  of the merge key. (test_jr_plan never stepped the tracker between a Close Call confirm and its outcome, so it missed it.)
+- **Recovery** (`jrRecover`): if a dodge still fits no state, the confirm is read again -4..+4 from the states before it
+  (kept at the confirm) and the ones that dodge are kept, with the confirms since. Those are a reconstruction: half the
+  weight goes to the background and no beep goes out until the heaviest state has matched 2 shines with none missed
+  (`jrReconOk`; the page says "No edge yet"). Nothing dodges: no edge for the rest of the fight until a Charge locks.
+
+### 2. T5: the Charge read said "no Mario" (NCC 0.47), never searched, was not kept
+- Fed to the page from the clip (VP9, real time, the T5 step): 4 of 4 runs "no Mario" on v79 (NCC 0.40-0.48). The Mario
+  check matches the reference (Mario standing, frame -1 of a Hallway clip) on frames -2..1 placed by time from the
+  trigger picture. On this Charge Mario stood (0.93) until 183 ms before the trigger picture and was in the Charge pose
+  (0.40-0.48) from 167 ms, i.e. on frames -2 and -1 as placed (T1 / T3 of the same fight: frame -1 standing, 0.94).
+  The burst rises a frame or so later relative to Mario's pose here than the placement assumes; the rays still read.
+- Now: when frames -2..1 miss him, every new picture from 9 frames before the trigger picture to 1 after it is tried
+  (`chgMarioWide`); a faint Mario (0.3..0.5) after a burst that kept the Charge's shape is searched anyway (logged
+  `chargeMarioWeak`; same score and ratio thresholds). Clip-fed with this: 2 of 3 runs locked **89f7812e** (q 9 / 10),
+  1 placement no-lock whose retry this loaded machine had no time for (search 5 s here, 1.5 s live). The T3 carry (with
+  both dodges) agrees with 89f7812e at the T5 Charge confirm (8816..8821, the log's 8819).
+- A "no Mario" read is now kept like any other (session log and browser store, with its pictures, outcome `notseen`;
+  the pictures the wider check reads are kept too) and replays as it ran. "No burst" (no Charge seen at all within 1 s
+  of the bar hiding) still keeps nothing: there is no Charge to rewatch, only the last 16 pictures.
+
+### 3. The seed found again from the coin (`jrShineSearch`)
+With the tracker dead and a good Charge lock earlier in the fight, every RNG position since that lock (bounded: frames
+since its frame 0, a coin draw every 24-48 frames, 1.5 x the modelled inputs' draws, +300) x the first shine's coin frame
+x the confirm shifts in the stretch is simulated over the shines seen since (with the inputs' events); a position must
+explain every shine and show none where the coin was watched. Positions a few steps apart explain the same shines: one
+cluster of them (at most 12 states) restarts the tracker, when the expected number of wrong clusters (positions tried x
+0.18^shines, the rate measured on this log) is under 0.5; that share is the tracker's doubt (at least 10%), and zwPlan's
+doubt and edge rules decide the beeps. Otherwise no edge. On this log (the tracker killed as v79 did):
+- T4's menu (252 s, 78 shines): found on its 5th shine (1566144, 11 s into the menu); the carry from there agrees with
+  the clip-fed T5 lock 89f7812e. T4's Syrup would have been planned.
+- T5 / T6 menus only: two clusters at 5 shines (no edge), one from the 6th, restarted on the 7th (1848542; 5 states,
+  doubt 15%); the true states (carried with every shine: c5a92300 / d6573893 at frame 9467) are among them; T6 Power
+  Bounce plans frame 9500 (5+ 74%, 6+ 47%) against the runner's press at 9520: in time if the runner waits for the beep.
+- A lock from another seed finds nothing.
+
+### Tests
+`test_console_1108.js` (new, in `run_suite.sh`): the dodge frames, the merge, the recovery and its gate, no edge, the
+coin search (both stretches, the wrong seed), the wider / faint Mario check and the kept "not seen" read on pictures made
+in the test. `test_jr_plan.js`, `test_console_1107.js`: unchanged results. `test_jr_page.js` needs emulator renders: not run.
+
 # Time Out Timer v80: the Duplighosts goal, 3+ safe or all 4 (Nov 8)
 
 **Console (log v79, 3427d390):** Charge lock 90cc08aa, q8, ~2.9 s after the rays; plan `dup3` (best) 3+ 0.88, all 4 0.21;
