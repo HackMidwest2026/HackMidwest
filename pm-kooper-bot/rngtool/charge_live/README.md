@@ -1,3 +1,57 @@
+# Time Out Timer v80: the Duplighosts goal, 3+ safe or all 4 (Nov 8)
+
+**Console (log v79, 3427d390):** Charge lock 90cc08aa, q8, ~2.9 s after the rays; plan `dup3` (best) 3+ 0.88, all 4 0.21;
+the press 0.38 frames early, inside the window: **3 of 4 copies**. The runner's press errors in Settings: -2.34, -2.98,
+-1.77, -1.31, -0.81, +1.94, +0.40, -1.07 (rms 1.77, mean -0.99). The runner: *"If there is ever a 2 frame window for 4
+transform it should probably try to lock onto that. But the 3 transform safety window is tempting as well."*
+
+**Measured** (`scratchpad/v80/gen.js` + `an.js`, not committed: 2000 random Charge-locked seeds, q 0..47, the tracker's two
+states lag 0 / 1 at 0.75 / 0.25 exactly as `test_dup_plan` starts them, Strategies on clock 150, lead 1.5 s, max extra
+wait 1 s = 30 frames; truth "mix" = lag 0 75% / lag 1 25%, "lag 0" = test_dup_plan's truth; the plan uses the spread it
+is scored with; "runner" = the page's `pressDist()` for rms 1.77, a normal over -4..+4):
+- a **2+ frame all-4 window** is in reach on **36.0%** of seeds (lag-0 truth). Of those only **15.9%** have 3+ on both
+  frames either side of the run (3.5% two frames either side): all-4 runs mostly sit in 2-copy surroundings, so aiming at
+  one costs the 3+ safety around it.
+
+| P(3+) / P(4), truth mix | 25/50/25 | runner rms 1.77 | runner's 8 presses as measured (bias -1) |
+|---|---|---|---|
+| 3+ first (v79 = lexicographic, tol 0.02) | 95.6 / 34.9 | 78.7 / 22.1 | 75.8 / 20.3 |
+| lexicographic tol 0 | 95.6 / 34.9 | 79.0 / 20.1 | 75.6 / 18.8 |
+| lexicographic tol 0.03 | 95.6 / 34.9 | 78.5 / 22.9 | 75.4 / 20.8 |
+| lexicographic tol 0.05 | 95.6 / 34.9 | 77.6 / 24.7 | 74.3 / 21.7 |
+| lexicographic tol 0.08 | 93.8 / 43.0 | 76.3 / 26.6 | 72.8 / 23.0 |
+| lexicographic tol 0.15 | 92.8 / 44.5 | 73.1 / 30.2 | 69.2 / 25.5 |
+| 4 if 2+ frame window (the runner's rule) | 91.4 / 44.8 | 73.5 / 29.1 | 70.0 / 25.6 |
+| 4 first | 81.1 / 57.4 | 62.7 / 37.1 | 59.7 / 31.9 |
+
+(Lag-0 truth: 97.1 / 36.1, 79.2 / 22.3 for 3+ first; 92.7 / 45.9, 74.0 / 29.4 for the 2+ rule; 82.7 / 60.5, 63.0 / 37.6
+for 4 first. With 25/50/25 the claimed 3+ moves in steps of 0.0625, so every tolerance under that is the same plan; the
+0.08 step "costs nothing" on lag-0 truth only because it gives up the lag-1 state.) The 2+ rule moves the target on 26% /
+31% of plans; on those it gives 3+ 82.7 / 66.8% and all 4 76.0 / 48.5% against 98.7 / 83.6% and 37.8 / 26.0% for 3+ first
+(25/50/25 / runner).
+
+**Choice.** v79's rule already was lexicographic (the best 3+ frame, all 4 within 2 points). With the runner's spread each
+step of tolerance trades 3+ for all 4 at about 1 : 4 up to 0.03 (vs v79), 1 : 2 to 0.05, 1 : 1.5 to 0.08; with the runner's real
+presses (bias -1) beyond 0.03 it loses more 3+ than it gains all 4. 3 and 4 copies both end the fight on T2, so **the
+default tolerance is 0.03** (at most 3 points of claimed 3+ per plan; on average -0.2 / +0.8 points).
+
+**Settings → Advanced → Duplighosts goal** (`s-dupgoal`, `dupGoal()`, `DUP_TOL` in `zwChoose`; Duplighosts only, the
+Jr. Troopa Power Bounce 5+ / 6+ keeps 0.02):
+- **4 when it's free** (default): the lexicographic rule, tolerance 0.03.
+- **3+ safe**: v79 (tolerance 0.02).
+- **4 if 2+ frame window**: the best frame of a 2+ frame all-4 run that most states agree on, if one is in reach and its
+  3+ chance clears "beep only from"; else 3+ safe.
+The strip, the headline and the Charge panel show the beeped frame's 3+ and all-4 chances as before (no new line); the
+plan log's `mix.goal` says which goal chose it. Doubt, no edge (on the target's 3+), the HP fallback, the re-score
+("Seed changed") and the blind texts are unchanged.
+
+**Tests.** `test_dup_plan.js` section 6: the setting (default, three options, the plan follows it); on the 40 fixture
+cases and 300 random seeds with 25/50/25 and the runner's spread: "4 when it's free" never gives up more than 3 claimed
+points of 3+ nor any all 4 against 3+ safe; "4 if 2+" moves only onto a 2+ run; on the random seeds 3+ safe >= free
+(within 1 point) >= 2+ for 3+, and 2+ > free >= safe for all 4 (300 seeds: 81.1 / 22.6, 80.8 / 23.3, 75.2 / 29.9 with the
+runner's spread). Version checks moved to v80 (test_dup_plan, test_jr_plan, test_console_1107, test_hw_hp, test_hw_v77).
+Not verified on console: whether the runner's presses tighten when aimed at a 2-frame window.
+
 # Time Out Timer v79: the Close Call lever removed; Mario's HP kept in the Hallway model (Nov 8)
 
 **Removed at the runner's request.** v78's beeped Lakilester Spiny Flip throw on Hallway Bowser T1 (to make Bowser's Close

@@ -13,6 +13,10 @@
  *  3. No lock on the Charge-lock step: Plan press says to play it blind (47%); the Charge panel says so too.
  *  4. Leaving the step (the Do Nothing confirm moves the route on) turns the tracker off, so the Hallway's walk tracker
  *     can start; switching back to RTA drops the Charge step.
+ *  6. v80, the Duplighosts goal (Settings, Advanced): the setting (default "4 when it's free"), and the three goals on the
+ *     fixture cases and on 300 random Charge-locked seeds (truth: the lag-0 state's copies, checked against the model in 2),
+ *     with the 25/50/25 spread and the runner's (normal, rms 1.77): 'free' gives up at most DUP_TOL.free of 3+ per plan for
+ *     at least the all-4 chance of 'safe3'; 'run2' beeps a 2+ frame all-4 run when one is in reach; the table's order holds.
  *  5. Arena (chgArena, the colour boxes at a bar hide) on real 1280x720 console frames when the clips are here: the
  *     Duplighost fight (aad978a3, the Surge route: same room and camera), two Hallway clips, the FB2 clip.
  * usage (from rngtool/, after python3 build_page.py): node test_dup_plan.js [PAGE] */
@@ -64,11 +68,25 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     T.setStep(0); T.chgReset(); Object.assign(T.CHG, { state: 'nolock', why: 'no clear seed (best 1500, 1.05x the next)', prof: T.CHG_PROF.dup }); T.st.plan = null; T.makePlan();
     out.nolock = { msg: T.st.msg, panel: (() => { const el = document.getElementById('chg-status'); return el ? el.innerText : ''; })() };
     T.CHG.state = 'idle'; T.st.msg = null; T.makePlan(); out.noCharge = T.st.msg;
+    // 6. the Duplighosts goal
+    setRoute('charge'); const gs = document.getElementById('s-dupgoal');
+    out.goalSel = { v: gs && gs.value, opts: gs ? Array.from(gs.options).map(o => o.value + '=' + o.textContent) : [] };
+    const norm = sd => { const o = []; let t = 0; for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); o.push([d, w]); t += w; } return o.map(([d, w]) => [d, w / t]); };
+    const SPR = { std: [[-1, 0.25], [0, 0.5], [1, 0.25]], runner: norm(1.765) }, G = ['safe3', 'free', 'run2'];
+    const goalRun = (seed, q) => { T.setStep(0); T.dupTrackerAt(seed, [q], performance.now() - 2000);
+      const S = T.dupStatesAt(100).sort((x, y) => y.w - x.w), o = { spr: {} };
+      for (const sp in SPR) { o.spr[sp] = {}; for (const g of G) { const pl = T.dupPlanAt(cScr, 1.5, 1, g, SPR[sp]); o.spr[sp][g] = { t: pl.target, p3: pl.p3, p4: pl.p4, goal: pl.goal, none: pl.none, from: pl.from, W: pl.W }; } }
+      const pl = o.spr.std.safe3, a = pl.from - 6, b = pl.from + pl.W + 6; o.a = a;
+      o.cls = S.map(x => T.dupClasses(x.s, x.nc, x.g, a, b).join('')); o.w = S.map(x => x.w); return o; };
+    out.goalFix = FIX.cases.map(c => goalRun(parseInt(c.seed, 16), c.q));
+    let x = 0x2468ace1; const rnd = () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x; };
+    out.goalRnd = []; for (let i = 0; i < 300; i++) { const sd = rnd(), q = rnd() % 48; out.goalRnd.push(goalRun(sd, q)); }
+    gs.value = 'run2'; gs.dispatchEvent(new Event('change')); out.goalSet = T.dupPlanAt(cScr, 1.5, 1).goal; gs.value = 'free'; gs.dispatchEvent(new Event('change')); out.goalDef = T.dupPlanAt(cScr, 1.5, 1).goal;
     setRoute('rta'); out.back = { chg: T.RT()[0].chg || null, prof: T.chgProfNow() && T.chgProfNow().id };
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | RTA step 0: ' + r.rta.step0 + ' | Charge step 0: ' + r.charge.step0 + ' (profile ' + r.charge.prof + ')');
-  check(r.version === 'v79', 'version v79');
+  check(r.version === 'v80', 'version v80');
   check(r.rta.route === 'rta' && !r.rta.chg, 'RTA is the default and its step has no Charge profile');
   check(r.charge.route === 'charge' && r.charge.chg === 'dup' && r.charge.prof === 'dup' && r.charge.n === r.rta.n, 'Charge-lock route: step 0 has the dup profile, same number of steps');
   check(/Charge; Bombette Do Nothing/i.test(r.charge.list) && /Power Bomb/i.test(r.charge.list), 'route list shows the Charge-lock turns');
@@ -98,6 +116,29 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
   check(/play it blind/.test(r.nolock.panel) && /47%/.test(r.nolock.panel), 'the Charge panel says play it blind');
   check(/^No Charge lock/.test(r.noCharge || '') && /47%/.test(r.noCharge), 'no Charge seen: play it blind');
   check(!r.back.chg && r.back.prof == null, 'back on RTA: no Charge step');
+  // 6. the Duplighosts goal
+  console.log('goal setting: ' + r.goalSel.v + ' [' + r.goalSel.opts.join(', ') + ']');
+  check(r.goalSel.v === 'free' && r.goalSel.opts.length === 3 && /^free=4 when it's free/.test(r.goalSel.opts[0]) && r.goalSel.opts.some(o => /^safe3=3\+ safe/.test(o)) && r.goalSel.opts.some(o => /^run2=4 if 2\+ frame window/.test(o)), 'Settings > Advanced: Duplighosts goal, default "4 when it\'s free"');
+  check(r.goalSet === 'run2' && r.goalDef === 'free', 'the plan follows the setting');
+  const N4 = [[-1, 0.25], [0, 0.5], [1, 0.25]], nrm = sd => { const o = []; let t = 0; for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); o.push([d, w]); t += w; } return o.map(([d, w]) => [d, w / t]); }, SPD = { std: N4, runner: nrm(1.765) };
+  const sc = (o, f, PD, st) => { let p3 = 0, p4 = 0; for (const [d, q] of PD) { const v = o.cls[st][f + d - o.a]; if (+v >= 3) p3 += q; if (v === '4') p4 += q; } return [p3, p4]; };
+  const sh4 = (o, f) => o.cls.reduce((v, c, j) => v + (c[f - o.a] === '4' ? o.w[j] : 0), 0);
+  for (const [nm, set] of [['fixture', r.goalFix], ['300 random seeds', r.goalRnd]]) for (const sp of ['std', 'runner']) {
+    const tot = {}; let badFree = 0, badRun = 0, run2On = 0;
+    for (const o of set) { const P = o.spr[sp];
+      for (const g of ['safe3', 'free', 'run2']) { const t = P[g].t; if (t == null) { check(false, nm + ' ' + sp + ' ' + g + ': no plan (' + P[g].none + ')'); continue; } const v = sc(o, t, SPD[sp], 0); tot[g] = tot[g] || [0, 0]; tot[g][0] += v[0]; tot[g][1] += v[1]; check(P[g].goal === g, 'the plan says its goal ' + g); }
+      if (P.free.p3 < P.safe3.p3 - 0.03 - 1e-9 || P.free.p4 < P.safe3.p4 - 1e-9) badFree++;
+      if (P.run2.t !== P.safe3.t) { run2On++; const t = P.run2.t; if (!(sh4(o, t) >= 0.5 && (sh4(o, t - 1) >= 0.5 || sh4(o, t + 1) >= 0.5))) badRun++; } }
+    const n = set.length, f = g => (100 * tot[g][0] / n).toFixed(1) + '% / ' + (100 * tot[g][1] / n).toFixed(1) + '%';
+    console.log('goals, ' + nm + ', spread ' + sp + ' (3+ / all 4, lag-0 truth): 3+ safe ' + f('safe3') + ' | 4 when free ' + f('free') + ' | 4 if 2+ window ' + f('run2') + ' (moved ' + run2On + ' / ' + n + ')');
+    check(!badFree, nm + ' ' + sp + ': "4 when it\'s free" never gives up more than 3 points of claimed 3+, never less all 4 (' + badFree + ' bad)');
+    check(!badRun, nm + ' ' + sp + ': "4 if 2+" moves only onto a 2+ frame all-4 run (' + badRun + ' bad)');
+    if (nm !== 'fixture') {
+      check(tot.safe3[0] >= tot.free[0] - 0.01 * n && tot.free[0] >= tot.run2[0] && tot.free[0] >= tot.safe3[0] - 0.01 * n, nm + ' ' + sp + ': 3+ safe >= 4 when free (within 1 point) >= 4 if 2+');
+      check(tot.run2[1] > tot.free[1] && tot.free[1] >= tot.safe3[1] - 1e-9, nm + ' ' + sp + ': all 4: 4 if 2+ > 4 when free >= 3+ safe');
+      check(run2On >= 0.15 * n, nm + ' ' + sp + ': a 2+ frame all-4 run is in reach on 15%+ of plans (' + run2On + ')');
+    }
+  }
   // 5. arena on console frames
   const F = frames();
   if (F.length) {
