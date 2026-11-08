@@ -112,7 +112,7 @@ details[open] summary { margin-bottom: 10px; }
 <main>
   <header>
     <h1>Paper Mario <span>(Any% No ACE)</span> (RNG Manipulation)</h1>
-    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v76</span></div>
+    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v77</span></div>
   </header>
 
   <section class="panel">
@@ -206,6 +206,11 @@ details[open] summary { margin-bottom: 10px; }
       </div>
       <div class="row" style="margin-top:12px">
         <label class="c"><input type="checkbox" id="s-chg" checked> Charge lock: read the seed from Mario's Charge rays (Hallway Bowser T1, Final Bowser T6; OBS capture at 1280×720)</label>
+      </div>
+      <div class="row" style="margin-top:12px; align-items:center">
+        <button class="b" id="chg-reads-dl" title="Every Charge read kept in this browser (pictures, timing, placements tried, result), as one JSON file, so a read can be replayed offline">Download saved Charge reads</button>
+        <button class="b" id="chg-reads-clear" title="Delete the Charge reads kept in this browser and in this session's log">Clear saved Charge reads</button>
+        <p class="note" style="margin:0; flex:1; min-width:220px">Charge reads: every Charge the page reads is kept on this computer only (this browser's storage), never uploaded. <span id="chg-reads-msg"></span></p>
       </div>
       <div class="row" style="margin-top:12px; align-items:flex-end">
         <label class="f" style="flex:1; min-width:220px">Calibration from the High Power Bounce Manipulator (paste its Copy calibration text; empty = read it from this browser)<input id="cal-json" type="text" placeholder='{"recommendedOffFrames": …}'></label>
@@ -1228,6 +1233,7 @@ function zwTick(now) {
   render();
 }
 /*@include charge_live/charge_live.js*/
+/*@include charge_live/charge_reads.js*/
 /*@include charge_live/fb2_live.js*/
 /*@include charge_live/jr_live.js*/
 /*@include charge_live/fb14_live.js*/
@@ -1430,7 +1436,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v76';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v77';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -2127,6 +2133,8 @@ window.__tot = { VERSION, JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrStepNow, jrReset
   dupTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.dup, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'dup'; },
   zwTap: t => zwTap(t), screenClosed, closeTick, hwStepByTarget, presses, calPreview, zwStates: n => zwStates(n), fastTable, pickRun, nBeeps, earliestFrame, pressTime, consoleRate, CR, stripData, CHG, chgReset, chgMap, chgGame, chgFrameBox, chgEvalAt, chgPlanAt, zwF: (t, l) => zwF(t, l), zw, WALK, walkWatch, EDGES, st, R, evaluate, find, newSegment, makePlan, tap, V, startCam, onFrame, addShine, coinBack, checkPress, preConfirm, baseState, setStep, RT, showPresses, SLOG, step: () => routeStep,
   // v76 (test_console_1107.js)
+  // v77 (charge_live/test_capture_replay.js)
+  chgReplay: (c, o) => chgReplay(c, o), chgCapFromV1: (c, f) => chgCapFromV1(c, f), CHG_CAPS, CHG_CAP_FMT, chgDbAll: () => chgDbAll(), chgDbStats: () => chgDbStats(), chgDbClear: () => chgDbClear(), chgLockBy: P => chgLockBy(P || chgP()), chgPicEncode: (Y, f) => chgPicEncode(Y, f), chgPicDecode: (b, f) => chgPicDecode(b, f),
   chgArenaProf: (P, real) => chgArenaProf(P, real), autoPlan: () => autoPlan(), fb14Trigger: () => fb14Trigger(), fb14AfterLock: () => fb14AfterLock(), chgShiftOrder: (a, t) => chgShiftOrder(a, t), render: () => render(),
   withSample: (f, fn) => { const o = sample; sample = f; try { return fn(); } finally { sample = o; } } };   // for testing
 })();

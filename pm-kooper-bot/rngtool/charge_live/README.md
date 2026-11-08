@@ -1,3 +1,70 @@
+# Time Out Timer v77: every Charge read kept, compact; the re-read goes on while there is time (Nov 8)
+
+## 1. Every read kept (`charge_reads.js`)
+v76 kept a Charge's pictures only on a no-lock (the last 2, 640x480 JPEG q0.92 of the placed frames, ~2.9 MB in the log
+each: log 54e25740) and the re-reads were not kept at all. v77 keeps **every read the page searched** (lock, no-lock,
+and every re-read of the same pictures), one record per read, made when the read ends:
+- the capture pictures from the ring before the trigger to the end of the rays: each picture's time (from the trigger
+  picture), brightness and new-game-frame flag; the trigger (picture, frame, level, menu level, the frame cuts), the
+  bar hide, the menu coin stretch, the arena reading and the profile, the route step;
+- every placement tried: its game frame -> picture table, shift / bans / forced skip, time after the rays, the search
+  time, best seed / q / score / ratio and the stage-1 bests; the result (lock or not, seed, q kept) and `info` as logged;
+- the FB2 T6 narrowed search's candidate seeds when it ran (base64 uint32).
+
+**Compact.** Stored pictures: only those a placement can use (the new game frames from the trigger on, and those that
+can be frames -2..2 by time for any trigger frame 3-5), each the 640x480 game raster cropped to the battle viewport plus
+the ridge filter's reach (raster x 22..617, y 38..441: every ray sample of `chgMaps` and Mario's patch), greyscale WebP
+quality 0.1 (JPEG 0.85 where the browser cannot write WebP). The new-frame flags are stored, so the placement replays as
+it ran whatever the compression did. Measured on the frame-fed 15-15-06 Hallway read, all from one lossless copy:
+
+| form | KB per read | replayed lock (seed q, score, ratio) |
+|---|---|---|
+| lossless PNG 640x480 | 13062 | cf5894f0 q19, 5843, 3.81x (= live) |
+| WebP q 0.8 / 0.6 / 0.4 (crop) | 972 / 711 / 584 | 5815 / 5858 / 5802 |
+| **WebP q 0.1 (crop): v77** | **370** | **cf5894f0 q19, 5621, 3.90x** |
+| WebP q 0.05 / 0 | 328 / 207 | 5526 / 4673 |
+| 320x240 (2x2 mean) WebP q 0.95 / 0.5 | 916 / 316 | 4854 / 4786 (-17% at any quality) |
+| VP9 video (WebCodecs) q 40 / 30 | 270 / 469 | 5660 / 5769 |
+
+Half resolution costs a sixth of the score at any quality; video coding gains little (the capture noise, not the
+static background, is what costs). The 54e25740 capture: 2862 KB -> 345 KB (45 pictures); its no-lock replays to the
+same outcome (best 2a508e80 1602 1.11x as logged live 1590; compact 2a508e80 1454 1.06x). A no-lock's best is at the
+noise level: any change to the pictures can move it (WebP q 0.6 moved it to another seed), so the outcome is what is
+compared there.
+
+**Where.** This session's last 20 reads in memory, in Download session log (`chargeCaptures`; the button's tooltip says
+how many and the size, ~0.35 MB each, ~7 MB at 20). Every read also goes to IndexedDB (database `tot-charge-reads`,
+stores `reads` + `meta`; all calls in try/catch), rolling: the last 50 reads, at most 100 MB, so a refresh or a crash
+keeps them. Settings > Advanced: **Download saved Charge reads** (one JSON, `chargeCaptures` as in a session log) and
+**Clear saved Charge reads** (two clicks; clears the store and the session's list), with the count and size shown.
+Nothing is sent anywhere. The encoding runs after the read ends (a picture per task) so it never delays the lock.
+
+**Replay.** `chgReplay(cap, opts)` (page, `window.__tot.chgReplay`) decodes the pictures, rebuilds the capture and runs
+the page's own placement, search and re-reads (no clock unless `opts.clock`); v76 captures replay with their placed
+frames fixed (`chgCapFromV1` converts one). `tools/capture_u8.py` reads both forms (v2: the placement of a chosen
+attempt) for the offline harnesses.
+
+## 2. The re-read: until a lock or until the beep lead would be missed
+v76 gave up after 2-4 re-reads / 6-9 s (`CHG_ALTS`, `altMs`). v77 has no count (40 at most): another placement is
+searched while it would end (as long as the last search took) before `chgLockBy` = `CHG_PRESS` - the beep lead
+(`earliestPress`: lead, or the beeps' span + margin). `CHG_PRESS`, ms after the rays, the latest press the lock serves:
+Hallway 11800 + lead + max extra wait (Time Out's target screen shows 11.8-12.6 s after the rays on every clip), so a
+lock up to 12.8 s after the rays at the defaults (v76 stopped starting re-reads at 9 s); Duplighosts 9000, Jr. Troopa
+12000, Final Bowser T1-T4 15000 (the v76 limits plus a search and the default lead): 7.5 / 10.5 / 13.5 s. The
+placements, each new (one already searched is skipped at no cost): the profile's shift alternatives (Final Bowser
+T1-T4), the last placement's skips banned, a skip forced at frames 13, 9, 17, 21, 11, 15, 7, 19, 23, 25, 5, 27-35, then
+every picture one frame earlier / later. Each runs in a task of its own (the search in workers as before). Logged:
+`chargeRetry` (alt, shift / bans / forced, at ms after the rays, lockByMs), `chargeNoLock` per attempt,
+`chargeRetryStop` (why: time or no other placement), `chargeReadKept` (kb, pictures, attempts). FB2 T6 (the full
+search) still has no re-read.
+
+## Tests
+`test_capture_replay.js` (in `run_suite.sh`): A. the 54e25740 capture replays as logged, and compact (345 KB) to the same
+outcome; B. the 15-15-06 clip fed frame by frame locks cf5894f0 live, the read is kept (compact 370 KB, lossless 13 MB),
+both replay to the same lock and q, it is in IndexedDB and still there after a reload (and replays from there), the
+log button's tooltip says it; C. the read replayed with its first placement forced wrong no-locks, the re-read locks
+cf5894f0; with beeps no lock could meet, it stops after the first ("time"); Clear empties the store.
+
 # Time Out Timer v76: the first console session of the Charge-lock routes, analysed (Nov 7)
 
 Data: the runner's v73 OBS file, 2026-11-07, S-Video -> GV-USB2 -> OBS 1280x720 60 fps; 4 Duplighost clips, 2 Jr. Troopa
