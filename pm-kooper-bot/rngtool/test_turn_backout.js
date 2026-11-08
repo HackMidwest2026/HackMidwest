@@ -11,10 +11,10 @@ let fails = 0; const check = (ok, msg) => { if (!ok) { fails++; console.log('FAI
   const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.goto('file://' + PAGE);
   const r = await p.evaluate(() => {
-    const T = window.__tot, V = T.V, st = T.st, hi = T.RT().findIndex(x => x.turn === 'hw_spiny'), ti = T.RT().findIndex(x => x.prof === 'timeout'), out = {};   // v78: the throw step sits between
+    const T = window.__tot, V = T.V, st = T.st, hi = T.RT().findIndex(x => x.turn === 'hw_spiny'), out = {};
     const ev = n => T.SLOG.filter(e => e.ev === n).length;
     // A. back-out
-    T.setStep(ti); let now = performance.now(); V.present = true; V.hudGone = 0;
+    T.setStep(hi + 1); let now = performance.now(); V.present = true; V.hudGone = 0;
     T.screenClosed(now); T.closeTick(now + 200, false); out.pendingAt200 = !!V.closePend;
     T.closeTick(now + 500, false);
     out.backout = { logged: ev('targetBackout'), step: T.step(), hwDone: !!st.hwDone, closed: ev('screenClosed') };
@@ -23,11 +23,11 @@ let fails = 0; const check = (ok, msg) => { if (!ok) { fails++; console.log('FAI
     out.confirm = { closed: ev('screenClosed'), hwDone: !!st.hwDone, step: T.step() };
     // B. T1 -> T2 on a Bowser screen after the attack
     T.setStep(hi); now = performance.now(); st.hwBurstT = now - 12000; st.longHides = [{ at: now - 9000, ms: 6000 }];
-    T.hwStepByTarget(now); out.toT2 = T.step() === ti;
+    T.hwStepByTarget(now); out.toT2 = T.step() === hi + 1;
     // ... and no change 4 s after the burst with no attack yet (the Spiny Flip on T1)
     T.setStep(hi); st.hwBurstT = now - 4000; st.longHides = []; T.hwStepByTarget(now); out.staysT1 = T.step() === hi;
     // B. T2 -> T1 on a Bowser screen 3 s after the burst
-    T.setStep(ti); st.hwBurstT = now - 3000; st.longHides = []; T.hwStepByTarget(now); out.toT1 = T.step() === hi;
+    T.setStep(hi + 1); st.hwBurstT = now - 3000; st.longHides = []; T.hwStepByTarget(now); out.toT1 = T.step() === hi;
     out.logged = T.SLOG.filter(e => e.ev === 'stepByTarget').map(e => e.why);
     return out;
   });

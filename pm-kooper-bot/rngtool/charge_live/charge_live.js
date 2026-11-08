@@ -775,7 +775,7 @@ function chgStartTracker(seed, qs, qw) {
   }
   if (up != null) { zw.visFrom = zwF(up + 1000, 0); zw.visTo = null; }
   slog('zwStart', { bases: 1, particles: parts.length, from: 'charge', qs, fight: zw.fight });
-  if (!dup && CHG.spiny != null) { const c = CHG.spiny; CHG.spiny = null; zwInput('hw_spiny', c, VAN.B(), CHG_IMPS); if (typeof hwccAfterLock === 'function') hwccAfterLock(); }   // v78: a throw seen before the lock
+  if (!dup && CHG.spiny != null) { const c = CHG.spiny; CHG.spiny = null; zwInput('hw_spiny', c, VAN.B(), CHG_IMPS); }
 }
 function chgHyps() { return zw.on && zw.src === 'charge' ? zw.parts.length : CHG.prof && CHG.prof.id === 'fb1' && typeof FB14 !== 'undefined' && FB14.on ? FB14.states.length : typeof FB2 !== 'undefined' && FB2.on ? FB2.hyps.length : null; }
 function chgShow() {
@@ -795,7 +795,6 @@ function chgShow() {
     (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
     (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost || doubt) : '') +
     (typeof JR_READY !== 'undefined' && JR_READY && ((CHG.prof && CHG.prof.id === 'jr') || jrStepNow()) ? jrStatusLine(s, lost || doubt) : '') +
-    (typeof HWCC_READY !== 'undefined' && HWCC_READY && CHG.prof && CHG.prof.id === 'hw' ? hwccStatusLine() : '') +
     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
 }
 /* the Duplighost line of the Charge panel: the plan's chances, or what to do without a lock (dup_charge/odds.json:

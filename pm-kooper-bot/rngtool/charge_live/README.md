@@ -1,3 +1,38 @@
+# Time Out Timer v79: the Close Call lever removed; Mario's HP kept in the Hallway model (Nov 8)
+
+**Removed at the runner's request.** v78's beeped Lakilester Spiny Flip throw on Hallway Bowser T1 (to make Bowser's Close
+Call land at 3 HP) is gone: the Close Call must be 100% or nothing, and one timed throw cannot promise that (v78's model gave
+72%). Removed: the throw beep and its plan, the aim popup as target screen "A", the optional throw route step, the throw's
+status line and strip text, `TURNS.hw_throw`, the `hwcc` profile, `hw3_popupcap.py`, `test_hw_cc_plan.js`,
+`test_hw_cc_page.js`. The Hallway T1 route step is v77's again: one "T1:" line, Spiny Flip impact frames 138..170 open.
+The runner has since confirmed that Mario is **above 5 HP** on Hallway T1 on the route, so normally there is no roll.
+
+**Kept: the HP-aware model** (`pmrng_core.js` `bowserT1(..., danger)`, `test_hw_cc_model.js` 7/7 against the emulator; the
+impact is now given as `hw_spiny imp`). At 5 HP or less every Bowser T1 attack rolls Close Call (rand_int(100) at
+0x80277518) at AI + 54 / 70 / 55; a miss draws nothing more to T2's menu; a hit kills Mario. `charge_live/hwcc_live.js` is
+now only this model's page side:
+- **The route's states are v77's.** The tracker's states (`zw.parts`) are split exactly as v77 split them, and Time Out on T2
+  is planned from them exactly as v77 did (`test_hw_v77.js`: v77 built from git with test hooks only, the same games through
+  both pages, every plan identical at 10 HP).
+- **The roll is a fallback**, carried beside them (`zw.shadow`: same lock, impact frames, confirm shifts; guard irrelevant;
+  the states whose roll hits are dropped, since Mario alive on T2 means the miss). It is weighed by the same coin but never
+  enters the strip, the doubt or the merges.
+- **Mario's HP** (status bar tens place in T1, `jrTens`; the units are not read, so 5 HP or less is never known for sure):
+  - a "1" = 10 HP: no fallback at all.
+  - not read, or mixed reads: the route's HP (above 5) is assumed; the roll states at prior odds 0.1.
+  - blank = 1-9 HP: the route's 6-9 (no roll) or 5 or less off the route (roll): prior odds 0.3.
+  - a "1" on a steady bar in Bowser's turn (before a revive could show) drops the fallback.
+- **No confident beep on a guessed HP.** While the roll states hold under 5% of the weight the v77 plan stands. From 5% the
+  beeped frame must work under both (`zwedge`), else "no edge"; from 50% (the coin fits the roll better than the route) it is
+  no edge whatever the frame.
+- **Life Shroom**: a "1" on the bar after the last possible roll or hit (confirm + 360) = Mario died and was revived; the
+  tracker stops and Time Out says no edge (as v78).
+
+Tests: `test_hw_hp.js` (the read, both hypotheses carried, no hit kept, no beep that fails under one hypothesis while both
+carry weight, "no edge" on disagreement, the late 10 HP read, the revive), `test_hw_v77.js` (v79 = v77 at 10 HP; HP not read:
+v77's plan or, rarely, no edge for the HP), `test_hw_carry.js` now fails when a case does not plan. Step / route tests are
+v77's again; version checks moved to v79. Not verified on console: the tens read in the Hallway.
+
 # Time Out Timer v78: Hallway T1 at 3 HP, the Spiny Flip throw beeped for Close Call (Nov 8)
 
 The runner comes into the Hallway at **3 HP**. Every attack of Bowser's first turn then rolls Close Call first

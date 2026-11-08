@@ -68,7 +68,7 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | RTA step 0: ' + r.rta.step0 + ' | Charge step 0: ' + r.charge.step0 + ' (profile ' + r.charge.prof + ')');
-  check(r.version === 'v78', 'version v78');
+  check(r.version === 'v79', 'version v79');
   check(r.rta.route === 'rta' && !r.rta.chg, 'RTA is the default and its step has no Charge profile');
   check(r.charge.route === 'charge' && r.charge.chg === 'dup' && r.charge.prof === 'dup' && r.charge.n === r.rta.n, 'Charge-lock route: step 0 has the dup profile, same number of steps');
   check(/Charge; Bombette Do Nothing/i.test(r.charge.list) && /Power Bomb/i.test(r.charge.list), 'route list shows the Charge-lock turns');

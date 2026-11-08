@@ -143,12 +143,6 @@
     jrcc_syrup: { id: 'jrcc_syrup', name: 'Jr. Troopa: Close Call after Maple Syrup', short: 'Close Call', group: 'jr',
       effects: { 118: [].concat(...Array(10).fill([359, 10, 10])) }, rolls: [{ at: 163, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2,
       screen: 'Maple Syrup target screen (hand on Mario)', box: 'the マリオ name box in the top-left' },
-    // v78: Hallway Bowser T1 at 3 HP: the Spiny Flip thrown with A (the aim popup closing) decides Bowser's Close Call roll
-    // (AI + 54 / 70 / 55 after the impact at throw + 24, AI at throw + 68). Planned by the page's own tracker (hwcc_live.js,
-    // custom: its share is simulated per state); the roll below only marks it as a roll step.
-    hwcc: { id: 'hwcc', name: 'Hallway Bowser T1: Close Call after the Spiny Flip throw', short: 'Close Call', custom: true,
-      effects: {}, rolls: [{ at: 0, max: 100, ok: v => v < 30 }], vanish: 0, minRun: 2,
-      screen: 'Lakilester\'s aim popup (Spiny Flip: stick で … をねらおう!)', box: 'the right half of the popup\'s text (をねらおう!)' },
     jrcc_nothing: { id: 'jrcc_nothing', name: 'Jr. Troopa: Close Call after Bombette does nothing', short: 'Close Call', group: 'jr',
       effects: {}, rolls: [{ at: 26, max: 100, ok: v => v < 30 }], vanish: 3, minRun: 2,
       screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' },
@@ -353,10 +347,6 @@
   TURNS.jr_bomb_t1 = { pre: { 73: X359(8), 206: X359(10) }, post: { 73: [360] } };
   TURNS.jr_syrup_hit = { pre: { 118: [].concat(...Array(15).fill([359, 10, 10])), 190: X359(10) }, post: {} };
   TURNS.jr_nothing_hit = { pre: { 53: X359(10) }, post: {} };
-  /* v78: the Spiny Flip thrown with A on frame f (the aim popup closing): the impact's 8 x rand(359) on f + 24 and Bowser's
-   * AI on f + 68 (emulator, 7 runs with the Spiny on Bowser; a throw off Bowser draws no impact and his AI comes at f + 72:
-   * not the route). hw_spiny without imp is then the confirm's aim sparkle alone. */
-  TURNS.hw_throw = { pre: {}, post: {}, impact: X359(8), ai: 44 };
   /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
   function buildEv(list) {
     const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };
@@ -374,12 +364,13 @@
   /* Hallway Bowser's T1 AI (EVS_UseAttack): RandInt(80) < 20 Body Slam; else RandInt(60) < 20 Claw Swipe (frame +72:
    * rand(100) then 10 x rand(359); +231: 6 x rand(359)); else Fire Breath (no draws). All three measured in the emulator (18 runs). */
   /* guarded (A just before the hit): Body Slam and Claw Swipe only draw their 10 x rand(359) (+71 / +72) */
-  /* v78, Mario at 5 HP or less (Danger: the runner's Hallway at 3 HP; charge_live/README.md v78, 17 emulator runs): every
+  /* v78/v79, Mario at 5 HP or less (Danger: the runner's Hallway at 3 HP; charge_live/README.md v78, 17 emulator runs): every
    * attack first rolls Close Call, rand_int(100) < 30 (caller 0x80277518, in EnemyTestTarget), at AI + 54 (Body Slam),
    * + 70 (Claw Swipe), + 55 (Fire Breath). Lucky: the attack misses and nothing more is drawn to the next menu (Claw
    * Swipe and Fire Breath measured; Body Slam's miss branch has no random call in the script). Not lucky: the hit kills
    * Mario (5+ damage at 3 HP; Game Over or a Life Shroom revive), which is not modelled: S.ccHit, S.unknown. The guard
-   * comes after the roll and changes nothing on either branch. S.cc = { f, v, lucky } once rolled. */
+   * comes after the roll and changes nothing on either branch. S.cc = { f, v, lucky } once rolled. The impact frame stays
+   * open (hw_spiny imp: the throw is the impact - 24); the page carries roll / no-roll by Mario's HP (charge_live/hwcc_live.js). */
   const HW_CC = { 'body slam': 54, 'claw swipe': 70, 'fire breath': 55 };
   function bowserT1(S, f, guard, danger) {
     S.extra = S.extra || new Map();

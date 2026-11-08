@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
   const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
   await p.goto('file:///tmp/claude-0/-home-user/4de37507-9387-5f1e-bab5-10167305f887/scratchpad/timeout_timer/timeout_timer_standalone.html');
+  let fails = 0, works = 0;   // v79: every case must plan (the test used to exit 0 without a plan)
   const cases = [[0x11111111, 150, 1], [0x22222222, 141, 1], [0x33333333, 163, 0], [0x44444444, 147, 1], [0x5a5a5a5b, 156, 0], [0x66666666, 152, 1]];
   for (const [seed0, imp, guard] of cases) {
     const out = await p.evaluate(async ([seed0, imp, guard]) => {
@@ -20,7 +21,7 @@ const { chromium } = require('playwright');
       await wait(() => T.st.lock); if (!T.st.lock) return { error: 'no lock' };
       const si = T.RT().findIndex(s => s.turn === 'hw_spiny'); T.setStep(si);
       G.ev.push({ f: 1560, id: 'hw_charge' }); run(1562); setNow(1563); T.preConfirm({ cat: 'M', id: 'hw_charge' }, T0 + (1560 + 2 + pfix) * FR + vlag);
-      G.ev.push({ f: 1800, id: 'hw_spiny', imp, guard: !!guard }); run(1802); setNow(1803); T.checkPress(T0 + (1800 + 2 + pfix) * FR + vlag); if (T.RT()[T.step()].turn === 'hw_throw') T.setStep(T.step() + 1);   // v78: the page leaves the throw step when the bar comes back in Bowser's turn (no aim popup here)
+      G.ev.push({ f: 1800, id: 'hw_spiny', imp, guard: !!guard }); run(1802); setNow(1803); T.checkPress(T0 + (1800 + 2 + pfix) * FR + vlag);
       const after = { step: T.RT()[T.step()].label, candidates: T.st.hyp && T.st.hyp.length };
       run(1800 + imp + 44 + 300);
       const branch = G.S.branch;
@@ -44,7 +45,9 @@ const { chromium } = require('playwright');
       run(gT); const works = R.works(G.S.s, G.S.nc - gT, 0, 0, R.PROFILES.timeout);
       return { after, branch: branch + (guard ? ' (guarded)' : ''), impact: imp, shinesUsed: used, window: plan.w.length, carried: plan.carried, timeOutWorksInGame: works };
     }, [seed0, imp, guard]);
-    console.log(seed0.toString(16), JSON.stringify(out));
+    const planned = !!out && out.window != null && out.carried === true; if (!planned) fails++; if (out && out.timeOutWorksInGame) works++;
+    console.log(seed0.toString(16), JSON.stringify(out), planned ? '' : 'FAIL no plan');
   }
   console.log('errors', errs); await b.close();
+  const ok = !fails && !errs.length; console.log((ok ? 'PASS' : 'FAIL') + ' planned ' + (cases.length - fails) + '/' + cases.length + ', Time Out works in the game ' + works + '/' + cases.length); process.exit(ok ? 0 : 1);
 })();
