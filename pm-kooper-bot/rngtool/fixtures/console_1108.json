@@ -1,0 +1,1509 @@
+{
+"about": "Console session 2026-11-08 (page v79), Jr. Troopa: logs 1794153816860 (to T4) and 1794154120837 (the same session to T6), only the events from the T1 Charge on and the seeds; numbers read off clips 11-02-38 and 11-08-04 (not committed). test_console_1108.js.",
+"events": [
+{
+"t": 1503222,
+"ev": "consoleRate",
+"run": 33.4261,
+"shines": 31,
+"est": 33.4297
+},
+{
+"t": 1503506,
+"ev": "barHide",
+"at": 1503494,
+"upMs": 1300
+},
+{
+"t": 1504013,
+"ev": "chargeTrigger",
+"base": 61,
+"m": 67.8
+},
+{
+"t": 1505927,
+"ev": "jrFight",
+"at": 1503994
+},
+{
+"t": 1505946,
+"ev": "jrChargeBurst",
+"k": 0
+},
+{
+"t": 1507479,
+"ev": "chargeNoLock",
+"frames": 43,
+"mario": 0.1,
+"marioNcc": 0.94,
+"searchMs": 1662,
+"lockAfterRaysMs": 1852,
+"best": {
+"seed": "bf4e85e7",
+"q": 2,
+"score": 1415,
+"ratio": 1
+}
+},
+{
+"t": 1507597,
+"ev": "chargeRetry",
+"alt": 1,
+"banned": 15,
+"skips": [
+10,
+20,
+24,
+27,
+36
+],
+"frames": 44,
+"atMs": 1853,
+"lockByMs": 10500
+},
+{
+"t": 1507697,
+"ev": "barHide",
+"at": 1507694,
+"upMs": 1459
+},
+{
+"t": 1507989,
+"ev": "jrHide",
+"k": 1,
+"id": "jr_bomb_t1",
+"at": 1507694,
+"upMs": 1459
+},
+{
+"t": 1507989,
+"ev": "step",
+"to": 2
+},
+{
+"t": 1509279,
+"ev": "chargeLock",
+"qs": [
+10,
+11,
+12
+],
+"frames": 44,
+"mario": 0.1,
+"marioNcc": 0.94,
+"searchMs": 1682,
+"lockAfterRaysMs": 3651,
+"best": {
+"seed": "3b931383",
+"q": 10,
+"score": 5501,
+"ratio": 3.61
+},
+"alt": 1,
+"shift": 0
+},
+{
+"t": 1509286,
+"ev": "zwStart",
+"bases": 1,
+"particles": 6,
+"from": "charge",
+"qs": [
+10,
+11,
+12
+],
+"fight": "jr"
+},
+{
+"t": 1509288,
+"ev": "jrInput",
+"k": 1,
+"id": "jr_bomb_t1",
+"c": 111,
+"src": "bar",
+"particles": 20
+},
+{
+"t": 1509288,
+"ev": "jrStart",
+"k": 0,
+"since": [
+1
+],
+"particles": 20
+},
+{
+"t": 1511382,
+"ev": "chargeReadKept",
+"id": "001794153763094-srfi2q",
+"prof": "jr",
+"outcome": "lock",
+"attempts": 2,
+"pics": 54,
+"codec": "webp",
+"kb": 397
+},
+{
+"t": 1517206,
+"ev": "shine",
+"at": 1517194,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1517527,
+"ev": "barHide",
+"at": 1517510,
+"upMs": 5583
+},
+{
+"t": 1517807,
+"ev": "jrHide",
+"k": 2,
+"id": "jr_bomb",
+"at": 1517510,
+"upMs": 5583
+},
+{
+"t": 1517807,
+"ev": "jrInput",
+"k": 2,
+"id": "jr_bomb",
+"c": 405,
+"src": "bar",
+"particles": 4
+},
+{
+"t": 1522872,
+"ev": "coinBack",
+"hiddenMs": 4333,
+"taps": 1,
+"locked": false,
+"chain": 0,
+"rcarry": false,
+"cands": null
+},
+{
+"t": 1523956,
+"ev": "barHide",
+"at": 1523944,
+"upMs": 2100
+},
+{
+"t": 1524027,
+"ev": "screenClosed",
+"at": 1524010,
+"step": 2,
+"jr": true
+},
+{
+"t": 1524238,
+"ev": "jrHide",
+"k": 3,
+"id": "jr_whacka",
+"at": 1523944,
+"upMs": 2100
+},
+{
+"t": 1524238,
+"ev": "jrInput",
+"k": 3,
+"id": "jr_whacka",
+"c": 598,
+"src": "bar",
+"particles": 4
+},
+{
+"t": 1524239,
+"ev": "step",
+"to": 3
+},
+{
+"t": 1533271,
+"ev": "barHide",
+"at": 1533260,
+"upMs": 4633
+},
+{
+"t": 1533559,
+"ev": "jrHide",
+"k": 4,
+"id": "jr_charge",
+"at": 1533260,
+"upMs": 4633
+},
+{
+"t": 1533560,
+"ev": "jrInput",
+"k": 4,
+"id": "jr_charge",
+"c": 877,
+"src": "bar",
+"particles": 4
+},
+{
+"t": 1533708,
+"ev": "chargeTrigger",
+"base": 60.7,
+"m": 67.5
+},
+{
+"t": 1535583,
+"ev": "jrChargeBurst",
+"k": 4
+},
+{
+"t": 1537006,
+"ev": "chargeLock",
+"qs": [
+31,
+32,
+33,
+34,
+35,
+36,
+37,
+38,
+39,
+40
+],
+"frames": 46,
+"mario": 0.1,
+"marioNcc": 0.94,
+"searchMs": 1520,
+"lockAfterRaysMs": 1693,
+"best": {
+"seed": "5cde8fa6",
+"q": 32,
+"score": 7476,
+"ratio": 4.78
+}
+},
+{
+"t": 1537006,
+"ev": "jrCrossCheck",
+"k": 4,
+"agree": true,
+"hits": [
+{
+"d": 0,
+"q": 32,
+"w": 4.547596270542713
+}
+],
+"states": 1
+},
+{
+"t": 1537007,
+"ev": "zwStart",
+"bases": 1,
+"particles": 2,
+"from": "charge",
+"qs": [
+32
+],
+"fight": "jr"
+},
+{
+"t": 1537007,
+"ev": "jrStart",
+"k": 4,
+"since": [],
+"particles": 2
+},
+{
+"t": 1537808,
+"ev": "plan",
+"prof": "jrcc_bomb",
+"step": 3,
+"mix": {
+"p": 0.7100990119291504,
+"p4": null,
+"pStates": 0.7291469649702281,
+"doubt": 0.0444,
+"groups": 2,
+"zw": true
+},
+"type": "best",
+"target": 189,
+"tPress": 1539638,
+"firstBeepIn": 831,
+"beeps": 3,
+"zw": true,
+"press": 1.54
+},
+{
+"t": 1538944,
+"ev": "chargeReadKept",
+"id": "001794153792761-wd4oc5",
+"prof": "jr",
+"outcome": "lock",
+"attempts": 1,
+"pics": 56,
+"codec": "webp",
+"kb": 418
+},
+{
+"t": 1539969,
+"ev": "barHide",
+"at": 1539960,
+"upMs": 3970
+},
+{
+"t": 1540261,
+"ev": "jrHide",
+"k": 5,
+"id": "jr_bomb_cc",
+"at": 1539960,
+"upMs": 3970
+},
+{
+"t": 1540261,
+"ev": "jrInput",
+"k": 5,
+"id": "jr_bomb_cc",
+"c": 188,
+"src": "bar",
+"particles": 8
+},
+{
+"t": 1540261,
+"ev": "step",
+"to": 4
+},
+{
+"t": 1540261,
+"ev": "beepsCancelled",
+"n": 3
+},
+{
+"t": 1546900,
+"ev": "shine",
+"at": 1546893,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1549667,
+"ev": "barHide",
+"at": 1549660,
+"upMs": 5350
+},
+{
+"t": 1549972,
+"ev": "jrHide",
+"k": 6,
+"id": "jr_bomb",
+"at": 1549660,
+"upMs": 5350
+},
+{
+"t": 1549972,
+"ev": "jrOutcome",
+"k": 5,
+"dodge": true,
+"by": "next confirm",
+"tensMax": 0
+},
+{
+"t": 1549972,
+"ev": "jrDodge",
+"k": 5,
+"dropped": 18.1904,
+"left": 0
+},
+{
+"t": 1549972,
+"ev": "jrInput",
+"k": 6,
+"id": "jr_bomb",
+"c": 478,
+"src": "bar",
+"particles": 0
+},
+{
+"t": 1554989,
+"ev": "coinBack",
+"hiddenMs": 4300,
+"taps": 1,
+"locked": false,
+"chain": 1,
+"rcarry": false,
+"cands": null
+},
+{
+"t": 1554990,
+"ev": "shine",
+"at": 1554977,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1558130,
+"ev": "shine",
+"at": 1558127,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1560539,
+"ev": "shine",
+"at": 1560527,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1564575,
+"ev": "shine",
+"at": 1564560,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1566149,
+"ev": "shine",
+"at": 1566144,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1567747,
+"ev": "shine",
+"at": 1567744,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1570964,
+"ev": "shine",
+"at": 1570960,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1573364,
+"ev": "shine",
+"at": 1573360,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1574963,
+"ev": "shine",
+"at": 1574960,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1579780,
+"ev": "shine",
+"at": 1579777,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1583797,
+"ev": "shine",
+"at": 1583794,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1587796,
+"ev": "shine",
+"at": 1587790,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1589414,
+"ev": "shine",
+"at": 1589411,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1591029,
+"ev": "shine",
+"at": 1591027,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1593420,
+"ev": "shine",
+"at": 1593410,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1595821,
+"ev": "shine",
+"at": 1595810,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1597439,
+"ev": "shine",
+"at": 1597427,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1599839,
+"ev": "shine",
+"at": 1599827,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1603054,
+"ev": "shine",
+"at": 1603044,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1610271,
+"ev": "shine",
+"at": 1610260,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1611908,
+"ev": "shine",
+"at": 1611893,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1615904,
+"ev": "shine",
+"at": 1615893,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1619889,
+"ev": "shine",
+"at": 1619876,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1621521,
+"ev": "shine",
+"at": 1621510,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1623096,
+"ev": "shine",
+"at": 1623093,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1626313,
+"ev": "shine",
+"at": 1626310,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1631929,
+"ev": "shine",
+"at": 1631927,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1634334,
+"ev": "shine",
+"at": 1634326,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1635964,
+"ev": "shine",
+"at": 1635960,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1638336,
+"ev": "shine",
+"at": 1638326,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1640737,
+"ev": "shine",
+"at": 1640727,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1642353,
+"ev": "shine",
+"at": 1642343,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1651985,
+"ev": "shine",
+"at": 1651977,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1653604,
+"ev": "shine",
+"at": 1653593,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1655186,
+"ev": "shine",
+"at": 1655176,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1657590,
+"ev": "shine",
+"at": 1657577,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1660836,
+"ev": "shine",
+"at": 1660826,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1663214,
+"ev": "shine",
+"at": 1663210,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1664813,
+"ev": "shine",
+"at": 1664810,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1666448,
+"ev": "shine",
+"at": 1666443,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1669630,
+"ev": "shine",
+"at": 1669627,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1673647,
+"ev": "shine",
+"at": 1673644,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1675229,
+"ev": "shine",
+"at": 1675227,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1679262,
+"ev": "shine",
+"at": 1679260,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1680880,
+"ev": "shine",
+"at": 1680877,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1682463,
+"ev": "shine",
+"at": 1682460,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1685680,
+"ev": "shine",
+"at": 1685677,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1687313,
+"ev": "shine",
+"at": 1687310,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1690513,
+"ev": "shine",
+"at": 1690510,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1695296,
+"ev": "shine",
+"at": 1695293,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1703330,
+"ev": "shine",
+"at": 1703327,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1704929,
+"ev": "shine",
+"at": 1704926,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1706546,
+"ev": "shine",
+"at": 1706543,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1708136,
+"ev": "shine",
+"at": 1708127,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1712161,
+"ev": "shine",
+"at": 1712160,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1716980,
+"ev": "shine",
+"at": 1716977,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1718579,
+"ev": "shine",
+"at": 1718576,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1724996,
+"ev": "shine",
+"at": 1724993,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1728213,
+"ev": "shine",
+"at": 1728210,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1732196,
+"ev": "shine",
+"at": 1732193,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1737830,
+"ev": "shine",
+"at": 1737827,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1740230,
+"ev": "shine",
+"at": 1740226,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1743446,
+"ev": "shine",
+"at": 1743443,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1752263,
+"ev": "shine",
+"at": 1752260,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1754679,
+"ev": "shine",
+"at": 1754676,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1757897,
+"ev": "shine",
+"at": 1757893,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1766729,
+"ev": "shine",
+"at": 1766727,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1768312,
+"ev": "shine",
+"at": 1768310,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1773112,
+"ev": "shine",
+"at": 1773110,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1775546,
+"ev": "shine",
+"at": 1775543,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1781163,
+"ev": "shine",
+"at": 1781160,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1782780,
+"ev": "shine",
+"at": 1782776,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1785963,
+"ev": "shine",
+"at": 1785959,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1789180,
+"ev": "shine",
+"at": 1789176,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1791579,
+"ev": "shine",
+"at": 1791576,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1794795,
+"ev": "shine",
+"at": 1794793,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1798829,
+"ev": "shine",
+"at": 1798826,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1803618,
+"ev": "shine",
+"at": 1803610,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1806213,
+"ev": "barHide",
+"at": 1806210,
+"upMs": 252249
+},
+{
+"t": 1806299,
+"ev": "screenClosed",
+"at": 1806293,
+"step": 4,
+"jr": true
+},
+{
+"t": 1806495,
+"ev": "jrHide",
+"k": 7,
+"id": "jr_syrup_cc",
+"at": 1806210,
+"upMs": 252249
+},
+{
+"t": 1806495,
+"ev": "jrInput",
+"k": 7,
+"id": "jr_syrup_cc",
+"c": 8153,
+"src": "bar",
+"particles": 0
+},
+{
+"t": 1806495,
+"ev": "step",
+"to": 5
+},
+{
+"t": 1811946,
+"ev": "consoleRate",
+"run": 33.4279,
+"shines": 78,
+"est": 33.4284
+},
+{
+"t": 1811946,
+"ev": "coinBack",
+"hiddenMs": 4717,
+"taps": 78,
+"locked": false,
+"chain": 2,
+"rcarry": false,
+"cands": null
+},
+{
+"t": 1813267,
+"ev": "shine",
+"at": 1813260,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1814862,
+"ev": "shine",
+"at": 1814860,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1818082,
+"ev": "shine",
+"at": 1818076,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1819679,
+"ev": "shine",
+"at": 1819676,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1826079,
+"ev": "shine",
+"at": 1826076,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1827819,
+"ev": "jrOutcome",
+"k": 7,
+"dodge": true,
+"by": "time",
+"tensMax": 0
+},
+{
+"t": 1828467,
+"ev": "barHide",
+"at": 1828459,
+"upMs": 17533
+},
+{
+"t": 1828766,
+"ev": "jrHide",
+"k": 8,
+"id": "jr_charge",
+"at": 1828459,
+"upMs": 17533
+},
+{
+"t": 1828954,
+"ev": "chargeTrigger",
+"base": 60.5,
+"m": 67.6
+},
+{
+"t": 1830620,
+"ev": "chargeNotSeen",
+"why": "no Mario",
+"mario": 0.2,
+"marioNcc": 0.47
+},
+{
+"t": 1832189,
+"ev": "coinBack",
+"hiddenMs": 1733,
+"taps": 1,
+"locked": false,
+"chain": 0,
+"rcarry": false,
+"cands": null
+},
+{
+"t": 1833318,
+"ev": "shine",
+"at": 1833309,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1834934,
+"ev": "shine",
+"at": 1834926,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1839720,
+"ev": "shine",
+"at": 1839709,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1841618,
+"ev": "screenClosed",
+"at": 1841609,
+"step": 5,
+"jr": true
+},
+{
+"t": 1841618,
+"ev": "jrStrategiesClosed",
+"k": 9,
+"at": 1841609
+},
+{
+"t": 1841618,
+"ev": "step",
+"to": 6
+},
+{
+"t": 1842933,
+"ev": "shine",
+"at": 1842926,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1844535,
+"ev": "shine",
+"at": 1844526,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1846968,
+"ev": "shine",
+"at": 1846960,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1848551,
+"ev": "shine",
+"at": 1848542,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1850153,
+"ev": "shine",
+"at": 1850142,
+"auto": true,
+"seg": 1,
+"locked": false
+},
+{
+"t": 1851934,
+"ev": "barHide",
+"at": 1851926,
+"upMs": 20750
+},
+{
+"t": 1852043,
+"ev": "screenClosed",
+"at": 1852026,
+"step": 6,
+"jr": true
+},
+{
+"t": 1852239,
+"ev": "jrHide",
+"k": 10,
+"id": "jr_pb",
+"at": 1851926,
+"upMs": 20750
+},
+{
+"t": 1852239,
+"ev": "jrOutcome",
+"k": 9,
+"dodge": true,
+"by": "next confirm",
+"tensMax": 0
+},
+{
+"t": 1852239,
+"ev": "step",
+"to": 7
+},
+{
+"t": 1852241,
+"ev": "jrEnd",
+"why": "the fight is over (Power Bounce confirmed)"
+},
+{
+"t": 1852973,
+"ev": "chargeNotSeen",
+"hideAt": 1851926,
+"why": "no burst"
+}
+],
+"clock": {
+"t0": 1533496,
+"rate": 33.431,
+"vlag": 50,
+"note": "the T3 lock clock, fitted to the logged confirms k5 188, k6 478, k7 8153"
+},
+"t1": {
+"seed": "3b931383",
+"qs": [
+10,
+11,
+12
+]
+},
+"t3": {
+"seed": "5cde8fa6",
+"q": 32,
+"c": {
+"5": 188,
+"6": 478,
+"7": 8153
+},
+"plan": {
+"target": 189,
+"p": 0.71
+},
+"dodgeModel": {
+"note": "jr_bomb_cc confirm frames 170..210 that dodge, from the T3 lock (lag 0 / lag 1)",
+"lag0": [
+180,
+181,
+182,
+187,
+188,
+189,
+191,
+192,
+194,
+202,
+206,
+209,
+210
+],
+"lag1": [
+181,
+182,
+183,
+188,
+189,
+190,
+192,
+193,
+195,
+203,
+207,
+210
+]
+},
+"clip": {
+"clip": "11-02-38",
+"chargeBarGoneV": 244,
+"bombBoxGoneV": 642,
+"bombBarGoneV": 646,
+"hpBefore": "3/10",
+"hpAfterJrTurn": "3/10",
+"note": "60 fps video frames from 28.0 s; the name box goes 2 game frames before the bar (confirm +2 / +4); the T3 Bomb confirm is 200 +-1 game frames after the T3 Charge confirm (clock ~187); HP 3 before and after Jr. Troopa's attack: the Close Call"
+}
+},
+"t5": {
+"hide": 1828459,
+"trigger": 1828954,
+"live": {
+"why": "no Mario",
+"marioNcc": 0.47
+},
+"clip": {
+"clip": "11-08-04",
+"scan": [
+[
+-267,
+0.92
+],
+[
+-250,
+0.92
+],
+[
+-233,
+0.92
+],
+[
+-217,
+0.93
+],
+[
+-200,
+0.93
+],
+[
+-183,
+0.93
+],
+[
+-167,
+0.4
+],
+[
+-150,
+0.4
+],
+[
+-133,
+0.48
+],
+[
+-117,
+0.48
+],
+[
+-100,
+0.4
+],
+[
+-67,
+0.15
+],
+[
+-50,
+0.15
+],
+[
+-33,
+0.14
+],
+[
+-17,
+0.14
+],
+[
+0,
+0.15
+],
+[
+17,
+0.15
+],
+[
+33,
+0.15
+],
+[
+67,
+0.15
+],
+[
+83,
+0.15
+]
+],
+"lock": "89f7812e",
+"qs": [
+9,
+10
+],
+"note": "the clip fed to the page on the T5 step (v79: no Mario in 4 of 4 runs, NCC 0.40-0.48; scan = Mario NCC per new picture, ms from the trigger picture: he stands until -183 ms, the Charge pose from -167); v80 locks 89f7812e (q 9/10), which the T3 carry agrees with at the T5 Charge confirm 8816..8821"
+}
+},
+"vis": [
+[
+1554977,
+1806210
+],
+[
+1811946,
+1828459
+],
+[
+1832189,
+1851926
+]
+],
+"pbHide": 1851926,
+"nothingAt": 1841609
+}

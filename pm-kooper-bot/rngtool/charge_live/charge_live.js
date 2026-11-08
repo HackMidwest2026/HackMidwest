@@ -293,6 +293,14 @@ function chgBlur(Y, W, H, sig) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let a = 0; for (let i = -r; i <= r; i++) a += k[i + r] * T[Math.min(H - 1, Math.max(0, y + i)) * W + x]; O[y * W + x] = a; }
   return O;
 }
+/* Mario's match on each new picture around the trigger (ms from it, NCC): what a "no Mario" read saw (the log, the kept read) */
+function chgMarioScan() {
+  const F = CHG.frames, T = CHG.trig; if (!F || !F.length || !T) return [];
+  const t0 = F[T.i] ? F[T.i].t : T.t, out = [];
+  for (let i = 0; i < F.length; i++) { const d = F[i].t - t0; if (d < -300 || d > 100 || !F[i].Y || (i && F[i].Y === F[i - 1].Y)) continue;
+    out.push([Math.round(d), +chgMarioShift1(chgP().mario(), F[i].Y).ncc.toFixed(2)]); }
+  return out;
+}
 function chgMarioShift(Ys) {     // Ys: luma rasters of frames around 0; the best match of them counts
   const M = chgP().mario(), L = (Ys || []).filter(Boolean); if (!M || !L.length) return { dx: 0, ncc: 0 };
   return L.map(Y => chgMarioShift1(M, Y)).reduce((a, b) => (b.ncc > a.ncc ? b : a));
@@ -418,8 +426,20 @@ onmessage = async e => {
   } catch (err) { postMessage({ type: 'error', msg: String(err) }); }
 };`;
 function chgWorkerCount() { const n = num('chgcpu'); return Math.max(1, Math.min(16, n > 0 ? n : Math.max(1, (navigator.hardwareConcurrency || 4) - 1))); }
+/* Mario before the Charge (the reference is frame -1, standing): frames -2..1 by time; when he is not there, every new
+ * picture from 9 frames before the trigger picture to 1 after it (v80: console 2026-11-08 Jr. Troopa T5, clip 11-08-04:
+ * he stood 0.93 up to 183 ms before the trigger picture and was in the Charge pose (0.40-0.48) from 167 ms, frames -2 / -1
+ * by time; T1 / T3 of the same fight had frame -1 standing, 0.94) */
+const CHG_MARIO_WIDE = [-9, 1], CHG_NCC_WEAK = 0.3;
+function chgMarioWide(G) {
+  const F = CHG.frames, T = CHG.trig, out = [];
+  if (F && T && F[T.i]) { const t0 = F[T.i].t; for (let i = 0; i < F.length; i++) { const d = (F[i].t - t0) / FRAME; if (d >= CHG_MARIO_WIDE[0] - 0.25 && d <= CHG_MARIO_WIDE[1] + 0.25 && F[i].Y && (!i || F[i].Y !== F[i - 1].Y)) out.push(F[i].Y); } }
+  return out.length ? out : G.filter(Boolean).map(f => f.Y);
+}
 function chgCentre(G) {
-  const sh = chgMarioShift([G[CHG_N + 2], G[CHG_N + 3], G[0], G[1]].map(f => f && f.Y)), dxw = Math.abs(sh.dx) >= 3 && sh.ncc > 0.6 ? sh.dx * 0.37 : 0;
+  let sh = chgMarioShift([G[CHG_N + 2], G[CHG_N + 3], G[0], G[1]].map(f => f && f.Y));
+  if (!(sh.ncc >= CHG_NCC_MIN) && chgP().trigMin) { const w = chgMarioShift(chgMarioWide(G)); if (w.ncc > sh.ncc) sh = Object.assign(w, { wide: true }); }
+  const dxw = Math.abs(sh.dx) >= 3 && sh.ncc > 0.6 ? sh.dx * 0.37 : 0;
   const c = chgP().cams().centre; return { sh, dxw, cen: [c[0] + dxw, c[1], c[2]] };
 }
 /* FB2: stage 1 from frames 0..22 while the rays go on (chgSearch waits for the full maps before the joint stage) */
@@ -437,10 +457,17 @@ async function chgSolve() {
   try {
     const t0 = performance.now(), G = CHG.Gfix || chgGameFrames(window.__chgBan0 ? new Set(window.__chgBan0) : null);   // __chgBan0: tests only; Gfix: a replayed v1 capture
     const E = CHG.early && CHG.early.give ? CHG.early : null, c = E ? E.c : chgCentre(G), sh = c.sh, dxw = c.dxw, cen = c.cen;
-    if (!E && chgP().trigMin && !(sh.ncc >= CHG_NCC_MIN)) {     // no Mario where the Charge has him: not the Charge, do not search it
+    // v80: Mario only faintly there (CHG_NCC_WEAK..CHG_NCC_MIN, even on the wider frames) after a burst that kept the Charge's
+    // shape all the way: searched anyway, centred as the camera table has him; the lock thresholds (score, ratio) are the same
+    const weak = !E && chgP().trigMin && !(sh.ncc >= CHG_NCC_MIN) && sh.ncc >= CHG_NCC_WEAK && (CHG.shapeBad || 0) <= 3;
+    if (!E && chgP().trigMin && !(sh.ncc >= CHG_NCC_MIN) && !weak) {     // no Mario where the Charge has him: not the Charge, do not search it
+      const scan = chgMarioScan();
+      CHG.info = { raw: CHG.frames.length, marioNcc: +(+sh.ncc).toFixed(2), mario: +(+sh.dx).toFixed(1), scan };
+      // v80: a "not seen" read is kept too (charge_reads.js), with its pictures, so it can be watched and replayed
+      if (!CHG.replay) { CHG.F0 = CHG.frames; try { chgRecStart(); chgRecEnd('notseen'); } catch (e) { slog('chargeError', { msg: 'keep notseen: ' + String(e && e.message || e) }); } }
       CHG.frames = []; CHG.state = 'notseen'; CHG.why = 'Charge not seen: Mario not found on the captured frames (NCC ' + (+sh.ncc).toFixed(2) + ')';
-      if (CHG.replay) { chgReplayDone({ state: 'notseen', marioNcc: +(+sh.ncc).toFixed(2) }); return; }
-      slog('chargeNotSeen', { why: 'no Mario', mario: +(+sh.dx).toFixed(1), marioNcc: +(+sh.ncc).toFixed(2) }); chgPendDrop('no Mario'); chgShow(); return;
+      if (CHG.replay) { chgReplayDone({ state: 'notseen', marioNcc: +(+sh.ncc).toFixed(2), scan }); return; }
+      slog('chargeNotSeen', { why: 'no Mario', mario: +(+sh.dx).toFixed(1), marioNcc: +(+sh.ncc).toFixed(2), scan }); chgPendDrop('no Mario'); chgShow(); return;
     }
     if (chgP().id === 'hw' && !CHG.replay) { st.hwBurstT = CHG.trig.t; chgPendResolve(); }      // the Charge is real: its confirm counts now (and the route is on Hallway T1)
     const maps = chgMaps(G, cen, CHG_N, E && E.prev), t1 = performance.now();
@@ -450,6 +477,8 @@ if (window.__chgDebug) {
     }
     if (window.__chgDebug) CHG.G0 = G.map(f => (f ? Math.round(f.t - CHG.trig.t) : null));
     const raw = CHG.frames; CHG.info = { raw: raw.length, spanMs: Math.round(raw[raw.length - 1].t - raw[0].t), grabMs: +(CHG.grabMs || 0).toFixed(1), gaps: raw.slice(1).map((f, i) => Math.round(f.t - raw[i].t)).join(','), frames: G.slice(0, CHG_N).filter(Boolean).length, mario: +sh.dx.toFixed(1), marioNcc: +sh.ncc.toFixed(2), dxWorld: +dxw.toFixed(2), mapsMs: Math.round(t1 - t0) };
+    if (sh.wide) CHG.info.marioWide = true;
+    if (weak) { CHG.info.marioWeak = true; slog('chargeMarioWeak', { marioNcc: +sh.ncc.toFixed(2), scan: chgMarioScan() }); }
     if (E) { CHG.info.early = { mapsMs: E.mapsMs, startedBeforeRaysEndMs: Math.round(CHG.tEnd - E.t1) }; CHG.info.prof = chgP().id; }
     CHG.F0 = CHG.frames; CHG.cen = cen; CHG.alt = 0; CHG.forced = 0; CHG.ban = new Set(); CHG.attShift = 0; CHG.sweep = 0; CHG.gshift = 0; CHG.seenG = new Set([chgGKey(G)]);
     if (!CHG.replay) chgRecStart();
