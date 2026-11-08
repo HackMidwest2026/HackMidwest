@@ -24,7 +24,7 @@ const { chromium } = require('playwright');
       await wait(() => T.st.lock); if (!T.st.lock) return { error: 'no lock' };
       const si = T.RT().findIndex(s => s.turn === 'hw_spiny'); T.setStep(si);
       G.ev.push({ f: 1560, id: 'hw_charge' }); run(1562); setNow(1563); T.preConfirm({ cat: 'M', id: 'hw_charge' }, T0 + (1560 + 2 + pfix) * FR + vlag);
-      G.ev.push({ f: 1800, id: 'hw_spiny', imp, guard: !!guard }); run(1802); setNow(1803); T.checkPress(T0 + (1800 + 2 + pfix) * FR + vlag);
+      G.ev.push({ f: 1800, id: 'hw_spiny', imp, guard: !!guard }); run(1802); setNow(1803); T.checkPress(T0 + (1800 + 2 + pfix) * FR + vlag); if (T.RT()[T.step()].turn === 'hw_throw') T.setStep(T.step() + 1);   // v78: the page leaves the throw step when the bar comes back in Bowser's turn (no aim popup here)
       const after = { step: T.RT()[T.step()].label, candidates: T.st.hyp && T.st.hyp.length };
       run(1800 + imp + 44 + 300);
       const branch = G.S.branch;

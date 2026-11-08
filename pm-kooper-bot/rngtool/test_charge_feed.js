@@ -41,7 +41,7 @@ const { chromium } = require('playwright');
   }
   // STEP=t2: the page sits on Hallway T2 (as the runner after a retry); the burst must set it back to T1 and lock
   await p.evaluate(stp => { const T = window.__tot, hi = T.RT().findIndex(s => s.turn === 'hw_spiny'), fi = T.RT().findIndex(s => s.turn === 'fb2_pb');
-    T.setStep(stp === 't2' ? hi + 1 : stp === 'fb2' ? fi : hi); document.getElementById('s-lead').value = '1.5'; }, process.env.STEP || '');
+    T.setStep(stp === 't2' ? T.RT().findIndex(s => s.prof === 'timeout') : stp === 'fb2' ? fi : hi); document.getElementById('s-lead').value = '1.5'; }, process.env.STEP || '');
   if (process.env.BAN0) await p.evaluate(b => { window.__ban0s = b; }, process.env.BAN0);
   if (process.env.EVENTS) await p.evaluate(() => { window.__evts = { pres: [], last: null }; });
   if (process.env.DEBUG || process.env.GAPS || process.env.DUMP || process.env.BAN0) await p.evaluate(([d, g]) => { window.__chgDebug = d; window.__gaps = g; window.__dump = !!d && d === 'dump'; if (window.__ban0s) window.__chgBan0 = JSON.parse(window.__ban0s); }, [process.env.DUMP ? 'dump' : !!process.env.DEBUG, process.env.GAPS || '']);

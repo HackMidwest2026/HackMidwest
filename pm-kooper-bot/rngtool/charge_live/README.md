@@ -1,3 +1,127 @@
+# Time Out Timer v78: Hallway T1 at 3 HP, the Spiny Flip throw beeped for Close Call (Nov 8)
+
+The runner comes into the Hallway at **3 HP**. Every attack of Bowser's first turn then rolls Close Call first
+(`rand_int(100) < 30`, caller 0x80277518, `1A5830.c`: only under 6 HP), and a hit kills Mario (Bowser does 5+ damage).
+So the attempt goes on only on a Close Call. v78 adds a beep that makes the Close Call happen, using the T1 Charge lock.
+
+## 1. The model at 3 HP (emulator, `bot1/_hw3log.py`; `fixtures/hw3_logs.json`; `test_hw_cc_model.js`)
+- 17 runs from `boss_2302_route_menu.st`, with Mario's HP written to 3 and chosen seeds (both DIAGNOSTIC RAM writes),
+  random menu delays, and the Spiny Flip thrown with A on a chosen frame. In 7 runs the Spiny hit Bowser (the route). In the
+  other 10 the reticle was off Bowser: there is no impact, and Bowser's AI comes at throw + 72. Those runs are off the
+  route and are only listed.
+- **Nothing else changes at 3 HP.** From the Charge confirm to the roll, every frame matches the 10-HP model: the Charge,
+  the aim sparkle, and the impact's 8 x rand(359). There are no Danger idle draws.
+- **The throw is the impact.** `lakilester.c` SpinyFlipActionCommand: A ends the aim; otherwise the 80-frame timer does.
+  The impact comes at throw + 24 (Wait 3 + JumpPartTo 20), and Bowser's AI (RandInt 80 / 60) at throw + 68.
+- **The roll** comes at AI + 54 (Body Slam), + 70 (Claw Swipe) or + 55 (Fire Breath). The guard comes after the roll and
+  changes nothing.
+  - Lucky: the attack misses, and nothing more is drawn up to T2's menu. Measured on Claw Swipe x1 and Fire Breath x2.
+    Body Slam's miss branch has no random call in the script.
+  - Hit: Mario dies (Game Over in this state, or a Life Shroom revive). The revive is not modelled.
+- Core (`pmrng_core.js`): `bowserT1(..., danger)` schedules the roll (`S.ccAt`, then `S.cc = {f, v, lucky}`; on a hit,
+  `S.ccHit` and `S.unknown`). New turn `hw_throw` (impact + 24, AI + 44 after it). `hw_spiny` without `imp` is now the aim
+  sparkle alone. `test_hw_cc_model.js`: **7 / 7 route runs match on every frame.** That covers 3 Lucky runs (to T2's menu)
+  and 4 hits (to the roll), with each roll value equal to the game's. From one state, throws at +55..+114 give 15 / 60
+  Lucky in scattered runs of 1-3 frames, so the throw frame decides the roll.
+
+## 2. Q1, the lever: the throw (A), not the Spiny Flip menu confirm
+- With the throw unknown, the roll moves with the impact frame: 33 frames held, 136 thrown with A. Any confirm frame
+  would then give about the blind 30%.
+- The runner presses the throw, and the page can read it: Lakilester's aim popup ("stick で … をねらおう!") vanishes on
+  the throw's own frame. On Glide64 it vanishes 2 frames before the target menus' name box does after their confirm
+  (`HWCC_VAN` 0). It is a static banner from confirm + ~4 until the throw: target screen **A**, its box on the right half
+  of the text (the stick icon at its left is animated).
+- A new route step after the Spiny Flip: "Throw (A) on the beep → Close Call" (cat A, prof `hwcc`, turn `hw_throw`,
+  optional). It shares the one "T1:" route line with the Spiny Flip step, like Final Bowser T1.
+
+**The page** (`charge_live/hwcc_live.js`):
+- **At the Spiny Flip confirm** the tracker's particles take the aim sparkle and wait (`hold`) before the earliest A-throw
+  impact (confirm + 58).
+- **On the aim popup**, `hwccPlan` simulates the roll of the 64 heaviest states for every throw frame. It uses the
+  window confirm + 55..+114, the lead and the max extra wait. +55: the reticle needs ~12-15 frames to reach Bowser from the
+  aim's start, which is confirm + 39 at the earliest. +114: the timer ends at + 119 at the earliest. It then picks with
+  `zwChoose` (press spread, doubt, blind 30 / 101) and beeps.
+- **The popup closing is the throw**, read to +-2 frames (`HWCC_SHIFTS`). The impact and Bowser's turn go in at that
+  frame. The guard is not split at 3 HP.
+- **When nothing is beeped**, the page says no edge or play it blind ("throw whenever you like, Close Call about 30%").
+  This covers no lock, doubt of 50% or more, a lock too late for the window, and a plan under `zwedge`.
+  - **10 HP:** the status bar's tens place shows a "1" (`jrTens`, read on the T1 menu). There is no roll, so the 10-HP
+    model is used and nothing is beeped. A blank tens place, or no HP read, means Danger (the route's 3 HP).
+  - **A throw seen before the lock** goes in when the lock lands (`hwccAfterLock`).
+  - **No throw read** (the popup not saved, or missed): the step is left when the status bar comes back in Bowser's turn,
+    or on Time Out's screen. The impact frames stay open (`CHG_IMPS` from + 60), as before.
+
+## 3. Q2, the odds
+**Model with the exact lock** (`test_hw_cc_plan.js`, built page, 60 games). The games use console lag 0 / 1, the confirm
+read with `CHG_SHIFTS` and the throw read +-2. The plan uses lead 1.5 s, max extra wait 1 s and presses 25/50/25 over
+-1/0/+1, as in the Jr. Troopa and Final Bowser plans.
+
+| Measure | Close Call |
+|---|---|
+| Blind | 30.1% |
+| Beeped, claimed by the page | 76.3% |
+| Beeped, actual (model) | **72.1%** |
+
+- 43 of 45 Danger games beeped. The other 2 showed no edge.
+- Offline (`pmrng_core` only, the true state x confirm shifts), a 31-frame window: 79% with 25/50/25 presses, 55% with the
+  runner's measured spread (rms 2.3 frames, `pressDist`).
+- A 60-frame window: 87% / 61%.
+
+## 4. Q3, timing
+- On the 14 console clips, the Spiny Flip confirm comes 3.30-3.52 s after the rays.
+- The throw window then runs from confirm + 55 (≈ 5.2 s after the rays) to + 114 (≈ 7.2 s).
+- With the 1.5 s lead:
+  - a lock up to ≈ 4.75 s after the rays keeps the whole 1 s window;
+  - a lock up to ≈ 6.2 s still leaves part of it;
+  - a later lock gets "too late for the beeps".
+- Measured locks: Hallway locks in v77 come about 3-4 s after the rays, and the v72-era clip runs locked 4.2-6.3 s after.
+  So most attempts fit.
+- If the lock is late, the runner can wait on Lakilester's menu until "Locked". A throw on the beep costs at most the max
+  extra wait plus ~0.3 s over the runner's own throw (on the clip, ~confirm + 45-50).
+
+## 5. Q4, Time Out on T2
+- A Close Call changes the draws (the roll itself, then nothing more drawn), so the tracker models the miss branch:
+  - The states whose roll hits are dropped as they roll (`zwStep` returns 'hit').
+  - Once all have rolled, the background is weighed once by a blind Close Call (`zw.ccPend`), so the survivors do not
+    look doubtful.
+  - The throw read also removes the impact frames that v77 kept open.
+- **Death watch.** After the throw, a "1" in the tens place on a steady bar for 6 frames means a Life Shroom revive at
+  10 HP. The tracker stops, and Time Out says no edge.
+- `test_hw_cc_plan.js`. The T2 menu's coin is watched for 1.5 s from roll + 135 (its shines tapped), then Time Out's
+  screen. Each case runs the same game through the v77 tracker as well (the route switched off at the confirm: the old
+  impact split, no Close Call draw in the model):
+
+| Case | v78 | v77 tracker |
+|---|---|---|
+| Miss path, 3 HP, 30 games | **80.0% actual (81.2% claimed)**, planned every time | 60.0% (its model lacks the roll's draw) |
+| 10 HP, 15 games | 58.3% actual (68.4% claimed) | 53.3% |
+
+Blind Time Out is 31%. So Time Out reliability does not drop: at 3 HP v77 was planning on the wrong draw count.
+
+## 6. Q5, other effects of 3 HP
+None before the roll: the 7 runs match from the Charge on, including the Danger animation. The guard does not matter on
+either branch at 3 HP.
+
+## Tests
+- `test_hw_cc_model.js` (emulator logs, 7 / 7).
+- `test_hw_cc_plan.js` (the odds and the Time Out tables above, including Time Out on the Close Call miss path).
+- `test_hw_cc_page.js` (route glue):
+  - the one T1 line, the throw step, the plan inside the window, and the popup closing read as the throw;
+  - only Close Call states after the roll;
+  - the Life Shroom death watch, the popup-never-seen fallback, 10 HP, and no lock.
+- Updated for the throw step: `test_hw_steps.js`, `test_turn_backout.js`, `charge_live/test_route_replay.js` (Time Out's
+  step by `prof === 'timeout'`).
+- Version checks moved to v78: `test_dup_plan`, `test_jr_plan`, `test_console_1107`.
+
+## Not verified on console
+- The aim popup's vanish delay on the capture chain (emulator 0 frames; the read is carried +-2).
+- The popup as a target screen, while the stick icon animates beside the box.
+- The runner reaching Bowser by confirm + 55, and holding the reticle on him until the beep. A throw with the reticle off
+  Bowser is not the route: no impact, and the AI at + 72.
+- The HP tens read in the Hallway at 3 HP and after a revive.
+- A Body Slam Close Call: no draws in the script, but not observed.
+- Whether the runner carries a Life Shroom here. Without one, a hit is Game Over.
+
 # Time Out Timer v77: every Charge read kept, compact; the re-read goes on while there is time (Nov 8)
 
 ## 1. Every read kept (`charge_reads.js`)

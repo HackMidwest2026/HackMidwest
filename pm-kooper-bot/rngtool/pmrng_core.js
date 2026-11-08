@@ -143,6 +143,12 @@
     jrcc_syrup: { id: 'jrcc_syrup', name: 'Jr. Troopa: Close Call after Maple Syrup', short: 'Close Call', group: 'jr',
       effects: { 118: [].concat(...Array(10).fill([359, 10, 10])) }, rolls: [{ at: 163, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2,
       screen: 'Maple Syrup target screen (hand on Mario)', box: 'the マリオ name box in the top-left' },
+    // v78: Hallway Bowser T1 at 3 HP: the Spiny Flip thrown with A (the aim popup closing) decides Bowser's Close Call roll
+    // (AI + 54 / 70 / 55 after the impact at throw + 24, AI at throw + 68). Planned by the page's own tracker (hwcc_live.js,
+    // custom: its share is simulated per state); the roll below only marks it as a roll step.
+    hwcc: { id: 'hwcc', name: 'Hallway Bowser T1: Close Call after the Spiny Flip throw', short: 'Close Call', custom: true,
+      effects: {}, rolls: [{ at: 0, max: 100, ok: v => v < 30 }], vanish: 0, minRun: 2,
+      screen: 'Lakilester\'s aim popup (Spiny Flip: stick で … をねらおう!)', box: 'the right half of the popup\'s text (をねらおう!)' },
     jrcc_nothing: { id: 'jrcc_nothing', name: 'Jr. Troopa: Close Call after Bombette does nothing', short: 'Close Call', group: 'jr',
       effects: {}, rolls: [{ at: 26, max: 100, ok: v => v < 30 }], vanish: 3, minRun: 2,
       screen: 'Bombette\'s Strategies menu with the hand on なにもしない', box: 'the Strategies panel (both lines and a little below)' },
@@ -347,15 +353,19 @@
   TURNS.jr_bomb_t1 = { pre: { 73: X359(8), 206: X359(10) }, post: { 73: [360] } };
   TURNS.jr_syrup_hit = { pre: { 118: [].concat(...Array(15).fill([359, 10, 10])), 190: X359(10) }, post: {} };
   TURNS.jr_nothing_hit = { pre: { 53: X359(10) }, post: {} };
+  /* v78: the Spiny Flip thrown with A on frame f (the aim popup closing): the impact's 8 x rand(359) on f + 24 and Bowser's
+   * AI on f + 68 (emulator, 7 runs with the Spiny on Bowser; a throw off Bowser draws no impact and his AI comes at f + 72:
+   * not the route). hw_spiny without imp is then the confirm's aim sparkle alone. */
+  TURNS.hw_throw = { pre: {}, post: {}, impact: X359(8), ai: 44 };
   /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
   function buildEv(list) {
     const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };
-    for (const { f, id, imp, guard } of list || []) {
+    for (const { f, id, imp, guard, danger } of list || []) {
       const T = TURNS[id]; if (!T) continue;
       for (const o in T.pre) get(f + +o).pre.push(...T.pre[o]);
       for (const o in T.post) get(f + +o).post.push(...T.post[o]);
       for (const [c, r, per] of T.eio || []) get(f + c).eio.push([f + r, per || 10]);
-      if (T.impact && imp != null) { get(f + imp).pre.push(...T.impact); const a = get(f + imp + T.ai); a.ai = id; a.guard = !!guard; }
+      if (T.impact && imp != null) { get(f + imp).pre.push(...T.impact); const a = get(f + imp + T.ai); a.ai = id; a.guard = !!guard; a.danger = !!danger; }
     }
     return m;
   }
@@ -364,9 +374,21 @@
   /* Hallway Bowser's T1 AI (EVS_UseAttack): RandInt(80) < 20 Body Slam; else RandInt(60) < 20 Claw Swipe (frame +72:
    * rand(100) then 10 x rand(359); +231: 6 x rand(359)); else Fire Breath (no draws). All three measured in the emulator (18 runs). */
   /* guarded (A just before the hit): Body Slam and Claw Swipe only draw their 10 x rand(359) (+71 / +72) */
-  function bowserT1(S, f, guard) {
-    const a = randInt(S.s, 80); S.s = a[0];
+  /* v78, Mario at 5 HP or less (Danger: the runner's Hallway at 3 HP; charge_live/README.md v78, 17 emulator runs): every
+   * attack first rolls Close Call, rand_int(100) < 30 (caller 0x80277518, in EnemyTestTarget), at AI + 54 (Body Slam),
+   * + 70 (Claw Swipe), + 55 (Fire Breath). Lucky: the attack misses and nothing more is drawn to the next menu (Claw
+   * Swipe and Fire Breath measured; Body Slam's miss branch has no random call in the script). Not lucky: the hit kills
+   * Mario (5+ damage at 3 HP; Game Over or a Life Shroom revive), which is not modelled: S.ccHit, S.unknown. The guard
+   * comes after the roll and changes nothing on either branch. S.cc = { f, v, lucky } once rolled. */
+  const HW_CC = { 'body slam': 54, 'claw swipe': 70, 'fire breath': 55 };
+  function bowserT1(S, f, guard, danger) {
     S.extra = S.extra || new Map();
+    if (danger) {
+      const a = randInt(S.s, 80); S.s = a[0];
+      if (a[1] < 20) S.branch = 'body slam'; else { const b = randInt(S.s, 60); S.s = b[0]; S.branch = b[1] < 20 ? 'claw swipe' : 'fire breath'; }
+      S.ccAt = f + HW_CC[S.branch]; return;
+    }
+    const a = randInt(S.s, 80); S.s = a[0];
     if (a[1] < 20) {                                                  // Body Slam: +71 10 x rand(359), +76 2 x rand(2), +133/139/145 6 x rand(359)
       S.branch = 'body slam'; S.extra.set(f + 71, Array(10).fill(359));
       if (!guard) { S.extra.set(f + 76, [2, 2]); for (const o of [133, 139, 145]) S.extra.set(f + o, Array(6).fill(359)); }
@@ -383,7 +405,7 @@
     const e = ev && ev.get(f); let r = null;
     if (e) {
       for (const mx of e.pre) S.s = randInt(S.s, mx)[0];
-      if (e.ai) bowserT1(S, f, e.guard);
+      if (e.ai) bowserT1(S, f, e.guard, e.danger);
       for (const [rm, per] of e.eio) {
         S.s = randInt(S.s, 360)[0]; const p = [];
         for (let i = 0; i < 10; i++) { S.s = randInt(S.s, 10)[0]; const q = randInt(S.s, per); S.s = q[0]; p.push(-q[1]); }
@@ -391,6 +413,7 @@
       }
     }
     if (S.extra && S.extra.has(f)) { for (const mx of S.extra.get(f)) S.s = randInt(S.s, mx)[0]; S.extra.delete(f); }
+    if (S.ccAt === f) { const q = randInt(S.s, 100); S.s = q[0]; S.ccAt = null; S.cc = { f, v: q[1], lucky: q[1] < 30 }; if (!S.cc.lucky) { S.ccHit = true; S.unknown = true; } }
     if (f === S.nc) { const q = randInt(S.s, 100); S.s = q[0]; r = q[1] >= 70; S.nc = f + (r ? 48 : 24); }
     if (e) for (const mx of e.post) S.s = randInt(S.s, mx)[0];
     if (S.inst.length) {
@@ -424,7 +447,7 @@
     for (const e of ev.values()) for (const [rm] of e.eio) last = Math.max(last, rm);
     for (let f = 0; f < 400000; f++) {
       if (S.unknown) return null;
-      if (f >= minF && f > last && f === S.nc && !S.inst.length && !(S.extra && S.extra.size)) return { seed: S.s, F: f, branch: S.branch };
+      if (f >= minF && f > last && f === S.nc && !S.inst.length && !(S.extra && S.extra.size) && S.ccAt == null) return { seed: S.s, F: f, branch: S.branch };
       frameEv(S, f, ev);
     }
     return null;

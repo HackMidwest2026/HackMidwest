@@ -21,19 +21,22 @@ async function replay(b, file) {
   await p.addInitScript(() => { const real = performance.now.bind(performance); window.__dt = 0; performance.now = () => real() + window.__dt; });
   await p.goto('file://' + file);
   const r = await p.evaluate(events => {
-    const T = window.__tot, hi = T.RT().findIndex(s => s.turn === 'hw_spiny'), fi = T.RT().findIndex(s => s.turn === 'fb2_pb');
+    const T = window.__tot, hi = T.RT().findIndex(s => s.turn === 'hw_spiny'), fi = T.RT().findIndex(s => s.turn === 'fb2_pb'), ti = T.RT().findIndex(s => s.prof === 'timeout');
     const setNow = t => { window.__dt += t - performance.now(); };
     document.getElementById('reset').click(); T.setStep(hi);
     const atTrig = [], fbAt = [], afterTimeOut = []; let lastStep = T.step();
     for (const e of events) {
+      // v78: the throw step after the Spiny Flip (its aim popup is not in these v68 logs): the page leaves it when the bar
+      // comes back in Bowser's turn (hwccFrame), so the next screen closing is Time Out's
+      if (e.ev === 'screenClosed' && T.RT()[T.step()].turn === 'hw_throw') T.setStep(T.step() + 1);
       if (e.ev === 'screenClosed') { setNow(e.t); const was = T.step(); T.checkPress(e.at);
-        if (was === hi + 1) { T.st.plan = null; T.makePlan(); afterTimeOut.push({ t: Math.round(e.t / 1000), step: T.step(), plan: !!T.st.plan, msg: (T.st.msg || '').slice(0, 30) }); } }
+        if (was === ti) { T.st.plan = null; T.makePlan(); afterTimeOut.push({ t: Math.round(e.t / 1000), step: T.step(), plan: !!T.st.plan, msg: (T.st.msg || '').slice(0, 30) }); } }
       else if (e.ev === 'coinBack') { setNow(e.t); T.coinBack(e.hiddenMs); }
       else if (e.ev === 'chargeConfirm') { setNow(e.t); if (T.step() !== hi) T.setStep(hi); }
       else if (e.ev === 'chargeTrigger') atTrig.push({ t: Math.round(e.t / 100) / 10, step: T.step(), prof: T.RT()[T.step()].turn === 'fb2_pb' ? 'fb2' : /^Hallway/.test(T.RT()[T.step()].t) ? 'hw' : 'other' });
       if (T.step() !== lastStep) { lastStep = T.step(); if (lastStep === fi) fbAt.push(Math.round(e.t / 1000)); }
     }
-    return { hi, fi, atTrig, fbAt, afterTimeOut, stepBack: T.SLOG.filter(x => x.ev === 'stepBackToHallway').length, done: T.SLOG.filter(x => x.ev === 'hallwayDone').length };
+    return { hi, ti, fi, atTrig, fbAt, afterTimeOut, stepBack: T.SLOG.filter(x => x.ev === 'stepBackToHallway').length, done: T.SLOG.filter(x => x.ev === 'hallwayDone').length };
   }, E);
   await p.close(); return Object.assign(r, { errs });
 }
@@ -44,7 +47,7 @@ async function replay(b, file) {
   check(!n.errs.length, 'page errors ' + n.errs.join(' | '));
   check(n.atTrig.length >= 20 && n.atTrig.every(x => x.prof === 'hw'), 'every Charge trigger on a Hallway step');
   check(!n.fbAt.length, 'the route never reaches the Final Bowser step');
-  check(n.afterTimeOut.length >= 5 && n.afterTimeOut.every(x => x.step === n.hi + 1 && !x.plan), 'after Time Out: stays on Hallway T2, no new plan');
+  check(n.afterTimeOut.length >= 5 && n.afterTimeOut.every(x => x.step === n.ti && !x.plan), 'after Time Out: stays on Hallway T2, no new plan');
   if (fs.existsSync(PAGE0)) {
     const o = await replay(b, PAGE0);
     console.log('v68: ' + JSON.stringify({ fbAt: o.fbAt, fb2Triggers: o.atTrig.filter(x => x.prof === 'fb2') }));

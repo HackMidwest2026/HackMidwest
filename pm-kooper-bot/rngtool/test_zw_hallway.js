@@ -54,7 +54,7 @@ const { chromium } = require('playwright');
       if (cfg.ERR === 'false') { t1 = t1.concat([cC - 30]).sort((a, b) => a - b); }
       for (const c of t1) { setNow(c + 7); tap(c); }
       setNow(cC + 4); T.preConfirm({ cat: 'M', id: 'hw_charge' }, T0 + (cC + R.PROFILES.jrcc_syrup.vanish + pfix) * FR + vlag);
-      setNow(cS + 4); T.checkPress(T0 + (cS + R.PROFILES.timeout.vanish + pfix) * FR + vlag);
+      setNow(cS + 4); T.checkPress(T0 + (cS + R.PROFILES.timeout.vanish + pfix) * FR + vlag); if (T.RT()[T.step()].turn === 'hw_throw') T.setStep(T.step() + 1);   // v78: the page leaves the throw step when the bar comes back in Bowser's turn (no aim popup here)
       setNow(m2a + 2 + 30); T.coinBack((m2a - cC) * FR);
       for (const c of visible(m2a + 32, m2b - 4)) { setNow(c + 7); tap(c); }
       setNow(m2b); T.st.msg = null; T.makePlan(); const plan = T.st.plan;
