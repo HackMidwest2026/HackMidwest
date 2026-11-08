@@ -1,6 +1,7 @@
 # Time Out Timer v81: the Jr. Troopa fixes merged, the lock badge, the route panel reordered (Nov 8)
 
-(The lock badge and the route panel follow in the next commit.)
+Three things: branch `wt-jr` (the Jr. Troopa fixes from the console session of Nov 8, built on v79) merged into v80 (A);
+the lock badge beside the strip (B); the route panel reordered (C). Both B and C were asked for by the runner.
 
 ## A. Jr. Troopa: the T3 Close Call that killed the seed, the T5 Charge "no Mario", the seed from the coin
 
@@ -60,6 +61,46 @@ doubt and edge rules decide the beeps. Otherwise no edge. On this log (the track
 `test_console_1108.js` (new, in `run_suite.sh`): the dodge frames, the merge, the recovery and its gate, no edge, the
 coin search (both stretches, the wrong seed), the wider / faint Mario check and the kept "not seen" read on pictures made
 in the test. `test_jr_plan.js`, `test_console_1107.js`: unchanged results. `test_jr_page.js` needs emulator renders: not run.
+
+## B. The lock badge (the runner: "an obvious indication if the seed is locked or not ... near the input timing window")
+`#lock-badge` sits in the strip's header row, between the countdown and Zoom. It is always present, with a fixed
+184 x 54 px box (`.lockb`). A state change only recolours it and changes its text, so the strip never moves
+(`test_strip_steady`, `test_strip_geometry`). The countdown's reserved width went from 5em to 4.6em so that the header row
+still fits on one line at the main column's 880 px ("12.3 s" still fits). It has a large display font and solid colours
+with light text (amber has dark text), using its own tokens (`--lock-ok/no/doubt`), which are brighter in dark mode. A
+second line under the word says why. `lockBadgeState()` reads the existing state, in this order:
+- **Final Bowser T1-T4 step** (FB14): green **LOCKED** while FB14 carries states; amber **DOUBTFUL** at `FB14.doubt` >= 50%;
+  red **NOT LOCKED** without a lock.
+- **Final Bowser T7 step** (FB2, the T6 Charge): green while FB2 holds hypotheses, else red.
+- **The Charge-lock / walk tracker** (`zw`, on): red if dead (no state left: "seed lost"); amber when `zwDoubt()` >= 50%
+  (the same doubt at which zwPlan stops beeping), or on Jr. Troopa when the states were rebuilt by the -4..+4 re-read and
+  are not yet confirmed (`JRT.recon` and not `jrReconOk()`), or were found again from the coin and the heaviest has not yet
+  matched 2 shines since the restart (`jrShineRecOk()`, new, badge only: the beeps keep zwPlan's rules); else green.
+- **Jr. Troopa carry broken** (the Life Shroom revive) on a Jr. Troopa step: red.
+- **The shine lock** (`st.lock` with a clock): green; a lost shine lock that is resyncing: red.
+- Otherwise red ("no seed", "no Charge lock", "Charge not seen").
+`JRT.shineRec` is now cleared when a new Charge locks. Nothing is logged for the badge.
+
+## C. The route panel (the runner: "reset route at the top, directly below it the four fights, then everything else")
+The right-hand panel now runs, from the top:
+1. the heading;
+2. ◀ ▶ **Restart route**;
+3. the route list (one "Tn:" line per turn, the current step highlighted);
+4. a **Details** `<details>` holding the Zero-wait route instructions, `chg-status`, `fb14-status`, `fb2-status`,
+   `walk-counter`, `walk-last` and `carry-note`, in that order. It is closed by default and its open / closed state is
+   remembered in localStorage (`tot-route-details`, try/catch).
+The step hint line and the Duplighosts / Jr. Troopa route choices come after it. Everything was moved, nothing removed;
+ids, texts and logging are unchanged.
+
+## Tests
+- `test_lock_badge.js` (new, in `run_suite.sh`) checks, 35 checks in all:
+  - every badge state: fresh, shine lock, Charge lock, doubt 55%, dead, Jr. rebuilt, Jr. found again, tracker off, FB14
+    without a lock / locked / doubt, FB2 without a lock / locked;
+  - that neither the badge's box nor the strip's moves across them;
+  - size, colours, and contrast of 4.5 or more;
+  - the panel's order, Details' contents, and the open / closed state across reloads.
+- `test_dup_plan` and `test_jr_plan` read `chg-status` by `textContent` (it is inside the closed Details now).
+- Version checks moved to v81: test_dup_plan, test_jr_plan, test_console_1107, test_hw_hp, test_hw_v77.
 
 # Time Out Timer v80: the Duplighosts goal, 3+ safe or all 4 (Nov 8)
 

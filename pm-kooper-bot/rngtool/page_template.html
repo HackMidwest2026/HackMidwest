@@ -9,6 +9,7 @@
   --bg: #eef1f7; --panel: #ffffff; --ink: #172036; --muted: #59627a; --line: #d4d9e6;
   --gold: #b88512; --gold-soft: #f6e7bd; --good: #1f8a5b; --good-soft: #cdeedd; --bad: #c4ccdc; --warn: #b4442f;
   --cursor: #172036;
+  --lock-ok: #137a43; --lock-ok-ink: #ffffff; --lock-no: #c41f1f; --lock-no-ink: #ffffff; --lock-doubt: #f0a30a; --lock-doubt-ink: #1b1404;
   --run1: #d0342c; --run2: #e8c21a; --run3: #1f8a3b; --run4: #2563d9; --run5: #8b3fd1;
   --display: "Chakra Petch", "Arial Narrow", system-ui, sans-serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
@@ -16,10 +17,10 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark } }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --lock-ok: #1fa35c; --lock-ok-ink: #ffffff; --lock-no: #e0312b; --lock-no-ink: #ffffff; --lock-doubt: #ffb81f; --lock-doubt-ink: #1b1404; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0d1222; --panel: #151c31; --ink: #e8ecf6; --muted: #98a2bd; --line: #27304a;
-  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark }
+  --gold: #f0c04a; --gold-soft: #3a3016; --good: #45c98b; --good-soft: #163a2b; --bad: #2a3350; --warn: #f07a62; --cursor: #ffffff; --lock-ok: #1fa35c; --lock-ok-ink: #ffffff; --lock-no: #e0312b; --lock-no-ink: #ffffff; --lock-doubt: #ffb81f; --lock-doubt-ink: #1b1404; --run1: #ff5a4f; --run2: #ffd84a; --run3: #3fcf6a; --run4: #5b93ff; --run5: #b77cff; color-scheme: dark }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
 main { max-width: 880px; margin: 0 auto; display: grid; gap: 18px; }
@@ -50,7 +51,19 @@ h2 { font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; tex
 .count small { font-size: .35em; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
 /* v76: the countdown sits in the strip's header row: it always takes its space (hidden = invisible, not removed) and has a
  * fixed width, so showing it or changing its text never moves the strip (the status panel is below the strip for the same reason) */
-.count { min-width: 5em; text-align: right; white-space: nowrap; }
+/* v81: the lock badge beside the strip (the runner: "an obvious indication if the seed is locked or not"). Fixed width and
+ * height, always present: a state change recolours it and changes its text, never its size, so the strip never moves */
+.lockb { box-sizing: border-box; width: 184px; height: 54px; flex: 0 0 184px; overflow: hidden; display: grid; align-content: center; justify-items: center;
+  border-radius: 8px; border: 3px solid rgba(0,0,0,.35); padding: 0 6px; text-align: center; line-height: 1.05; user-select: none; }
+.lockb b { font-family: var(--display); font-weight: 700; font-size: 1.45rem; letter-spacing: .06em; white-space: nowrap; }
+.lockb small { display: block; max-width: 100%; font-family: var(--mono); font-size: .68rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .92; }
+.lockb.ok { background: var(--lock-ok); color: var(--lock-ok-ink); }
+.lockb.no { background: var(--lock-no); color: var(--lock-no-ink); }
+.lockb.doubt { background: var(--lock-doubt); color: var(--lock-doubt-ink); }
+.side details#route-details > summary { font-size: .8rem; margin: 0; }
+.side details#route-details[open] > summary { margin-bottom: 6px; }
+.side details#route-details > div { display: grid; gap: 6px; }
+.count { min-width: 4.6em; text-align: right; white-space: nowrap; }
 .count[hidden] { display: block; visibility: hidden; }
 #shine { font-family: var(--display); font-weight: 700; font-size: 1.6rem; letter-spacing: .08em; text-transform: uppercase;
   width: clamp(150px, 30vw, 200px); min-height: 150px; border-radius: 14px; border: 2px solid var(--gold); background: var(--gold-soft); color: var(--ink);
@@ -112,13 +125,14 @@ details[open] summary { margin-bottom: 10px; }
 <main>
   <header>
     <h1>Paper Mario <span>(Any% No ACE)</span> (RNG Manipulation)</h1>
-    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v80</span></div>
+    <div class="tag">JP · Duplighosts · Jr. Troopa · Hallway Bowser · Final Bowser · <span id="ver">v81</span></div>
   </header>
 
   <section class="panel">
     <div class="row" style="justify-content:space-between; align-items:center">
       <h2 style="margin:0">Confirm frames ahead</h2>
       <div class="count" id="count" hidden title="Time until the press">0.0<small> s</small></div>
+      <div class="lockb no" id="lock-badge" role="status" aria-live="polite" data-state="no" title="Green LOCKED: the page holds a seed it trusts (a plan can beep). Amber DOUBTFUL: a seed is held but the coin fits it badly (doubt 50%+), or it was recovered and is not confirmed yet. Red NOT LOCKED: no seed, or the tracker lost it."><b id="lock-badge-text">NOT LOCKED</b><small id="lock-badge-why">no seed</small></div>
       <label class="f" style="flex:0 0 auto">Zoom<select id="s-zoom">
         <option value="12">12 s (all)</option><option value="6">6 s</option><option value="3" selected>3 s</option><option value="1.5">1.5 s</option>
       </select></label>
@@ -303,10 +317,19 @@ details[open] summary { margin-bottom: 10px; }
 </main>
 <aside class="panel side" id="side" aria-label="Endgame route">
     <h2 style="margin:0">Endgame route</h2>
+      <div id="route" hidden style="display:grid; gap:6px">
+        <!-- v81 (the runner): Restart route and the step buttons on top, the route list of the four fights directly below, then
+             everything a human does not use mid-run in "Details" (open / closed remembered: tot-route-details) -->
+        <div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div>
+        <ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol>
+        <details id="route-details"><summary>Details</summary><div>
+          <p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save Bombette's Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p>
+          <p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb14-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turns 1-4: the aura Charge lock, the beeped Cloud Nine / Do Nothing (Bowser misses), and the seed carried to the Peach Beam"><b>FB2 T1 → T4:</b> waiting for the T1 Super Charge lock</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p>
+        </div></details>
+      </div>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser → Final Bowser · click a numbered step to jump there · ★ = planned press</p>
     <label class="f" style="margin:0">Duplighosts route<select id="s-duproute"><option value="rta">RTA: Spiny Surge (no lock)</option><option value="charge">Charge lock: Mario Charge, Bombette Do Nothing</option></select><small id="duproute-note"></small></label>
     <label class="f" style="margin:0">Jr. Troopa route<select id="s-jrroute"><option value="charge">Charge lock: T1 Super Charge, beeps on T3-T6</option><option value="shine">Old: a shine lock carried through the turns (v72)</option></select></label>
-      <div id="route" hidden style="display:grid; gap:6px"><p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save Bombette's Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p><div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div><p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb14-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turns 1-4: the aura Charge lock, the beeped Cloud Nine / Do Nothing (Bowser misses), and the seed carried to the Peach Beam"><b>FB2 T1 → T4:</b> waiting for the T1 Super Charge lock</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p><ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol></div>
 </aside>
 </div>
 
@@ -460,6 +483,10 @@ const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge
 const NOPLAN = { id: 'none', name: 'no roll on this step', short: 'nothing to plan', effects: {}, rolls: [], vanish: 2, minRun: 2 };
 const isRoute = () => !!ROUTES[$('s-prof').value];
 const RT = () => ($('s-prof').value === 'endgame' ? endgameSteps() : ROUTES[$('s-prof').value]) || JR;
+// v81: the route panel's "Details" (the Zero-wait instructions, the Charge / FB2 status lines, the walk counter, the carry
+// note): closed by default, its open / closed state remembered per browser
+{ const D = document.getElementById('route-details'); if (D) { try { D.open = localStorage.getItem('tot-route-details') === '1'; } catch (e) {}
+  D.addEventListener('toggle', () => { try { localStorage.setItem('tot-route-details', D.open ? '1' : '0'); } catch (e) {} }); } }
 let routeStep = 0; try { routeStep = Math.max(0, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0); } catch (e) {}
 const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof ? R.PROFILES[RT()[Math.min(routeStep, RT().length - 1)].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
 const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
@@ -1460,7 +1487,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v80';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v81';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -1536,6 +1563,43 @@ function stripData() {
   }
   if (!stripData.ex || stripData.ex.prof !== PROF().id) stripData.ex = { src: 'example', prof: PROF().id, tab: R.timeOutTable(EXAMPLE.seed, 0, 359, PROF()), first: 0, tLast: null, w: R.bestWindow(EXAMPLE.seed, 0, 359, PROF().minRun, PROF()), example: true };
   return stripData.ex;
+}
+/* v81: the lock badge (beside the strip). ok = a seed is held that the page trusts (a plan can beep); doubt = a seed is held
+ * but doubt is 50% or more, or the seed was recovered (Jr. Troopa: the -4..+4 re-read or the coin search) and the coin has
+ * not confirmed it yet; no = no seed, or the tracker lost it. From the state the page already keeps: the step's tracker
+ * (Final Bowser T1-T4: FB14; T6/T7: FB2), else the Charge-lock tracker (zw), else the walk (shine) lock. */
+function lockBadgeState() {
+  const stp = isRoute() ? RT()[routeStep] : null, pc = x => Math.round(100 * x) + '%';
+  if (stp && stp.fb14 && typeof FB14 !== 'undefined') {
+    if (!FB14.on || !FB14.states || !FB14.states.length) return { state: 'no', why: FB14.why && /gone/.test(FB14.why) ? 'carried seed gone' : 'no Charge lock' };
+    return (FB14.doubt || 0) >= 0.5 ? { state: 'doubt', why: 'doubt ' + pc(FB14.doubt) } : { state: 'ok', why: 'Charge lock · ' + FB14.states.length + ' states' };
+  }
+  if (stp && stp.turn === 'fb2_pb' && typeof FB2 !== 'undefined') {
+    if (FB2.on && FB2.hyps && FB2.hyps.length) return { state: 'ok', why: 'T6 Charge lock · ' + FB2.hyps.length + ' states' };
+    return { state: 'no', why: 'no T6 Charge lock' };
+  }
+  if (zw.on) {
+    if (zw.dead || !zw.parts || !zw.parts.length) return { state: 'no', why: 'seed lost' };
+    const d = zwDoubt();
+    if (d >= 0.5) return { state: 'doubt', why: 'doubt ' + pc(d) };
+    if (zw.fight === 'jr' && typeof JRT !== 'undefined') {
+      if (JRT.recon && !jrReconOk()) return { state: 'doubt', why: 'rebuilt · not confirmed' };
+      if (JRT.shineRec && !jrShineRecOk()) return { state: 'doubt', why: 'found again · not confirmed' };
+    }
+    return { state: 'ok', why: (zw.fight === 'walk' ? 'shine lock' : 'Charge lock') + ' · doubt ' + pc(d) };
+  }
+  if (typeof JRT !== 'undefined' && JRT.dead && typeof jrStepNow === 'function' && jrStepNow()) return { state: 'no', why: 'carry broken' };
+  if (st.lock && st.clock) return { state: 'ok', why: 'shine lock' };
+  if (st.clock && !st.lock && st.prevLock) return { state: 'no', why: 'seed lost · resyncing' };
+  return { state: 'no', why: typeof CHG !== 'undefined' && (CHG.state === 'nolock' || CHG.state === 'failed') ? 'no Charge lock' : typeof CHG !== 'undefined' && CHG.state === 'notseen' ? 'Charge not seen' : 'no seed' };
+}
+const LOCKB_TEXT = { ok: 'LOCKED', no: 'NOT LOCKED', doubt: 'DOUBTFUL' };
+function lockBadgeShow() {
+  let B; try { B = lockBadgeState(); } catch (e) { B = { state: 'no', why: 'no seed' }; }
+  const el = $('lock-badge'); if (!el) return B;
+  if (el.dataset.state !== B.state) { el.dataset.state = B.state; el.className = 'lockb ' + B.state; $('lock-badge-text').textContent = LOCKB_TEXT[B.state]; }
+  if ($('lock-badge-why').textContent !== B.why) $('lock-badge-why').textContent = B.why;
+  return B;
 }
 /* what the strip shows, in words (the strip's state line and the overlay on stale or waiting frames) */
 function stripState(d) {
@@ -1644,6 +1708,7 @@ function drawStrip() {
     ctx.fillStyle = S.cls === 'stale' ? css('--warn') : css('--ink'); ctx.fillText(S.overlay, bx + 12, Y0 + CH / 2 + 5);
   }
   const el = $('strip-state'); if (el.textContent !== S.text) el.textContent = S.text; if (el.dataset.cls !== S.cls) { el.className = 'strip-state ' + S.cls; el.dataset.cls = S.cls; }
+  lockBadgeShow();
   let note = 'Example seed 0x12345678. Your own frames appear once the seed is locked (the Charge on Hallway turn 1, or shines).';
   if (nowD !== null) note = st.plan ? 'Press A on the last, higher beep, or when the gold aim marker (the middle of the aimed frame) reaches the now-line. Visual offset moves the strip so the two happen together.' :
       'Coloured frames would work if you confirmed on them; the line is now. No beeps yet: ' + (!V.stream ? 'press P on the target screen.' : !V.ref ? 'save the target screen (or press P on it).' : 'they start when the target screen is recognized (' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%).');
@@ -2147,7 +2212,7 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { VERSION, HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
+window.__tot = { VERSION, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
   JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },

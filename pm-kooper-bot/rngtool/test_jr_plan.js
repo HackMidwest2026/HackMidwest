@@ -108,13 +108,13 @@ function clipFrames() {
     out.lateQ = { agree: lq.cross && lq.cross.agree, origin: T.JRT.origin, qs: [...new Set(T.zw.parts.map(p => p.S.nc))], want: c0.locks.T3.q };
     // 4. no lock
     T.jrReset(); T.chgReset(); T.setStep(T.jrStepFor(5)); Object.assign(T.CHG, { state: 'nolock', why: 'no clear seed (best 1500, 1.05x the next)', prof: T.CHG_PROF.jr }); T.st.plan = null; T.st.msg = null; T.makePlan();
-    out.nolock = { msg: T.st.msg, panel: document.getElementById('chg-status').innerText };
+    out.nolock = { msg: T.st.msg, panel: document.getElementById('chg-status').textContent };
     T.setStep(T.jrStepFor(10)); T.st.msg = null; T.makePlan(); out.nolock6 = T.st.msg;
     T.CHG.state = 'idle'; T.st.msg = null; T.setStep(T.jrStepFor(5)); T.makePlan(); out.noCharge = T.st.msg;
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | Jr. steps ' + r.route.steps.join(', ') + ' | after T6: ' + r.route.after);
-  check(r.version === 'v80', 'version v80');
+  check(r.version === 'v81', 'version v81');
   check(r.route.steps.length === 6 && r.route.steps.every(s => /:jr$/.test(s)), 'six Jr. Troopa steps with the jr Charge profile');
   check(/^Hallway Bowser/.test(r.route.after || ''), 'the step after T6 is Hallway T1');
   // 2. per mode and lever

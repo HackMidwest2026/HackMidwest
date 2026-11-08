@@ -191,6 +191,15 @@ function jrReconOk() {
   let n = 0; for (const i of top.m) if (i >= R0.taps0) n++;
   return n >= JR_RECON_TAPS && !top.err;
 }
+/* v81 (the lock badge only; the beeps keep zwPlan's doubt / edge rules): a seed found again from the coin counts as
+ * confirmed once its heaviest state has matched JR_RECON_TAPS shines seen after the restart, with none missed */
+function jrShineRecOk() {
+  const R0 = JRT.shineRec; if (!R0 || R0.taps0 == null) return true;
+  if (!(zw.on && zw.fight === 'jr') || zw.dead || !zw.parts.length) return true;
+  let top = null; for (const p of zw.parts) if (!top || p.w > top.w) top = p;
+  let n = 0; for (const i of top.m) if (i >= R0.taps0) n++;
+  return n >= JR_RECON_TAPS && !top.err;
+}
 function jrDeath(k, fr) {
   JRT.out[k] = 'death';
   // the next turn's Close Call turn is at 10 HP (the revive): no roll there, its 10-HP draws instead
@@ -307,7 +316,7 @@ function jrShineSearch(hor) {
   const d = Math.max(0.1, E / (1 + E));
   zw.dead = false; zw.deadAt = null; zw.bg = sw * d / (1 - d); zw.bgTo = Fend;      // zwPlan's rules (doubt < 0.5, zwedge) decide the beeps
   const g = C[0][0];
-  JRT.recon = null; JRT.lost = null; JRT.lostF = null; JRT.shineRec = { pos: g.pos, n: C[0].length, taps: T.length, at: now };
+  JRT.recon = null; JRT.lost = null; JRT.lostF = null; JRT.shineRec = { pos: g.pos, n: C[0].length, taps: T.length, at: now, taps0: zw.taps.length };
   // the confirms after the stretch (none, usually: the search runs on the menu after them) go in as live
   for (const x of JRT.inputs.filter(x => x.c != null && x.c >= Fend)) jrApply(x);
   slog('jrShineRecover', { pos: C[0].map(x => x.pos), states: zw.parts.map(q => (q.S.s >>> 0).toString(16) + ':' + q.S.nc), g: Fend, taps: T.length, nLo, nHi, expectWrong: +E.toFixed(3), doubt: +d.toFixed(3) });
@@ -372,7 +381,7 @@ function jrStartFrom(k, seed, qs, qw) {
   // the confirms since this Charge (the runner may have gone on before the lock landed): in order, in the new clock
   const since = JRT.inputs.filter(x => x.k > k);
   for (const inp of since) jrApply(inp);
-  JRT.dead = null; JRT.recon = null; JRT.lost = null; JRT.lostF = null; JRT.origin = k; JRT.lastLock = { k, seed: seed >>> 0, t0: zw.t0 }; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
+  JRT.dead = null; JRT.recon = null; JRT.shineRec = null; JRT.lost = null; JRT.lostF = null; JRT.origin = k; JRT.lastLock = { k, seed: seed >>> 0, t0: zw.t0 }; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
   slog('jrStart', { k, since: since.map(x => x.k), particles: zw.parts.length });
 }
 /* the fight is over or left: the tracker off (the Hallway's walk tracker can start) */
