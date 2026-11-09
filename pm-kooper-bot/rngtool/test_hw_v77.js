@@ -51,7 +51,7 @@ const game = async (P, g, menu, cScr, shines, tens) => P.p.evaluate(({ g, menu, 
   buildV77();
   const b = await chromium.launch(), A = await open(b, V77), B = await open(b, V79);
   let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
-  check(await A.p.evaluate(() => window.__tot.VERSION) === 'v77' && await B.p.evaluate(() => window.__tot.VERSION) === 'v83', 'pages v77 and v83');
+  check(await A.p.evaluate(() => window.__tot.VERSION) === 'v77' && await B.p.evaluate(() => window.__tot.VERSION) === 'v84', 'pages v77 and v84');
   const row = { ten: { same: 0, n: 0, plans: 0 }, none: { same: 0, n: 0, plans: 0, hp: 0 } };
   for (let k = 0; k < N; k++) {
     const g = { seed: (rnd() * 4294967296) >>> 0, q: Math.floor(rnd() * 48), lag: pick(LAGS), Ct: 110 + Math.floor(rnd() * 120), sh: pick(SHIFTS), imp: IMPS[Math.floor(rnd() * IMPS.length)], guard: rnd() < 0.5 };

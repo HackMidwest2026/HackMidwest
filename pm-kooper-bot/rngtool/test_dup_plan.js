@@ -82,12 +82,12 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     out.goalFix = FIX.cases.map(c => goalRun(parseInt(c.seed, 16), c.q));
     let x = 0x2468ace1; const rnd = () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x; };
     out.goalRnd = []; for (let i = 0; i < 300; i++) { const sd = rnd(), q = rnd() % 48; out.goalRnd.push(goalRun(sd, q)); }
-    gs.value = 'run2'; gs.dispatchEvent(new Event('change')); out.goalSet = T.dupPlanAt(cScr, 1.5, 1).goal; gs.value = 'free'; gs.dispatchEvent(new Event('change')); out.goalDef = T.dupPlanAt(cScr, 1.5, 1).goal;
+    gs.value = 'run2'; gs.dispatchEvent(new Event('change')); out.goalSet = T.dupPlanAt(cScr, 1.5, 1).goal; gs.value = 'auto'; gs.dispatchEvent(new Event('change')); out.goalDef = T.dupPlanAt(cScr, 1.5, 1).goal;
     setRoute('rta'); out.back = { chg: T.RT()[0].chg || null, prof: T.chgProfNow() && T.chgProfNow().id };
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | RTA step 0: ' + r.rta.step0 + ' | Charge step 0: ' + r.charge.step0 + ' (profile ' + r.charge.prof + ')');
-  check(r.version === 'v83', 'version v83');
+  check(r.version === 'v84', 'version v84');
   check(r.rta.route === 'rta' && !r.rta.chg, 'RTA is the default and its step has no Charge profile');
   check(r.charge.route === 'charge' && r.charge.chg === 'dup' && r.charge.prof === 'dup' && r.charge.n === r.rta.n, 'Charge-lock route: step 0 has the dup profile, same number of steps');
   check(/Charge; Bombette Do Nothing/i.test(r.charge.list) && /Power Bomb/i.test(r.charge.list), 'route list shows the Charge-lock turns');
@@ -119,7 +119,7 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
   check(!r.back.chg && r.back.prof == null, 'back on RTA: no Charge step');
   // 6. the Duplighosts goal
   console.log('goal setting: ' + r.goalSel.v + ' [' + r.goalSel.opts.join(', ') + ']');
-  check(r.goalSel.v === 'free' && r.goalSel.opts.length === 4 && /^free=4 when it's free/.test(r.goalSel.opts[0]) && r.goalSel.opts.some(o => /^safe3=3\+ safe/.test(o)) && r.goalSel.opts.some(o => /^run2=4 if 2\+ frame window/.test(o)) && r.goalSel.opts.some(o => /^four=4 first/.test(o)), 'Settings > Advanced: Duplighosts goal (4 options), default "4 when it\'s free"');
+  check(r.goalSel.v === 'auto' && r.goalSel.opts.length === 5 && /^auto=Auto/.test(r.goalSel.opts[0]) && r.goalSel.opts.some(o => /^free=4 when it's free/.test(o)) && r.goalSel.opts.some(o => /^safe3=3\+ safe/.test(o)) && r.goalSel.opts.some(o => /^run2=4 if 2\+ frame window/.test(o)) && r.goalSel.opts.some(o => /^four=4 first/.test(o)), 'Settings > Advanced: Duplighosts goal (5 options), default Auto (v84)');
   check(r.goalSet === 'run2' && r.goalDef === 'free', 'the plan follows the setting');
   // v83, the perfect press: every goal's frame gives its goal for most states (never a failing frame between working
   // ones), the centre of the widest run of such frames; the spread-weighted numbers are printed for comparison

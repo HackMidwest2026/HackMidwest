@@ -97,7 +97,7 @@ function chgEnabled() { const el = $('s-chg'); return !el || el.checked; }
 /* any Hallway Bowser step arms the Hallway Charge (the runner is often on T2 after a retry; a burst seen there sets the
  * route back to T1, chgFrame) */
 const chgHallStep = s => !!(s && s.t && /^Hallway Bowser/.test(s.t));
-function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (chgHallStep(s)) return CHG_PROF.hw; if (s.chg && CHG_PROF[s.chg]) return CHG_PROF[s.chg]; for (const k in CHG_PROF) if (CHG_PROF[k].turn && CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
+function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (s.nb && !s.chg) return null;     /* v84: a Normal Boots step reads no Charge (but the Duplighosts') */ if (chgHallStep(s)) return CHG_PROF.hw; if (s.chg && CHG_PROF[s.chg]) return CHG_PROF[s.chg]; for (const k in CHG_PROF) if (CHG_PROF[k].turn && CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
 function chgStepActive() { return !!chgProfNow(); }
 /* Which arena the capture shows, read at a real bar hide (the menu just closed, battle camera): the band under the
  * battle floor (320-space y 165-190) is the dark bushes in the Hallway (luma 45-67 at all 43 bar hides of the 14
@@ -789,6 +789,8 @@ function chgRate() { return typeof consoleRate === 'function' ? consoleRate() : 
 function chgStartTracker(seed, qs, qw) {
   if (CHG.prof && CHG.prof.id === 'jr' && !CHG.jrInner && typeof jrLock === 'function') return jrLock(seed, qs, qw);   // Jr. Troopa: jr_live.js
   const dup = !!CHG.prof && CHG.prof.id === 'dup';     // (CHG.prof, not chgP(): the replay tests run this function alone)
+  // v84: on Normal Boots only the Duplighosts' Charge has a model (a Hallway picture at the Duplighosts' Charge is a retry)
+  if (!dup && typeof bootsNow === 'function' && bootsNow() === 'normal') { slog('nbNoTracker', { prof: CHG.prof ? CHG.prof.id : null, step: routeStep }); return; }
   // the Duplighost lock came after the route left that step (the runner confirmed Do Nothing before it landed): nothing to plan
   if (dup && !(isRoute() && RT()[routeStep] && RT()[routeStep].chg === 'dup')) { slog('dupLockAfterStep', { step: routeStep }); return; }
   const rate = chgRate(), t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];

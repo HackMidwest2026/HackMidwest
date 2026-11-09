@@ -208,7 +208,7 @@ details[open] summary { margin-bottom: 10px; }
       <summary>Advanced</summary>
       <div class="grid2">
         <label class="f">Max extra wait for the window (s)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"><small>How far past the lead the page may look for the window (1 s = 30 frames; 0 = off on Hallway T2).</small></label>
-        <label class="f">Duplighosts goal<select id="s-dupgoal"><option value="free" selected>4 when it's free</option><option value="safe3">3+ safe</option><option value="run2">4 if 2+ frame window</option><option value="four">4 first (widest all-4 window)</option></select><small>Which Do Nothing frame to beep (v83: always a frame that gives the goal with a perfect press, the centre of the widest run of such frames): the widest 3+ window, an all-4 frame whenever one is in reach (inside the widest 3+ window it can be), an all-4 window only if 2+ frames wide, or the widest all-4 window (Normal Boots' default).</small></label>
+        <label class="f">Duplighosts goal<select id="s-dupgoal"><option value="auto" selected>Auto: 4 when it's free (Ultra Boots), 4 first (Normal Boots)</option><option value="free">4 when it's free</option><option value="safe3">3+ safe</option><option value="run2">4 if 2+ frame window</option><option value="four">4 first (widest all-4 window)</option></select><small>Which Do Nothing frame to beep (v83: always a frame that gives the goal with a perfect press, the centre of the widest run of such frames): the widest 3+ window, an all-4 frame whenever one is in reach (inside the widest 3+ window it can be), an all-4 window only if 2+ frames wide, or the widest all-4 window (Normal Boots' default).</small></label>
         <label class="f">Best chance: beep only from (0–1)<input id="s-zwedge" type="number" step="0.01" value="0.4"><small>Below this the page says No edge (a blind press is 0.31).</small></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"><small>Time between beeps.</small></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"><small>Best chance, outside Hallway T2: the narrowest run it plans on.</small></label>
@@ -323,11 +323,12 @@ details[open] summary { margin-bottom: 10px; }
       <div id="route" hidden style="display:grid; gap:6px">
         <!-- v81 (the runner): Restart route and the step buttons on top, the route list of the four fights directly below, then
              everything a human does not use mid-run in "Details" (open / closed remembered: tot-route-details) -->
-        <div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button></div>
+        <div class="row" style="gap:6px"><button class="b" id="route-prev" title="Back one step ([)">◀</button><button class="b" id="route-next" title="Forward one step (])">▶</button><button class="b" id="route-reset">Restart route</button><label class="f" style="margin:0 0 0 auto; flex:0 1 auto" title="v84: switches all four fights' routes, beeps and odds">Boots<select id="s-boots"><option value="ultra" selected>Ultra Boots</option><option value="normal">Normal Boots</option></select></label></div>
         <ol id="route-list" class="note" style="margin:0; padding-left:1.4em"></ol>
         <details id="route-details"><summary>Details</summary><div>
           <p class="note" style="margin:0; padding:8px 10px; border-left:3px solid var(--gold); background:color-mix(in srgb, var(--gold) 12%, transparent); color:var(--ink)"><b>Zero-wait route: never stop for the page.</b><ol style="margin:4px 0 6px; padding-left:1.4em"><li>No coin is needed on the walks: each fight's Super Charge reads the seed.</li><li>Duplighosts on the Charge-lock route: Mario's Super Charge first (the page reads the seed from its rays), then keep the C-up bar up in Bombette's menu: its shines decide between the possible first coin frames. Do Nothing on the beep.</li><li>Jr. Troopa: Mario's Super Charge first on T1 (its rays lock the seed; the T3 and T5 Charges check it). The page counts your confirms from the status bar hiding and moves the route by itself; it beeps the T3 Bomb, the T4 Maple Syrup, the T5 Do Nothing (save the Partner’s Strategies screen once: its closing is the confirm) and the T6 Power Bounce. It reads Mario's HP after each Close Call: after a Life Shroom the next turn has no roll, and the next Charge locks again. No lock: play it blind (Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32%).</li><li>Hallway Bowser T1: Mario's Charge locks the seed by itself. The coin in the T1 and T2 menus only confirms it and tells apart what the Spiny Flip and Bowser's attack left open.</li><li>Time Out's target screen: the page beeps its best frame and shows the chance it works, or says <i>no edge, press normally</i>. Following a beep is the only time it adds: the lead plus up to the max extra wait (Settings, Advanced), about 1-1.5 s.</li><li>Final Bowser T1-T4: Mario's Super Charge on T1 locks the seed (T2 and T4's Charges check it). Wait with the hand on Mario for Cloud Nine (T1), then on Lakilester's Do Nothing (T2-T4), and confirm on the beep: Bowser misses (T4: the wave comes; block it, Laki may take it). Do not press A while Cloud Nine's message prints (only its three action presses). Peach Beam on T5 as usual: the seed it carries makes the T6 Charge lock fast. No lock: <i>play it blind</i> (about 50% a turn, 39% on T4).</li></ol>With no lock, or when the coin no longer fits the lock (<i>doubtful</i>), the page says <i>no edge</i> and you press normally (31%). Numbers: charge_live/README.md.</p>
           <p class="note" id="chg-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Hallway Bowser turn 1 / Final Bowser turn 6: the seed read from the Charge rays, and how many RNG states the page still keeps"><b>Charge lock: –</b><br>Time to lock: –<br>Hypotheses left: –</p><p class="note" id="fb14-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turns 1-4: the aura Charge lock, the beeped Cloud Nine / Do Nothing (Bowser misses), and the seed carried to the Peach Beam"><b>FB2 T1 → T4:</b> waiting for the T1 Super Charge lock</p><p class="note" id="fb2-status" style="margin:0; padding:6px 10px; border-left:3px solid var(--run3)" title="Final Bowser turn 6: the beeped popup A (Close Call), the frame the page saw it on, and the turn-7 Power Bounce plan"><b>FB2 T6 → T7:</b> waiting for the T6 Super Charge lock</p><p class="note mono" id="walk-counter" style="margin:0" hidden title="Real-time seconds since the coin came back after the last long gap (10 s or more): with the coin on screen (coin visible) and in total (walked); bits of evidence against the ~38 a lock needs">Coin visible 0.0 s of 0.0 s walked</p><p class="note mono" id="walk-last" style="margin:0" hidden></p><p class="note" id="carry-note" style="margin:0" hidden></p>
+          <p class="note" id="route-odds" style="margin:6px 0 0"></p>
         </div></details>
       </div>
     <p class="note" style="margin:0">Duplighosts → Jr. Troopa → Hallway Bowser → Final Bowser · click a numbered step to jump there · ★ = planned press</p>
@@ -346,7 +347,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal', 'boots'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } if (!localStorage.getItem('tot-beeps3')) { if (s.beeps === '4' || s.beeps === undefined) s.beeps = '3'; localStorage.setItem('tot-beeps3', '1'); } SET.forEach(k => { if (s[k] !== undefined && $('s-' + k)) { $('s-' + k).value = s[k]; if ($('s-' + k).tagName === 'SELECT' && $('s-' + k).selectedIndex < 0) $('s-' + k).selectedIndex = 0; } }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -475,10 +476,48 @@ const ENDGAME_DC = ENDGAME.map(f => f.h !== 'Duplighosts' ? f : { h: 'Duplighost
 const stepsOf = E => { const out = []; for (const f of E) for (const tu of f.turns) for (const s of tu.steps) out.push(Object.assign({ t: f.h + ' ' + tu.text.split(':')[0] }, s)); return out; };
 const ENDGAME_STEPS = stepsOf(ENDGAME), ENDGAME_DC_STEPS = stepsOf(ENDGAME_DC);
 const ROUTES = { jr: JR, endgame: ENDGAME_STEPS };
+/* v84, the Normal Boots route (the runner's spec of 2026-11-08; charge_live/README.md v84). Kooper is not in the run: every
+ * partner "Charge" is Goombario's. One step per turn, its target screen the turn's last one (so the route moves on by
+ * itself as on Ultra Boots). nb: a Normal Boots step (no Ultra Boots machinery: no Charge reader but the Duplighosts', no
+ * Jr. Troopa bar count, no Hallway Spiny Flip carry, no Final Bowser T1-T4 tracker). nomodel: what the page cannot model
+ * there yet (it says so and beeps nothing: a guess is never beeped). Final Bowser phase 1 is not tracked at all. */
+const NB_CC = 'Close Call is decided by the frame of the last confirm before the attack, but Goombario\'s Charge (its effects\' random draws) and the enemy\'s turn after it are not modelled yet (not measured in the emulator)';
+const ENDGAME_NB = [
+  { h: 'Duplighosts', turns: [
+    { text: 'T1: Charge; Bombette Do Nothing on the beep - 3+ Transform (4 ideal: 3 costs 2 damage)', steps: [{ label: 'Do Nothing (Bombette) on the beep → all 4 (3 at worst; T1 Charge locks the seed)', cat: 'S', prof: 'dup3', chg: 'dup', nb: true }] },
+    { text: 'T2: Power Bomb; Jump x2 on the one that did not transform', steps: [] },
+    { text: 'T3: Jump x1', steps: [] } ] },
+  { h: 'Jr. Troopa', turns: [
+    { text: 'T1: Super Charge; Charge [3HP, 5FP]', steps: [{ label: 'Super Charge (hand on Mario), then Goombario: Charge', cat: 'M', nb: true, nomodel: 'no roll this turn' }] },
+    { text: 'T2: Super Charge; Charge [3HP, 0FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
+    { text: 'T3: Maple; Charge [3HP, 9FP] - Close Call', steps: [{ label: 'Maple Syrup, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
+    { text: 'T4: Super Charge; Charge [3HP, 4FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
+    { text: 'T5: Super Charge; Headbonk x2 [3HP, 0FP] - Close Call', steps: [{ label: 'Goombario: Headbonk (hand on Jr. Troopa) → Close Call', cat: 'K', nb: true, nomodel: 'Close Call is decided by the Headbonk confirm, but Goombario\'s Headbonk and Jr. Troopa\'s turn after it are not modelled yet', blind: 'Close Call about 30%' }] },
+    { text: 'T6: Whacka; Do Nothing [3HP, 10FP]', steps: [{ label: 'Whacka, then Goombario: Do Nothing', cat: 'S', nb: true, nomodel: 'no roll the page can beep this turn' }] },
+    { text: 'T7: Bounce x5 [3HP, 7FP]', steps: [{ label: 'Power Bounce on the beep → 5+, 6 ideal (Normal Boots; show a few shines in this menu: the seed is found from the coin)', cat: 'K', prof: 'jrpb5n', nb: true, blind: '5+ bounces about 67%, 6+ about 32%' }] } ] },
+  { h: 'Hallway Bowser', turns: [
+    { text: 'T1: Super Charge; Charge [3HP, 2FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
+    { text: 'T2: Time Out; Charge [3HP, 1FP]', steps: [{ label: 'Time Out → STOP (show a few shines in this menu: the seed is found from the coin)', cat: 'B', prof: 'timeout', nb: true }] },
+    { text: 'T3: Maple; Charge [3HP, 9FP]', steps: [] },
+    { text: 'T4: Super Charge; Charge [3HP, 4FP]', steps: [] },
+    { text: 'T5: Bounce x6; Headbonk x2 [3HP, 1FP]', steps: [{ label: 'Power Bounce on the beep → 6+ (Normal Boots; show a few shines in this menu: the seed is found from the coin)', cat: 'B', prof: 'hwpb6n', nb: true, blind: '6+ bounces about 16%' }] } ] },
+  { h: 'Final Bowser', turns: [
+    { text: 'Phase 1 (not tracked): T1 Charge; Charge - T2 Jump x2; Headbonk x1 [Bowser at 89 HP] - T3 Star Beam', steps: [] },
+    { text: 'T1: Peach Beam; Charge [1HP, 14FP] [Bowser at 89 HP]', steps: [] },
+    { text: 'T2: Super Charge; Charge [1HP, 9FP] - Close Call, no Star Shield, no wave', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 2 }] },
+    { text: 'T3: Super Charge; Charge [1HP, 4FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 3 }] },
+    { text: 'T4: Super Charge; Do Nothing [1HP, 0FP]', steps: [{ label: 'Super Charge, then Goombario: Do Nothing → Close Call', cat: 'M', nb: true, fbnb: 4 }] },
+    { text: 'T5: Jammin\' Jelly; Charge [1HP, 14FP]', steps: [{ label: 'Jammin\' Jelly, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 5 }] },
+    { text: 'T6: Super Charge; Charge [1HP, 9FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 6 }] },
+    { text: 'T7: Super Charge; Charge [1HP, 4FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 7 }] },
+    { text: 'T8: Bounce x5; Headbonk x2 [1HP, 1FP]', steps: [{ label: 'Power Bounce → 5+ (Normal Boots)', cat: 'B', nb: true, nomodel: 'Power Bounce with Normal Boots is not modelled for Final Bowser yet (and the arena\'s lightning breaks a plain shine lock)', blind: '5+ bounces' }] } ] } ];
+ENDGAME_NB.forEach(f => f.turns.forEach(tu => tu.steps.forEach(st => { if (st.fbnb) { st.nomodel = 'Bowser\'s attack choice is modelled (no Star Shield, no wave: the page\'s odds below), but Goombario\'s Charge, the Super Charge rays at this arena on Normal Boots and the frames from the confirm to Bowser\'s AI are not measured yet'; st.blind = 'this turn about ' + Math.round(100 * R.fbnbTurnBlind(st.fbnb)) + '% (Close Call and an allowed attack)'; } })));
+const bootsNow = () => ($('s-boots') && $('s-boots').value === 'normal' ? 'normal' : 'ultra');
 const dupRoute = () => ($('s-duproute') && $('s-duproute').value === 'charge' ? 'charge' : 'rta');
 const jrRoute = () => ($('s-jrroute') && $('s-jrroute').value === 'shine' ? 'shine' : 'charge');
-const endgameNow = () => (dupRoute() === 'charge' ? ENDGAME_DC : ENDGAME).map(f => (f.h === 'Jr. Troopa' && jrRoute() === 'charge' ? ENDGAME_JR : f));
-const ENDGAME_BY = {}, endgameSteps = () => { const k = dupRoute() + ':' + jrRoute(); return ENDGAME_BY[k] || (ENDGAME_BY[k] = stepsOf(endgameNow())); };
+const endgameNow = () => (bootsNow() === 'normal' ? ENDGAME_NB.map(f => (f.h === 'Duplighosts' && dupRoute() !== 'charge' ? ENDGAME[0] : f))
+  : (dupRoute() === 'charge' ? ENDGAME_DC : ENDGAME).map(f => (f.h === 'Jr. Troopa' && jrRoute() === 'charge' ? ENDGAME_JR : f)));
+const ENDGAME_BY = {}, endgameSteps = () => { const k = bootsNow() + ':' + dupRoute() + ':' + jrRoute(); return ENDGAME_BY[k] || (ENDGAME_BY[k] = stepsOf(endgameNow())); };
 const CAT = { M: { screen: 'a target screen with the hand on Mario (Super Charge, an item on Mario)', box: 'the マリオ name box in the top-left' },
   K: { screen: 'a target screen with the hand on Jr. Troopa', box: 'the name box in the top-left' },
   B: { screen: 'a target screen with the hand on Bowser (Spiny Flip or Time Out)', box: 'the クッパ name box in the top-left' },
@@ -1148,7 +1187,8 @@ function zwFight() {
  * states agree), else 'safe3'. Over 2000 Charge-locked seeds with the runner's spread (rms 1.77): 3+ 78.7 / 78.5 / 73.5%,
  * all 4 22.1 / 22.9 / 29.1%. */
 const DUP_TOL = { safe3: 0.02, free: 0.03 };
-const dupGoal = () => { const e = typeof $ === 'function' && $('s-dupgoal'), v = e ? e.value : 'free'; return v === 'safe3' || v === 'run2' || v === 'four' ? v : 'free'; };
+// v84: 'auto' (default): Normal Boots favours all 4 strongly (3 copies cost 2 damage there: one Jump x2 on the one left), Ultra Boots keeps v80's 'free'
+const dupGoal = () => { const e = typeof $ === 'function' && $('s-dupgoal'), v = e ? e.value : 'auto'; return v === 'safe3' || v === 'run2' || v === 'four' || v === 'free' ? v : (bootsNow() === 'normal' ? 'four' : 'free'); };
 /* v83, the perfect press (charge_live/README.md): Close Call, Do Nothing's copies, Time Out and Power Bounce are decided
  * by the seed and the exact confirm frame. The page assumes a perfect press: the beeped frame is always a frame that works
  * (for the states: share >= 0.5 and within PP_TOL of the best share in reach), never a failing frame between two working
@@ -1214,7 +1254,7 @@ function ppText(m, prof, long) {
   const pid = prof || '', ps = m.ppStates != null ? m.ppStates : m.pp;
   let t;
   if (m.pp4 != null) {
-    const [n3, n4] = pid === 'jrpb5' ? ['5+ bounces', '6+'] : ['3+ copies', 'all 4'];
+    const [n3, n4] = /^jrpb5/.test(pid) ? ['5+ bounces', '6+'] : ['3+ copies', 'all 4'];
     t = 'Perfect press: ' + part(n3, m.pp, ps, m.win) + (m.win4 ? ', ' + n4 + ' (' + ws(m.win4) + ')' : ', not ' + n4);
   } else t = 'Perfect press: works' + (ps >= 0.995 ? '' : ' for ' + pc(ps) + ' of the states') + ' · ' + ws(m.win);
   t += conf;
@@ -1339,6 +1379,9 @@ function makePlan() {
   if (FB2.on && isRoute() && RT()[routeStep] && RT()[routeStep].turn === 'fb2_pb') { if (FB2.t7) fb2PlanT7(); else { st.msg = FB2.plan && !FB2.kObs ? 'FB2: waiting for the T6 popup A (the page reads the frame from the popup closing).' : 'No edge: no FB2 states to plan with. Press Power Bounce normally.'; render(); } return; }
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'Time Out is done for this attempt. The route stays on the Hallway until the next Charge (a retry) or Final Bowser\'s arena.'; render(); return; }
   if (typeof HWHP !== 'undefined' && HWHP.died && PROF().id === 'timeout' && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'No edge: Mario was hit on Hallway T1 and a Life Shroom revived him; the page does not follow the revive. Press Time Out normally (31%).'; render(); return; }
+  { const s = isRoute() && RT()[routeStep];     // v84: a Normal Boots turn the page cannot model yet: say so, never a guessed beep
+    if (s && s.nb && s.prof && s.prof !== 'dup3' && !st.lock && !zw.on) { st.msg = 'No beeps yet (Normal Boots): show a few shines in this menu (wait on it, or C-up): the seed is found from the coin and ' + (s.prof === 'timeout' ? 'Time Out' : 'Power Bounce') + ' is beeped. Without a lock, press normally (' + (s.prof === 'timeout' ? '31%' : s.blind) + ').'; render(); return; }
+    if (s && s.nb && s.nomodel) { st.msg = 'No beeps this turn (Normal Boots): ' + s.nomodel + '.' + (s.blind ? ' Play it blind: ' + s.blind + '.' : ''); cancelBeeps(); render(); return; } }
   if (zw.on && (PROF().id === 'timeout' || dupZw() || jrZw()) && zwPlan()) return;
   // v76: on the Charge-lock route the Duplighosts are planned only from this fight's Charge tracker, never from a coin lock
   // (console session 2026-11-07, t=579423: a walk lock from before the fight produced three Do Nothing plans and a beeped press)
@@ -1534,7 +1577,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v83';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v84';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -1553,7 +1596,7 @@ function render() {
   else if (st.plan) { const P = st.plan, typ = P.type && WTYPE[P.type] ? 'Window ' + WTYPE[P.type].name + ': ' : '';
     setText(P.again ? 'Still on the target screen: next window planned' : P.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep (' + (P.beeps || nBeeps()) + ' beeps)',
       typ + (P.mix ? (P.mix.zw ? P.mix.groups + ' possible RNG states are left (carried from the Charge or the walk);' : P.mix.groups + ' Spiny Flip outcomes are still possible;') + ' ' + ppText(P.mix, P.prof, true) + ' A shine in this menu replans if it rules the frame out.'
-        : P.w.length + ' frame' + (P.w.length > 1 ? 's' : '') + ' in a row. ' + (P.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle frame.') + ' Missed it? Press Plan again for the next window.')); }
+        : P.w.length + ' frame' + (P.w.length > 1 ? 's' : '') + ' in a row. ' + (P.aim4 ? (/^jrpb5/.test(PROF().id) ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle frame.') + ' Missed it? Press Plan again for the next window.')); }
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan press) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan press) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
   else if (st.cands && st.cands.length === 1) setText(segLabel + 'One fit, confirming', Math.round(st.have) + ' of ' + Math.round(st.need) + ' bits of evidence. It locks once a wrong match would be under a 1% chance.');
@@ -1963,7 +2006,7 @@ function drawIdlePreview() {
 }
 function applyProfile() {
   const P = PROF(); useTarget(); cancelBeeps(); st.plan = null; stripData.key = null;
-  $('route').hidden = !isRoute(); $('legend4').hidden = !R.TOP[PROF().id]; $('legend4-text').textContent = PROF().id === 'jrpb5' ? 'top band: 6+ bounces' : 'top band: all 4 copy';
+  $('route').hidden = !isRoute(); $('legend4').hidden = !R.TOP[PROF().id]; $('legend4-text').textContent = /^jrpb5/.test(PROF().id) ? 'top band: 6+ bounces' : 'top band: all 4 copy';
   if (isRoute()) {
     routeStep = Math.min(routeStep, RT().length - 1); const S = RT()[routeStep], C = CAT[S.cat];
     $('target-label').textContent = { M: 'Target on Mario', K: 'Target on Jr. Troopa', B: 'Target on Bowser', S: 'Partner’s Strategies' }[S.cat];
@@ -2006,6 +2049,43 @@ $('s-duproute').addEventListener('change', () => {
   dupRouteNote(); applyProfile();
 });
 dupRouteNote();
+/* v84: each fight's overall odds on both routes, so the runner can compare (the route panel, under the Boots setting).
+ * "beeps" = what the page's beeps give where it models the turn (perfect press, from the tests and the READMEs); a turn
+ * it does not model counts at its blind odds and is marked. Final Bowser Normal Boots: Bowser's attack choice from the
+ * decomp (R.fbnbTurnBlind, emulator-checked: test_fbnb_ai.js); "if beeped" assumes every frame of the max extra wait is an
+ * independent try at that turn's chance (an estimate: the turn is not beeped yet). */
+function routeOddsLines() {
+  const pc = x => (x >= 0.995 ? '~100%' : x >= 0.1 ? Math.round(100 * x) + '%' : x >= 0.001 ? (100 * x).toFixed(1) + '%' : (100 * x).toExponential(1) + '%');
+  const W = Math.max(1, Math.round(num('zwwin') * 30)); let fbB = 1, fbW = 1;
+  for (let t = 2; t <= 8; t++) { const p = R.fbnbTurnBlind(t); fbB *= p; fbW *= 1 - Math.pow(1 - p, W); }
+  return { ultra: [
+    ['Duplighosts', 'T1 Do Nothing beeped: 3+ ~100%, all 4 ~43% (perfect press; your spread: about 79% / 22%); blind 47% / 13%'],
+    ['Jr. Troopa', 'T3-T5 Close Calls and T6 Power Bounce beeped: each Close Call 72-87% with ±1-frame presses, 5+ 97-100%: about 50% for the fight; blind 1.8%'],
+    ['Hallway Bowser', 'T2 Time Out beeped: 58-80% (model); blind 31%'],
+    ['Final Bowser', 'T1-T4 beeped (Bowser misses): about 90% for all four (model); blind about 5%; T6 Close Call / T7 Power Bounce beeped']],
+  normal: [
+    ['Duplighosts', 'T1 Do Nothing beeped (goal: 4 first): all 4 ~83%, 3+ ~100% (perfect press; your spread: about 31% / 71%); blind 13% / 47%'],
+    ['Jr. Troopa', 'T2-T5 Close Calls not beeped yet (blind 30% each: 0.8%); T7 Power Bounce 5+ beeped from a shine lock in its menu (blind 67%): about 0.8% for the fight'],
+    ['Hallway Bowser', 'T1 Close Call not beeped yet (30%); T2 Time Out (blind 31%) and T5 Power Bounce 6+ (blind 16%) beeped from a shine lock in their menus: at most 30% for the fight'],
+    ['Final Bowser', 'phase 2 T2-T8 (Close Call, no Star Shield, no wave) blind ' + pc(fbB) + '; not beeped yet (if every turn were beeped in a ' + num('zwwin') + ' s window: about ' + pc(fbW) + ', an estimate); T8 Power Bounce 5+ not modelled yet']] };
+}
+function routeOddsShow() {
+  const el = $('route-odds'); if (!el) return; const L = routeOddsLines(), cur = bootsNow(), esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  el.innerHTML = '<b>Odds per fight</b> (' + (cur === 'normal' ? 'Normal Boots now; Ultra Boots for comparison' : 'Ultra Boots now; Normal Boots for comparison') + ')' +
+    ['ultra', 'normal'].map(k => '<br><span style="' + (k === cur ? 'font-weight:600' : 'opacity:.75') + '">' + (k === 'ultra' ? 'Ultra Boots' : 'Normal Boots') + ':</span> ' + L[k].map(([f, t]) => esc(f) + ' - ' + esc(t)).join('; ')).join('');
+}
+/* the Boots setting: both routes keep their fights in the same order; switching keeps the fight the route is on */
+function bootsChange() {
+  const fightOf = s => (s && s.t ? s.t.replace(/ T\d.*$/, '') : null), was = fightOf(RT()[routeStep]);
+  saveSettings(); slog('boots', { boots: bootsNow() });
+  if (zw.on) zw.on = false; if (typeof chgReset === 'function') chgReset(); if (typeof jrReset === 'function') jrReset('boots'); if (typeof fb14Reset === 'function') fb14Reset('boots');
+  st.plan = null; st.msg = null; cancelBeeps();
+  let i = was ? RT().findIndex(s => fightOf(s) === was) : 0; if (i < 0) i = 0;
+  routeStep = i; st.hwDone = false; st.hwLeft = null; try { localStorage.setItem('tot-route-step', String(i)); } catch (e) {}
+  applyProfile(); routeOddsShow();
+}
+$('s-boots').addEventListener('change', bootsChange);
+routeOddsShow();
 /* leaving the Duplighost step (the Do Nothing confirm moves the route on): its tracker ends, so the Hallway's walk tracker
  * can start later (zwStart needs zw off); entering it drops any other fight's tracker (an earlier save was loaded) */
 function dupStepChange(was) {
@@ -2275,7 +2355,7 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { VERSION, ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
+window.__tot = { VERSION, dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(), routeOddsLines: () => routeOddsLines(), ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
   JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },

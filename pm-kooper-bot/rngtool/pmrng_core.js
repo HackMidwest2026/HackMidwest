@@ -169,6 +169,24 @@
       effects: { 45: Array(11).fill(359), 72: Array(11).fill(359), 99: Array(11).fill(359), 126: Array(11).fill(359), 153: Array(11).fill(359) },
       rolls: [[71, 120], [98, 72], [125, 43], [152, 25], [179, 15]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 1,
       screen: 'Power Bounce target screen (hand on Bowser)', box: 'the クッパ name box in the top-left' },
+    // v84, Normal Boots (pb_nb_log.py, test_pb_nb.js; the menu's boots level 0 = Power Bounce's EVS_UseMove_Basic): every
+    // bounce after the first is PlayerBasicJumpToGoal 24 (Ultra: PlayerUltraJumpToGoal 25), so the cap rolls come every 26
+    // frames from +77 (Ultra: 27 from +78) and each hit's 359-draws one frame after its roll. The draws per hit follow the
+    // damage (Mario's jump charge on the route: Jr. Troopa T7 12 = four Super Charges, Hallway T5 6 = two; 1 + charge -
+    // defence, one less per bounce). Same chances and cap rule as Ultra (BaseHitChance 200 x chance / 100 per roll).
+    jrpb6n: { id: 'jrpb6n', name: 'Jr. Troopa: Power Bounce 6+ hits (Normal Boots)', short: '6+ bounces', group: 'jr', nb: true,
+      effects: { 52: Array(11).fill(359), 78: Array(11).fill(359), 104: Array(11).fill(359), 130: Array(10).fill(359) },
+      rolls: [[77, 140], [103, 98], [129, 68], [155, 47]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
+      screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
+    jrpb5n: { id: 'jrpb5n', name: 'Jr. Troopa: Power Bounce 5+ hits (Normal Boots)', short: '5+ bounces', group: 'jr', nb: true,
+      effects: { 52: Array(11).fill(359), 78: Array(11).fill(359), 104: Array(11).fill(359) },
+      rolls: [[77, 140], [103, 98], [129, 68]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 2,
+      screen: 'Power Bounce target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
+    // Hallway Bowser (chance 65: 130, 84, 54, 35, 22), Normal Boots, charge 6: 6+ hits = the first four cap rolls pass
+    hwpb6n: { id: 'hwpb6n', name: 'Hallway Bowser: Power Bounce 6+ hits (Normal Boots)', short: '6+ bounces', nb: true,
+      effects: { 48: Array(10).fill(359), 74: Array(10).fill(359), 100: Array(8).fill(359), 126: Array(8).fill(359) },
+      rolls: [[73, 130], [99, 84], [125, 54], [151, 35]].map(([at, c]) => ({ at, max: 100, ok: v => v <= c })), vanish: 2, minRun: 1,
+      screen: 'Power Bounce target screen (hand on Bowser)', box: 'the クッパ name box in the top-left' },
   };
   // Duplighosts with branching: a copy -> next roll 97 frames later; a failed copy -> tackle (8 x rand(359) on +34)
   // and the next roll 78 frames later. Measured in the emulator (13 seeds, every roll and effect matched).
@@ -193,7 +211,7 @@
   /* Duplighosts: the earliest frame in [from, to] where all 4 copy and both neighbours give 3+; returns
    * {target, window} with window = the 3+ run around it, or null */
   // base profile -> its better outcome: aim at a frame with the better outcome whose neighbours both give the base one
-  const TOP = { dup3: 'dup4', jrpb5: 'jrpb6', fbpb6: 'fbpb7' };
+  const TOP = { dup3: 'dup4', jrpb5: 'jrpb6', fbpb6: 'fbpb7', jrpb5n: 'jrpb6n' };
   function aimTop(seed, from, to, baseId) {
     const P3 = PROFILES[baseId], P4 = PROFILES[TOP[baseId]], c3 = {}, w3 = f => (f in c3 ? c3[f] : (c3[f] = works(seed, 0, f, 0, P3)));
     for (let f = from + 1; f < to; f++) {
@@ -506,7 +524,52 @@
     return out;
   }
 
-  const api = { MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
+  /* ---- v84: Final Bowser phase 2, Bowser's attack choice (decomp src/battle/area/kpa2/actor/final_bowser_2.c
+   * EVS_TakeTurn_Inner -> EVS_UseAttackOrShockwave / EVS_UseAttack; charge_live/README.md v84). v: Bowser's actor vars
+   * as they stand before his turn (AVAR_TurnCount, the TurnsSince* counters, RecoversLeft), enchanted (the Star Rod's
+   * aura: ACTOR_EVENT_FLAG_STAR_ROD_ENCHANTED), charged (Mario's jump or hammer charge > 0), hpGap (Mario's HP % minus
+   * Bowser's). Every RandInt the script makes, in order, from seed s; returns the attack ('recover', 'starrod', 'wave' =
+   * the Draining Shockwave, 'lightning', 'slam', 'claw', 'fire'), the draws [max, value], the seed after them and the vars
+   * after the turn (the counters the chosen attack resets). */
+  function fbnbAi(s, v0) {
+    const v = Object.assign({}, v0), draws = [], ri = mx => { const r = randInt(s, mx); s = r[0]; draws.push([mx, r[1]]); return r[1]; };
+    v.turn++; v.sinceClaw++; v.sinceSlam++; v.sinceShock++; v.sinceStar++; v.sinceRecover++;
+    const done = atk => { if (atk === 'slam') v.sinceSlam = 0; if (atk === 'claw') v.sinceClaw = 0; if (atk === 'wave') v.sinceShock = 0; if (atk === 'starrod') v.enchanted = true; if (atk === 'recover') { v.sinceRecover = 0; v.recovers = Math.max(0, (v.recovers || 0) - 1); } return { atk, draws, s, v }; };
+    if ((v.hpGap || 0) > 25 && v.recovers) {
+      if (ri(100) < 75) { if (v.sinceRecover > 1) return done('recover'); if (ri(100) < 0) return done('recover'); }
+    }
+    if (v.turn > 1 && !v.enchanted) {
+      const ch = v.sinceStar === 1 || v.sinceStar === 2 ? 0 : v.sinceStar === 3 ? 15 : 75;
+      if (ri(100) < ch) return done('starrod');
+    }
+    const attack = () => {
+      if (ri(80) < 20 && v.sinceSlam >= 2) return done('slam');
+      if (ri(60) < 20 && v.sinceClaw >= 2) return done('claw');
+      return done('fire');
+    };
+    if (v.sinceShock < 3 || v.turn <= 3) return attack();
+    if (v.sinceShock >= 6) return done(ri(30) < 20 ? 'wave' : 'lightning');
+    if (ri(100) < 75 && v.charged) return done('wave');
+    const x = ri(110); if (x < 30) return done(x < 20 ? 'wave' : 'lightning');
+    return attack();
+  }
+  /* the Normal Boots route's phase 2 (Peach Beam on T1, Super Charges from T2, Mario at 1 HP: Close Call rand_int(100) < 30,
+   * 1A5830.c): the vars before Bowser's turn t when every earlier turn was an allowed one (Peach Beam resets
+   * TurnsSinceStarBeam at T1; no wave yet), and the blind chance that turn t is a Close Call on an allowed attack (not the
+   * Star Rod, not the Draining Shockwave; the Lightning Blast is allowed: it tests Mario like the normal attacks).
+   * Exact over the RandInt values (uniform 0..max; RandInt(100) on 0..1009 / 10). */
+  function fbnbVars(t) { return { turn: t - 1, sinceClaw: 3 + t - 1, sinceSlam: 3 + t - 1, sinceShock: t - 1, sinceStar: t - 1, sinceRecover: t - 1, recovers: 3, enchanted: false, charged: t >= 2, hpGap: 0 }; }
+  function fbnbTurnBlind(t, v) {
+    v = v || fbnbVars(t); const P100 = k => (Math.min(100, Math.max(0, k)) * 10) / 1010, Pu = (k, n) => Math.min(n + 1, Math.max(0, k)) / (n + 1);
+    const turn = v.turn + 1, sShock = v.sinceShock + 1, sStar = v.sinceStar + 1; let p = 1;
+    if (turn > 1 && !v.enchanted) p *= 1 - P100(sStar === 1 || sStar === 2 ? 0 : sStar === 3 ? 15 : 75);
+    if (!(sShock < 3 || turn <= 3)) {
+      if (sShock >= 6) p *= 1 - Pu(20, 30);
+      else { p *= v.charged ? 1 - P100(75) : 1; p *= 1 - Pu(20, 110); }
+    }
+    return p * P100(30);
+  }
+  const api = { fbnbAi, fbnbVars, fbnbTurnBlind, MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
     seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, extendWide, extendWideTorch, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, searchShineStartTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

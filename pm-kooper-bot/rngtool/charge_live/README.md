@@ -1,3 +1,81 @@
+# Time Out Timer v84: the Normal Boots route (Nov 8)
+
+The runner's second route (spec of 2026-11-08): Normal Boots, Goombario instead of Kooper (every partner "Charge" is
+Goombario's), Mario at 3 HP through Jr. Troopa and the Hallway and at 1 HP in Final Bowser's phase 2.
+
+## 1. The setting
+**Boots: Ultra Boots / Normal Boots** in the route panel's top row (beside Restart route), saved with the other settings
+(`tot-settings`, try/catch). Switching it switches all four fights' route tables, beeps and odds, keeps the fight the
+route is on, and drops the trackers of the other route. Ultra Boots is v83 exactly (`test_nb_route.js`: the step list
+round-trips unchanged). **Odds per fight** (the last line in the route panel's Details, so the v81 order stays: buttons,
+the four fights, Details) lists each fight's overall odds on both routes, the current one in bold.
+
+## 2. What Normal Boots beeps, and what it does not (never a guessed beep)
+| Fight / turn | Beep | How |
+|---|---|---|
+| Duplighosts T1 Do Nothing | yes | the same Charge lock and model as Ultra Boots; the Duplighosts goal **Auto** (new default) = "4 first" on Normal Boots (3 copies cost 2 damage here), "4 when it's free" on Ultra |
+| Jr. Troopa T2-T5 Close Call | no | the last confirm before the attack is Goombario's Charge (T5: his Headbonk): its effects' random draws and Jr. Troopa's turn after it are not measured; "No beeps this turn (Normal Boots): ... Play it blind: Close Call about 30%" |
+| Jr. Troopa T7 Power Bounce 5+ (6 ideal) | yes, from a shine lock in its menu | profile `jrpb5n` / `jrpb6n` (below) |
+| Hallway T1 Close Call | no | as Jr. Troopa (Goombario's Charge is the lever; no Spiny Flip on this route) |
+| Hallway T2 Time Out | yes, from a shine lock in its menu | the Time Out profile (no Charge carry: T1's Goombario Charge and Bowser's attack are not modelled) |
+| Hallway T5 Power Bounce 6+ | yes, from a shine lock in its menu | profile `hwpb6n` |
+| Final Bowser phase 1 | not tracked | |
+| Final Bowser T2-T8 (Close Call, no Star Shield, no wave) | no | Bowser's attack choice is modelled (section 3), but Goombario's Charge, the Super Charge rays at this arena on Normal Boots and the frames from the confirm to Bowser's AI are not measured; the odds use the model |
+| Final Bowser T8 Power Bounce 5+ | no | not measured; the arena's lightning breaks a plain shine lock |
+
+A Normal Boots step reads no Charge but the Duplighosts' (`chgProfNow`, `chgStartTracker`: `nbNoTracker`), so none of the
+Ultra Boots trackers (Jr. Troopa's bar count, the Hallway Spiny Flip carry, Final Bowser T1-T4) can start on it. After the
+Hallway the route goes into Final Bowser by ▶ or a click (the arena read that moves it on Ultra Boots is a Charge read).
+
+## 3. Bowser's phase-2 attack choice (decomp, emulator-checked)
+`pmrng_core.js fbnbAi` ports `final_bowser_2.c` EVS_TakeTurn_Inner: the counters (TurnCount, TurnsSince Shockwave /
+StarBeam / ClawSwipe / BodySlam / Recover) go up by one; Recover (`RandInt(100) < 75` when Mario's HP % is more than 25
+over Bowser's and recovers are left); the **Star Rod** (TurnCount > 1, not enchanted: `RandInt(100)` under 0 / 0 / 15 / 75
+for TurnsSinceStarBeam 1 / 2 / 3 / 4+); then a normal attack while TurnsSinceShockwave < 3 or TurnCount <= 3; else
+TurnsSinceShockwave >= 6: `RandInt(30) < 20` the **Draining Shockwave** (the wave), else Lightning Blast; else
+`RandInt(100) < 75` with a jump or hammer charge: the wave; else `RandInt(110)`: < 20 the wave, < 30 Lightning Blast;
+else the normal attacks (`RandInt(80) < 20` Body Slam if 2+ turns since, `RandInt(60) < 20` Claw Swipe likewise, else
+Fire Breath). Only the wave resets TurnsSinceShockwave (Lightning Blast does not).
+On the route (Peach Beam on T1 resets TurnsSinceStarBeam, Super Charges from T2), with Close Call (`rand_int(100) < 30`,
+1A5830.c, Mario under 6 HP) and the Lightning Blast allowed (it tests Mario like the normal attacks), the blind chance per
+Bowser turn is T2 29.7%, T3 25.3%, T4 / T5 1.6% (the Star Rod at 75%, the wave at 75% with a charge, then 20/111), T6-T8
+2.7% (TurnsSinceShockwave 6+: the wave 20 in 31, and the Star Rod): **3.9e-10 for T2-T8** blind. If every turn could be
+beeped with a 1 s window (30 frames, each an independent try: an estimate) about 2.6%; 2 s about 20%.
+**Emulator** (`fb2_route/p2ai_log.py`, `fixtures/p2ai_logs.json`, `test_fbnb_ai.js`): from `boss_2304_peach_start.st`,
+random vars / Star Rod flag / charges / HP written at Lakilester's menu (DIAGNOSTIC, setup only), Bowser's turn logged:
+60 cases (seeds from 2402), **every RandInt of Bowser's AI equal to the model's (max and value) in
+60 / 60**, the attack the game used equal to the model's in 54 / 54 that can be read (15 Star Rod, 8 wave, 6 Recover, 6 Body
+Slam, 7 Claw Swipe, 10 Fire Breath, 2 Lightning Blast; 6 Fire Breath / Lightning Blast at full HP have no Close Call roll
+to tell them apart), the vars after the turn 60 / 60. The Close Call roll comes at AI + 55 after Fire Breath (as FB2) and
+AI + 99 after Lightning Blast.
+Found on the way: the Ultra Boots T4 model (`fb14_live.js fbStep`, `e.t4`) treats `RandInt(110)` 20-29 as a normal
+attack; the game uses Lightning Blast there (no `RandInt(80)` follows). It only matters on the T4 wave miss path the route
+does not want (the T4 goal is the wave); not changed in v84 (Ultra Boots stays as it was), noted for a later fix.
+
+## 4. Normal Boots jump timing (decomp, emulator-checked)
+`power_bounce.c`: the menu stores the boots level as the move's argument; level 0 runs `EVS_UseMove_Basic`, whose bounces
+after the first are `PlayerBasicJumpToGoal 24` (Ultra: `PlayerUltraJumpToGoal 25`), and the cap check is `IfGe(LVarF,
+LVar0)` (Ultra `IfGt`: the same outcome, the first roll's chance is 130-140). The emulator (`pb_nb_log.py`, the menu's
+boots level written to 0, action commands pressed on each window's first frame; `fixtures/pb_nb_logs.json`,
+`test_pb_nb.js`): **cap rolls every 26 frames** (Ultra 27): Jr. Troopa +77, +103, +129, +155 (Ultra +78, +105, +132,
++159), Hallway Bowser +73, +99, +125, +151; each hit's 359-draws one frame after its roll, their count by the damage.
+10 / 10 Jr. Troopa runs and 10 / 10 Hallway runs match roll for roll and draw for draw; the Ultra control (4 runs) keeps
+the 27-frame period. The draw counts assume the route's jump charge (Jr. T7: 12 = four Super Charges; Hallway T5: 6 = two):
+another charge changes them (unverified on console). The plain Jump and the Duplighosts' / phase 1's jumps are not beeped
+(nothing is decided by their frame on this route).
+
+## 5. Not verified on console
+Everything on Normal Boots: the shine locks in the Jr. T7 / Hallway T2 / T5 menus with Goombario out, the jump charge on
+T7 / T5, the Duplighosts goal "4 first" with the runner's presses (it costs 3+ robustness: with the runner's spread 3+
+about 71% against 80% for "4 when it's free").
+
+## Tests
+`test_nb_route.js` (the setting, both route tables, every Normal Boots step's beep or "No beeps", the shine-lock plans on
+Jr. T7 and Hallway T5, the odds, persistence), `test_fbnb_ai.js` (the attack choice against the emulator, the blind chance
+against a Monte Carlo), `test_pb_nb.js` (Normal Boots Power Bounce timing against the emulator); all in `run_suite.sh`.
+`test_dup_plan.js`: the goal setting has 5 options, default Auto (Ultra Boots: "4 when it's free"). Version checks moved to
+v84.
+
 # Time Out Timer v83: the perfect press (Nov 8)
 
 Asked by the runner: Close Call, the Duplighosts' copies, Time Out and Power Bounce are decided by the seed and the exact
