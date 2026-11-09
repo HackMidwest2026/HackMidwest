@@ -30,11 +30,14 @@ def items(e):
     return [e.s16(PLAYER_DATA + 0x1B4 + 2 * i) for i in range(10) if e.s16(PLAYER_DATA + 0x1B4 + 2 * i) > 0]
 
 
+MHP = int(os.environ.get('MARIO_HP', '5'))      # v86: the runner's T1-T4 are at 10 HP (console clips); 5 = Danger (v74 builds)
+
+
 def build(seed, out, maxd=40, bhp=80, start='/dev/shm/fb2r/t1menu.st'):
     os.makedirs(out, exist_ok=True)
     r = Run('rb', log=False)
     r.load(start)
-    r.e.w8(PLAYER_DATA + 2, 5)                               # DIAGNOSTIC: Mario HP 5 (Danger)
+    r.e.w8(PLAYER_DATA + 2, MHP)                             # DIAGNOSTIC: Mario HP (5 = Danger; MARIO_HP=10 as on console)
     r.set_bowser_hp(bhp)                                     # DIAGNOSTIC: Bowser HP
     r.seed(seed)                                             # DIAGNOSTIC: gRandSeed at the T1 menu
     r.e.save(out + '/t1_menu.st')
@@ -54,7 +57,7 @@ def build(seed, out, maxd=40, bhp=80, start='/dev/shm/fb2r/t1menu.st'):
             else:
                 r.load(out + '/t%d_partner.st' % t); getattr(r, pa)(dl)
             st = r.wait_state((13,), cap=4000)
-            ok = st == 13 and r.e.s8(PLAYER_DATA + 2) == 5 and 149 in items(r.e) and r.e.s8(BSTATUS + 0x97) >= 3 * CHARGES[t]
+            ok = st == 13 and r.e.s8(PLAYER_DATA + 2) == MHP and 149 in items(r.e) and r.e.s8(BSTATUS + 0x97) >= 3 * CHARGES[t]
             res.append(int(ok))
             if ok and kept is None:
                 kept = dl; r.idle(20); r.e.save(out + '/t%d_menu.st' % (t + 1))

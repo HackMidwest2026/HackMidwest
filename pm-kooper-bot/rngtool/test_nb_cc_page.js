@@ -176,7 +176,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
     return out;
   }, { N });
   console.log('version ' + r.version);
-  check(r.version === 'v85', 'version v85');
+  check(r.version === 'v86', 'version v86');
   const agg = {}; const add = (k, t, planned) => { const A = agg[k] = agg[k] || { n: 0, planned: 0, landed: 0, win: 0, pp: 0, p: 0, sp: 0, inWin: 0, head: 0, conf: 0 }; A.n++; if (!planned) return;
     A.planned++; if (t.lucky) A.landed++; else if ((t.pp || 0) >= 0.95) A.conf++; A.win += t.win || 0; A.pp += t.pp || 0; A.p += t.p || 0; A.sp += t.sp || 0; if (t.K == null || (t.K >= 73 && t.K <= 132)) A.inWin++; if (t.head || t.head === undefined) A.head++; };
   for (const row of r.jr) { check(row.started, 'jr ' + row.seed.toString(16) + ': tracker started'); for (const t of row.turns) add(t.what.split(' ')[0] === 'T5' ? 'Jr T5 Headbonk' : 'Jr ' + t.what + ' box A', t, t.P != null || t.planned); }

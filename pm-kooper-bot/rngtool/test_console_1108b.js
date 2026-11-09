@@ -116,6 +116,7 @@ const readLog = f => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) 
     // the Cloud Nine confirm from the bar hiding, before the lock: kept for the lock with its shifts
     const rb = await p.evaluate(() => {
       const T = window.__tot, X = window.__fb14; X.reset(); T.setStep(T.RT().findIndex(s => s.fb14 === 1 && s.fb14role === 'lever'));
+      X.FB14.lastBurst = { turn: 1, t: performance.now() - 4000 };     // (v86: after the T1 Charge's burst, as live)
       const s0 = T.SLOG.length; let t = performance.now();
       for (let i = 0; i < 60; i++) { t += 16.7; T.fb14Frame ? T.fb14Frame(t, true) : null; }
       for (let i = 0; i < 24; i++) { t += 16.7; T.fb14Frame ? T.fb14Frame(t, false) : null; }

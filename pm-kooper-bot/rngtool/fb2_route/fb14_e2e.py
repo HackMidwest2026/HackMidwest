@@ -142,7 +142,8 @@ if __name__ == '__main__':
         play_after_confirm(sb, pa, True); oc = outcome(r)
         nxt = os.path.join(out, 'x%d.st' % (t + 1)); r.e.save(nxt); X = nxt
         row.update(outcome=oc, minus1=nb[-1], plus1=nb[1], s0_rays0_true='%08x' % sa.s0[M + 13] if t != 3 else None)
-        ok = lambda o, tt: o['hp'] == 5 and (tt != 4 or (o['ko'] and o['ko'][0] != 0))
+        MHP = int(os.environ.get('MARIO_HP', '5'))          # v86: the build's Mario HP (MARIO_HP=10: the runner's T1-T4, route_build.py)
+        ok = lambda o, tt: o['hp'] == MHP and (tt != 4 or (o['ko'] and o['ko'][0] != 0))
         row.update(miss=ok(oc, t), miss_m1=ok(nb[-1], t), miss_p1=ok(nb[1], t))
         print(json.dumps({k: v for k, v in row.items() if k != 'page'}), flush=True)
         report['turns'].append(row)

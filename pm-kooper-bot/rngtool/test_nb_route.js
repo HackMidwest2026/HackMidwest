@@ -22,7 +22,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   const r0 = await p.evaluate(() => { const T = window.__tot, sel = document.getElementById('s-boots'), row = document.getElementById('route-reset').parentElement;
     return { v: sel && sel.value, inRow: !!sel && row.contains(sel), opts: sel ? Array.from(sel.options).map(o => o.value + '=' + o.textContent) : [], ver: T.VERSION, odds: document.getElementById('route-odds').textContent, goal: document.getElementById('s-dupgoal').value }; });
   console.log(JSON.stringify(r0).slice(0, 600));
-  check(r0.ver === 'v85', 'version v85');
+  check(r0.ver === 'v86', 'version v86');
   check(r0.v === 'ultra' && r0.inRow && r0.opts.join() === 'ultra=Ultra Boots,normal=Normal Boots', 'Boots setting in the Restart route row, Ultra Boots by default');
   check(r0.goal === 'auto', 'Duplighosts goal: Auto by default');
   const U = await steps();
@@ -54,6 +54,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   check(msgs.every(m => !m.plan), 'no lock: nothing planned on any Normal Boots step');
   for (const m of msgs.filter((m, i) => N[i].nomodel)) check(/^No beeps this turn \(Normal Boots\)/.test(m.msg), m.t + ': says "No beeps" and why');
   for (const m of msgs.filter((m, i) => N[i].nomodel && N[i].blind)) check(/Play it blind/.test(m.msg), m.t + ': gives the blind odds');
+  { const fb = N.find(x => x.nomodel); check(/not beeped yet \(v86\)/.test(fb.nomodel) && /AI 16 frames later/.test(fb.nomodel) && /every 26 frames from your target A \+ 70/.test(fb.nomodel) && /6\+ 92%, 7\+ 32%, 8\+ 3%/.test(fb.nomodel), 'v86: Final Bowser\'s Power Bounce step gives the measured turn and the locked odds, and why it is still not beeped'); }
   check(/play it blind/i.test(msgs[0].msg) && /47%/.test(msgs[0].msg), 'Duplighosts T1 without a lock: play it blind (47%)');
   for (const re of [/^Hallway Bowser T2/, /^Hallway Bowser T5/, /^Jr\. Troopa T7/]) { const h = msgs.find(m => re.test(m.t)); check(/show a few shines/.test(h.msg) && /press normally/.test(h.msg), h.t + ' without a lock: show a few shines in this menu, else press normally'); }
   check(N.find(s => /^Jr\. Troopa T7/.test(s.t)).prof === 'jrpb5n' && N.find(s => /^Hallway Bowser T5/.test(s.t)).prof === 'hwpb6n', 'Normal Boots Power Bounce profiles on Jr. T7 (5+, aims at 6) and Hallway T5 (6+)');

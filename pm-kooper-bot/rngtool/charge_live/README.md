@@ -1,3 +1,114 @@
+# Time Out Timer v86: Ultra Boots Final Bowser T1-T4 end to end, the Lightning Blast, the Normal Boots phase-2 turn measured (Nov 9)
+
+The runner has never reached Ultra Boots phase-2 T4 on console. Logs C (1794169517521, clip 15-24-14) and F
+(1794170840652, clip 15-46-32; F holds C's fight too) were replayed through the v85/v86 page code, the clips were fed frame
+by frame to the page's live readers (`test_fb14_page.js`, the clips' 60 fps pictures), and the route was played end to end
+in the emulator with the page's beeps (`fb2_route/fb14_e2e.py`). No video, frames or states committed.
+
+## 1. What stopped the Ultra Boots runs (each fixed, with a test)
+| # | Bug | Seen in | Fix | Test |
+|---|---|---|---|---|
+| 1 | **The hit watch watched the wrong turn.** The route moves to the next turn's step at the lever confirm, and v82's HP watch followed the step, so a hit on the turn just played (read 2-25 s after the confirm) was never seen | code read, then simulated | the watch follows the last lever confirmed (T1-T3), not the step | `test_fb14_v86.js` 1 |
+| 2 | **Bowser's misses were not used.** Only a hit was read; a miss (10 HP steady on the bar through his turn) told the tracker nothing. On log C's T1 (his fire breath missed) only 37% of the lock's weight had him miss; with the miss read 99%, and T2's per-frame shares go from 18% to 68% of frames decided (90%+ either way) | log C fight 1 | `fb14TurnOver`: at the next turn's own action (its Charge burst, the Jelly) a turn with 10 HP steady and no hit is a miss; states that had him hit are weighed by 0.01, the doubt's background by the blind miss chance | `test_fb14_v86.js` 2, 3 |
+| 3 | **T1 killed by Mario's own Charge.** With Mario's target screen saved (cat M: Cloud Nine's is the same screen) the T1 Super Charge's confirm closes it and moves the route to the Cloud Nine step before the Charge's bar hide; v82's "Cloud Nine from the bar hide" then took the Charge's hide as Cloud Nine (frame 0, before the rays): every state dropped, "No edge" for all of T1 | end-to-end run 1234abcd | Cloud Nine's bar hide only after the T1 Charge's burst (+2.5 s) | `test_fb14_v86.js` 6, `test_console_1108b.js` 4 |
+| 4 | **Wrong turn after early screen matches.** Fed clip 15-24-14, the saved screens matched twice in T1's menus before the Charge: the route ran to T2's step, the T1 lock was taken as T2's and T2's Charge as T4's (the wave rule on T2) | clip C through the live readers | the first Charge burst of an attempt with no lock is T1's: back to Cloud Nine's step, confirms read before it dropped | `test_fb14_v86.js` 7 |
+| 5 | **The lever beeps came early for the runner.** Both console lever presses (T2 Do Nothing, logs C and F) read 2.54 and 2.2 frames before the beeped frame; the T2 states (with T1's miss) are single-frame on/off there (log C: 895 miss 93%, 896 4%, 897 99%, 898 2%), so a 2-frame early press is a coin flip | logs C, F | the lever beeps move by minus the mean of the last 8 Final Bowser lever presses (starting from these two: +2.37 frames), kept in this browser; shown in the FB panel | `test_fb14_v86.js` 5 |
+| 6 | **T4's Lightning Blast** (RandInt(110) 20-29, known since v84) taken as a normal attack; no Recover check | decomp | section 2 | `test_fb14_ai.js` |
+| 7 | **A plan before the Charge was in.** The T2 Charge's input waits for its rays' capture; a plan made meanwhile ran the states past the Charge's frame, which then found none ("No edge" for T2) | e2e 1234abcd T2 | no state runs past a pending Charge, no plan until it is in ("reading") | `test_fb14_v86.js` 8 |
+**The read itself is right** (checked on the clips' input display): the A shows on the input display 9-11 video frames
+before the picture of its frame (the capture's delay); after it the Super Charge's bar goes 13 video frames later, Cloud
+Nine's ability list 10-11, the Strategies panel 11 (C and F alike): the same game frame offsets as the emulator's (bar
+A + 2, list / panel P + 2). So the Strategies-panel read (VAN 2) and the Cloud Nine bar read (A + 2) are not off on console.
+**Not a bug, measured:** Mario is at 10 HP on T1-T4 on console (the v74 model was built at 5 HP). 16 new emulator logs at
+10 HP (`fixtures/fb14_logs_hp10.json`) are exact to every test and through the next menu after every miss. Bowser's HP
+matters at 10 HP: at 74 or less (Mario's 100% more than 25 over Bowser's) he rolls for Recover first each turn; log C's
+coin and outcomes favour no Recover roll about 146:1 (both hypotheses carried: T2's observed hit has 0.4% of the weight
+with it against 49% without), so the default is "75 or more" (Settings: Bowser's HP entering phase 2; "not sure" carries
+both).
+
+## 2. The T1-T4 AI against the decomp
+`fb14_live.js fbStep 'ai'` is now the whole `EVS_TakeTurn_Inner` (as `pmrng_core.js fbnbAi`, emulator-checked v84):
+counters from the state's own attack history (`fbVars`), the Recover check (Settings), the Star Rod (skipped while the aura
+is up: T1-T4), the wave / Lightning Blast branches (T4: RandInt(100) < 75 with a charge = the wave, else RandInt(110) < 20
+the wave, < 30 **the Lightning Blast**, else the normal attacks), Body Slam / Claw by TurnsSince >= 2. `test_fb14_ai.js`:
+20000 random histories x Recover on / off: the tracker's AI draws exactly what fbnbAi draws and picks the same attack.
+**The Lightning Blast, measured** (`fb2_route/lb_log.py`, `lb_model.py`; T4 from the MARIO_HP=10 build, seeds screened
+on the plain core for RandInt(100) >= 75 and RandInt(110) 20-29, logged on the debug core; `fixtures/fb14_lb_logs.json`):
+AI + 19 its energy effect (1 x rand_int(360), 10 x (10, 20); each part respawns on + 19 + p, then every 20 frames while
+under + 50), AI + 69 rand_int(7), **AI + 99 the dodge test** (Cloud Nine < 50), right after it 3 x rand_int(359) (its bolt),
+then nothing but the arena to the next menu (miss: test + 132). 32 / 32 runs exact frame by frame (11 misses to the next
+menu + 30, 21 hits to the test). A Lightning Blast that misses is not T4's goal (the wave must come on T4): `ok` false; the
+carry goes on right.
+
+## 3. Normal Boots, Final Bowser phase 2: measured, still not beeped
+New states (setup only): `boss_2304_nbg_menu.st` (`AC=1 PARTNER=1 BRANK=1 BADGES=10c,e4,112,11f BOOTS=0 FP=10 HP=10
+ITEMS=93,95,95,a3 NOFS=1 STARBEAM=2 SUF=_nbg boss_battle_start_setup.py 2304`), `boss_2304_nbg_t2menu.st`
+(`fb2_route/nb_p2_state.py`: T1 Peach Beam + Goombario Charge, Bowser 89 HP, a T1 that was not the Claw Swipe: it
+poisons Mario, 1 HP a turn, and kills him at 1 HP on the turn end), `boss_2304_nbg_pbtarget.st`. Measured
+(`nb_cc/gch_log.py` x 20 at Mario 1 HP, `pb_nb_log.py` x 8; `fixtures/fbnb_p2_logs.json`, `test_fbnb_turn.js`):
+- Goombario's Charge: his energy_in_out creations on G + 14 / G + 17 (as at Jr. Troopa);
+- **Bowser's AI on P + 16** (P = his box A, or G + 133 with the box left to run out); its RandInt calls = fbnbAi with the T2
+  vars in 20 / 20; the Close Call roll on AI + 52 / 55 / 62 (Body Slam / Fire Breath / Claw), < 30 = Mario lives (20 / 20);
+  after a Close Call nothing but the arena to the next menu, on roll + 101 / 134 / 83 (9 / 9): Ultra Boots' T6 -> T7
+  structure (`fb2_live.js`) with Goombario's box in place of the "+3" popup;
+- **Power Bounce (Normal Boots) on Final Bowser:** first hit on d + 45, cap rolls on d + 70 + 26 k, each passing roll's hit
+  one frame after it, chance 60 (8 / 8).
+- With a lock and a perfect press, the best target-A frame in a window (model, 1500 random states; the hits' draws as at
+  charge 6): 1 frame (blind) 4+ 73%, 5+ 33%, 6+ 8.3%, 7+ 0.9%; **1 s window 6+ 92%, 7+ 32%, 8+ 3.0%**; 2 s 6+ 99%, 7+ 53%,
+  8+ 7.6%.
+**Why still not beeped:** the lock would be the Super Charge read in this arena (the FB2 profile; with Goombario out it has
+not been run on renders), carried through Goombario's turn and Bowser's, whose choice from T3 / T4 on adds the Star Rod
+(75% at 4 turns after the Peach Beam; it re-enchants him) and the wave / Lightning Blast branches, which the page would have
+to carry without knowing the turn number; and the hits' draw counts follow the jump charge (unmeasured for the route's
+charge). Each part is a model the page already has for Ultra Boots (fb2_live.js, fbnbAi); joining them and checking the read
+on renders is the next step. The page's step says this with the measured numbers and the locked odds; blind odds as v85.
+
+## 4. End to end in the emulator (Ultra Boots T1-T4)
+`fb14_e2e.py` (Glide64 renders -> `t6_capsim.py` -> the built page fed in real time, `test_fb14_page.js`; the page's first
+plan of each turn pressed on its frame in the emulator, and one frame either side from the same state) on a new route build
+at **Mario 10 HP, Bowser 84 HP** (`route_build.py`, `MARIO_HP=10`; `fb14_e2e.py` takes MARIO_HP too). The machine was
+shared with the suite and a second run, so the page dropped hundreds of late pictures (LATEMS 2000) and the locks took
+10-20 s; WAIT raised to 900 frames on the lever screens so that a slow lock still plans.
+| run | T1 | T2 | T3 | T4 |
+|---|---|---|---|---|
+| 1234abcd | blind (bug 3: every state dropped); missed | planned (perfect press 99.9%): **missed**, -1 / +1 missed too | carry gone (T2's read matched none of the carried states; the fresh T2 lock died on T3's coin): blind, missed | not reached in time |
+| 9e3779b9 | planned (100%): **missed**, -1 / +1 too | planned (88%): **missed**, -1 / +1 too | (see below) | |
+| 2b7e1516 | the T1 lock came 20 s after the rays (load): blind, missed | stopped (load) | | |
+**Every planned turn missed (4 / 4, and every neighbour frame).** What breaks is the carry from T1 into T3, as v75 found:
+the T1 lock is the true seed (1234abcd: adv(true rays seed) = the lock's 12b5870c) but the carried states do not draw T2's
+rays (`fb14Check` matched 0 of 8000), and in 9e3779b9 the T2 Charge read failed under the load ("no Mario": its burst
+pictures dropped) and the carried states died on T2's coin (`fb14AllOut`). So **T1-T4 end to end is not reached in the
+emulator either; T1 and T2 are**. The end-to-end success rate measured here: T1 2 / 2 planned, T2 2 / 2, T3 0 / 1 planned
+(the carry), T4 not reached. Bugs 3 and 7 were found by these runs, bug 4 by the clip feed; all fixed.
+**The clips through the live readers** (`test_fb14_page.js` on clip 15-24-14's 3886 pictures, under the same load): the T1
+lock is log C's (31fe2969, as live), the early-screen bug (4) showed there; the run was too loaded (951 late pictures) to say
+more. Not repeated on an idle machine.
+
+## Tests
+New: `test_fb14_ai.js` (the AI = fbnbAi in 20000 cases; the Lightning Blast against 32 emulator runs frame by frame),
+`test_fb14_v86.js` (bugs 1-5, 7 and the early-screen / bar-hide cases on the page; log C fight 1 replayed),
+`test_fbnb_turn.js` (Normal Boots Final Bowser: Goombario's Charge, Bowser's turn, the Power Bounce, 20 + 8 emulator runs).
+`test_fb14_model.js` + 16 logs at 10 HP (48 / 48 exact). `test_console_1108b.js`: the Cloud Nine bar-hide case after the
+burst. `test_nb_route.js`: the v86 step text. All in `run_suite.sh`. Version checks moved to v86.
+New scripts: `fb2_route/lb_log.py`, `lb_model.py` (Lightning Blast), `nb_p2_state.py`, `nb_p2_fixture.py` (Normal Boots
+phase 2); `route_build.py` / `fb14_e2e.py` take MARIO_HP. States (not committed): `boss_2304_nbg_{start,menu,t2menu,pbtarget}.st`.
+
+Full `run_suite.sh` on this code (run beside the end-to-end emulator runs): every test rc 0 and both log replays lock as
+before (1379.7 s on 83ebd9e1, 655.7 s on 52467bd0), except `test_dup_plan.js` (its version check, moved to v86 during the
+run) and `charge_live/test_capture_replay.js` C (a re-read's timing under that load); both pass rerun on the idle machine,
+with test_nb_route, test_fb14_v86 and test_console_1108b on the final build.
+
+## Not done
+The runner's second Ultra Boots Jr. Troopa route (T1 Charge / Do Nothing ... T7 Power Bounce x6, Bombette's Do Nothing
+beeped on T2, T4, T5, T6) is not in v86: none of its turns were measured. On paper it holds (decomp
+`final_jr_troopa.c`: his attacks do 8, 60 HP): T1 at 10 HP is hit to 2 (no Close Call roll above 5 HP), T2 at 2 rolls,
+T3's Whacka's Bump heals to 10 and his hit leaves 2 (no roll, as written), T4-T6 at 2 roll (Maple Syrup is FP only).
+
+## Not verified
+On console: everything since v85 (the miss read on the bar at 10 HP is the Hallway's HP read; the lever bias from two
+presses). In the emulator: the T1 -> T3 carry (open, above), T4's wave beep end to end, the Normal Boots phase-2 Super
+Charge read with Goombario, Bowser's Recover branch on console (the default assumes 75+ HP).
+
 # Time Out Timer v85: the Normal Boots Close Calls beep (Nov 9)
 
 v84's Normal Boots route did not beep Jr. Troopa T2-T5 or Hallway T1: Goombario's Charge (T5: his Headbonk) and the enemy

@@ -114,7 +114,7 @@ function clipFrames() {
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | Jr. steps ' + r.route.steps.join(', ') + ' | after T6: ' + r.route.after);
-  check(r.version === 'v85', 'version v85');
+  check(r.version === 'v86', 'version v86');
   check(r.route.steps.length === 6 && r.route.steps.every(s => /:jr$/.test(s)), 'six Jr. Troopa steps with the jr Charge profile');
   check(/^Hallway Bowser/.test(r.route.after || ''), 'the step after T6 is Hallway T1');
   // 2. per mode and lever

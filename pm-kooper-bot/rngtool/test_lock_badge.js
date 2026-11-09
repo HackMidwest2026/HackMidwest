@@ -61,7 +61,7 @@ let fails = 0, n = 0; const check = (ok, msg) => { n++; if (!ok) { fails++; cons
     'tracker off': 'no', 'fb14 no lock': 'no', 'fb14 locked': 'ok', 'fb14 doubt': 'doubt', 'fb2 no lock': 'no', 'fb2 locked': 'ok' };
   const TEXT = { ok: 'LOCKED', no: 'NOT LOCKED', doubt: 'DOUBTFUL' };
   for (const k in want) check(S[k] && S[k].state === want[k] && S[k].text === TEXT[want[k]] && S[k].cls === 'lockb ' + want[k], `badge "${k}": ${S[k] && S[k].text} (want ${TEXT[want[k]]})`);
-  check(r.version === 'v85', 'version v85');
+  check(r.version === 'v86', 'version v86');
   const badges = new Set(r.states.map(x => x.badge)), strips = new Set(r.states.map(x => x.strip));
   check(badges.size === 1, 'the badge never moves or resizes: ' + [...badges].join(' | '));
   check(strips.size === 1, 'the strip never moves: ' + [...strips].join(' | '));

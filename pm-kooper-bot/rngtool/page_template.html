@@ -221,6 +221,7 @@ details[open] summary { margin-bottom: 10px; }
         <label class="f">Target screen match needed (0–1)<input id="s-tmatch" type="number" step="0.01" value="0.92"><small>How close the blue box must match the saved screen.</small></label>
         <label class="f">Seed search threads<input id="s-cpu" type="number" min="1" max="8" value="2"><small>Shine seed search; at most half your cores.</small></label>
         <label class="f">Charge lock search threads (0 = all cores but one)<input id="s-chgcpu" type="number" min="0" max="16" value="0"><small>Runs for a few seconds during turn 1.</small></label>
+        <label class="f">Final Bowser: Bowser's HP entering phase 2<select id="s-fbhp"><option value="hi">75 or more (default)</option><option value="lo">74 or less</option><option value="any">not sure (both)</option></select><small>Ultra Boots T1-T4 with Mario at 10 HP: at 74 HP or less Bowser rolls for Recover first each turn (one more random number).</small></label>
         <label class="f">Final Bowser: Bowser's turn-5 attack<select id="s-fb2t5"><option value="any">not set (all three)</option><option value="fire">Fire Breath</option><option value="claw">Claw Swipe</option><option value="slam">Body Slam</option></select><small>A Body Slam or Claw on T5 rules it out on T6.</small></label>
       </div>
       <div class="row" style="margin-top:12px">
@@ -348,7 +349,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal', 'boots', 'nbcc'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal', 'boots', 'nbcc', 'fbhp'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } if (!localStorage.getItem('tot-beeps3')) { if (s.beeps === '4' || s.beeps === undefined) s.beeps = '3'; localStorage.setItem('tot-beeps3', '1'); } SET.forEach(k => { if (s[k] !== undefined && $('s-' + k)) { $('s-' + k).value = s[k]; if ($('s-' + k).tagName === 'SELECT' && $('s-' + k).selectedIndex < 0) $('s-' + k).selectedIndex = 0; } }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -503,7 +504,7 @@ const ENDGAME_NB = [
     { text: 'T5: Bounce x6; Headbonk x2 [3HP, 1FP]', steps: [{ label: 'Power Bounce on the beep → 6+ (Normal Boots; show a few shines in this menu: the seed is found from the coin)', cat: 'B', prof: 'hwpb6n', nb: true, blind: '6+ bounces about 16%' }] } ] },
   { h: 'Final Bowser', turns: [
     { text: 'Phase 1 (not tracked): T1 Charge; Charge - T2 Jump x2; Headbonk x1 [Bowser at 89 HP] - T3 Star Beam', steps: [] },
-    { text: 'Phase 2 (v85: route it as you like; no Close Call / Star Shield / wave rule): Super Charges, then a high Power Bounce cap', steps: [] },
+    { text: 'Phase 2 (route it as you like; no Close Call / Star Shield / wave rule): Super Charges, then a high Power Bounce cap', steps: [] },
     { text: 'Phase 2 Power Bounce turn (whichever turn you Power Bounce on)', steps: [{ label: 'Power Bounce → as many bounces as you can (Normal Boots; not beeped yet)', cat: 'B', nb: true, fbcap: true }] } ] } ];
 /* v85: the Goombario Charge steps use cat 'S' so that no saved screen of the turn (Mario's Super Charge / Maple Syrup target,
  * hand on Mario) starts a plan: in wait mode the Charge confirm is planned from the tracker (jrEarlyPlan, its floor after
@@ -518,7 +519,14 @@ const ENDGAME_NB = [
  * 43, 25, 15, 9 of rand_int(100), the first two bounces free). */
 const FBNB_CAP = (() => { const c = [120, 72, 43, 25, 15, 9]; let p = 1; const out = {}; for (let n = 3; n <= 8; n++) { p *= Math.min(101, c[n - 3] + 1) / 101; out[n] = p; } return out; })();
 const fbnbCapText = () => [4, 5, 6, 7].map(n => n + '+ ' + (FBNB_CAP[n] >= 0.1 ? Math.round(100 * FBNB_CAP[n]) : (100 * FBNB_CAP[n]).toFixed(1)) + '%').join(', ');
-ENDGAME_NB.forEach(f => f.turns.forEach(tu => tu.steps.forEach(st => { if (st.fbcap) { st.nomodel = 'Final Bowser\'s phase-2 Power Bounce is not beeped in v85: a lock for it needs your preceding Super Charge read in this arena with Goombario (not checked), Goombario\'s turn with the lightning, and every draw of Bowser\'s turn up to your next menu for each attack he can pick (only his attack choice is modelled), none of which is measured yet. Nothing you do on the earlier turns changes this'; st.blind = 'Power Bounce whenever you like: ' + fbnbCapText() + ' (blind cap odds)'; } })));
+/* v86 (charge_live/README.md v86 section 3): Bowser's turn after Goombario's Charge and the Power Bounce against him are now
+ * measured in the emulator (fb2_route/nb_p2_state.py, nb_cc/gch_log.py, pb_nb_log.py): the structure is Ultra Boots' T6 -> T7
+ * (fb2_live.js) with Goombario's box in place of the "+3" popup. Still not beeped: the Super Charge read in this arena with
+ * Goombario out has not been run on renders, and from T3 / T4 on Bowser's choice adds the Star Rod (75% from 4 turns after the
+ * Peach Beam) and the wave / Lightning Blast branches, which the carry would have to weigh without knowing the turn. The
+ * locked odds below are the model's (a perfect press in a 1 s window), shown so the runner can judge the work left. */
+const FBNB_LOCKED = { 6: 0.92, 7: 0.32, 8: 0.03 };
+ENDGAME_NB.forEach(f => f.turns.forEach(tu => tu.steps.forEach(st => { if (st.fbcap) { st.nomodel = 'Final Bowser\'s phase-2 Power Bounce is not beeped yet (v86). Measured in the emulator: after your Super Charge, Goombario\'s Charge and his box A (or the box running out) start Bowser\'s AI 16 frames later, his Close Call roll comes 52 / 55 / 62 frames after it (Body Slam / Fire Breath / Claw Swipe) and your next menu 101 / 134 / 83 frames after that, and the Power Bounce rolls every 26 frames from your target A + 70. Not done: the Super Charge read in this arena with Goombario out, and Bowser\'s Star Rod / wave / Lightning Blast choices from T3 on. With a lock and a perfect press in a 1 s window the model gives 6+ ' + Math.round(100 * FBNB_LOCKED[6]) + '%, 7+ ' + Math.round(100 * FBNB_LOCKED[7]) + '%, 8+ ' + Math.round(100 * FBNB_LOCKED[8]) + '%. Nothing you do on the earlier turns changes this'; st.blind = 'Power Bounce whenever you like: ' + fbnbCapText() + ' (blind cap odds)'; } })));
 const bootsNow = () => ($('s-boots') && $('s-boots').value === 'normal' ? 'normal' : 'ultra');
 const dupRoute = () => ($('s-duproute') && $('s-duproute').value === 'charge' ? 'charge' : 'rta');
 const jrRoute = () => ($('s-jrroute') && $('s-jrroute').value === 'shine' ? 'shine' : 'charge');
@@ -1592,7 +1600,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v85';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v86';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -2076,7 +2084,7 @@ function routeOddsLines() {
     ['Duplighosts', 'T1 Do Nothing beeped: 3+ ~100%, all 4 ~43% (perfect press; your spread: about 79% / 22%); blind 47% / 13%'],
     ['Jr. Troopa', 'T3-T5 Close Calls and T6 Power Bounce beeped: each Close Call 72-87% with ±1-frame presses, 5+ 97-100%: about 50% for the fight; blind 1.8%'],
     ['Hallway Bowser', 'T2 Time Out beeped: 58-80% (model); blind 31%'],
-    ['Final Bowser', 'T1-T4 beeped (Bowser misses): about 90% for all four (model); blind about 5%; T6 Close Call / T7 Power Bounce beeped']],
+    ['Final Bowser', 'T1-T4 beeped (Bowser misses): about 90% for all four with an exact lock (model); end to end in the emulator (v86) the T1 and T2 beeps land, the carry to T3 still breaks; blind about 5%; T6 Close Call / T7 Power Bounce beeped']],
   normal: [
     ['Duplighosts', 'T1 Do Nothing beeped (goal: 4 first): all 4 ~83%, 3+ ~100% (perfect press; your spread: about 31% / 71%); blind 13% / 47%'],
     ['Jr. Troopa', 'T2-T4 Close Calls (Goombario\'s Charge, wait it out: ' + (nbccMode() === 'wait' ? 'now' : 'the default') + ') and T5 (Headbonk) beeped: each 90-97% claimed with a perfect press (model: 98-100% land), 78-88% with ±1-frame presses; press A instead: 76-95% / 73-78%; T7 Power Bounce 5+ from the carry (~100%): about 45-55% for the fight with ±1-frame presses, 70-80% with perfect ones (model); blind 0.8%'],
