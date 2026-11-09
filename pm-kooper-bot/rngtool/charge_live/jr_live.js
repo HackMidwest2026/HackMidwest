@@ -13,8 +13,8 @@
  *
  * Turn tracking: every confirm on this route but Bombette's Do Nothing hides the status bar a fixed number of frames
  * after the A (emulator: Mario's actions 3, Bombette's Bomb 4); Do Nothing is read from its Strategies screen closing
- * (or the bar hiding when Jr. Troopa's turn starts, JR_SEQ). The page counts the hides after a menu (bar up 0.3 s+) in
- * route order (JR_SEQ), each one an input to the tracker with its frame -2..+1 (JR_SHIFTS: the coin settles them). The
+ * (or the bar hiding when Jr. Troopa's turn starts, JRS()). The page counts the hides after a menu (bar up 0.3 s+) in
+ * route order (JRS()), each one an input to the tracker with its frame -2..+1 (JR_SHIFTS: the coin settles them). The
  * Charge bursts anchor the count (T1, T3, T5).
  *
  * Deaths: a Close Call that fails kills Mario and the Life Shroom revives him at 10 HP: 933-939 RNG steps nobody
@@ -31,14 +31,50 @@ const JR_SEQ = [
   { id: 'jr_charge', t: 'T1', charge: true, hide: 3 },
   { id: 'jr_bomb_t1', t: 'T1', hide: 4 },
   { id: 'jr_bomb', t: 'T2', hide: 4 },
-  { id: 'jr_whacka', t: 'T2', hide: 3 },
+  { id: 'jr_whacka', t: 'T2', hide: 3, rearm: true },
   { id: 'jr_charge', t: 'T3', charge: true, hide: 3 },
-  { id: 'jr_bomb_cc', t: 'T3', hide: 4, prof: 'jrcc_bomb', cc: 179, next: 246, what: 'Bomb' },
+  { id: 'jr_bomb_cc', t: 'T3', hide: 4, prof: 'jrcc_bomb', cc: 179, next: 246, what: 'Bomb', revive: 7 },
   { id: 'jr_bomb', t: 'T4', hide: 4 },
-  { id: 'jr_syrup_cc', t: 'T4', hide: 3, prof: 'jrcc_syrup', cc: 163, hit: 'jr_syrup_hit', next: 230, what: 'Maple Syrup' },
+  { id: 'jr_syrup_cc', t: 'T4', hide: 3, prof: 'jrcc_syrup', cc: 163, hit: 'jr_syrup_hit', next: 230, what: 'Maple Syrup', rearm: true, revive: 9 },
   { id: 'jr_charge', t: 'T5', charge: true, hide: 3 },
   { id: 'jr_nothing_cc', t: 'T5', hide: 3, prof: 'jrcc_nothing', cc: 26, hit: 'jr_nothing_hit', next: 93, what: 'Do Nothing', strat: true },
   { id: 'jr_pb', t: 'T6', hide: 3, prof: 'jrpb5', what: 'Power Bounce' } ];
+/* v85, the Normal Boots route (charge_live/README.md v85): Goombario instead of Bombette, Mario's Super Charge every turn but
+ * T3 (Maple Syrup) and T6/T7. A Goombario Charge (nb_gch, hide 4: its target-screen A, gStatusBar off 3 frames later as
+ * Bombette's Bomb) is followed by the A that closes its "attack power up" box (cancel: P = +73..+132, or +133 untouched):
+ * the Close Call hangs off P (cancel id, ccP frames after P; Hallway: Bowser's AI at P + 16, ai). The page reads P from the
+ * status bar coming back (P + 5, emulator: every run; nbCancelSeen). cancel entries: the route moves on after P, not G.
+ * menu: frames from the confirm before the next lever can be planned (jrPlanFloor; after a Super Charge Goombario's menu opens
+ * 154 frames later without the popup A, emulator; 150 leaves the runner time to reach his Charge's target screen).
+ * The Headbonk (T5) is a plain target-screen lever (Close Call +143). T6 Whacka (10 HP after it: Jr. Troopa's hit, no roll)
+ * and Goombario's Do Nothing (Strategies, as Bombette's), T7 Power Bounce 5+ (jrpb5n) from the carry. */
+const JR_SEQ_NB = [
+  { id: 'jr_charge', t: 'T1', charge: true, hide: 3, menu: 110 },
+  { id: 'nb_gch', t: 'T1', hide: 4, cancel: 'nb_jrhit', what: 'A on Goombario\'s box', rearm: true },
+  { id: 'jr_charge', t: 'T2', charge: true, hide: 3, menu: 150 },
+  { id: 'nb_gch', t: 'T2', hide: 4, cancel: 'nb_jrcc', ccP: 29, hit: 'nb_jrhit', next: 97, prof: 'jrcc_gch', profW: 'jrcc_gchw', what: 'A on Goombario\'s box', revive: 5 },
+  { id: 'nb_syrup', t: 'T3', hide: 3, menu: 160, rearm: true },
+  { id: 'nb_gch', t: 'T3', hide: 4, cancel: 'nb_jrcc', ccP: 29, hit: 'nb_jrhit', next: 97, prof: 'jrcc_gch', profW: 'jrcc_gchw', what: 'A on Goombario\'s box', revive: 7 },
+  { id: 'jr_charge', t: 'T4', charge: true, hide: 3, menu: 150 },
+  { id: 'nb_gch', t: 'T4', hide: 4, cancel: 'nb_jrcc', ccP: 29, hit: 'nb_jrhit', next: 97, prof: 'jrcc_gch', profW: 'jrcc_gchw', what: 'A on Goombario\'s box', rearm: true, revive: 9 },
+  { id: 'jr_charge', t: 'T5', charge: true, hide: 3, menu: 150 },
+  { id: 'nb_hb', t: 'T5', hide: 4, prof: 'jrcc_hb', cc: 143, hit: 'nb_hb_hit', next: 210, what: 'Headbonk' },
+  { id: 'nb_whacka', t: 'T6', hide: 3 },
+  { id: 'jr_nothing_hit', t: 'T6', hide: 3, strat: true, what: 'Do Nothing' },
+  { id: 'jr_pb_nb', t: 'T7', hide: 3, prof: 'jrpb5n', what: 'Power Bounce' } ];
+const HW_SEQ_NB = [
+  { id: 'hw_charge', t: 'T1', charge: true, hide: 3, menu: 150 },
+  { id: 'nb_gch', t: 'T1', hide: 4, cancel: 'nb_hwcc', ai: true, next: 160, prof: 'hwcc_gch', profW: 'hwcc_gchw', what: 'A on Goombario\'s box' },
+  { id: 'to_nb', t: 'T2', hide: 3, prof: 'timeout', what: 'Time Out' } ];
+const JR_SEQS = { ultra: JR_SEQ, nbjr: JR_SEQ_NB, nbhw: HW_SEQ_NB };
+const jrStepSeq = () => { const s = isRoute() && RT()[routeStep]; return (s && s.seq) || 'ultra'; };
+const JRS = () => JR_SEQS[(JRT && JRT.on && JRT.seq) || jrStepSeq()] || JR_SEQ;
+// v85: what the beeped press is on a Goombario Charge turn (by the Settings mode)
+const jrWhat = s => (!s ? null : s.cancel ? (jrSeqProf(s) === s.profW ? 'Goombario\'s Charge confirm' : 'A on Goombario\'s box') : s.what);
+const jrSeqProf = s => (s && s.profW && (typeof nbccMode !== 'function' || nbccMode() === 'wait') ? s.profW : s && s.prof);
+// the P read from the bar coming back: -2..+1 as the hides (a dropped picture reads it late)
+const NB_SHIFTS = [[-2, 0.15], [-1, 0.25], [0, 0.4], [1, 0.2]];
+const NB_SHIFTS_BLIND = [[-3, 0.05], [-2, 0.1], [-1, 0.2], [0, 0.3], [1, 0.2], [2, 0.1], [3, 0.05]];   // the bar's return not seen: the beeped frame, the runner's press spread
 const JR_DEATH = 359;          // frames a death and the Life Shroom revive add before the next menu (emulator: every run)
 // a confirm read from the bar hiding: -2..+1 frames, as the Spiny Flip's (CHG_SHIFTS): a dropped picture only ever reads it
 // late (the frame-fed end to end under load read the T3 Bomb 2 frames late and the T3 Charge 1-2 late)
@@ -52,7 +88,7 @@ const JR_UPMIN = 300;          // ms of bar up before a hide counts as a confirm
 const JR_BLIND = { cc: 0.30, p5: 0.675, p6: 0.322 };
 const JRT = { bar: {} };
 function jrReset(why) {
-  Object.assign(JRT, { on: false, k: 0, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null, ccSnap: null, recon: null, lost: null, lastLock: null, lostF: null, shineTry: 0, shineRec: null });
+  Object.assign(JRT, { on: false, k: 0, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null, ccSnap: null, recon: null, lost: null, lastLock: null, lostF: null, shineTry: 0, shineRec: null, seq: null, cancel: null });
   if (zw.on && zw.fight === 'jr') zw.on = false;
 }
 jrReset();
@@ -62,8 +98,8 @@ const jrZw = () => zw.on && zw.fight === 'jr' && jrStepNow() && PROF().group ===
 /* the route step for the next confirm k: the first Jr. Troopa step whose confirm is k or later (past the last: the step
  * after the fight) */
 function jrStepFor(k) {
-  const L = RT(); let last = -1;
-  for (let i = 0; i < L.length; i++) if (L[i].jr != null) { if (L[i].jr >= k) return i; last = i; }
+  const L = RT(), sq = (JRT.on && JRT.seq) || jrStepSeq(); let last = -1;
+  for (let i = 0; i < L.length; i++) if (L[i].jr != null && (L[i].seq || 'ultra') === sq) { if (L[i].jr >= k) return i; last = i; }
   return last >= 0 ? last + 1 : -1;
 }
 function jrGo(k) {
@@ -86,6 +122,7 @@ function jrFrame(t, present) {
     B.since = 0;
     if (B.gone && !B.done && t - B.gone >= 8 * FRAME) { B.done = true; if (B.wasUp >= JR_UPMIN) jrHide(B.gone, B.wasUp); }
   }
+  nbCancelWatch(t, present);
   jrOutcomeWatch(t, present);
   jrTick(t);
   jrShineTry();
@@ -110,7 +147,7 @@ function jrOutcomeWatch(t, present) {
     const v = jrTens(); P.n = v >= JR_TENS_MIN ? (P.n || 0) + 1 : 0; P.max = Math.max(P.max || 0, v);
     if (P.n >= 6) { JRT.ccPend = null; slog('jrOutcome', { k: P.k, frames: Math.round(fr), dodge: false, by: 'HP 10', tens: +v.toFixed(2) }); jrDeath(P.k, Math.round(fr)); return; }
   }
-  if (fr > JR_SEQ[P.k].next + JR_DEATH + 60) jrSettle('time');
+  if (fr > JRS()[P.k].next + JR_DEATH + 60) jrSettle('time');
 }
 function jrSettle(by) {
   const P = JRT.ccPend; if (!P) return; JRT.ccPend = null;
@@ -120,31 +157,46 @@ function jrSettle(by) {
 function jrHide(tH, upMs) {
   JRT.hides.push(tH); if (JRT.hides.length > 8) JRT.hides.shift();
   if (!jrStepNow() || !JRT.on) return;                 // before the fight: the T1 Charge's burst starts it (jrBurst)
-  if (JRT.k >= JR_SEQ.length) return;
-  const s = JR_SEQ[JRT.k];
+  if (JRT.k >= JRS().length) return;
+  const s = JRS()[JRT.k];
   if (s.strat && JRT.stratAt != null && Math.abs(tH - JRT.stratAt) < 2000) { slog('jrHideAfterNothing', { at: Math.round(tH) }); return; }   // Do Nothing was read from its screen
   slog('jrHide', { k: JRT.k, id: s.id, at: Math.round(tH), upMs: Math.round(upMs) });
   jrConfirm(JRT.k, tH, s.hide, 'bar');
 }
 /* Bombette's Do Nothing on its Strategies screen (cat S): the screen closing is the confirm (3 frames, VAN.S) */
 function jrScreenClosed(tObs) {
-  if (!jrStepNow() || !JRT.on || JRT.k >= JR_SEQ.length) return false;
-  const s = JR_SEQ[JRT.k]; if (!s.strat) return false;
+  if (!jrStepNow() || !JRT.on || JRT.k >= JRS().length) return false;
+  const s = JRS()[JRT.k]; if (!s.strat) return false;
   JRT.stratAt = tObs; slog('jrStrategiesClosed', { k: JRT.k, at: Math.round(tObs) });
   jrConfirm(JRT.k, tObs, R.PROFILES.jrcc_nothing.vanish, 'screen'); return true;
 }
 function jrConfirm(k, t, h, src) {
   if (JRT.ccPend && JRT.ccPend.k < k) jrSettle('next confirm');
-  const s = JR_SEQ[k]; let id = s.id; if (s.hit && JRT.hp10[k]) id = s.hit;
-  const inp = { k, id, t, h, src }; JRT.inputs.push(inp);
+  if (JRT.cancel && !JRT.cancel.done && JRT.cancel.k < k) nbCancelSeen(null, 'next confirm');     // v85: the bar's return was missed
+  const s = JRS()[k]; let id = s.id; if (s.hit && JRT.hp10[k] && !s.cancel) id = s.hit;
+  const inp = { k, id, t, h, src };
+  // v85: Goombario's Charge. Wait mode (or the T1 Charge, no roll): the box runs out (P = +133), so this confirm decides it
+  // and both go in now; cancel mode: the box A comes later (nbCancelSeen), planned here (nbCancelPlan)
+  const roll = !!(s.ccP || s.ai) && !JRT.hp10[k], pid = roll ? s.cancel : s.hit || s.cancel;
+  const wait = !!s.cancel && roll && jrSeqProf(s) === s.profW;      // (no roll: T1, or 10 HP after a revive: the box A is read all the same)
+  if (s.cancel) { inp.pid = pid; if (wait) inp.wait = true; }
+  JRT.inputs.push(inp);
   jrPress(inp);
   if (s.charge) JRT.chargeK = k;
   if (zw.on && zw.fight === 'jr') jrApply(inp);
   if (s.cc && id === s.id) JRT.ccPend = { k, t: t - h * jrRate() };
+  if (s.cancel && wait && roll) JRT.ccPend = { k, t: t - (h - R.NB_K.none) * jrRate() };
+  if (s.cancel && !wait) {
+    JRT.cancel = { k, t, tA: t - h * jrRate(), pid, roll, done: false };
+    if (JRS()[k].rearm && ['locked', 'nolock', 'failed', 'notseen'].includes(CHG.state)) chgReset();
+    slog('nbCharge', { k, t: JRS()[k].t, roll });
+    if (roll) nbCancelPlan('charge confirmed'); else render();
+    return;                                       // the route moves on at the box A (nbCancelSeen)
+  }
   // the Charge watcher arms again for the next Charge (its lock is in the tracker already)
-  if ((k === 3 || k === 7) && ['locked', 'nolock', 'failed', 'notseen'].includes(CHG.state)) chgReset();
+  if (JRS()[k].rearm && ['locked', 'nolock', 'failed', 'notseen'].includes(CHG.state)) chgReset();
   jrGo(k + 1);
-  if (k === JR_SEQ.length - 1) jrEnd('the fight is over (Power Bounce confirmed)');
+  if (k === JRS().length - 1) jrEnd('the fight is over (Power Bounce confirmed)');
 }
 const jrRate = () => (zw.on && zw.fight === 'jr' ? zw.rate : chgRate());
 /* a dodge seen: the states whose roll hits are ruled out (likelihood 0), and the background ("none of the tracked states is
@@ -165,7 +217,7 @@ function jrDodge(k) {
 function jrRecover(k) {
   const P = JRT.ccSnap, inp = P && P.k === k ? JRT.inputs.filter(x => x.k === k).pop() : null;
   if (inp && P.list.length) {
-    const s = JR_SEQ[k], out = [];
+    const s = JRS()[k], out = [];
     for (const p of P.list) for (const q of jrSplit(p, inp, P.c, JR_SHIFTS_WIDE, s)) if (q.cc[k]) { q.err = 0; out.push(q); }
     if (out.length) {
       zw.parts = out; zw.dead = false; zw.deadAt = null;
@@ -180,7 +232,7 @@ function jrRecover(k) {
     }
   }
   zw.parts = []; zw.dead = true; zw.deadAt = null; JRT.lostF = Math.floor(zwHorizon(performance.now()));
-  JRT.lost = JR_SEQ[k].t + ': the ' + (JR_SEQ[k].what || 'press') + ' dodged, which none of the carried states allows';
+  JRT.lost = JRS()[k].t + ': the ' + (jrWhat(JRS()[k]) || 'press') + ' dodged, which none of the carried states allows';
   slog('jrLost', { k, why: 'outcome fits no state, even with the confirm -4..+4' });
   if (typeof chgShow === 'function') chgShow();
 }
@@ -205,26 +257,29 @@ function jrShineRecOk() {
 function jrDeath(k, fr) {
   JRT.out[k] = 'death';
   // the next turn's Close Call turn is at 10 HP (the revive): no roll there, its 10-HP draws instead
-  if (k === 5) JRT.hp10[7] = true; else if (k === 7) JRT.hp10[9] = true;
-  JRT.dead = JR_SEQ[k].t + ': Mario was hit (10 HP after the Life Shroom, read ' + fr + ' frames after the confirm): the revive breaks the carry';
+  const nx = JRS()[k].revive; if (nx != null) JRT.hp10[nx] = true;
+  JRT.dead = JRS()[k].t + ': Mario was hit (10 HP after the Life Shroom, read ' + fr + ' frames after the confirm): the revive breaks the carry';
   if (zw.on && zw.fight === 'jr') { zw.on = false; slog('jrCarryEnds', { k, why: 'death' }); }
   if (typeof chgShow === 'function') chgShow(); render();
 }
 /* an input in the tracker: like zwInput, with the confirm frame -2..+1 (JR_SHIFTS) and, on a Close Call confirm, whether
  * each state's roll dodges (p.cc[k]), so the outcome seen later can drop the ones that would have died */
 function jrApply(inp, re) {
-  const s = JR_SEQ[inp.k], c = Math.round(zwF(inp.t, inp.h + num('pfix')));
+  const s = JRS()[inp.k];
+  if (inp.cancel) { const g = JRT.inputs.find(x => x.k === inp.k && !x.cancel && x.c != null); inp.G = g ? g.c : null; }
+  const c = inp.cancel && inp.rel != null && inp.G != null ? inp.G + inp.rel : Math.round(zwF(inp.t, inp.h + num('pfix')));
   inp.c = c;
   zwSeen(performance.now());
   if (zw.visFrom != null && (zw.visTo == null || zw.visTo < c - 4)) zw.visTo = c - 4;
   zw.visLocked = true;
   zwUpdate(Math.min(c - 3, zwHorizon(performance.now())));
   if (s.charge) JRT.snap = { k: inp.k, c, list: zw.parts.slice(0, 400).map(zwClone) };      // the carried states before this Charge (jrLock checks its lock on them)
-  const cc = s.cc && inp.id === s.id;
+  const cc = (s.cc && inp.id === s.id) || ((inp.cancel || inp.wait) && !!(s.ccP || s.ai) && inp.pid === s.cancel);
   // a Close Call confirm: the states before it are kept, in case the outcome seen fits none of the split (jrRecover)
   if (cc) JRT.ccSnap = { k: inp.k, c, list: zw.parts.map(p => Object.assign(zwClone(p), { cc: p.cc ? Object.assign({}, p.cc) : null })) };
   const out = [];
-  for (const p of zw.parts) out.push(...jrSplit(p, inp, c, JR_SHIFTS, s));
+  const shifts = inp.shifts || (inp.cancel ? NB_SHIFTS : JR_SHIFTS);
+  for (const p of zw.parts) out.push(...jrSplit(p, inp, c, shifts, s));
   zw.parts = out;
   if (zw.parts.length > ZW_MAXP) { slog('zwTooMany', { n: zw.parts.length }); zw.parts = []; zw.dead = true; }
   else zwBgAdd(ZW_BGIN);
@@ -233,15 +288,70 @@ function jrApply(inp, re) {
 // one state x the confirm frame c + sh for each shift: the input's events in, and on a Close Call confirm the roll's
 // outcome (q.cc[k]); the outcome is part of the state (zwUpdate merges only states with the same outcomes)
 function jrSplit(p, inp, c, shifts, s) {
-  const out = [], cc = s.cc && inp.id === s.id;
-  for (const [sh, ws] of shifts) {
+  const K = R.NB_K, nbRoll = (inp.cancel || inp.wait) && !!(s.ccP || s.ai) && inp.pid === s.cancel, cc = (s.cc && inp.id === s.id) || nbRoll;
+  for (var out = [], i = 0; i < shifts.length; i++) {
+    const [sh, ws] = shifts[i]; let f = c + sh;
+    // v85: the box A only counts on +73..+132 after Goombario's Charge confirm (before: nothing; after: the box ran out)
+    if (inp.cancel && inp.G != null) { if (f < inp.G + K.lo) continue; if (f > inp.G + K.hi) f = inp.G + K.none; }
     const q = zwClone(p); q.w = p.w * ws; q.cc = p.cc ? Object.assign({}, p.cc) : null; q.sh = sh;
-    const ev = R.buildEv([{ f: c + sh, id: inp.id }]);
-    zwMerge(q.ev, ev); q.evMax = Math.max(q.evMax, ...ev.keys(), ...[...ev.values()].flatMap(e => e.eio.map(x => x[0])));
-    if (cc) (q.cc = q.cc || {})[inp.k] = jrRollOk(q, c + sh + s.cc);
+    const P = inp.wait ? f + K.none : f, list = inp.wait ? [{ f, id: inp.id }, { f: P, id: inp.pid }] : [{ f, id: inp.id }];
+    const ev = R.buildEv(list);
+    zwMerge(q.ev, ev); q.evMax = Math.max(q.evMax, ...ev.keys(), ...[...ev.values()].flatMap(e => e.eio.map(x => x[0])), s.ai && (inp.cancel || inp.wait) ? P + K.hwai + 72 : 0);
+    if (cc) (q.cc = q.cc || {})[inp.k] = nbRoll ? (s.ai ? nbAiRollOk(q) : jrRollOk(q, P + s.ccP)) : jrRollOk(q, f + s.cc);
     out.push(q);
   }
   return out;
+}
+// v85, Hallway Bowser after Goombario's Charge: his AI picks the attack, the Close Call comes 54 / 70 / 55 frames later (S.cc)
+function nbAiRollOk(q) {
+  const S = { s: q.S.s, nc: q.S.nc, inst: q.S.inst.map(I => ({ rm: I.rm, per: I.per, p: I.p.slice() })), extra: q.S.extra ? new Map(q.S.extra) : undefined, ccAt: q.S.ccAt };
+  let g = q.g;
+  for (let n = 0; n < 800 && !S.cc; n++) { if (q.pause && g === q.pauseAt) { S.nc += q.pause; g += q.pause; continue; } R.frameEv(S, g, q.ev); g++; }
+  return !!(S.cc && S.cc.lucky);
+}
+/* ---------- v85: Goombario's Charge, the box A (Normal Boots) ----------
+ * The plan: as soon as his Charge confirm is read (the bar hiding, 4 frames after its A), the frame of the A that closes his
+ * "attack power up" box: zwPlan over the tracker's states stepped to the box (his Charge's sparkles end on +62), in the box
+ * window (+73..+132, never past the lead), the perfect press (ppPick: a working frame, the centre of the widest run). */
+function nbCancelPlan(why) {
+  const C = JRT.cancel; if (!C || C.done || !C.roll || !jrZw()) return false;
+  const g = JRT.inputs.find(x => x.k === C.k && !x.cancel && x.c != null); if (!g) return false;
+  const K = R.NB_K, P0 = st.plan;
+  zwPlan(why || 'box', { lo: g.c + K.lo, hi: g.c + K.hi, h: g.c + 63 });
+  if (st.plan && st.plan !== P0) st.plan.nbK = C.k;
+  return true;
+}
+/* the box A, read from the status bar coming back (his turn ends 5 frames after it, the picture one frame later: NB_BACK_H;
+ * -2..+1). Not seen: the planned frame with the press spread (the beeps not stopped), else the box ran out (+133). */
+const NB_BACK_H = 6;
+function nbCancelSeen(tBack, why) {
+  const C = JRT.cancel; if (!C || C.done) return; C.done = true;
+  const inp = { k: C.k, id: C.pid, pid: C.pid, h: NB_BACK_H, src: tBack != null ? 'bar' : why, cancel: true };
+  if (tBack != null) inp.t = tBack;
+  else {
+    const g = JRT.inputs.find(x => x.k === C.k && !x.cancel), P = st.plan && st.plan.nbK === C.k && !st.plan.stopped && g && g.c != null ? st.plan.zwAbs - g.c : null;
+    inp.rel = P != null ? P : R.NB_K.none; inp.shifts = P != null ? NB_SHIFTS_BLIND : [[0, 1]];
+    inp.t = C.tA + (inp.rel + inp.h) * jrRate();
+  }
+  JRT.inputs.push(inp); jrPress(inp);
+  if (zw.on && zw.fight === 'jr') jrApply(inp);
+  slog('nbBoxA', { k: C.k, how: inp.src, c: inp.c, G: inp.G, K: inp.G != null && inp.c != null ? inp.c - inp.G : null });
+  if (C.roll) JRT.ccPend = { k: C.k, t: inp.t - inp.h * jrRate() };
+  jrGo(C.k + 1);
+  if (C.k === JRS().length - 1) jrEnd('the fight is over');
+}
+// makePlan on a box-A step (cancel mode): no lock / no roll -> the usual texts; before the Charge confirm -> what to do
+function nbCancelMake() {
+  const s = RT()[routeStep], C = JRT.cancel;
+  if (jrStepAt10() || !jrZw()) { st.msg = jrNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }
+  if (!C || C.k !== s.jr || C.done) { st.msg = 'Locked: confirm Goombario\'s Charge whenever you like. The beeps start as soon as the status bar hides: press A on the last beep to close his "attack power up" box → Close Call.'; render(); return; }
+  if (st.plan && st.plan.nbK === C.k) return;
+  nbCancelPlan('screen');
+}
+function nbCancelWatch(t, present) {
+  const C = JRT.cancel; if (!C || C.done) return; const B = JRT.bar, r = jrRate();
+  if (present && B.since && t - B.since >= 3 * FRAME && B.since > C.tA + (R.NB_K.lo + 3) * r) { nbCancelSeen(B.since, 'bar'); return; }
+  if (t > C.tA + (R.NB_K.none + 60) * r) nbCancelSeen(null, 'not seen');
 }
 // does this state's Close Call roll (the first draw on frame f) dodge? (simulated on a copy, the particle's clock)
 function jrRollOk(q, f) {
@@ -275,7 +385,7 @@ function jrShineTry() {
 function jrShineSearch(hor) {
   const L = JRT.lastLock, now = performance.now(), late = zw.tapLate || 3.5;
   // the stretch: shines after the tracker died and after the rays of any Charge since (their parts draw on their own)
-  const ins = JRT.inputs.filter(x => x.c != null && x.k > L.k), chg = ins.filter(x => JR_SEQ[x.k].charge).map(x => x.c + 75);
+  const ins = JRT.inputs.filter(x => x.c != null && x.k > L.k), chg = ins.filter(x => JRS()[x.k].charge).map(x => x.c + 75);
   const lo = Math.max(JRT.lostF != null ? JRT.lostF : (zw.deadAt || 0), ...chg);
   const idx = zw.taps.map((f, i) => i).filter(i => zw.taps[i] > lo && zw.taps[i] < hor - late).sort((a, b) => zw.taps[a] - zw.taps[b]).slice(0, JR_SHINE_USE);
   if (idx.length < JR_SHINE_MIN) return;
@@ -329,19 +439,19 @@ function jrShineSearch(hor) {
 // burst with no Mario never gets there): the fight starts on the first one; later ones anchor the count
 function jrTick(t) {
   const T = CHG.trig;
-  if (T && CHG.prof && CHG.prof.id === 'jr' && ['search', 'locked', 'nolock', 'failed'].includes(CHG.state) && JRT.trigSeen !== T) { JRT.trigSeen = T; jrBurst(T); }
+  if (T && CHG.prof && (CHG.prof.id === 'jr' || CHG.prof.id === 'nbhw') && ['search', 'locked', 'nolock', 'failed'].includes(CHG.state) && JRT.trigSeen !== T) { JRT.trigSeen = T; jrBurst(T); }
 }
 function jrBurst(T) {
   const tH = CHG.hideT;
-  if (!JRT.on || JRT.k >= JR_SEQ.length || (JRT.t0 && T.t - JRT.t0 > 6 * 60000)) {
+  if (!JRT.on || JRT.k >= JRS().length || (JRT.t0 && T.t - JRT.t0 > 6 * 60000)) {
     // the first Charge on a Jr. Troopa step: T1 (a new attempt after a finished or stale fight, too)
-    jrReset(); Object.assign(JRT, { on: true, t0: T.t });
+    jrReset(); Object.assign(JRT, { on: true, t0: T.t, seq: jrStepSeq() });
     jrGo(0); jrConfirm(0, tH != null && tH > 0 ? tH : T.t - 13 * FRAME, 3, 'burst'); slog('jrFight', { at: Math.round(T.t) }); return;
   }
   const last = JRT.inputs[JRT.inputs.length - 1];
-  if (last && JR_SEQ[last.k].charge && Math.abs(last.t - tH) < 200) { slog('jrChargeBurst', { k: last.k }); return; }    // the hide counted as this Charge
+  if (last && JRS()[last.k].charge && Math.abs(last.t - tH) < 200) { slog('jrChargeBurst', { k: last.k }); return; }    // the hide counted as this Charge
   // the count is off (a missed or an extra hide): this burst is the Charge nearest to where the count is
-  const k = [4, 8].reduce((a, b) => (Math.abs(b - JRT.k) < Math.abs(a - JRT.k) ? b : a));
+  const k = JRS().map((x, i) => (x.charge && i > 0 ? i : -1)).filter(i => i > 0).reduce((a, b) => (Math.abs(b - JRT.k) < Math.abs(a - JRT.k) ? b : a));
   slog('jrResync', { from: JRT.k, to: k, last: last ? last.k : null });
   if (last && last.t === tH) JRT.inputs.pop();
   if (zw.on && zw.fight === 'jr') { zw.on = false; slog('jrCarryEnds', { k, why: 'count off' }); }
@@ -380,28 +490,31 @@ function jrStartFrom(k, seed, qs, qw) {
   Object.assign(zw, { fight: 'jr', imps: null, shifts: null, tapLate: 4 });
   // a plan beeping from the old tracker: its frame in the new clock (zwTick checks it against the new states)
   const P = st.plan; if (old && P && P.mix && P.mix.zw && P.zwAbs != null) { P.zwAbs = Math.round(P.zwAbs + (old.t0 - zw.t0) / zw.rate); P.zwKey = null; }
+  // v85: this Charge's own confirm is frame -13 of the new clock (the rays' frame 0 = confirm + 13): jrPlanFloor counts from it
+  if (JRS() !== JR_SEQ) { const ci = JRT.inputs.filter(x => x.k === k && !x.cancel).pop(); if (ci) ci.c = -13; }     // (Normal Boots only: Ultra Boots unchanged)
   // the confirms since this Charge (the runner may have gone on before the lock landed): in order, in the new clock
   const since = JRT.inputs.filter(x => x.k > k);
   for (const inp of since) jrApply(inp, true);
   JRT.dead = null; JRT.recon = null; JRT.shineRec = null; JRT.lost = null; JRT.lostF = null; JRT.origin = k; JRT.lastLock = { k, seed: seed >>> 0, t0: zw.t0 }; JRT.hist.push({ k, t0: zw.t0, at: performance.now() });   // (the tests map plans by the tracker that made them)
   slog('jrStart', { k, since: since.map(x => x.k), particles: zw.parts.length });
+  if (JRT.cancel && !JRT.cancel.done && JRT.cancel.roll) nbCancelPlan('lock');
 }
 /* v82 (log 1794169121337, the middle fight's T3): the plan from the tracker as soon as its states allow, before the target
  * screen shows. v81 planned only once that screen had been up 0.3 s; the runner confirmed the Bomb 0.4 s after the menu
  * opened, before any plan (it came 175 ms after the bar hid). The plan's frame is never earlier than a plan made on the
  * screen would allow: the previous confirm + the frames until the menu opens (the bar back: Charge 110-113 frames, the
- * T4 Bomb 160-162, both on every fight of that log; after a Close Call the menu after a dodge, JR_SEQ next) + the beep
+ * T4 Bomb 160-162, both on every fight of that log; after a Close Call the menu after a dodge, JRS() next) + the beep
  * lead + 10. The doubt and edge rules are zwPlan's; a lock that lands later re-scores it (zwTick, "Seed changed"). */
 const JR_MENU_CHG = 110, JR_MENU_BOMB = 160;
 function jrPlanFloor() {
-  if (!(zw.on && zw.fight === 'jr') || JRT.k < 1 || JRT.k >= JR_SEQ.length || !JR_SEQ[JRT.k].prof) return null;
-  const k = JRT.k, ps = JR_SEQ[k - 1], prev = JRT.inputs.filter(x => x.k === k - 1).pop();
+  if (!(zw.on && zw.fight === 'jr') || JRT.k < 1 || JRT.k >= JRS().length || !jrSeqProf(JRS()[JRT.k])) return null;
+  const k = JRT.k, ps = JRS()[k - 1], prev = JRT.inputs.filter(x => x.k === k - 1).pop();
   if (!prev || prev.c == null || !ps) return null;
-  const gap = ps.charge ? JR_MENU_CHG : ps.next ? ps.next : ps.id === 'jr_bomb' ? JR_MENU_BOMB : null;
+  const gap = ps.menu ? ps.menu : ps.charge ? JR_MENU_CHG : ps.next ? ps.next : ps.id === 'jr_bomb' ? JR_MENU_BOMB : null;
   return gap == null ? null : prev.c + gap + Math.ceil(earliestPress(0) / zw.rate) + 10;
 }
 function jrEarlyPlan(t) {
-  if (V.wasOn || !jrZw() || JRT.k >= JR_SEQ.length || PROF().id !== JR_SEQ[JRT.k].prof || jrPlanFloor() == null) return;   // the screen up: autoPlan as before
+  if (V.wasOn || !jrZw() || JRT.k >= JRS().length || PROF().id !== jrSeqProf(JRS()[JRT.k]) || PROF().lever === 'cancel' || jrPlanFloor() == null) return;   // the screen up: autoPlan as before
   if (st.plan && performance.now() < st.plan.tPress + 600) return;
   if (st.planTry && performance.now() - st.planTry < 500) return;
   st.planEarly = true; try { autoPlan(); } finally { st.planEarly = false; }
@@ -412,8 +525,9 @@ function jrEarlyPlan(t) {
  * the one the Close Call outcomes have fitted; the target screen read ran ~3 frames later on T4 / T6 in that log. A press
  * more than 5 frames off the beeps (or after the beeps were stopped) is logged but kept out of the press spread. */
 function jrPress(inp) {
-  const P = st.plan, s = JR_SEQ[inp.k];
-  if (!P || !P.mix || !P.mix.zw || P.zwAbs == null || P.measured || !s || !s.prof || PROF().id !== s.prof || !(zw.on && zw.fight === 'jr')) return;
+  const P = st.plan, s = JRS()[inp.k];
+  if (!P || !P.mix || !P.mix.zw || P.zwAbs == null || P.measured || !s || !jrSeqProf(s) || PROF().id !== jrSeqProf(s) || !(zw.on && zw.fight === 'jr')) return;
+  if (s.cancel && PROF().lever === 'cancel' && !inp.cancel) return;      // v85: Goombario's Charge confirm is not the beeped press (its box A is)
   const rate = zw.rate; if (inp.t - inp.h * rate < (P.tMade || 0)) return;      // the plan came after the press
   const c = zwF(inp.t, inp.h + num('pfix')), f = Math.round(c), err = c - P.zwAbs, onBeeps = Math.abs(err) <= 5 && !P.stopped;
   const d = f - P.zwAbs, inWin = P.target + d >= P.w.start && P.target + d <= P.w.end;
@@ -429,44 +543,47 @@ function jrEnd(why) { if (zw.on && zw.fight === 'jr') zw.on = false; JRT.on = fa
 function jrStepChange(was) {
   const W = RT()[was], N = RT()[routeStep];
   if (JRT.stepping) return;
-  if (W && W.jr != null && !(N && N.jr != null)) { if (JRT.on || (zw.on && zw.fight === 'jr')) jrEnd('left the Jr. Troopa steps'); return; }
+  if (W && W.jr != null && !(N && N.jr != null && (N.seq || 'ultra') === (W.seq || 'ultra'))) { if (JRT.on || (zw.on && zw.fight === 'jr')) jrEnd('left the Jr. Troopa steps'); if (N && N.jr != null) jrReset('another fight'); return; }
   if (N && N.jr != null && JRT.on && N.jr < JRT.k - 1) { jrReset('route moved back by hand'); slog('jrRestart', { to: routeStep }); }
   if (N && N.jr != null && zw.on && zw.fight !== 'jr') { zw.on = false; slog('trackerOffForJr', { from: was }); }
 }
 /* ---------- what the page says ---------- */
 function jrBlindText(prof) {
-  return prof === 'jrpb5' ? 'Power Bounce whenever you like: 5+ bounces about 67.5%, 6+ about ' + Math.round(100 * JR_BLIND.p6) + '%'
+  if (R.PROFILES[prof] && R.PROFILES[prof].lever === 'cancel') return 'close Goombario\'s box whenever you like: Close Call about ' + Math.round(100 * JR_BLIND.cc) + '%';
+  if (R.PROFILES[prof] && R.PROFILES[prof].lever === 'wait') return 'confirm Goombario\'s Charge whenever you like and leave his box: Close Call about ' + Math.round(100 * JR_BLIND.cc) + '%';
+  return prof === 'jrpb5' || prof === 'jrpb5n' ? 'Power Bounce whenever you like: 5+ bounces about 67.5%, 6+ about ' + Math.round(100 * JR_BLIND.p6) + '%'
     : 'press whenever you like: Close Call about ' + Math.round(100 * JR_BLIND.cc) + '%';
 }
 function jrFight() {
-  const p = PROF().id, what = (JR_SEQ.find(s => s.prof === p) || {}).what || 'the press';
+  const p = PROF().id, what = jrWhat(JRS().find(s => jrSeqProf(s) === p)) || 'the press';
   const bl = jrBlindText(p);
-  return { blind: p === 'jrpb5' ? 'blind 5+ about 67.5%, 6+ about 32%' : 'a blind ' + what + ' dodges 30%', normal: 'Play it blind: ' + bl,
+  return { blind: /^jrpb5n?$/.test(p) ? 'blind 5+ about 67.5%, 6+ about 32%' : 'a blind ' + what + ' dodges 30%', normal: 'Play it blind: ' + bl,
     busy: 'the turn is still being simulated. It plans in a moment; or play it blind (' + bl + ').' };
 }
 function jrNoLockMsg() {
   const p = PROF().id, s = RT()[routeStep], bl = jrBlindText(p), cs = CHG.state;
-  if (jrStepAt10()) return 'No roll this turn: Mario is at 10 HP after the Life Shroom, so Jr. Troopa\'s hit has no Close Call. ' + ((JR_SEQ[s.jr] || {}).what || 'Press') + ' whenever you like; the T5 Charge locks the seed again.';
-  if (JRT.recon && !jrReconOk()) return 'No edge yet: the ' + JR_SEQ[JRT.recon.k].t + ' ' + (JR_SEQ[JRT.recon.k].what || 'press') + ' outcome fit none of the carried states, so the page rebuilt them (its confirm read again, -4..+4 frames). No beep until the coin confirms them (' + JR_RECON_TAPS + ' shines on the menu). Play it blind: ' + bl + '.';
+  if (jrStepAt10()) return 'No roll this turn: Mario is at 10 HP after the Life Shroom, so Jr. Troopa\'s hit has no Close Call. ' + (jrWhat(JRS()[s.jr]) || 'Press') + ' whenever you like; ' + (JRS() === JR_SEQ ? 'the T5 Charge locks the seed again.' : 'the next Super Charge locks the seed again.');
+  if (JRT.recon && !jrReconOk()) return 'No edge yet: the ' + JRS()[JRT.recon.k].t + ' ' + (jrWhat(JRS()[JRT.recon.k]) || 'press') + ' outcome fit none of the carried states, so the page rebuilt them (its confirm read again, -4..+4 frames). No beep until the coin confirms them (' + JR_RECON_TAPS + ' shines on the menu). Play it blind: ' + bl + '.';
   if (JRT.dead) return 'No beeps: ' + JRT.dead + '. Play it blind: ' + bl + '. The next Charge locks again.';
   if (cs === 'capture' || cs === 'maps' || cs === 'search') return 'No beeps yet: the Charge rays are still being read. Stay on the target screen; the beeps start when the seed locks (or play it blind: ' + bl + ').';
   if (cs === 'nolock' || cs === 'failed' || cs === 'notseen') return 'No Charge lock (' + (CHG.why || 'no clear seed') + '): play it blind. ' + bl[0].toUpperCase() + bl.slice(1) + '.';
   if (zw.on && zw.fight === 'jr' && zw.dead) return 'No edge: the seed was lost. Play it blind: ' + bl + '.';
+  if (JRS() !== JR_SEQ) return 'No Charge lock: the page did not read a Super Charge in this fight (Mario first: Super Charge on himself, then Goombario). Play it blind: ' + bl + '.';
   return 'No Charge lock: the page did not read a Super Charge in this fight (Mario first on T1, T3 and T5: Super Charge on himself). Play it blind: ' + bl + '.';
 }
 // the Charge panel's line
 function jrStatusLine(s, lost) {
   const P = st.plan, pc = x => Math.round(100 * x) + '%', stp = jrStepNow() && RT()[routeStep];
-  const outs = Object.keys(JRT.out).map(k => JR_SEQ[k].t + ' ' + (JRT.out[k] === 'dodge' ? 'dodged' : 'hit (Life Shroom)')).join(', ');
-  const head = '<br><b>Jr. Troopa' + (JRT.on ? ' ' + (JR_SEQ[Math.min(JRT.k, JR_SEQ.length - 1)] || {}).t : '') + ':</b> ';
+  const outs = Object.keys(JRT.out).map(k => JRS()[k].t + ' ' + (JRT.out[k] === 'dodge' ? 'dodged' : 'hit (Life Shroom)')).join(', ');
+  const head = '<br><b>' + (JRS() === HW_SEQ_NB ? 'Hallway Bowser (Normal Boots)' : JRS() === JR_SEQ_NB ? 'Jr. Troopa (Normal Boots)' : 'Jr. Troopa') + (JRT.on ? ' ' + (JRS()[Math.min(JRT.k, JRS().length - 1)] || {}).t : '') + ':</b> ';
   let body = '';
   if (JRT.dead) body = JRT.dead + '. ';
   if (JRT.lost && zw.dead) body += 'No edge: ' + JRT.lost + ' (until the next Charge locks, or the coin finds the seed again). ';
   if (JRT.shineRec && !zw.dead) body += 'seed found again from ' + JRT.shineRec.taps + ' shines. ';
-  if (JRT.cross) body += 'the ' + JR_SEQ[JRT.cross.k].t + ' Charge ' + (JRT.cross.agree ? 'confirmed the carried seed. ' : 'did not fit the carry: tracking from its lock. ');
-  if (P && P.mix && stp && PROF().group === 'jr') body += (PROF().id === 'jrpb5' ? 'Power Bounce on the beep: ' + ppText(P.mix, 'jrpb5') + ' (blind 67.5% / ' + pc(JR_BLIND.p6) + '; with your press spread 5+ ' + pc(P.mix.p) + ', 6+ ' + pc(P.mix.p4 || 0) + ')' : (JR_SEQ[stp.jr] || {}).what + ' on the beep: Close Call. ' + ppText(P.mix, PROF().id) + ' (blind ' + pc(JR_BLIND.cc) + '; with your press spread ' + pc(P.mix.p) + ')');
+  if (JRT.cross) body += 'the ' + JRS()[JRT.cross.k].t + ' Charge ' + (JRT.cross.agree ? 'confirmed the carried seed. ' : 'did not fit the carry: tracking from its lock. ');
+  if (P && P.mix && stp && PROF().group === 'jr') body += (/^jrpb5n?$/.test(PROF().id) ? 'Power Bounce on the beep: ' + ppText(P.mix, PROF().id) + ' (blind 67.5% / ' + pc(JR_BLIND.p6) + '; with your press spread 5+ ' + pc(P.mix.p) + ', 6+ ' + pc(P.mix.p4 || 0) + ')' : jrWhat(JRS()[stp.jr]) + ' on the beep: Close Call. ' + ppText(P.mix, PROF().id) + ' (blind ' + pc(JR_BLIND.cc) + '; with your press spread ' + pc(P.mix.p) + ')');
   else if ((s === 'nolock' || s === 'failed' || s === 'notseen' || lost) && !(zw.on && zw.fight === 'jr' && !zw.dead)) body += 'play it blind (Close Call ' + pc(JR_BLIND.cc) + '; Power Bounce 5+ 67.5%, 6+ ' + pc(JR_BLIND.p6) + ').';
-  else if (zw.on && zw.fight === 'jr') body += 'carried from the ' + JR_SEQ[JRT.origin || 0].t + ' Charge; the beeps start on each Close Call / Power Bounce target screen.';
+  else if (zw.on && zw.fight === 'jr') body += 'carried from the ' + JRS()[JRT.origin || 0].t + ' Charge; the beeps start on each Close Call / Power Bounce target screen.';
   return head + body + (outs ? ' <span class="note">(' + outs + ')</span>' : '');
 }
 /* for tests: the plan if the step's target screen showed on clock frame cScr (zwChoose over the tracker's states, the
@@ -479,4 +596,4 @@ function jrPlanAt(cScr, leadS, winS, profId) {
   const top = R.TOP[prof.id], C = zwChoose(S.list, from, W, PRESS_ERR, prof, { d: S.doubt, b3: jrBlind(prof.id), b4: top ? jrBlind(top) : 0 });
   return { target: C.target, p: C.p, p6: C.p4, pp: C.pp, pp6: C.pp4, w4: C.w4, pStates: C.pStates, doubt: S.doubt, w: C.w, none: C.none, from, W, states: S.list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })) };
 }
-const jrBlind = id => (id === 'jrpb5' ? JR_BLIND.p5 : id === 'jrpb6' ? JR_BLIND.p6 : JR_BLIND.cc);
+const jrBlind = id => (/^jrpb5n?$/.test(id) ? JR_BLIND.p5 : /^jrpb6n?$/.test(id) ? JR_BLIND.p6 : JR_BLIND.cc);

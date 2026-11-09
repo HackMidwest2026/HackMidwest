@@ -1,4 +1,4 @@
-/* v84: the Boots setting and the Normal Boots route (charge_live/README.md v84).
+/* v84 (v85: the Close Calls beeped, Final Bowser's one Power Bounce step): the Boots setting and the Normal Boots route (charge_live/README.md v84).
  *  1. The setting: at the top of the route panel (the Restart route row), Ultra Boots by default, remembered across reloads
  *     (tot-settings), and switching it switches all four fights' routes (the route list, the steps) and keeps the fight.
  *  2. Ultra Boots is v83's route exactly (step labels, profiles, Charge profiles).
@@ -22,7 +22,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   const r0 = await p.evaluate(() => { const T = window.__tot, sel = document.getElementById('s-boots'), row = document.getElementById('route-reset').parentElement;
     return { v: sel && sel.value, inRow: !!sel && row.contains(sel), opts: sel ? Array.from(sel.options).map(o => o.value + '=' + o.textContent) : [], ver: T.VERSION, odds: document.getElementById('route-odds').textContent, goal: document.getElementById('s-dupgoal').value }; });
   console.log(JSON.stringify(r0).slice(0, 600));
-  check(r0.ver === 'v84', 'version v84');
+  check(r0.ver === 'v85', 'version v85');
   check(r0.v === 'ultra' && r0.inRow && r0.opts.join() === 'ultra=Ultra Boots,normal=Normal Boots', 'Boots setting in the Restart route row, Ultra Boots by default');
   check(r0.goal === 'auto', 'Duplighosts goal: Auto by default');
   const U = await steps();
@@ -39,14 +39,14 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   check(sw.goal === 'four', 'Normal Boots, Auto: the Duplighosts goal is "4 first"');
   const N = await steps();
   const want = [/^Duplighosts T1/, /^Jr\. Troopa T1/, /^Jr\. Troopa T2/, /^Jr\. Troopa T3/, /^Jr\. Troopa T4/, /^Jr\. Troopa T5/, /^Jr\. Troopa T6/, /^Jr\. Troopa T7/, /^Hallway Bowser T1/, /^Hallway Bowser T2/, /^Hallway Bowser T5/,
-    /^Final Bowser T2/, /^Final Bowser T3/, /^Final Bowser T4/, /^Final Bowser T5/, /^Final Bowser T6/, /^Final Bowser T7/, /^Final Bowser T8/];
+    /^Final Bowser Phase 2 Power Bounce/];     // v85: one Final Bowser step, the phase-2 Power Bounce (whichever turn)
   check(N.length === want.length && N.every((s, i) => want[i].test(s.t)), 'Normal Boots steps: one per turn of the spec (' + N.map(s => s.t).join(', ') + ')');
   check(N.every(s => s.nb) && N[0].prof === 'dup3' && N[0].chg === 'dup', 'Normal Boots: the Duplighosts T1 beep kept (dup3, the Charge lock)');
-  check(N.filter(s => s.chg).length === 1, 'Normal Boots: no Charge reader but the Duplighosts\'');
+  check(N.filter(s => s.chg).map(s => s.chg).join() === 'dup,jr,jr,jr,jr,jr,jr,jr,nbhw', 'v85 Normal Boots Charge readers: the Duplighosts\', Jr. Troopa\'s (every step) and Hallway T1\'s (' + N.filter(s => s.chg).map(s => s.chg).join() + ')');
   check(N.find(s => /^Hallway Bowser T2/.test(s.t)).prof === 'timeout' && !N.find(s => /^Hallway Bowser T2/.test(s.t)).nomodel, 'Hallway T2: Time Out planned (shine lock)');
   check(/Kooper/.test(sw.list) === false && /Goombario/.test(N.map(s => s.label).join()) , 'Goombario\'s Charge, no Kooper');
   for (const s of N.filter(x => x.nomodel)) check(!s.prof, s.t + ': not modelled, so no profile to beep (' + s.nomodel.slice(0, 60) + ')');
-  check(N.filter(x => !x.nomodel).map(x => x.prof).join() === 'dup3,timeout,hwpb6n,jrpb5n'.split(',').sort((a, b) => ['dup3', 'jrpb5n', 'timeout', 'hwpb6n'].indexOf(a) - ['dup3', 'jrpb5n', 'timeout', 'hwpb6n'].indexOf(b)).join(), 'beeped on Normal Boots: Duplighosts T1, Jr. T7, Hallway T2 and T5 (' + N.filter(x => !x.nomodel).map(x => x.t).join(', ') + ')');
+  check(N.map(x => x.prof || '-').join() === 'dup3,-,jrcc_gch,jrcc_gch,jrcc_gch,jrcc_hb,-,jrpb5n,hwcc_gch,timeout,hwpb6n,-' && N.filter(x => x.nomodel).length === 1, 'v85 beeped on Normal Boots: Duplighosts T1, Jr. T2-T5 Close Calls, T7, Hallway T1 Close Call, T2 and T5; only Final Bowser not modelled (' + N.map(x => x.prof || '-').join() + ')');
   check(/Phase 1 \(not tracked\)/.test(sw.list), 'Final Bowser phase 1 shown as not tracked');
   // every Normal Boots step: what Plan says
   const msgs = await p.evaluate(() => { const T = window.__tot, out = []; for (let i = 0; i < T.RT().length; i++) { T.setStep(i); T.st.plan = null; T.st.msg = null; T.makePlan(); out.push({ t: T.RT()[i].t, msg: T.st.msg || '', plan: !!T.st.plan, beeps: T.beepsPending ? T.beepsPending() : null }); } return out; });
@@ -78,7 +78,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   const odds = await p.evaluate(() => document.getElementById('route-odds').textContent);
   console.log(odds);
   check(/Ultra Boots:/.test(odds) && /Normal Boots:/.test(odds) && ['Duplighosts', 'Jr. Troopa', 'Hallway Bowser', 'Final Bowser'].every(f => odds.split(f).length === 3), 'odds per fight for both routes');
-  check(/blind 3\.9e-8%/.test(odds), 'Final Bowser Normal Boots blind from the attack-choice model (3.9e-10)');
+  check(/blind cap 4\+ 72%, 5\+ 31%, 6\+ 8\.1%, 7\+ 1\.3%/.test(odds) && /Jr\. Troopa - T2-T4 Close Calls/.test(odds), 'v85 odds: Normal Boots Jr. Troopa Close Calls beeped, Final Bowser blind cap odds');
   // persisted
   await p.reload();
   const r1 = await p.evaluate(() => ({ v: document.getElementById('s-boots').value, nb: window.__tot.RT().every(s => s.nb) }));

@@ -81,6 +81,8 @@ const CHG_PROF = {
   // jr: the Jr. Troopa steps (chg 'jr'). The lock goes to jrLock (jr_live.js): the T1 lock starts the tracker that carries it
   // through the fight; the T3 / T5 locks check the carry or start it again.
   jr: { id: 'jr', turn: null, cams: () => CHG_CAMS, mario: () => CHG_MARIO, bright: () => CHG_BRIGHT_JR, bolts: false, early: false, offs: [24, 25], effects: [0, 1], trigLo: 5, trigHi: 25, trigN: true, tol: () => 1.5, trigMin: 250, trigMax: 1000, baseMin: 30, shape: true } };
+// v85, Normal Boots Hallway T1 (route step chg 'nbhw'): the Hallway's reader (hw), the lock handed to jrLock (jr_live.js, HW_SEQ_NB)
+CHG_PROF.nbhw = Object.assign({}, CHG_PROF.hw, { id: 'nbhw', turn: null });
 /* the burst's first picture (frame 3) comes 13 game frames after the bar hides for the Charge confirm: 433-478 ms on the
  * 7 route clips and the first live attempt. hw: the trigger only counts trigMin..trigMax ms after a hide that ended a
  * real bar-up (600+ ms, as hudWatch's barHide); a flicker of the coin box never arms it, and a hide with no burst in
@@ -97,7 +99,7 @@ function chgEnabled() { const el = $('s-chg'); return !el || el.checked; }
 /* any Hallway Bowser step arms the Hallway Charge (the runner is often on T2 after a retry; a burst seen there sets the
  * route back to T1, chgFrame) */
 const chgHallStep = s => !!(s && s.t && /^Hallway Bowser/.test(s.t));
-function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (s.nb && !s.chg) return null;     /* v84: a Normal Boots step reads no Charge (but the Duplighosts') */ if (chgHallStep(s)) return CHG_PROF.hw; if (s.chg && CHG_PROF[s.chg]) return CHG_PROF[s.chg]; for (const k in CHG_PROF) if (CHG_PROF[k].turn && CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
+function chgProfNow() { const s = isRoute() && RT()[routeStep]; if (!s) return null; if (s.nb) return (s.chg && CHG_PROF[s.chg]) || null;     /* v84: a Normal Boots step reads only its own chg (v85: the Duplighosts', Jr. Troopa's, Hallway T1's) */ if (chgHallStep(s)) return CHG_PROF.hw; if (s.chg && CHG_PROF[s.chg]) return CHG_PROF[s.chg]; for (const k in CHG_PROF) if (CHG_PROF[k].turn && CHG_PROF[k].turn === s.turn) return CHG_PROF[k]; return null; }
 function chgStepActive() { return !!chgProfNow(); }
 /* Which arena the capture shows, read at a real bar hide (the menu just closed, battle camera): the band under the
  * battle floor (320-space y 165-190) is the dark bushes in the Hallway (luma 45-67 at all 43 bar hides of the 14
@@ -133,7 +135,13 @@ function chgArenaJr(L, br, lbr) { const A = JR_ARENA; return L > A.L[0] && L < A
  * Duplighost room at a real hide is that fight (a reset to an earlier save): the route goes to the Duplighost step, but
  * only on the Charge-lock route (on the RTA route the Duplighosts have no Charge to read). */
 function chgArenaProf(P0, real) {
-  const A = chgArena(); CHG.arenaSeen = { a: A.a, L: A.L, br: A.br, lbr: A.lbr, real: !!real }; const fb1I = RT().findIndex(x => x.chg === 'fb1'), fbI = fb1I >= 0 ? fb1I : RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup'), jrI = RT().findIndex(x => x.chg === 'jr');
+  const A = chgArena(); CHG.arenaSeen = { a: A.a, L: A.L, br: A.br, lbr: A.lbr, real: !!real };
+  // v85, Normal Boots: a Hallway picture on a Jr. Troopa step is the Hallway (its T1 reads with nbhw); the other moves as v84 (none)
+  if (typeof bootsNow === 'function' && bootsNow() === 'normal') {
+    const hwI = RT().findIndex(x => x.chg === 'nbhw');
+    if (P0 === CHG_PROF.jr && A.a === 'hw' && hwI >= 0) { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr, nb: true }); setStep(hwI); return CHG_PROF.nbhw; }
+    return P0;
+  } const fb1I = RT().findIndex(x => x.chg === 'fb1'), fbI = fb1I >= 0 ? fb1I : RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup'), jrI = RT().findIndex(x => x.chg === 'jr');
   // Jr. Troopa (jr_live.js): on his steps a Hallway picture is the Hallway (its burst sets Hallway T1), Final Bowser's arena at
   // a real hide that fight. His arena does not move the route from another fight's step: the castle corridors on the walk
   // after the fight are grey stone too, and no console clip of the fight exists to rule that out (jrI: the log only).
@@ -787,10 +795,10 @@ function chgQBack(seed, qs) {
 // the tracker's clock: the console's frame time (consoleRate: measured from the session's shines, else a real N64's)
 function chgRate() { return typeof consoleRate === 'function' ? consoleRate() : FRAME; }
 function chgStartTracker(seed, qs, qw) {
-  if (CHG.prof && CHG.prof.id === 'jr' && !CHG.jrInner && typeof jrLock === 'function') return jrLock(seed, qs, qw);   // Jr. Troopa: jr_live.js
+  if (CHG.prof && (CHG.prof.id === 'jr' || CHG.prof.id === 'nbhw') && !CHG.jrInner && typeof jrLock === 'function') return jrLock(seed, qs, qw);   // Jr. Troopa (v85: and Normal Boots Hallway T1): jr_live.js
   const dup = !!CHG.prof && CHG.prof.id === 'dup';     // (CHG.prof, not chgP(): the replay tests run this function alone)
   // v84: on Normal Boots only the Duplighosts' Charge has a model (a Hallway picture at the Duplighosts' Charge is a retry)
-  if (!dup && typeof bootsNow === 'function' && bootsNow() === 'normal') { slog('nbNoTracker', { prof: CHG.prof ? CHG.prof.id : null, step: routeStep }); return; }
+  if (!dup && !CHG.jrInner && typeof bootsNow === 'function' && bootsNow() === 'normal') { slog('nbNoTracker', { prof: CHG.prof ? CHG.prof.id : null, step: routeStep }); return; }
   // the Duplighost lock came after the route left that step (the runner confirmed Do Nothing before it landed): nothing to plan
   if (dup && !(isRoute() && RT()[routeStep] && RT()[routeStep].chg === 'dup')) { slog('dupLockAfterStep', { step: routeStep }); return; }
   const rate = chgRate(), t0 = CHG.trig.t - 3 * rate - 1.2 * rate - num('vlag'), parts = [];
@@ -799,7 +807,7 @@ function chgStartTracker(seed, qs, qw) {
     parts.push({ S: { s: seed, nc: q, inst: [] }, g: 0, ev, evMax: 46, pauseAt: CHG_N + 2, pause: l, w: wl * (qw && qw[q] != null ? qw[q] : 1 / qs.length), m: new Set(), fx: new Set(), err: 0 });
   }
   // the background ("the lock or the model is wrong", zwDoubt): ZW_BG0 of the prior mass
-  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: dup ? 4 : 3.5, imps: dup ? null : CHG_IMPS, shifts: dup ? null : CHG_SHIFTS, src: 'charge', fight: dup ? 'dup' : CHG.prof && CHG.prof.id === 'jr' ? 'jr' : 'hw', bg: ZW_BG0 / (1 - ZW_BG0), bgTo: null });
+  Object.assign(zw, { on: true, dead: false, t0, rate, taps: [], vis: [], visFrom: null, visTo: null, parts, nBase: 1, f0: 0, tapLate: dup ? 4 : 3.5, imps: dup ? null : CHG_IMPS, shifts: dup ? null : CHG_SHIFTS, src: 'charge', fight: dup ? 'dup' : CHG.prof && (CHG.prof.id === 'jr' || CHG.prof.id === 'nbhw') ? 'jr' : 'hw', bg: ZW_BG0 / (1 - ZW_BG0), bgTo: null });
   // what the coin did while the seed was searched
   for (const t of CHG.taps) zwTap(t);
   let up = null;
@@ -832,7 +840,7 @@ function chgShow() {
     (doubt ? '<br><b style="color:var(--warn)">Lock doubtful: the coin fits the tracked states badly (' + errs + ' missed or extra shines on the best one). No beeps; press normally.</b>' : '') +
     (lost ? '<br><b style="color:var(--warn)">Seed lost ' + (zw.deadAt != null ? Math.round((zw.deadAt - zw.f0) * zw.rate / 100) / 10 + ' s after the Charge' : '') + ': the coin did something none of the tracked states fit (a missed or extra shine, an unseen input). Press normally; the next Charge reads it again.</b>' : '') +
     (CHG.prof && CHG.prof.id === 'dup' ? dupStatusLine(s, lost || doubt) : '') +
-    (typeof JR_READY !== 'undefined' && JR_READY && ((CHG.prof && CHG.prof.id === 'jr') || jrStepNow()) ? jrStatusLine(s, lost || doubt) : '') +
+    (typeof JR_READY !== 'undefined' && JR_READY && ((CHG.prof && (CHG.prof.id === 'jr' || CHG.prof.id === 'nbhw')) || jrStepNow()) ? jrStatusLine(s, lost || doubt) : '') +
     (I.best ? '<br><span class="note">seed ' + I.best.seed + ', q ' + (CHG.qs || [I.best.q]).join('/') + ', score ' + I.best.score + ' (' + I.best.ratio + 'x)' + (I.dxWorld ? ', Mario +' + I.dxWorld + ' units' : '') + '</span>' : '');
 }
 /* the Duplighost line of the Charge panel: the plan's chances, or what to do without a lock (dup_charge/odds.json:

@@ -209,6 +209,7 @@ details[open] summary { margin-bottom: 10px; }
       <div class="grid2">
         <label class="f">Max extra wait for the window (s)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"><small>How far past the lead the page may look for the window (1 s = 30 frames; 0 = off on Hallway T2).</small></label>
         <label class="f">Duplighosts goal<select id="s-dupgoal"><option value="auto" selected>Auto: 4 when it's free (Ultra Boots), 4 first (Normal Boots)</option><option value="free">4 when it's free</option><option value="safe3">3+ safe</option><option value="run2">4 if 2+ frame window</option><option value="four">4 first (widest all-4 window)</option></select><small>Which Do Nothing frame to beep (v83: always a frame that gives the goal with a perfect press, the centre of the widest run of such frames): the widest 3+ window, an all-4 frame whenever one is in reach (inside the widest 3+ window it can be), an all-4 window only if 2+ frames wide, or the widest all-4 window (Normal Boots' default).</small></label>
+        <label class="f">Normal Boots Close Call (Goombario's Charge)<select id="s-nbcc"><option value="wait" selected>Wait it out: the Charge confirm on the beep (default)</option><option value="cancel">Press A on the beep to close his box</option></select><small>v85: Jr. Troopa T2-T4 and Hallway T1. Wait it out (default): confirm Goombario's Charge on the beep (its target screen, hand on Goombario) and never press A in his "attack power up" box (it closes by itself 133 frames later). Press A: confirm the Charge whenever you like, then press A on the beep to close the box (the whole box, 60 frames, is the window). Both plan a perfect press; waiting is the default because the beeped press is then the confirm itself, while the box A has to be planned around the confirm as read from the status bar (-2..+1 frames): model 92-97% vs 82-93% with a perfect press, 81-86% vs 76-78% with a ±1-frame spread (test_nb_cc_page.js). Press A when the lock comes late (it can still be planned until the box closes).</small></label>
         <label class="f">Best chance: beep only from (0–1)<input id="s-zwedge" type="number" step="0.01" value="0.4"><small>Below this the page says No edge (a blind press is 0.31).</small></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"><small>Time between beeps.</small></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"><small>Best chance, outside Hallway T2: the narrowest run it plans on.</small></label>
@@ -347,7 +348,7 @@ const FRAME = R.FRAME_MS;
 const $ = id => document.getElementById(id);
 
 /* ---------- settings ---------- */
-const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal', 'boots'];
+const SET = ['react', 'lag', 'off', 'min', 'lead', 'beeps', 'gapms', 'range', 'vlag', 'wthr', 'tmatch', 'cpu', 'zoom', 'voff', 'pfix', 'prof', 'chgsc', 'chgdx', 'chgdy', 'fb2t5', 'wtype', 'zwwin', 'zwedge', 'chgcpu', 'crate', 'duproute', 'jrroute', 'dupgoal', 'boots', 'nbcc'];
 function loadSettings() { try { const s = JSON.parse(localStorage.getItem('tot-settings') || '{}'); if (s.lead === '4' && !localStorage.getItem('tot-lead15')) { s.lead = '1.5'; localStorage.setItem('tot-lead15', '1'); } if (!localStorage.getItem('tot-beeps3')) { if (s.beeps === '4' || s.beeps === undefined) s.beeps = '3'; localStorage.setItem('tot-beeps3', '1'); } SET.forEach(k => { if (s[k] !== undefined && $('s-' + k)) { $('s-' + k).value = s[k]; if ($('s-' + k).tagName === 'SELECT' && $('s-' + k).selectedIndex < 0) $('s-' + k).selectedIndex = 0; } }); } catch (e) {} }
 function saveSettings() { try { const s = {}; SET.forEach(k => s[k] = $('s-' + k).value); localStorage.setItem('tot-settings', JSON.stringify(s)); } catch (e) {} }
 const num = k => parseFloat($('s-' + k).value) || 0;
@@ -481,37 +482,43 @@ const ROUTES = { jr: JR, endgame: ENDGAME_STEPS };
  * itself as on Ultra Boots). nb: a Normal Boots step (no Ultra Boots machinery: no Charge reader but the Duplighosts', no
  * Jr. Troopa bar count, no Hallway Spiny Flip carry, no Final Bowser T1-T4 tracker). nomodel: what the page cannot model
  * there yet (it says so and beeps nothing: a guess is never beeped). Final Bowser phase 1 is not tracked at all. */
-const NB_CC = 'Close Call is decided by the frame of the last confirm before the attack, but Goombario\'s Charge (its effects\' random draws) and the enemy\'s turn after it are not modelled yet (not measured in the emulator)';
 const ENDGAME_NB = [
   { h: 'Duplighosts', turns: [
     { text: 'T1: Charge; Bombette Do Nothing on the beep - 3+ Transform (4 ideal: 3 costs 2 damage)', steps: [{ label: 'Do Nothing (Bombette) on the beep → all 4 (3 at worst; T1 Charge locks the seed)', cat: 'S', prof: 'dup3', chg: 'dup', nb: true }] },
     { text: 'T2: Power Bomb; Jump x2 on the one that did not transform', steps: [] },
     { text: 'T3: Jump x1', steps: [] } ] },
   { h: 'Jr. Troopa', turns: [
-    { text: 'T1: Super Charge; Charge [3HP, 5FP]', steps: [{ label: 'Super Charge (hand on Mario), then Goombario: Charge', cat: 'M', nb: true, nomodel: 'no roll this turn' }] },
-    { text: 'T2: Super Charge; Charge [3HP, 0FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
-    { text: 'T3: Maple; Charge [3HP, 9FP] - Close Call', steps: [{ label: 'Maple Syrup, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
-    { text: 'T4: Super Charge; Charge [3HP, 4FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
-    { text: 'T5: Super Charge; Headbonk x2 [3HP, 0FP] - Close Call', steps: [{ label: 'Goombario: Headbonk (hand on Jr. Troopa) → Close Call', cat: 'K', nb: true, nomodel: 'Close Call is decided by the Headbonk confirm, but Goombario\'s Headbonk and Jr. Troopa\'s turn after it are not modelled yet', blind: 'Close Call about 30%' }] },
-    { text: 'T6: Whacka; Do Nothing [3HP, 10FP]', steps: [{ label: 'Whacka, then Goombario: Do Nothing', cat: 'S', nb: true, nomodel: 'no roll the page can beep this turn' }] },
-    { text: 'T7: Bounce x5 [3HP, 7FP]', steps: [{ label: 'Power Bounce on the beep → 5+, 6 ideal (Normal Boots; show a few shines in this menu: the seed is found from the coin)', cat: 'K', prof: 'jrpb5n', nb: true, blind: '5+ bounces about 67%, 6+ about 32%' }] } ] },
+    { text: 'T1: Super Charge; Charge [3HP, 5FP]', steps: [{ label: 'Super Charge (hand on Mario: its rays lock the seed), then Goombario: Charge (no roll this turn)', cat: 'M', nb: true, chg: 'jr', jr: 1, seq: 'nbjr' }] },
+    { text: 'T2: Super Charge; Charge [3HP, 0FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call (beeped: his Charge confirm, or with Press A his box A; Settings)', cat: 'S', nb: true, chg: 'jr', jr: 3, seq: 'nbjr', prof: 'jrcc_gch', profW: 'jrcc_gchw', blind: 'Close Call about 30%' }] },
+    { text: 'T3: Maple; Charge [3HP, 9FP] - Close Call', steps: [{ label: 'Maple Syrup, then Goombario: Charge → Close Call (the seed carried from T2; beeped: his Charge confirm, or his box A)', cat: 'S', nb: true, chg: 'jr', jr: 5, seq: 'nbjr', prof: 'jrcc_gch', profW: 'jrcc_gchw', blind: 'Close Call about 30%' }] },
+    { text: 'T4: Super Charge; Charge [3HP, 4FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call (beeped: his Charge confirm, or with Press A his box A; Settings)', cat: 'S', nb: true, chg: 'jr', jr: 7, seq: 'nbjr', prof: 'jrcc_gch', profW: 'jrcc_gchw', blind: 'Close Call about 30%' }] },
+    { text: 'T5: Super Charge; Headbonk x2 [3HP, 0FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Headbonk on the beep (hand on Jr. Troopa; both action commands) → Close Call', cat: 'K', nb: true, chg: 'jr', jr: 9, seq: 'nbjr', prof: 'jrcc_hb', blind: 'Close Call about 30%' }] },
+    { text: 'T6: Whacka; Do Nothing [3HP, 10FP]', steps: [{ label: 'Whacka, then Goombario: Do Nothing (no roll: 10 HP)', cat: 'S', nb: true, chg: 'jr', jr: 11, seq: 'nbjr' }] },
+    { text: 'T7: Bounce x5 [3HP, 7FP]', steps: [{ label: 'Power Bounce on the beep → 5+, 6 ideal (Normal Boots; the seed carried from T5, else show a few shines in this menu)', cat: 'K', prof: 'jrpb5n', nb: true, chg: 'jr', jr: 12, seq: 'nbjr', blind: '5+ bounces about 67%, 6+ about 32%' }] } ] },
   { h: 'Hallway Bowser', turns: [
-    { text: 'T1: Super Charge; Charge [3HP, 2FP] - Close Call', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, nomodel: NB_CC, blind: 'Close Call about 30%' }] },
-    { text: 'T2: Time Out; Charge [3HP, 1FP]', steps: [{ label: 'Time Out → STOP (show a few shines in this menu: the seed is found from the coin)', cat: 'B', prof: 'timeout', nb: true }] },
+    { text: 'T1: Super Charge; Charge [3HP, 2FP] - Close Call', steps: [{ label: 'Super Charge (its rays lock the seed), then Goombario: Charge → Close Call (beeped: his Charge confirm, or with Press A his box A; Settings)', cat: 'S', nb: true, chg: 'nbhw', jr: 1, seq: 'nbhw', prof: 'hwcc_gch', profW: 'hwcc_gchw', blind: 'Close Call about 30%' }] },
+    { text: 'T2: Time Out; Charge [3HP, 1FP]', steps: [{ label: 'Time Out → STOP (the seed carried from T1, else show a few shines in this menu)', cat: 'B', prof: 'timeout', nb: true, jr: 2, seq: 'nbhw' }] },
     { text: 'T3: Maple; Charge [3HP, 9FP]', steps: [] },
     { text: 'T4: Super Charge; Charge [3HP, 4FP]', steps: [] },
     { text: 'T5: Bounce x6; Headbonk x2 [3HP, 1FP]', steps: [{ label: 'Power Bounce on the beep → 6+ (Normal Boots; show a few shines in this menu: the seed is found from the coin)', cat: 'B', prof: 'hwpb6n', nb: true, blind: '6+ bounces about 16%' }] } ] },
   { h: 'Final Bowser', turns: [
     { text: 'Phase 1 (not tracked): T1 Charge; Charge - T2 Jump x2; Headbonk x1 [Bowser at 89 HP] - T3 Star Beam', steps: [] },
-    { text: 'T1: Peach Beam; Charge [1HP, 14FP] [Bowser at 89 HP]', steps: [] },
-    { text: 'T2: Super Charge; Charge [1HP, 9FP] - Close Call, no Star Shield, no wave', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 2 }] },
-    { text: 'T3: Super Charge; Charge [1HP, 4FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 3 }] },
-    { text: 'T4: Super Charge; Do Nothing [1HP, 0FP]', steps: [{ label: 'Super Charge, then Goombario: Do Nothing → Close Call', cat: 'M', nb: true, fbnb: 4 }] },
-    { text: 'T5: Jammin\' Jelly; Charge [1HP, 14FP]', steps: [{ label: 'Jammin\' Jelly, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 5 }] },
-    { text: 'T6: Super Charge; Charge [1HP, 9FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 6 }] },
-    { text: 'T7: Super Charge; Charge [1HP, 4FP]', steps: [{ label: 'Super Charge, then Goombario: Charge → Close Call', cat: 'M', nb: true, fbnb: 7 }] },
-    { text: 'T8: Bounce x5; Headbonk x2 [1HP, 1FP]', steps: [{ label: 'Power Bounce → 5+ (Normal Boots)', cat: 'B', nb: true, nomodel: 'Power Bounce with Normal Boots is not modelled for Final Bowser yet (and the arena\'s lightning breaks a plain shine lock)', blind: '5+ bounces' }] } ] } ];
-ENDGAME_NB.forEach(f => f.turns.forEach(tu => tu.steps.forEach(st => { if (st.fbnb) { st.nomodel = 'Bowser\'s attack choice is modelled (no Star Shield, no wave: the page\'s odds below), but Goombario\'s Charge, the Super Charge rays at this arena on Normal Boots and the frames from the confirm to Bowser\'s AI are not measured yet'; st.blind = 'this turn about ' + Math.round(100 * R.fbnbTurnBlind(st.fbnb)) + '% (Close Call and an allowed attack)'; } })));
+    { text: 'Phase 2 (v85: route it as you like; no Close Call / Star Shield / wave rule): Super Charges, then a high Power Bounce cap', steps: [] },
+    { text: 'Phase 2 Power Bounce turn (whichever turn you Power Bounce on)', steps: [{ label: 'Power Bounce → as many bounces as you can (Normal Boots; not beeped yet)', cat: 'B', nb: true, fbcap: true }] } ] } ];
+/* v85: the Goombario Charge steps use cat 'S' so that no saved screen of the turn (Mario's Super Charge / Maple Syrup target,
+ * hand on Mario) starts a plan: in wait mode the Charge confirm is planned from the tracker (jrEarlyPlan, its floor after
+ * Mario's confirm), in press-A mode at the Charge confirm itself. */
+/* v85, Final Bowser on Normal Boots (the runner: "if that Final Bowser fight is not realistic, we can route around it, we just
+ * need a high cap"): the every-turn Close Call / no Star Shield / no wave route is gone; the page has one step, the phase-2
+ * Power Bounce, whichever turn it is. It is not beeped (honestly: charge_live/README.md v85 section 5): a lock for it needs
+ * (1) the preceding Super Charge's rays read in this arena with Goombario out (the FB2 reader handles the lightning on Ultra
+ * Boots with Lakilester; not checked with Goombario), (2) Goombario's turn with the lightning, (3) every draw of Bowser's
+ * turn up to the next menu for each attack (only his attack choice is modelled: fbnbAi, emulator-checked), (4) Normal Boots
+ * Power Bounce's frames against Final Bowser. The cap odds shown are the blind ones (chance 60: cap rolls under 120, 72,
+ * 43, 25, 15, 9 of rand_int(100), the first two bounces free). */
+const FBNB_CAP = (() => { const c = [120, 72, 43, 25, 15, 9]; let p = 1; const out = {}; for (let n = 3; n <= 8; n++) { p *= Math.min(101, c[n - 3] + 1) / 101; out[n] = p; } return out; })();
+const fbnbCapText = () => [4, 5, 6, 7].map(n => n + '+ ' + (FBNB_CAP[n] >= 0.1 ? Math.round(100 * FBNB_CAP[n]) : (100 * FBNB_CAP[n]).toFixed(1)) + '%').join(', ');
+ENDGAME_NB.forEach(f => f.turns.forEach(tu => tu.steps.forEach(st => { if (st.fbcap) { st.nomodel = 'Final Bowser\'s phase-2 Power Bounce is not beeped in v85: a lock for it needs your preceding Super Charge read in this arena with Goombario (not checked), Goombario\'s turn with the lightning, and every draw of Bowser\'s turn up to your next menu for each attack he can pick (only his attack choice is modelled), none of which is measured yet. Nothing you do on the earlier turns changes this'; st.blind = 'Power Bounce whenever you like: ' + fbnbCapText() + ' (blind cap odds)'; } })));
 const bootsNow = () => ($('s-boots') && $('s-boots').value === 'normal' ? 'normal' : 'ultra');
 const dupRoute = () => ($('s-duproute') && $('s-duproute').value === 'charge' ? 'charge' : 'rta');
 const jrRoute = () => ($('s-jrroute') && $('s-jrroute').value === 'shine' ? 'shine' : 'charge');
@@ -530,7 +537,9 @@ const RT = () => ($('s-prof').value === 'endgame' ? endgameSteps() : ROUTES[$('s
 { const D = document.getElementById('route-details'); if (D) { try { D.open = localStorage.getItem('tot-route-details') === '1'; } catch (e) {}
   D.addEventListener('toggle', () => { try { localStorage.setItem('tot-route-details', D.open ? '1' : '0'); } catch (e) {} }); } }
 let routeStep = 0; try { routeStep = Math.max(0, parseInt(localStorage.getItem('tot-route-step') || '0', 10) || 0); } catch (e) {}
-const PROF = () => isRoute() ? (RT()[Math.min(routeStep, RT().length - 1)].prof ? R.PROFILES[RT()[Math.min(routeStep, RT().length - 1)].prof] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
+const nbccMode = () => ($('s-nbcc') && $('s-nbcc').value === 'cancel' ? 'cancel' : 'wait');     // v85: Goombario's Charge box: A on the beep (cancel) or left to run out (wait)
+const stepProf = x => (x.profW && nbccMode() === 'wait' ? x.profW : x.prof);
+const PROF = () => isRoute() ? (stepProf(RT()[Math.min(routeStep, RT().length - 1)]) ? R.PROFILES[stepProf(RT()[Math.min(routeStep, RT().length - 1)])] : NOPLAN) : (R.PROFILES[$('s-prof').value] || R.PROFILES.timeout);
 const TKEY = () => isRoute() ? 'jr_' + RT()[Math.min(routeStep, RT().length - 1)].cat : (PROF().id === 'dup3' ? 'dup4' : PROF().id);   // both Duplighost tables use the same screen
 loadSettings(); $('s-prof').value = 'endgame';   // one route for every fight
 SET.forEach(k => $('s-' + k).addEventListener('change', () => { saveSettings(); if (st.lock) updateClock(); if (!V.stream) drawIdlePreview(); }));
@@ -1020,7 +1029,7 @@ function zwVisible(f) { return zw.vis.some(([a, b]) => f >= a && f <= b) || (zw.
  * tracker whose states fit the coin badly hands the chance back to blind (zwDoubt) instead of beeping on them. v71 dropped
  * a state on any one miss or false shine: one missed shine (a busy browser) lost the true seed (clip 20-54-59, T2). */
 const ZW_PMISS = 0.02, ZW_FALSE = 1.8e-4, ZW_RHO = 0.3 / 31.2, ZW_CUT = 1e-4, ZW_MAXERR = 3, ZW_BG0 = 0.05, ZW_BGIN = 0.03;
-const ZW_BLIND = { timeout: 0.31, dup3: 0.47, dup4: 0.13, jrcc_bomb: 0.30, jrcc_syrup: 0.30, jrcc_nothing: 0.30, jrpb5: 0.675, jrpb6: 0.322 };
+const ZW_BLIND = { timeout: 0.31, dup3: 0.47, dup4: 0.13, jrcc_bomb: 0.30, jrcc_syrup: 0.30, jrcc_nothing: 0.30, jrpb5: 0.675, jrpb6: 0.322, jrcc_gch: 0.30, jrcc_gchw: 0.30, jrcc_hb: 0.30, hwcc_gch: 0.30, hwcc_gchw: 0.30, jrpb5n: 0.675, jrpb6n: 0.322 };
 function zwLR() {
   const W = 1.5 + (zw.tapLate || 1.5), d = W * (ZW_RHO + ZW_FALSE);
   return { match: (1 - ZW_PMISS) / d, miss: ZW_PMISS, fals: ZW_FALSE / (ZW_RHO + ZW_FALSE) };
@@ -1223,10 +1232,11 @@ function ppPick(share, share4, a, b, from, W, sc, goal) {
   if (!pick) pick = cand.sort(cmp([W3, M3, H4, W4, M4, SC]))[0];
   return { target: pick.c, ok: true, run: { start: pick.r.start, end: pick.r.end, length: pick.r.length }, run4: pick.r4 ? { start: pick.r4.start, end: pick.r4.end, length: pick.r4.length } : null };
 }
-function zwChoose(list, from, W, PD, prof, adj, goal) {
-  goal = goal || (prof.id === 'dup3' ? dupGoal() : prof.id === 'jrpb5' ? 'free' : 'safe3');     // v83: Jr. Power Bounce: 6 with 5+ either side (the route's label)
-  const D = Math.max(...PD.map(x => Math.abs(x[0]))), X = 10, a = from - D, b = from + W + X + D, top = R.TOP[prof.id] ? R.PROFILES[R.TOP[prof.id]] : null;
+function zwChoose(list, from, W, PD, prof, adj, goal, lim) {     // lim (v85): { lo, hi }: no frame outside counts (Goombario's box)
+  goal = goal || (prof.id === 'dup3' ? dupGoal() : /^jrpb5n?$/.test(prof.id) ? 'free' : 'safe3');     // v83: Jr. Power Bounce: 6 with 5+ either side (the route's label)
+  const D = Math.max(...PD.map(x => Math.abs(x[0]))), X = lim ? 0 : 10, a = from - D, b = lim ? Math.min(lim.hi, from + W) : from + W + X + D, top = R.TOP[prof.id] ? R.PROFILES[R.TOP[prof.id]] : null;
   const share = zwShare(list, a, b, prof), share4 = top ? zwShare(list, a, b, top) : null;
+  if (lim) for (let c = a; c < lim.lo && c <= b; c++) share[c - a] = 0;     // v85: an A before the box opens does nothing
   const scOf = sh => c => { let v = 0; for (const [d, q] of PD) v += q * (sh[c + d - a] || 0); return v; };
   const sc = scOf(share), sc4 = share4 ? scOf(share4) : null, type = wtype(), honest = (p, k) => (adj ? (1 - adj.d) * p + adj.d * adj[k] : p);
   let target = null, w = null, none = null, pk = null;
@@ -1261,8 +1271,8 @@ function ppText(m, prof, long) {
   if (long) t += '. Counting your press spread: ' + pc(m.p) + (m.p4 != null ? ' / ' + pc(m.p4) : '') + '.';
   return t;
 }
-function zwPlan(why) {
-  const now = performance.now(), S = zwStates(now), F = zwFight();
+function zwPlan(why, win) {     // win (v85, nbCancelPlan): { lo, hi, h }: the frames the press can take, the states stepped to h first
+  const now = performance.now(), S = win ? (zwSeen(now), zwStatesAt(Math.max(zwHorizon(now), win.h))) : zwStates(now), F = zwFight();
   if (!S.list.length) {
     st.msg = zw.dead || !zw.parts.length ? 'No edge: the seed was lost. What the page saw since the Charge fits none of its states (a missed or extra shine, an input it did not see, or lag outside the model). ' + F.normal + '.'
       : 'No edge yet: ' + F.busy;
@@ -1272,15 +1282,19 @@ function zwPlan(why) {
     st.msg = 'No edge: the coin no longer fits the Charge lock (' + Math.round(S.doubt * 100) + '% that none of the ' + S.list.length + ' tracked states is the game\'s: missed or extra shines, or an input the page did not see). ' + F.normal + '.';
     slog('zwDoubt', { doubt: +S.doubt.toFixed(3), parts: S.list.length }); render(); if (typeof chgShow === 'function') chgShow(); return true;
   }
-  const rate = zw.rate, W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
+  const rate = zw.rate; let W = Math.max(0, Math.round(num('zwwin') * 1000 / rate));
   let from = Math.max(S.h + 1, earliestFrame(zw.t0, rate, now));
+  if (win) {
+    from = Math.max(from, win.lo); W = win.hi - from;
+    if (W < 0) { st.msg = 'No edge: the plan came too late for Goombario\'s box (it closes by itself ' + R.NB_K.none + ' frames after his Charge confirm; the beeps need ' + num('lead') + ' s of lead). ' + F.normal + '.'; slog('zwNoEdge', { why: 'box over', from, hi: win.hi }); cancelBeeps(); render(); return true; }
+  }
   // v82: a Jr. Troopa plan made before the target screen shows (jrEarlyPlan): no earlier than a plan made on that screen
   const early = (st.planEarly || (st.plan && st.plan.early && zw.fight === 'jr')) && typeof jrPlanFloor === 'function' ? jrPlanFloor() : null;   // (a re-score of an early plan keeps its floor)
   if (early != null) from = Math.max(from, early);
   const pid = PROF().id, adj = { d: S.doubt, b3: ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31, b4: R.TOP[pid] && ZW_BLIND[R.TOP[pid]] != null ? ZW_BLIND[R.TOP[pid]] : ZW_BLIND.dup4 };
-  const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj), type = C.type;
+  const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj, null, win ? { lo: win.lo, hi: win.hi } : null), type = C.type;
   if (C.none === 'edge') {
-    st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames) works for enough of them with a perfect press (best ' + Math.round(C.pp * 100) + '%, seed confidence ' + Math.round(100 * (1 - S.doubt)) + '%; ' + F.blind + '). ' + F.normal + '.';
+    st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame ' + (win ? 'in Goombario\'s box (' + (W + 1) + ' frames left)' : 'in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames)') + ' works for enough of them with a perfect press (best ' + Math.round(C.pp * 100) + '%, seed confidence ' + Math.round(100 * (1 - S.doubt)) + '%; ' + F.blind + '). ' + F.normal + '.';
     slog('zwNoEdge', { parts: S.list.length, best: +C.pp.toFixed(3), spread: +C.p.toFixed(3) }); render(); return true;
   }
   // v79: the <=5 HP roll fallback (hwcc_live.js): the plan above is v77's, from the no-roll states. It stands unless the
@@ -1360,8 +1374,8 @@ function zwTick(now) {
   if (ch) { P.mix.pNow = +pk(ch).toFixed(3); P.mix.pSpreadNow = +ch.p.toFixed(3); }
   if (good) return;
   const old = P.zwAbs, stop = why => { cancelBeeps(); P.seedNote = true; P.stopped = true; st.seedChange = { t: now, from: old, ok: false, stopped: true }; slog('beepsStopped', { from: old, why, p: ch ? +ch.p.toFixed(3) : null, doubt: ch ? +ch.doubt.toFixed(3) : null }); };
-  if (beepsFit(P.tPress) && (onTarget() || !V.ref)) {
-    zwPlan('seed changed');
+  if (beepsFit(P.tPress) && (onTarget() || !V.ref || P.nbK != null)) {
+    if (P.nbK != null && typeof nbCancelPlan === 'function') nbCancelPlan('seed changed'); else zwPlan('seed changed');
     if (st.plan && st.plan !== P) { st.seedChange = { t: now, from: old, to: st.plan.zwAbs, ok: true }; slog('seedChanged', { from: old, to: st.plan.zwAbs }); }
     else stop('no new plan');
   } else if (!ch || ch.doubt >= 0.5 || pk(ch) < num('zwedge')) stop('late');
@@ -1380,13 +1394,14 @@ function makePlan() {
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'Time Out is done for this attempt. The route stays on the Hallway until the next Charge (a retry) or Final Bowser\'s arena.'; render(); return; }
   if (typeof HWHP !== 'undefined' && HWHP.died && PROF().id === 'timeout' && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) { st.msg = 'No edge: Mario was hit on Hallway T1 and a Life Shroom revived him; the page does not follow the revive. Press Time Out normally (31%).'; render(); return; }
   { const s = isRoute() && RT()[routeStep];     // v84: a Normal Boots turn the page cannot model yet: say so, never a guessed beep
-    if (s && s.nb && s.prof && s.prof !== 'dup3' && !st.lock && !zw.on) { st.msg = 'No beeps yet (Normal Boots): show a few shines in this menu (wait on it, or C-up): the seed is found from the coin and ' + (s.prof === 'timeout' ? 'Time Out' : 'Power Bounce') + ' is beeped. Without a lock, press normally (' + (s.prof === 'timeout' ? '31%' : s.blind) + ').'; render(); return; }
+    if (s && s.nb && s.jr != null && PROF().lever === 'cancel') { nbCancelMake(); return; }     // v85: Goombario's box A (jr_live.js)
+    if (s && s.nb && s.prof && s.prof !== 'dup3' && !st.lock && !zw.on && !(s.jr != null && PROF().group === 'jr' && s.prof !== 'jrpb5n')) { st.msg = 'No beeps yet (Normal Boots): show a few shines in this menu (wait on it, or C-up): the seed is found from the coin and ' + (s.prof === 'timeout' ? 'Time Out' : 'Power Bounce') + ' is beeped. Without a lock, press normally (' + (s.prof === 'timeout' ? '31%' : s.blind) + ').'; render(); return; }
     if (s && s.nb && s.nomodel) { st.msg = 'No beeps this turn (Normal Boots): ' + s.nomodel + '.' + (s.blind ? ' Play it blind: ' + s.blind + '.' : ''); cancelBeeps(); render(); return; } }
   if (zw.on && (PROF().id === 'timeout' || dupZw() || jrZw()) && zwPlan()) return;
   // v76: on the Charge-lock route the Duplighosts are planned only from this fight's Charge tracker, never from a coin lock
   // (console session 2026-11-07, t=579423: a walk lock from before the fight produced three Do Nothing plans and a beeped press)
   if (dupStepNow() && !dupZw()) { st.msg = dupNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }
-  if (jrStepNow() && PROF().group === 'jr') { st.msg = jrNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }   // Jr. Troopa: no lock, or no roll this turn
+  if (jrStepNow() && PROF().group === 'jr' && !(RT()[routeStep].nb && PROF().id === 'jrpb5n' && st.lock)) { st.msg = jrNoLockMsg(); render(); if (typeof chgShow === 'function') chgShow(); return; }   // Jr. Troopa: no lock, or no roll this turn (v85 Normal Boots T7: a shine lock plans as v84)
   if (!st.lock || !PROF().rolls.length) return;
   if (st.needResync) { st.msg = 'The last Close Call did not go as planned, so the seed has to be found again from a few shines.'; render(); return; }
   const stp0 = isRoute() && RT()[routeStep];
@@ -1577,7 +1592,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v84';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v85';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -1720,7 +1735,7 @@ function stripState(d) {
   const cs = typeof CHG !== 'undefined' ? CHG.state : 'idle';
   if (zw.on && !zw.dead && !d.tab.length && zw.parts.length) return { cls: 'wait', text: 'Following the turn (Bowser\'s attack is being simulated)…', overlay: 'Following the turn…' };
   if (cs === 'capture' || cs === 'maps' || cs === 'search') return { cls: 'wait', text: 'Reading the Charge rays…', overlay: 'Reading the Charge…' };
-  if (jrStepNow() && PROF().group === 'jr' && !(zw.on && zw.fight === 'jr')) return { cls: 'stale', text: 'Jr. Troopa: ' + jrNoLockMsg().replace(/^No beeps: /, '') + ' Example frames.', overlay: jrStepAt10() ? 'No roll this turn' : 'No lock – play it blind' };
+  if (jrStepNow() && PROF().group === 'jr' && !(zw.on && zw.fight === 'jr') && !(RT()[routeStep].nb && PROF().id === 'jrpb5n')) return { cls: 'stale', text: 'Jr. Troopa: ' + jrNoLockMsg().replace(/^No beeps: /, '') + ' Example frames.', overlay: jrStepAt10() ? 'No roll this turn' : 'No lock – play it blind' };
   if ((cs === 'nolock' || cs === 'failed' || cs === 'notseen') && dupStepNow()) return { cls: 'stale', text: 'No Charge lock – play it blind: Do Nothing whenever you like (3+ copies about 47%, all 4 about 13%). Example frames.', overlay: 'No lock – play it blind' };
   if (cs === 'nolock' || cs === 'failed') return { cls: 'stale', text: 'No Charge lock – press Time Out normally (a blind press works 31%). Example frames.', overlay: 'No lock – example frames' };
   if (zw.on && zw.dead) return { cls: 'stale', text: 'Seed lost – nothing tracked fits what the coin did. Press normally.', overlay: 'Seed lost' };
@@ -2041,6 +2056,7 @@ function dupRouteNote() {
   el.textContent = dupRoute() === 'charge' ? 'T1: Mario Super Charge first (no Z), then Bombette Do Nothing on the beep; the rays lock the seed (presses within a frame, 1 s max extra wait: 3+ copies about 96%, all 4 about 35%; 2 s: 99% / 42%). No lock: play it blind (3+ 47%). T2: Power Bomb, then Jump x2 on the one that did not transform.'
     : 'Played without the page (no lock): 3+ copies about 47%, all 4 about 13%.';
 }
+$('s-nbcc').addEventListener('change', () => { saveSettings(); slog('nbccMode', { mode: nbccMode() }); if (typeof JRT !== 'undefined' && JRT.cancel && !JRT.cancel.done) cancelBeeps(); applyProfile(); if (typeof routeOddsShow === 'function') routeOddsShow(); });
 $('s-jrroute').addEventListener('change', () => { saveSettings(); slog('jrRoute', { route: jrRoute() }); jrReset('route option'); applyProfile(); });
 $('s-duproute').addEventListener('change', () => {
   saveSettings(); slog('dupRoute', { route: dupRoute() });
@@ -2056,8 +2072,6 @@ dupRouteNote();
  * independent try at that turn's chance (an estimate: the turn is not beeped yet). */
 function routeOddsLines() {
   const pc = x => (x >= 0.995 ? '~100%' : x >= 0.1 ? Math.round(100 * x) + '%' : x >= 0.001 ? (100 * x).toFixed(1) + '%' : (100 * x).toExponential(1) + '%');
-  const W = Math.max(1, Math.round(num('zwwin') * 30)); let fbB = 1, fbW = 1;
-  for (let t = 2; t <= 8; t++) { const p = R.fbnbTurnBlind(t); fbB *= p; fbW *= 1 - Math.pow(1 - p, W); }
   return { ultra: [
     ['Duplighosts', 'T1 Do Nothing beeped: 3+ ~100%, all 4 ~43% (perfect press; your spread: about 79% / 22%); blind 47% / 13%'],
     ['Jr. Troopa', 'T3-T5 Close Calls and T6 Power Bounce beeped: each Close Call 72-87% with ±1-frame presses, 5+ 97-100%: about 50% for the fight; blind 1.8%'],
@@ -2065,9 +2079,9 @@ function routeOddsLines() {
     ['Final Bowser', 'T1-T4 beeped (Bowser misses): about 90% for all four (model); blind about 5%; T6 Close Call / T7 Power Bounce beeped']],
   normal: [
     ['Duplighosts', 'T1 Do Nothing beeped (goal: 4 first): all 4 ~83%, 3+ ~100% (perfect press; your spread: about 31% / 71%); blind 13% / 47%'],
-    ['Jr. Troopa', 'T2-T5 Close Calls not beeped yet (blind 30% each: 0.8%); T7 Power Bounce 5+ beeped from a shine lock in its menu (blind 67%): about 0.8% for the fight'],
-    ['Hallway Bowser', 'T1 Close Call not beeped yet (30%); T2 Time Out (blind 31%) and T5 Power Bounce 6+ (blind 16%) beeped from a shine lock in their menus: at most 30% for the fight'],
-    ['Final Bowser', 'phase 2 T2-T8 (Close Call, no Star Shield, no wave) blind ' + pc(fbB) + '; not beeped yet (if every turn were beeped in a ' + num('zwwin') + ' s window: about ' + pc(fbW) + ', an estimate); T8 Power Bounce 5+ not modelled yet']] };
+    ['Jr. Troopa', 'T2-T4 Close Calls (Goombario\'s Charge, wait it out: ' + (nbccMode() === 'wait' ? 'now' : 'the default') + ') and T5 (Headbonk) beeped: each 90-97% claimed with a perfect press (model: 98-100% land), 78-88% with ±1-frame presses; press A instead: 76-95% / 73-78%; T7 Power Bounce 5+ from the carry (~100%): about 45-55% for the fight with ±1-frame presses, 70-80% with perfect ones (model); blind 0.8%'],
+    ['Hallway Bowser', 'T1 Close Call beeped (wait it out: about 90% claimed with a perfect press; press A 91%; ~75-82% with ±1-frame presses); T2 Time Out from the T1 carry (else a shine lock in its menu; blind 31%); T5 Power Bounce 6+ from a shine lock (blind 16%)'],
+    ['Final Bowser', 'phase-2 Power Bounce not beeped (no lock: see the step); blind cap ' + fbnbCapText() + '; phase 2 is routed as you like (no Close Call / Star Shield / wave rule)']] };
 }
 function routeOddsShow() {
   const el = $('route-odds'); if (!el) return; const L = routeOddsLines(), cur = bootsNow(), esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -2183,7 +2197,7 @@ function coinBack(hiddenMs) {
 // enemies into the Duplighost room (a lock still needs 38)
 const CHAIN_SEARCH_BITS = 20;
 function autoAfterShine() {
-  if (typeof jrStepNow === 'function' && jrStepNow()) return;     // Jr. Troopa on the Charge lock: the Charges read the seed; a shine search only takes CPU from them
+  if (typeof jrStepNow === 'function' && jrStepNow() && !(RT()[routeStep].nb && /^(jrpb5n|timeout)$/.test(PROF().id) && !(zw.on && zw.fight === 'jr'))) return;     // Jr. Troopa on the Charge lock: the Charges read the seed; a shine search only takes CPU from them (v85: Normal Boots Jr. T7 / Hallway T2 without the carry: the v84 shine lock)
   // this stretch alone is (nearly) enough: search it by itself (about 1 s) instead of waiting on a slow chain search
   // that a cutscene or a missed shine may have broken; candidates from 30 bits on, the lock still needs 38
   // (once per stretch, even over carried candidates: a carry that fit by chance must not block a lock from this stretch)
@@ -2331,7 +2345,7 @@ function autoPlan() {
   // a seed search from shines (the turn-2 menu's coin can start a chain search) must not hold up the zero-wait plan: it
   // needs no search (live log 1793757328924, last attempt: the search started on the 2nd shine of the turn-2 menu and the
   // target screen stood 8 s without beeps)
-  if (jrStepNow() && PROF().group === 'jr' && !jrZw()) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Jr. Troopa without a lock: say so
+  if (jrStepNow() && PROF().group === 'jr' && !jrZw() && !(RT()[routeStep].nb && PROF().id === 'jrpb5n' && st.lock)) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Jr. Troopa without a lock: say so
   if (dupStepNow() && !dupZw()) { if (!st.dupMsgT || performance.now() - st.dupMsgT > 500) { st.dupMsgT = performance.now(); makePlan(); } return; }   // Charge-lock route, no lock (yet): say so
   if ((!st.lock && !zw.on) || (st.searching && !zw.on) || !PROF().rolls.length) return;
   if (st.hwDone && isRoute() && /^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) return;
@@ -2363,7 +2377,12 @@ window.__tot = { VERSION, dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(
   chgMarioNcc: Y => chgMarioShift([Y]).ncc, chgMarioRef: () => { const M = CHG_MARIO; return { w: M.w, h: M.h, x0: M.x0, y0: M.y0, b64: M.b64 }; },
   chgSolveTest: (frames, trig, prof) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF[prof], trig, trig0: Object.assign({}, trig), frames, menu: null, taps: [], pres: [], tEnd: performance.now(), early: null, state: 'maps', shapeBad: 0 }); return chgSolve(); },
   jrStepNow, jrReset, jrConfirm: (k, t, h) => jrConfirm(k, t, h, 'test'), jrSettle, jrDeath, jrTens, jrStepFor, jrStepAt10,
-  jrConfirmClock: (k, c) => { const h = JR_SEQ[k].hide; jrConfirm(k, zw.t0 + num('vlag') + (c + h + num('pfix')) * zw.rate, h, 'test'); },
+  jrConfirmClock: (k, c) => { const h = JRS()[k].hide; jrConfirm(k, zw.t0 + num('vlag') + (c + h + num('pfix')) * zw.rate, h, 'test'); },
+  // v85 (test_nb_cc_page.js): the Normal Boots trackers, the box A read from the bar's return on clock frame P + 5
+  jrFrame: (t, pr) => jrFrame(t, pr), JRS: () => JRS(), JR_SEQ_NB, HW_SEQ_NB, nbccMode: () => nbccMode(), nbCancelPlan: w => nbCancelPlan(w), nbCancelSeen: (t, w) => nbCancelSeen(t, w), NB_BACK_H,
+  nbCancelSeenClock: P => nbCancelSeen(zw.t0 + num('vlag') + (P + NB_BACK_H + num('pfix')) * zw.rate, 'bar'),
+  nbTrackerAt: (seed, qs, trigT, k, seq) => { chgReset(); jrReset(); const trig = { t: trigT }; Object.assign(JRT, { on: true, k: k || 0, t0: trigT, trigSeen: trig, seq }); jrConfirm(k || 0, trigT - 16 * FRAME, 3, 'test'); Object.assign(CHG, { prof: CHG_PROF[seq === 'nbhw' ? 'nbhw' : 'jr'], trig, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'jr'; },
+  nbLockAt: (seed, qs, k) => { const c = JRT.inputs.filter(x => x.k === k && !x.cancel).pop().c, trig = { t: zw.t0 + num('vlag') + (c + 13 + 4.2) * zw.rate }; Object.assign(CHG, { prof: CHG_PROF[JRT.seq === 'nbhw' ? 'nbhw' : 'jr'], trig, taps: [], pres: [], state: 'locked', qs }); JRT.trigSeen = trig; JRT.chargeK = k; chgStartTracker(seed >>> 0, qs); return { cross: JRT.cross, t0: zw.t0, rate: zw.rate }; },
   jrClasses: (s, nc, g, a, b, pid) => { if (pid === 'jrpb5') { const t5 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb5), t6 = fastTable(s, nc, g, a, b, R.PROFILES.jrpb6); return t5.map((x, i) => (t6[i] ? 6 : x ? 5 : 4)); } return fastTable(s, nc, g, a, b, R.PROFILES[pid]).map(x => (x ? 1 : 0)); },
   jrLockAt: (seed, qs, k) => { const c = JRT.inputs.filter(x => x.k === k).pop().c, trig = { t: zw.t0 + num('vlag') + (c + 13 + 4.2) * zw.rate }; Object.assign(CHG, { prof: CHG_PROF.jr, trig, taps: [], pres: [], state: 'locked', qs }); JRT.trigSeen = trig; JRT.chargeK = k; chgStartTracker(seed >>> 0, qs); return { cross: JRT.cross, t0: zw.t0, rate: zw.rate }; },
   saveTarget: (key, box) => { const g = sample(box, 24, 16), ref = []; for (let i = 0; i < g.length; i += 4) ref.push((g[i] + g[i + 1] + g[i + 2]) / 3); targets[key] = { box, ref }; try { localStorage.setItem('tot-targets', JSON.stringify(targets)); } catch (e) {} if (TKEY() === key) useTarget(); return ref.length; },

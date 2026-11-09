@@ -1,3 +1,99 @@
+# Time Out Timer v85: the Normal Boots Close Calls beep (Nov 9)
+
+v84's Normal Boots route did not beep Jr. Troopa T2-T5 or Hallway T1: Goombario's Charge (T5: his Headbonk) and the enemy
+turn after it were not measured. They are now (emulator + decomp), and every one of those Close Calls is beeped from the
+turn's own Super Charge lock (T3: the T2 lock carried). Final Bowser is routed around (section 5).
+
+## 1. Measurements (emulator, JP, debug core; `nb_cc/gch_log.py`, `nb_cc/jr_route_log.py`; `fixtures/nb_cc_logs.json`)
+New state (setup only, never committed): `boss_0207_nbg_menu.st` = `AC=1 PARTNER=1 BRANK=1 BADGES=10c,e4,112,11f BOOTS=0
+FP=10 ITEMS=93,95,95,a3 NOFS=1 SUF=_nbg boss_battle_start_setup.py 0207` (Goombario Super, Normal Boots); the Hallway's
+`boss_2302_goomba_menu.st` (v84). Goombario's Charge has a target screen (hand on Goombario): its A is the confirm, G.
+- **His Charge** (`goombario.c` EVS_Move_Charge): energy_in_out on G+14 and G+17 (Mario's Charge: +13 / +16), each part
+  redrawing rand(359) until +59 / +62; nothing else is drawn. Then `ShowMessageBox(attack up, 60)`: in
+  `popup_messages.c` A or B sets the box's duration to 0 on any frame of its delay state.
+- **The cancel window:** A on **G+73 .. G+132** ends his turn on A+5 (gBattleState 23, the status bar back the same frame);
+  A before +73 does nothing; no A = the box runs out = A on +133 (turn over on +138). 47 runs (K scan, every 2nd K and both
+  edges). The status bar goes off on G+3 (Mario's Super Charge: A+2, the picture one later: the page's hide 3), so the
+  Charge confirm reads as **hide 4** (as Bombette's Bomb), and the box A as the bar's **return on P+5** (picture P+6).
+- **Jr. Troopa's attack** (no AI draw, as Ultra): the **Close Call rand_int(100) on P+29** (caller 0x80277518, Mario under
+  6 HP); a dodge draws nothing more to the next menu (P+97); a hit: 10 x rand(359) on P+56 (10 HP: no roll, the hit on
+  P+56). 16 + 20 runs.
+- **Hallway Bowser:** his AI (RandInt 80, maybe 60) on P+16, then the Close Call as v78's model (AI+54 / 70 / 55). 20 runs.
+- **Headbonk x2** (T5, glow 8 after four Charges, 8 damage a hit): the hits' 10 x rand(359) on H+54 and H+80, the Close
+  Call on H+143 (menu +210). The action command pressed 0-2 frames into each window: the same frames (4 runs); 3 frames
+  late it fails, only one bonk, and the model breaks right after +80 (2 runs: the route needs both bonks).
+- **Maple Syrup** at 2 HP (FP 0): 10 sparkles on +118 (as Ultra's). **Whacka's Bump**: 22 sparkles on +118; Goombario's
+  Do Nothing at 10 HP: Jr. Troopa's hit on +53 (Ultra's jr_nothing_hit). **T7 Power Bounce**: v84's jrpb5n frames.
+- **Check** (`test_nb_cc_model.js`): from each Super Charge's seed and first coin frame (what a lock gives) and the logged
+  frames alone, **92 segments, 122,164 frames, every 8th frame's gRandSeed equal**; Close Calls 128/128 (24 Hallway), the
+  wait mode 8/8, Headbonk 40/40, T7 5+ 40/40. 10 whole fights T1-T7 (plan mode: each deciding press tried from a saved
+  state until it dodged) + 36 single turns + 8 wait-mode turns.
+Model (`pmrng_core.js`): TURNS `nb_gch`, `nb_jrcc`, `nb_jrhit`, `nb_hwcc` (`aiAt`: Bowser's AI with the 3-HP roll),
+`nb_syrup`, `nb_hb`, `nb_hb_hit`, `nb_whacka`; profiles `jrcc_gch` / `hwcc_gch` (the box A), `jrcc_gchw` / `hwcc_gchw`
+(the Charge confirm, box left to run out), `jrcc_hb`; `NB_K`.
+
+## 2. What beeps now (Normal Boots)
+| Turn | Beep | Seed |
+|---|---|---|
+| Jr. T2, T4 | Goombario's Charge confirm (wait it out, default) or his box A (Settings) → Close Call | that turn's Super Charge lock |
+| Jr. T3 | the same | the T2 lock carried (Maple Syrup, the dodge, the coin) |
+| Jr. T5 | Headbonk target A → Close Call | the T5 lock |
+| Jr. T7 | Power Bounce 5+ (6 ideal) | the carry (T6 Whacka, Do Nothing); else v84's shine lock |
+| Hallway T1 | as Jr. T2 (Bowser's attack choice in the model) | its Super Charge lock (`CHG_PROF.nbhw`) |
+| Hallway T2 | Time Out | the T1 carry; else v84's shine lock |
+| Hallway T5, Duplighosts | as v84 | |
+**The tracker** is Jr. Troopa's (`jr_live.js`, now one machine for three sequences: `JR_SEQ` Ultra, `JR_SEQ_NB`,
+`HW_SEQ_NB`, `JRS()`): the bar hides count the confirms, each Super Charge locks or checks the carry (`jrLock`), the
+outcome watch (HP tens: a Life Shroom revive) drops the states that would have died, a death makes the next turn "no
+roll" (10 HP), the doubt / no-edge / reconstruction rules are v82's. **Press A mode** (`nbCancelPlan`): the plan is made as
+soon as the Charge confirm is read (bar hide), over the states stepped to the box, in the box window (never earlier than
+the beep lead allows), with v83's perfect-press rule; "Locked: confirm Goombario's Charge whenever you like ..." before it.
+The box A is read from the bar's return (`nbCancelSeen`, -2..+1), or taken as the beeped frame with the press spread, or as
++133 when nothing was planned. **Wait mode** (default): the Charge confirm is planned from the tracker (`jrEarlyPlan`, floor
+150 frames after Mario's confirm) and both inputs go in at the confirm. The Goombario Charge steps use cat 'S' so that
+Mario's target screens never start a plan.
+
+## 3. Which default, and the odds (`test_nb_cc_page.js`, the built page, model games, 40 per row)
+| | perfect press: lands / claimed | ±1-frame presses 25/50/25: actual / claimed | window |
+|---|---|---|---|
+| Jr. T2 box A | 97.5% / 88.8% | 78.1% / 75.7% | 1.5 |
+| Jr. T3 box A (carry) | 100% / 93.1% | 76.9% / 76.2% | 1.4 |
+| Jr. T4 box A | 97.4% / 81.7% | 76.9% / 70.6% | 1.1 |
+| Jr. T5 Headbonk | 100% / 84.9% | 76.4% / 71.6% | 1.4 |
+| Hallway T1 box A | 100% / 90.9% | 75.6% / 76.4% | 1.4 |
+| Jr. T2 / T3 / T4 wait | 100 / 100 / 97.5% ; 92.5 / 97.1 / 90.7% | 82.5 / 85.6 / 81.3% ; 78.0 / 84.4 / 75.4% | 1.9 / 2.3 / 1.6 |
+**Wait it out is the default**: it gives the higher perfect-press chance. In wait mode the beeped press is the Charge confirm
+itself; with the box A the page must plan around the confirm as read from the status bar (-2..+1 frames, a dropped picture
+reads it late), which splits the states before the plan (6 groups with the lag), so fewer frames work for all of them.
+Press A is the better choice when the lock lands late (it can plan until the box closes, ~4.4 s after the Charge confirm).
+Every planned press landed on the model or the miss was claimed under 95% (no confident wrong beep), T7 5+ from the carry
+37/37, Hallway T2 Time Out from the carry 40/40. Whole Jr. Troopa fight (four Close Calls): about 45-55% with ±1-frame
+presses, 70-80% with perfect ones (model); blind 0.8%.
+
+## 4. Not verified on console
+Everything above is emulator + model: Goombario's Charge picture (the bar hide 4 and the return P+6 on the capture), the
+Super Charge reads with Goombario out (Jr. Troopa's arena and the Hallway), Headbonk's damage on the runner's file (its
+draws follow the damage: 8 a hit here, four Charges, Goombario Super), the runner's Life Shrooms, Jr. Troopa staying
+above 39 HP (no transformation) after the Headbonk.
+
+## 5. Final Bowser (Normal Boots): routed around
+The runner: "if that Final Bowser fight is not realistic, we can route around it, we just need a high cap". The phase-2
+every-turn Close Call / no Star Shield / no wave route is gone; the route has one Final Bowser step, the phase-2 Power
+Bounce on whichever turn. **It is not beeped**, and the step says why: a lock for it needs (1) the preceding Super Charge
+read in this arena with Goombario out (the FB2 reader handles the lightning on Ultra Boots with Lakilester), (2)
+Goombario's turn with the lightning, (3) every draw of Bowser's turn up to the next menu for each attack he can pick (only
+his choice is modelled: `fbnbAi`, v84), (4) Normal Boots Power Bounce's frames against him. None is measured, so beeping
+would be a guess. Shown: the blind cap odds (chance 60, the first two bounces free): 4+ 72%, 5+ 31%, 6+ 8.1%, 7+ 1.3%.
+
+## Tests
+`test_nb_cc_model.js` (new: the emulator ground truth above), `test_nb_cc_page.js` (new: the page's plans, beeps, texts,
+both modes, both fights, the carries to T7 and Hallway T2), `test_nb_route.js` (v85 route: the Charge readers, the beeped
+steps, Final Bowser's one step and its cap odds; Jr. T7's shine lock still plans). Version checks moved to v85. Ultra Boots:
+the Jr. Troopa machine runs its v84 sequence (`JR_SEQ` flags `rearm` / `revive` replace the hard-coded indices).
+Full `run_suite.sh` (final pass, the committed code): every test rc 0 and both log replays lock as before (1379.7 s on 83ebd9e1,
+655.7 s on 52467bd0), except `test_strip_geometry.js` once (the displayed now 0.126 frames off between two animation frames:
+the timing flake of v72 / v77, same message in an older suite run); it passed 10 of 12 further runs on v85 (one of the two failures with the suite running beside it) and 10 of 10 on v84.
+
 # Time Out Timer v84: the Normal Boots route (Nov 8)
 
 The runner's second route (spec of 2026-11-08): Normal Boots, Goombario instead of Kooper (every partner "Charge" is

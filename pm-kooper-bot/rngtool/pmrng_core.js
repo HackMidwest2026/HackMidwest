@@ -365,6 +365,25 @@
   TURNS.jr_bomb_t1 = { pre: { 73: X359(8), 206: X359(10) }, post: { 73: [360] } };
   TURNS.jr_syrup_hit = { pre: { 118: [].concat(...Array(15).fill([359, 10, 10])), 190: X359(10) }, post: {} };
   TURNS.jr_nothing_hit = { pre: { 53: X359(10) }, post: {} };
+  /* v85, the Normal Boots route (charge_live/README.md v85; nb_cc/jr_route_log.py, nb_cc/gch_log.py, checked frame by frame
+   * by test_nb_cc_model.js). Goombario's Charge (nb_gch, frame 0 = its target-screen A): energy_in_out on +14 and +17 (as
+   * Mario's Charge, one frame later), then "attack power up" in a message box that A closes (cancel A, popup duration 60:
+   * A on +73..+132 ends his turn 5 frames later; no A = +133). Everything after hangs off that frame P (nb_jrcc /
+   * nb_hwcc / nb_jrhit, frame 0 = P): Jr. Troopa's Close Call rand_int(100) on P + 29 (Mario under 6 HP; a dodge draws
+   * nothing more up to the next menu at P + 97), his hit at 10 HP on P + 56; Hallway Bowser's AI (RandInt 80 / 60) on
+   * P + 16, then the Close Call as bowserT1 (AI + 54 / 70 / 55). Maple Syrup (nb_syrup): its sparkles on +118. Goombario's
+   * Headbonk x2 (nb_hb, frame 0 = its target-screen A; the action command pressed in both windows): the hits' 10 x
+   * rand(359) on +54 and +80 (8 damage each: four Charges), Jr. Troopa's Close Call on +143 (the hit at 10 HP on +170).
+   * Whacka's Bump (nb_whacka): 22 sparkles on +118; then Goombario's Do Nothing (jr_nothing_hit at 10 HP). */
+  TURNS.nb_gch = { pre: {}, post: {}, eio: [[14, 59], [17, 62]] };
+  TURNS.nb_jrcc = { pre: { 29: [100] }, post: {} };
+  TURNS.nb_jrhit = { pre: { 56: X359(10) }, post: {} };
+  TURNS.nb_hwcc = { pre: {}, post: {}, aiAt: 16 };
+  TURNS.nb_syrup = { pre: { 118: [].concat(...Array(10).fill([359, 10, 10])) }, post: {} };
+  TURNS.nb_hb = { pre: { 54: X359(10), 80: X359(10), 143: [100] }, post: {} };
+  TURNS.nb_hb_hit = { pre: { 54: X359(10), 80: X359(10), 170: X359(10) }, post: {} };
+  TURNS.nb_whacka = { pre: { 118: [].concat(...Array(22).fill([359, 10, 10])) }, post: {} };
+  const NB_K = { lo: 73, hi: 132, none: 133, back: 5, jrcc: 29, jrnext: 97, hwai: 16 };
   /* evs: [{f, id}] (f = frame of the confirm, in the caller's frame numbering) -> Map frame -> {pre, post, eio} */
   function buildEv(list) {
     const m = new Map(), get = f => { let e = m.get(f); if (!e) { e = { pre: [], post: [], eio: [] }; m.set(f, e); } return e; };
@@ -374,6 +393,7 @@
       for (const o in T.post) get(f + +o).post.push(...T.post[o]);
       for (const [c, r, per] of T.eio || []) get(f + c).eio.push([f + r, per || 10]);
       if (T.impact && imp != null) { get(f + imp).pre.push(...T.impact); const a = get(f + imp + T.ai); a.ai = id; a.guard = !!guard; a.danger = !!danger; }
+      if (T.aiAt != null) { const a = get(f + T.aiAt); a.ai = id; a.guard = false; a.danger = true; }      // v85 nb_hwcc: Bowser's AI at 3 HP
     }
     return m;
   }
@@ -569,7 +589,33 @@
     }
     return p * P100(30);
   }
-  const api = { fbnbAi, fbnbVars, fbnbTurnBlind, MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
+  /* v85 Normal Boots Close Call profiles (TURNS nb_*; charge_live/README.md v85). The cancel modes: "confirm" = the A that
+   * closes Goombario's "attack power up" box (P, +73..+132 from his Charge's target-screen A). The wait modes: "confirm" =
+   * that target-screen A itself (G), the box running out (P = G + 133). Headbonk: its target-screen A. */
+  function evSim(list, rollAt) {      // list(c) -> buildEv list; rollAt(c): a plain roll frame (first draw), else S.cc decides
+    return function (seed, nc, c, t0) {
+      const S = { s: seed >>> 0, nc, inst: [] }, ev = buildEv(list(c)), ra = rollAt ? rollAt(c) : null;
+      for (let f = t0 || 0; f < c + 400; f++) {
+        if (ra != null && f === ra) return randInt(S.s, 100)[1] < 30;
+        frameEv(S, f, ev);
+        if (S.cc) return S.cc.lucky;
+      }
+      return false;
+    };
+  }
+  const NB_SCREEN_G = 'Goombario\'s Charge target screen (hand on Goombario)';
+  Object.assign(PROFILES, {
+    jrcc_gch: { id: 'jrcc_gch', name: 'Jr. Troopa: Close Call after Goombario\'s Charge (the A that closes its box)', short: 'Close Call', group: 'jr', nb: true, lever: 'cancel',
+      effects: {}, rolls: [{ at: NB_K.jrcc, max: 100, ok: v => v < 30 }], vanish: 0, minRun: 2, screen: 'Goombario\'s "attack power up" box', box: 'the box' },
+    jrcc_gchw: { id: 'jrcc_gchw', name: 'Jr. Troopa: Close Call after Goombario\'s Charge (box left to run out)', short: 'Close Call', group: 'jr', nb: true, lever: 'wait',
+      effects: {}, rolls: [{ at: NB_K.none + NB_K.jrcc }], sim: evSim(c => [{ f: c, id: 'nb_gch' }], c => c + NB_K.none + NB_K.jrcc), vanish: 2, minRun: 2, screen: NB_SCREEN_G, box: 'the name box in the top-left' },
+    jrcc_hb: { id: 'jrcc_hb', name: 'Jr. Troopa: Close Call after Goombario\'s Headbonk x2', short: 'Close Call', group: 'jr', nb: true,
+      effects: { 54: X359(10), 80: X359(10) }, rolls: [{ at: 143, max: 100, ok: v => v < 30 }], vanish: 2, minRun: 2, screen: 'Goombario\'s Headbonk target screen (hand on Jr. Troopa)', box: 'the name box in the top-left' },
+    hwcc_gch: { id: 'hwcc_gch', name: 'Hallway Bowser: Close Call after Goombario\'s Charge (the A that closes its box)', short: 'Close Call', group: 'jr', nb: true, lever: 'cancel',
+      effects: {}, rolls: [{ at: NB_K.hwai }], sim: evSim(c => [{ f: c, id: 'nb_hwcc' }]), vanish: 0, minRun: 2, screen: 'Goombario\'s "attack power up" box', box: 'the box' },
+    hwcc_gchw: { id: 'hwcc_gchw', name: 'Hallway Bowser: Close Call after Goombario\'s Charge (box left to run out)', short: 'Close Call', group: 'jr', nb: true, lever: 'wait',
+      effects: {}, rolls: [{ at: NB_K.none + NB_K.hwai }], sim: evSim(c => [{ f: c, id: 'nb_gch' }, { f: c + NB_K.none, id: 'nb_hwcc' }]), vanish: 2, minRun: 2, screen: NB_SCREEN_G, box: 'the name box in the top-left' } });
+  const api = { NB_K, evSim, fbnbAi, fbnbVars, fbnbTurnBlind, MUL, FRAME_MS, SHINE_MIN, adv, internal, randInt, patternFromTaps, matches, searchRange, afterPattern,
     seedBeforeLastDraw, resync, searchShineStart, back, timeOutRoll, timeOutTable, bestWindow, EFFECTS, ROLL, PROFILES, works, aimTop, TOP, searchChain, extendCands, extendWide, extendWideTorch, patSteps, TURNS, buildEv, frameEv, matchesEv, seedBeforeLastDrawEv, afterPatternEv, baseAfter, matchesTorch, seedBeforeLastDrawTorch, walkTorch, resyncTorch, searchShineStartTorch, aim4: (s, a, b) => aimTop(s, a, b, 'dup3') };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PMRNG = api;
 })(typeof self !== 'undefined' ? self : this);

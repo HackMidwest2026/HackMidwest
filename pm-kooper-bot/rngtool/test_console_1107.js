@@ -116,7 +116,7 @@ const cls = seen => { const n = [...seen].filter(c => c === 'C').length; return 
   check(!/<br>/.test(r.list.html), 'no second line under a turn');
   check(r.list.lis.some(x => /^1\. T1: Charge; Bombette Do Nothing/.test(x)) && r.list.lis.some(x => /^2\. T1: Charge; Bomb$/.test(x)), 'each turn reads "N. Tn: actions"');
   check(/^2\. T1: Charge; Bomb/.test(r.list.cur || ''), 'the current step\'s turn line is highlighted');
-  check(r.version === 'v84' && r.ver === 'v84', 'version v84 in the log and the header');
+  check(r.version === 'v85' && r.ver === 'v85', 'version v85 in the log and the header');
   check(r.title === 'Paper Mario Any% (No ACE) (RNG Manipulation)' && /RNG Manipulation/.test(r.h1), 'the page\'s new name in the title and header');
   await p.close();
   // 8. the Final Bowser plan / re-score
