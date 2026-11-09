@@ -116,7 +116,7 @@ const cls = seen => { const n = [...seen].filter(c => c === 'C').length; return 
   check(!/<br>/.test(r.list.html), 'no second line under a turn');
   check(r.list.lis.some(x => /^1\. T1: Charge; Bombette Do Nothing/.test(x)) && r.list.lis.some(x => /^2\. T1: Charge; Bomb$/.test(x)), 'each turn reads "N. Tn: actions"');
   check(/^2\. T1: Charge; Bomb/.test(r.list.cur || ''), 'the current step\'s turn line is highlighted');
-  check(r.version === 'v82' && r.ver === 'v82', 'version v82 in the log and the header');
+  check(r.version === 'v83' && r.ver === 'v83', 'version v83 in the log and the header');
   check(r.title === 'Paper Mario Any% (No ACE) (RNG Manipulation)' && /RNG Manipulation/.test(r.h1), 'the page\'s new name in the title and header');
   await p.close();
   // 8. the Final Bowser plan / re-score
@@ -137,7 +137,7 @@ const cls = seen => { const n = [...seen].filter(c => c === 'C').length; return 
         const pNow = [];
         while (performance.now() < P.tPress - 50) { await new Promise(r => setTimeout(r, 250)); F.tick(performance.now()); if (P.mix.pNow != null) pNow.push(P.mix.pNow); }
         const ev = T.SLOG.slice(n0).map(e => e.ev);
-        out.runs.push({ p: +P.mix.p.toFixed(3), pNow: pNow.slice(0, 4), replans: ev.filter(e => e === 'fb14Replan').length, cancels: ev.filter(e => e === 'beepsCancelled').length, kept: T.st.plan === P, PDn: P.PD.length });
+        out.runs.push({ p: +(P.mix.pp != null ? P.mix.pp : P.mix.p).toFixed(3), pNow: pNow.slice(0, 4), replans: ev.filter(e => e === 'fb14Replan').length, cancels: ev.filter(e => e === 'beepsCancelled').length, kept: T.st.plan === P, PDn: P.PD.length });
         cancelBeepsSafe();
       }
       function cancelBeepsSafe() { try { T.st.plan = null; } catch (e) {} }
@@ -150,7 +150,7 @@ const cls = seen => { const n = [...seen].filter(c => c === 'C').length; return 
     const runs = g.runs.filter(x => !x.none);
     check(runs.length >= 3, 'Final Bowser: plans made (' + runs.length + ' of ' + g.runs.length + ')');
     check(runs.every(x => x.replans === 0 && x.kept), 'no replan of a plan the re-score agrees with: the beeps play through');
-    check(runs.every(x => x.pNow.every(v => Math.abs(v - x.p) < 0.03)), 'the re-score reads the plan\'s own chance (the runner\'s spread, -4..+4)');
+    check(runs.every(x => x.pNow.every(v => Math.abs(v - x.p) < 0.03)), 'the re-score reads the plan\'s own chance (v83: the perfect press on the planned frame; the states sampled as planned)');
     console.log('  carry gone: ' + g.gone.msg.slice(0, 160));
     check(/carried seed is gone/.test(g.gone.msg) && !g.gone.on && g.gone.t0 == null, 'every state ruled out: the carry is dropped and the next Charge locks afresh');
     await q.close(); }

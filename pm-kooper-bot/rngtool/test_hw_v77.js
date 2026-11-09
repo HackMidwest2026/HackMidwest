@@ -1,4 +1,5 @@
-/* v79: at 10 HP (and with the HP not read: the route's HP above 5 assumed) the Hallway T2 Time Out plan must be v77's. The
+/* v83: the plan's frame is the perfect press's (the tracker and its states must still be v77's; see the check below).
+ * v79: at 10 HP (and with the HP not read: the route's HP above 5 assumed) the Hallway T2 Time Out plan must be v77's. The
  * v77 page is built from git (commit 0e9e28f, page v77) with only test hooks added (the same exports v79 has for the Hallway
  * tracker), and the same games go through both pages: the T1 Charge lock (hwTrackerAt), the Spiny Flip confirm (impact frame
  * and guard hidden), Bowser's attack at 10 HP (no Close Call roll), 1.5 s of T2's coin, then the real makePlan on Time Out's
@@ -43,14 +44,14 @@ const game = async (P, g, menu, cScr, shines, tens) => P.p.evaluate(({ g, menu, 
   T.setStep(ti); T.zwUpdate(menu - 10);
   zw.vis = [[menu, cScr - 4]]; zw.visFrom = null; zw.visTo = null; zw.visLocked = true; for (const f of shines) T.zwTapF(f);
   const n0 = T.SLOG.length; setNow(tOf(cScr, 0) + 30); T.st.plan = null; T.st.msg = null; T.makePlan(); const P = T.st.plan;
-  return { plan: P ? { target: P.zwAbs, p: +P.mix.p.toFixed(9), pStates: +P.mix.pStates.toFixed(9), doubt: P.mix.doubt, groups: P.mix.groups, w: P.w } : null, msg: P ? null : (T.st.msg || '').slice(0, 60),
+  return { plan: P ? { target: P.zwAbs, p: +P.mix.p.toFixed(9), pStates: +P.mix.pStates.toFixed(9), doubt: P.mix.doubt, groups: P.mix.groups, w: P.w } : null, pp: P && P.mix.ppStates != null ? P.mix.ppStates : null, win: P && P.mix.win, msg: P ? null : (T.st.msg || '').slice(0, 60),
     hp: T.SLOG.slice(n0).some(x => x.ev === 'zwNoEdgeHp'), parts: zw.parts.length, shadow: zw.shadow ? zw.shadow.length : 0 };
 }, { g, menu, cScr, shines, tens, IMPS });
 (async () => {
   buildV77();
   const b = await chromium.launch(), A = await open(b, V77), B = await open(b, V79);
   let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails++; };
-  check(await A.p.evaluate(() => window.__tot.VERSION) === 'v77' && await B.p.evaluate(() => window.__tot.VERSION) === 'v82', 'pages v77 and v82');
+  check(await A.p.evaluate(() => window.__tot.VERSION) === 'v77' && await B.p.evaluate(() => window.__tot.VERSION) === 'v83', 'pages v77 and v83');
   const row = { ten: { same: 0, n: 0, plans: 0 }, none: { same: 0, n: 0, plans: 0, hp: 0 } };
   for (let k = 0; k < N; k++) {
     const g = { seed: (rnd() * 4294967296) >>> 0, q: Math.floor(rnd() * 48), lag: pick(LAGS), Ct: 110 + Math.floor(rnd() * 120), sh: pick(SHIFTS), imp: IMPS[Math.floor(rnd() * IMPS.length)], guard: rnd() < 0.5 };
@@ -59,15 +60,18 @@ const game = async (P, g, menu, cScr, shines, tens) => P.p.evaluate(({ g, menu, 
     const a = await game(A, g, menu, cScr, shines, null);
     for (const tens of ['ten', 'none']) {
       const v = await game(B, g, menu, cScr, shines, tens === 'ten' ? 'ten' : null), r = row[tens]; r.n++; if (a.plan) r.plans++;
-      const same = JSON.stringify(a.plan) === JSON.stringify(v.plan) && a.parts === v.parts && (!!a.msg === !!v.msg);
+      // v83 (the perfect press): the tracker is v77's (same states, same doubt); the plan's frame may move (a working frame,
+      // the centre of the widest run), so the plan must be one wherever v77 planned, on a frame most states agree works
+      const same = a.parts === v.parts && (!a.plan || (v.plan && v.plan.doubt === a.plan.doubt && v.plan.groups === a.plan.groups && v.pp >= 0.5 && v.win >= 1));
+      if (a.plan && v.plan && v.plan.target !== a.plan.target) r.moved = (r.moved || 0) + 1;
       if (same) r.same++; else if (tens === 'none' && v.hp && !v.plan) r.hp++;
       else console.log('DIFF', k, tens, JSON.stringify(a), JSON.stringify(v));
       if (tens === 'ten' && v.shadow) { console.log('FAIL 10 HP carried roll states', k); fails++; }
     }
     if (k < 3) console.log('game', k, JSON.stringify(a.plan || a.msg));
   }
-  console.log('10 HP read: ' + row.ten.same + '/' + row.ten.n + ' the same as v77 (' + row.ten.plans + ' v77 plans); HP not read: ' + row.none.same + '/' + row.none.n + ' the same, ' + row.none.hp + ' no edge for the HP (the roll fallback)');
-  check(row.ten.same === row.ten.n, 'at 10 HP every plan is v77\'s (target, chance, window, no edge)');
+  console.log('10 HP read: ' + row.ten.same + '/' + row.ten.n + ' the same as v77 (' + row.ten.plans + ' v77 plans; ' + (row.ten.moved || 0) + ' moved to the perfect-press frame); HP not read: ' + row.none.same + '/' + row.none.n + ' the same, ' + row.none.hp + ' no edge for the HP (the roll fallback)');
+  check(row.ten.same === row.ten.n, 'at 10 HP the tracker is v77\'s and every v77 plan is a plan, on a working frame (v83: the centre of the widest run)');
   check(row.none.same + row.none.hp === row.none.n && row.none.hp <= Math.ceil(0.1 * row.none.n), 'HP not read: v77\'s plan, or (rarely) no edge for the HP; never another beep');
   check(row.ten.plans >= N * 0.5, 'the games plan (' + row.ten.plans + '/' + N + ')');
   check(!A.errs.length && !B.errs.length, 'no page errors ' + A.errs.concat(B.errs).slice(0, 3).join(' | '));

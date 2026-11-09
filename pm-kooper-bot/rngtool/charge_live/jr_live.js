@@ -464,7 +464,7 @@ function jrStatusLine(s, lost) {
   if (JRT.lost && zw.dead) body += 'No edge: ' + JRT.lost + ' (until the next Charge locks, or the coin finds the seed again). ';
   if (JRT.shineRec && !zw.dead) body += 'seed found again from ' + JRT.shineRec.taps + ' shines. ';
   if (JRT.cross) body += 'the ' + JR_SEQ[JRT.cross.k].t + ' Charge ' + (JRT.cross.agree ? 'confirmed the carried seed. ' : 'did not fit the carry: tracking from its lock. ');
-  if (P && P.mix && stp && PROF().group === 'jr') body += (PROF().id === 'jrpb5' ? 'Power Bounce on the beep: 5+ ' + pc(P.mix.p) + ', 6+ ' + pc(P.mix.p4 || 0) + ' (blind 67.5% / ' + pc(JR_BLIND.p6) + ')' : (JR_SEQ[stp.jr] || {}).what + ' on the beep: Close Call ' + pc(P.mix.p) + ' (blind ' + pc(JR_BLIND.cc) + ')');
+  if (P && P.mix && stp && PROF().group === 'jr') body += (PROF().id === 'jrpb5' ? 'Power Bounce on the beep: ' + ppText(P.mix, 'jrpb5') + ' (blind 67.5% / ' + pc(JR_BLIND.p6) + '; with your press spread 5+ ' + pc(P.mix.p) + ', 6+ ' + pc(P.mix.p4 || 0) + ')' : (JR_SEQ[stp.jr] || {}).what + ' on the beep: Close Call. ' + ppText(P.mix, PROF().id) + ' (blind ' + pc(JR_BLIND.cc) + '; with your press spread ' + pc(P.mix.p) + ')');
   else if ((s === 'nolock' || s === 'failed' || s === 'notseen' || lost) && !(zw.on && zw.fight === 'jr' && !zw.dead)) body += 'play it blind (Close Call ' + pc(JR_BLIND.cc) + '; Power Bounce 5+ 67.5%, 6+ ' + pc(JR_BLIND.p6) + ').';
   else if (zw.on && zw.fight === 'jr') body += 'carried from the ' + JR_SEQ[JRT.origin || 0].t + ' Charge; the beeps start on each Close Call / Power Bounce target screen.';
   return head + body + (outs ? ' <span class="note">(' + outs + ')</span>' : '');
@@ -477,6 +477,6 @@ function jrPlanAt(cScr, leadS, winS, profId) {
   if (!S.list.length) return { none: 'nothing fits', states: 0 };
   const prof = R.PROFILES[profId || PROF().id], from = Math.ceil(cScr + leadS * 1000 / zw.rate + 1), W = Math.max(0, Math.round(winS * 1000 / zw.rate));
   const top = R.TOP[prof.id], C = zwChoose(S.list, from, W, PRESS_ERR, prof, { d: S.doubt, b3: jrBlind(prof.id), b4: top ? jrBlind(top) : 0 });
-  return { target: C.target, p: C.p, p6: C.p4, pStates: C.pStates, doubt: S.doubt, w: C.w, none: C.none, from, W, states: S.list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })) };
+  return { target: C.target, p: C.p, p6: C.p4, pp: C.pp, pp6: C.pp4, w4: C.w4, pStates: C.pStates, doubt: S.doubt, w: C.w, none: C.none, from, W, states: S.list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })) };
 }
 const jrBlind = id => (id === 'jrpb5' ? JR_BLIND.p5 : id === 'jrpb6' ? JR_BLIND.p6 : JR_BLIND.cc);

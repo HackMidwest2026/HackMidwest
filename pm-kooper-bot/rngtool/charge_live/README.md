@@ -1,3 +1,40 @@
+# Time Out Timer v83: the perfect press (Nov 8)
+
+Asked by the runner: Close Call, the Duplighosts' copies, Time Out and Power Bounce are decided by the seed and the exact
+confirm frame, so the page now plans for a **perfect press**. v82 scored each frame by the press spread (25/50/25, or the
+runner's measured spread) and could aim at a failing frame between working ones (Jr. T4 with working frames at -2, -1, +2
+around a failing 0).
+
+**The rule** (`ppPick`, used by `zwChoose`, so the Duplighosts, Jr. Troopa, the Hallway's Time Out on the tracker and
+Final Bowser T1-T4; also `mixPlan`, `fb2PlanK` and `fb2PlanT7`):
+- a frame **works** when the states that agree on it carry at least half the weight and at least the best share in reach
+  minus `PP_TOL` (0.05);
+- the beep is always a working frame: the centre of the **widest run** of working frames (the most centred reachable frame
+  when the run starts before the earliest beepable frame), then the spread-weighted score, then the earliest;
+- with an all-4-like top outcome (Duplighosts 4 copies, Jr. 6+ bounces) the goal picks:
+  - `safe3`: the widest 3+ window, its centre (all 4 only where it costs no 3+ margin);
+  - `free` (Duplighosts default, and Jr. Power Bounce: "6, 5+ either side"): in the widest 3+ window, an all-4 frame with a
+    3+ frame either side (`PP_FREE_M` 1), else the centre;
+  - `run2`: the centre of the widest all-4 window if it is 2+ frames, else `free`;
+  - `four` (new option "4 first (widest all-4 window)"): the centre of the widest all-4 window, else `free`.
+- **No edge** is decided on the perfect press's chance: (1 - doubt) x the working share + doubt x blind, below "beep only
+  from" (0.4). The doubt rules (50%+: no beeps), the HP fallback, the re-score on the coin (`zwTick`, `fb14Tick`: now on the
+  planned frame itself) and the blind texts are unchanged. Nothing is beeped for outcomes not decided by the press.
+- **Shown:** "Perfect press: works · window N frames · seed confidence NN%" (the strip's headline, the Charge / Jr. / FB
+  panels); "works for NN% of the states" when they disagree on the frame. The spread-weighted chance is kept in the detail
+  line ("Counting your press spread: NN%"), the panels' "with your press spread" and the log (`mix.p`; `mix.pp`, `mix.win`).
+
+**Measured** (`test_dup_plan.js`, 300 random Charge-locked seeds, lag-0 truth; perfect press | 25/50/25 | runner rms 1.77, 3+ /
+all 4): 3+ safe 100 / 37 | 96.3 / 28.9 | 79.5 / 21.6; 4 when it's free 100 / 43 | 96.3 / 31.4 | 79.2 / 22.1; 4 if 2+
+100 / 46 | 96.3 / 33.9 | 78.5 / 23.5; 4 first 100 / 83 | 89.9 / 52.6 | 71.4 / 31.5. Jr. Troopa (`test_jr_plan.js`): Close
+Call 72-87% actual with 25/50/25 presses (as v82), T6 5+ 97.5-100%, 6+ 51-62%. Hallway (`test_hw_v77.js`): the tracker is
+v77's; 2 of 12 plans moved to the perfect-press frame.
+
+**Tests:** `test_pp_plan.js` (new: the Jr. T4 case, widest run, clamp, tolerance, no edge, the four goals, the texts);
+`test_dup_plan.js` section 6 rewritten for the perfect press (every goal's frame gives 3+ for most states, "4 when it's
+free" keeps the widest 3+ window and never less all 4, "4 first" the widest all-4 window); `test_hw_v77.js`: the tracker
+must be v77's and every v77 plan a plan on a working frame. Version checks moved to v83.
+
 # Time Out Timer v82: the console logs of Nov 8 evening (Jr. Troopa, Hallway, Final Bowser), the status card (Nov 8)
 
 Logs (v81, N64 -> S-Video -> GV-USB2 -> OBS 1280x720 60 fps): A 1794169121337 (three Jr. Troopa fights, a Hallway lock),

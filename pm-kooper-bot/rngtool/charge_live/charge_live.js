@@ -839,7 +839,7 @@ const DUP_BLIND = { p3: 0.47, p4: 0.13 };
 function dupStatusLine(s, lost) {
   const P = st.plan, pc = x => Math.round(100 * x) + '%';
   if (s === 'nolock' || s === 'failed' || s === 'notseen' || lost) return '<br><b>Duplighosts: play it blind.</b> Do Nothing whenever you like: 3+ copies about ' + pc(DUP_BLIND.p3) + ', all 4 about ' + pc(DUP_BLIND.p4) + ' (the same as the RTA Surge route with no lock).';
-  if (P && P.mix && P.mix.p4 != null) return '<br><b>Do Nothing on the beep:</b> 3+ copies ' + pc(P.mix.p) + ', all 4 ' + pc(P.mix.p4) + ' (blind: ' + pc(DUP_BLIND.p3) + ' / ' + pc(DUP_BLIND.p4) + ')';
+  if (P && P.mix && P.mix.p4 != null) return '<br><b>Do Nothing on the beep:</b> ' + ppText(P.mix, 'dup3') + ' (blind: ' + pc(DUP_BLIND.p3) + ' / ' + pc(DUP_BLIND.p4) + '; with your press spread 3+ ' + pc(P.mix.p) + ', all 4 ' + pc(P.mix.p4) + ')';
   if (s === 'locked') return '<br>Duplighosts: locked. The beeps start on the Partner’s Strategies screen (hand on Do Nothing).';
   return '';
 }

@@ -208,7 +208,7 @@ details[open] summary { margin-bottom: 10px; }
       <summary>Advanced</summary>
       <div class="grid2">
         <label class="f">Max extra wait for the window (s)<input id="s-zwwin" type="number" step="0.5" min="0" value="1"><small>How far past the lead the page may look for the window (1 s = 30 frames; 0 = off on Hallway T2).</small></label>
-        <label class="f">Duplighosts goal<select id="s-dupgoal"><option value="free" selected>4 when it's free</option><option value="safe3">3+ safe</option><option value="run2">4 if 2+ frame window</option></select><small>Which Do Nothing frame to beep: the best 3+ chance (all 4 only within 2 points of it), all 4 when it costs at most 3 points of 3+, or any 2+ frame all-4 window in reach.</small></label>
+        <label class="f">Duplighosts goal<select id="s-dupgoal"><option value="free" selected>4 when it's free</option><option value="safe3">3+ safe</option><option value="run2">4 if 2+ frame window</option><option value="four">4 first (widest all-4 window)</option></select><small>Which Do Nothing frame to beep (v83: always a frame that gives the goal with a perfect press, the centre of the widest run of such frames): the widest 3+ window, an all-4 frame whenever one is in reach (inside the widest 3+ window it can be), an all-4 window only if 2+ frames wide, or the widest all-4 window (Normal Boots' default).</small></label>
         <label class="f">Best chance: beep only from (0–1)<input id="s-zwedge" type="number" step="0.01" value="0.4"><small>Below this the page says No edge (a blind press is 0.31).</small></label>
         <label class="f">Beep spacing (ms)<input id="s-gapms" type="number" step="50" value="500"><small>Time between beeps.</small></label>
         <label class="f">Shortest window to use (frames)<input id="s-min" type="number" min="1" max="8" value="3"><small>Best chance, outside Hallway T2: the narrowest run it plans on.</small></label>
@@ -920,13 +920,11 @@ function mixPlan(C) {
   const sc = f => { let v = 0; for (const [d, p] of PRESS_ERR) v += p * (share[f + d - a] || 0); return v; };
   const type = wtype(); let target, w;
   if (type === 'best') {
-    let k = -1; for (let i = 0; i <= W; i++) if (share[from + i - a] >= 0.5 && (k < 0 || sc(from + i) > sc(from + k) + 1e-9)) k = i;
-    if (k < 0) { k = 0; for (let i = 1; i <= W; i++) if (sc(from + i) > sc(from + k) + 1e-9) k = i; }
-    target = from + k; w = { start: target, end: target, length: 1 };
-    { let s0 = target, e0 = target; if (share[target - a] >= 0.5) { while (s0 - 1 >= a && share[s0 - 1 - a] >= 0.5) s0--; while (e0 + 1 <= b && share[e0 + 1 - a] >= 0.5) e0++; } w = { start: s0, end: e0, length: e0 - s0 + 1 }; }
-    if (sc(target) < num('zwedge')) {
-      st.msg = 'No edge: ' + g.length + ' Spiny Flip outcomes are still possible and no frame in the next ' + num('zwwin') + ' s works for enough of them (best ' + Math.round(sc(target) * 100) + '%; a blind press is 31%). Press Time Out normally, or show a shine or two in this menu and it plans again.';
-      slog('mixNoEdge', { groups: g.length, best: +sc(target).toFixed(3) }); render(); return true;
+    const pk = ppPick(share, null, a, b, from, W, sc, 'safe3');     // v83: the perfect press (zwChoose)
+    target = pk.target; w = pk.run;
+    if (share[target - a] < num('zwedge')) {
+      st.msg = 'No edge: ' + g.length + ' Spiny Flip outcomes are still possible and no frame in the next ' + num('zwwin') + ' s works for enough of them with a perfect press (best ' + Math.round(share[target - a] * 100) + '%; a blind press is 31%). Press Time Out normally, or show a shine or two in this menu and it plans again.';
+      slog('mixNoEdge', { groups: g.length, best: +share[target - a].toFixed(3), spread: +sc(target).toFixed(3) }); render(); return true;
     }
   } else {
     const pk = pickRun(Array.from(share, v => v >= 0.5), a, from, from + W, type, sc);
@@ -937,7 +935,7 @@ function mixPlan(C) {
   cancelBeeps();
   const tab = R.timeOutTable(g[0].seed, first, last, PROF()); for (let f = Math.max(first, a); f <= b - 1 && f <= last; f++) tab[f - first] = share[f - a] >= 0.5;
   st.plan = { tMade: now, w, target, aim4: false, tPress, tLast, rate: rt, seedBL: g[0].seed, baseF: F0, carried: true, from, to: from + W, first, prof: PROF().id, type, beeps: nBeeps(),
-    tab, tab4: null, mix: { p: best, groups: g.length, top: g[0].imps.length / n } };
+    tab, tab4: null, mix: { p: best, pp: share[target - a] != null ? share[target - a] : null, win: w.length, groups: g.length, top: g[0].imps.length / n } };
   playBeeps(tPress);
   slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), beeps: nBeeps(), carried: true });
   render(); return true;
@@ -1150,36 +1148,78 @@ function zwFight() {
  * states agree), else 'safe3'. Over 2000 Charge-locked seeds with the runner's spread (rms 1.77): 3+ 78.7 / 78.5 / 73.5%,
  * all 4 22.1 / 22.9 / 29.1%. */
 const DUP_TOL = { safe3: 0.02, free: 0.03 };
-const dupGoal = () => { const e = typeof $ === 'function' && $('s-dupgoal'), v = e ? e.value : 'free'; return v === 'safe3' || v === 'run2' ? v : 'free'; };
+const dupGoal = () => { const e = typeof $ === 'function' && $('s-dupgoal'), v = e ? e.value : 'free'; return v === 'safe3' || v === 'run2' || v === 'four' ? v : 'free'; };
+/* v83, the perfect press (charge_live/README.md): Close Call, Do Nothing's copies, Time Out and Power Bounce are decided
+ * by the seed and the exact confirm frame. The page assumes a perfect press: the beeped frame is always a frame that works
+ * (for the states: share >= 0.5 and within PP_TOL of the best share in reach), never a failing frame between two working
+ * ones (v82's spread-weighted best could be: Jr. T4 near [-2,-1,+2] aimed at 0). Among the working frames the centre of
+ * the widest run of them (robust to a frame early or late for free). The spread-weighted chance is still computed (p, the
+ * Details and the log); the shown chance is the perfect press's (pp) and the No-edge check is on it (with the doubt and
+ * the background exactly as before). With an all-4-like top outcome (dup4, jrpb6) ppPick picks by goal:
+ *  safe3: the widest main (3+) run, its centre; the top outcome only where it costs no main robustness
+ *  free:  in the widest main run, a top frame if one keeps PP_FREE_M frames of main either side (else the centre)
+ *  run2:  the centre of the widest top run if it is 2+ frames, else free
+ *  four:  the centre of the widest top run (the Normal Boots Duplighosts default), else free */
+const PP_TOL = 0.05, PP_FREE_M = 1;
+function ppPick(share, share4, a, b, from, W, sc, goal) {
+  const at = (sh, c) => (c >= a && c <= b ? sh[c - a] || 0 : 0);
+  let best = 0; for (let c = from; c <= from + W; c++) best = Math.max(best, at(share, c));
+  if (best < 0.5) { let k = from; for (let c = from; c <= from + W; c++) if (at(share, c) > at(share, k) + 1e-12) k = c; return { target: k, ok: false, run: { start: k, end: k, length: 1 }, run4: null }; }
+  const ok = c => at(share, c) >= Math.max(0.5, best - PP_TOL) - 1e-12;
+  let best4 = 0; if (share4) for (let c = from; c <= from + W; c++) if (ok(c)) best4 = Math.max(best4, at(share4, c));
+  const ok4 = c => !!share4 && best4 >= 0.5 && ok(c) && at(share4, c) >= Math.max(0.5, best4 - PP_TOL) - 1e-12;
+  const run = (f, c) => { let s0 = c, e0 = c; while (s0 - 1 >= a && f(s0 - 1)) s0--; while (e0 + 1 <= b && f(e0 + 1)) e0++; return { start: s0, end: e0, length: e0 - s0 + 1, m: Math.min(c - s0, e0 - c) }; };
+  const cand = [];
+  for (let c = from; c <= from + W; c++) if (ok(c)) { const r = run(ok, c), r4 = ok4(c) ? run(ok4, c) : null; cand.push({ c, r, r4, sc: sc(c) }); }
+  const cmp = keys => (x, y) => { for (const k of keys) { const d = k(y) - k(x); if (Math.abs(d) > 1e-12) return d; } return x.c - y.c; };
+  const W3 = x => x.r.length, M3 = x => x.r.m, H4 = x => (x.r4 ? 1 : 0), W4 = x => (x.r4 ? x.r4.length : 0), M4 = x => (x.r4 ? x.r4.m : -1), SC = x => x.sc;
+  const has4 = cand.filter(x => x.r4);
+  let pick;
+  if ((goal === 'four' || goal === 'run2') && has4.length) {
+    const pool = goal === 'run2' ? has4.filter(x => x.r4.length >= 2) : has4;
+    if (pool.length) pick = pool.sort(cmp([W4, M4, W3, M3, SC]))[0];
+  }
+  if (!pick && goal !== 'safe3') pick = cand.sort(cmp([W3, x => Math.min(x.r.m, PP_FREE_M), H4, M3, W4, M4, SC]))[0];
+  if (!pick) pick = cand.sort(cmp([W3, M3, H4, W4, M4, SC]))[0];
+  return { target: pick.c, ok: true, run: { start: pick.r.start, end: pick.r.end, length: pick.r.length }, run4: pick.r4 ? { start: pick.r4.start, end: pick.r4.end, length: pick.r4.length } : null };
+}
 function zwChoose(list, from, W, PD, prof, adj, goal) {
-  goal = goal || (prof.id === 'dup3' ? dupGoal() : 'safe3');
+  goal = goal || (prof.id === 'dup3' ? dupGoal() : prof.id === 'jrpb5' ? 'free' : 'safe3');     // v83: Jr. Power Bounce: 6 with 5+ either side (the route's label)
   const D = Math.max(...PD.map(x => Math.abs(x[0]))), X = 10, a = from - D, b = from + W + X + D, top = R.TOP[prof.id] ? R.PROFILES[R.TOP[prof.id]] : null;
   const share = zwShare(list, a, b, prof), share4 = top ? zwShare(list, a, b, top) : null;
   const scOf = sh => c => { let v = 0; for (const [d, q] of PD) v += q * (sh[c + d - a] || 0); return v; };
   const sc = scOf(share), sc4 = share4 ? scOf(share4) : null, type = wtype(), honest = (p, k) => (adj ? (1 - adj.d) * p + adj.d * adj[k] : p);
-  let target = null, w = null, none = null;
+  let target = null, w = null, none = null, pk = null;
   if (type === 'best') {
-    // the best chance among the frames most states agree work: with a wide press spread the best score can fall on a
-    // failing frame between two runs, and the aim marker then sat between two yellow runs on the strip (item 1)
-    let k = -1; for (let i = 0; i <= W; i++) if (share[from + i - a] >= 0.5 && (k < 0 || sc(from + i) > sc(from + k) + 1e-12)) k = i;
-    if (k < 0) { k = 0; for (let i = 1; i <= W; i++) if (sc(from + i) > sc(from + k) + 1e-12) k = i; }
-    if (sc4) { const b3 = sc(from + k), tol = DUP_TOL[goal] != null ? DUP_TOL[goal] : DUP_TOL.safe3; let k4 = k;
-      const better4 = (c, c4) => sc4(c) > sc4(c4) + 1e-12 || (Math.abs(sc4(c) - sc4(c4)) <= 1e-12 && sc(c) > sc(c4) + 1e-12);
-      for (let i = 0; i <= W; i++) { const c = from + i; if (share[c - a] < 0.5 || sc(c) < b3 - tol) continue; if (better4(c, from + k4)) k4 = i; }
-      if (goal === 'run2') { let k2 = -1;     // a 2+ frame all-4 run (most states agree), its best frame; it must still clear the edge
-        for (let i = 0; i <= W; i++) { const c = from + i; if (!(share4[c - a] >= 0.5 && ((share4[c - 1 - a] || 0) >= 0.5 || (share4[c + 1 - a] || 0) >= 0.5))) continue;
-          if (k2 < 0 || better4(c, from + k2)) k2 = i; }
-        if (k2 >= 0 && honest(sc(from + k2), 'b3') >= num('zwedge')) k4 = k2; }
-      k = k4; }
-    target = from + k;
-    { let s0 = target, e0 = target; if (share[target - a] >= 0.5) { while (s0 - 1 >= a && share[s0 - 1 - a] >= 0.5) s0--; while (e0 + 1 <= b && share[e0 + 1 - a] >= 0.5) e0++; } w = { start: s0, end: e0, length: e0 - s0 + 1 }; }
-    if (honest(sc(target), 'b3') < num('zwedge')) none = 'edge';
+    pk = ppPick(share, share4, a, b, from, W, sc, goal);
+    target = pk.target; w = pk.run;
+    if (honest(share[target - a] || 0, 'b3') < num('zwedge')) none = 'edge';
   } else {
-    const maj = Array.from(share, v => v >= 0.5), pk = pickRun(maj, a, from, from + W, type, sc);
-    if (!pk) none = 'window'; else { target = pk.target; w = pk.w; }
+    const maj = Array.from(share, v => v >= 0.5), pr = pickRun(maj, a, from, from + W, type, sc);
+    if (!pr) none = 'window'; else { target = pr.target; w = pr.w; }
   }
-  return { target, w, none, type, a, b, D, share, share4, p: target != null ? honest(sc(target), 'b3') : null, p4: target != null && sc4 ? honest(sc4(target), 'b4') : null,
-    pStates: target != null ? sc(target) : null, doubt: adj ? adj.d : 0, goal: sc4 ? goal : undefined };
+  const t = target;
+  return { target, w, w4: pk ? pk.run4 : null, none, type, a, b, D, share, share4, p: t != null ? honest(sc(t), 'b3') : null, p4: t != null && sc4 ? honest(sc4(t), 'b4') : null,
+    pp: t != null ? honest(share[t - a] || 0, 'b3') : null, pp4: t != null && share4 ? honest(share4[t - a] || 0, 'b4') : null, ppStates: t != null ? share[t - a] || 0 : null,
+    pStates: t != null ? sc(t) : null, doubt: adj ? adj.d : 0, goal: sc4 ? goal : undefined };
+}
+/* v83: what a plan says (the strip's headline, the detail, the Charge / Jr. / FB panels): the perfect press first
+ * ("Perfect press: works · window N frames · seed confidence NN%"), the spread-weighted chance only in the detail (long) */
+function ppText(m, prof, long) {
+  if (!m) return '';
+  const pc = x => Math.round(100 * x) + '%', conf = m.doubt != null ? ' · seed confidence ' + pc(1 - m.doubt) : '';
+  if (m.pp == null) return (long ? 'the aimed frame works for ' + pc(m.p) + ', counting your press spread.' : pc(m.p) + ' chance') + conf;
+  const ws = n => (n ? 'window ' + n + ' frame' + (n === 1 ? '' : 's') : 'no window');
+  const part = (name, pp, ps, n) => name + (ps >= 0.995 ? '' : ' for ' + pc(ps) + ' of the states') + ' (' + ws(n) + ')';
+  const pid = prof || '', ps = m.ppStates != null ? m.ppStates : m.pp;
+  let t;
+  if (m.pp4 != null) {
+    const [n3, n4] = pid === 'jrpb5' ? ['5+ bounces', '6+'] : ['3+ copies', 'all 4'];
+    t = 'Perfect press: ' + part(n3, m.pp, ps, m.win) + (m.win4 ? ', ' + n4 + ' (' + ws(m.win4) + ')' : ', not ' + n4);
+  } else t = 'Perfect press: works' + (ps >= 0.995 ? '' : ' for ' + pc(ps) + ' of the states') + ' · ' + ws(m.win);
+  t += conf;
+  if (long) t += '. Counting your press spread: ' + pc(m.p) + (m.p4 != null ? ' / ' + pc(m.p4) : '') + '.';
+  return t;
 }
 function zwPlan(why) {
   const now = performance.now(), S = zwStates(now), F = zwFight();
@@ -1200,8 +1240,8 @@ function zwPlan(why) {
   const pid = PROF().id, adj = { d: S.doubt, b3: ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31, b4: R.TOP[pid] && ZW_BLIND[R.TOP[pid]] != null ? ZW_BLIND[R.TOP[pid]] : ZW_BLIND.dup4 };
   const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj), type = C.type;
   if (C.none === 'edge') {
-    st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames) works for enough of them (best ' + Math.round(C.p * 100) + '%; ' + F.blind + '). ' + F.normal + '.';
-    slog('zwNoEdge', { parts: S.list.length, best: +C.p.toFixed(3) }); render(); return true;
+    st.msg = 'No edge: ' + S.list.length + ' possible RNG states are left and no frame in the next ' + num('zwwin') + ' s of extra wait (up to ' + W + ' game frames) works for enough of them with a perfect press (best ' + Math.round(C.pp * 100) + '%, seed confidence ' + Math.round(100 * (1 - S.doubt)) + '%; ' + F.blind + '). ' + F.normal + '.';
+    slog('zwNoEdge', { parts: S.list.length, best: +C.pp.toFixed(3), spread: +C.p.toFixed(3) }); render(); return true;
   }
   // v79: the <=5 HP roll fallback (hwcc_live.js): the plan above is v77's, from the no-roll states. It stands unless the
   // coin now fits the roll states too well: then a frame must work under both, and a coin that favours the roll is no edge
@@ -1213,7 +1253,7 @@ function zwPlan(why) {
   for (let c = Math.max(a, disp.first); c <= Math.min(b - D, disp.first + tab.length - 1); c++) { tab[c - disp.first] = share[c - a] >= 0.5; if (tab4) tab4[c - disp.first] = C.share4[c - a] >= 0.5; }   // the window part from every state
   cancelBeeps();
   st.plan = { tMade: now, w: { start: w.start - Fa, end: w.end - Fa, length: w.length }, target: target - Fa, aim4: false, tPress, tLast, rate, seedBL: A.seedBL, baseF: Fa, carried: true, from: from - Fa, to: from + W - Fa, first, prof: PROF().id,
-    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, early: early != null, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
+    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, pp: C.pp, pp4: C.pp4, ppStates: C.ppStates, win: w.length, win4: C.w4 ? C.w4.length : null, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, early: early != null, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
   playBeeps(tPress);
   slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, early: early != null || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
   st.msg = null; render(); if (typeof chgShow === 'function') chgShow(); return true;
@@ -1235,7 +1275,7 @@ function dupPlanAt(cScr, leadS, winS, goal, PD) {     // v80: goal / PD for the 
   const S = zwStatesAt(cScr);
   if (!S.list.length) return { none: 'nothing fits', states: 0 };
   const from = Math.ceil(cScr + leadS * 1000 / zw.rate + 1), W = Math.max(0, Math.round(winS * 1000 / zw.rate)), C = zwChoose(S.list, from, W, PD || PRESS_ERR, R.PROFILES.dup3, null, goal);
-  return { target: C.target, p3: C.p, p4: C.p4, w: C.w, none: C.none, from, W, goal: C.goal, states: S.list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })) };
+  return { target: C.target, p3: C.p, p4: C.p4, pp3: C.pp, pp4: C.pp4, w: C.w, w4: C.w4, none: C.none, from, W, goal: C.goal, states: S.list.map(q => ({ s: q.s >>> 0, nc: q.nc, g: q.g, w: q.w })) };
 }
 /* for tests: the copies (4, 3, or 2 = two or fewer) for Do Nothing on clock frames a..b from a coin-only state */
 function dupClasses(s, nc, g, a, b) { const t3 = fastTable(s, nc, g, a, b, R.PROFILES.dup3), t4 = fastTable(s, nc, g, a, b, R.PROFILES.dup4); return t3.map((x, i) => (t4[i] ? 4 : x ? 3 : 2)); }
@@ -1268,7 +1308,7 @@ function zwPlanChance(P, S) {
   const PD = P.PD || PRESS_ERR, D = Math.max(...PD.map(x => Math.abs(x[0]))), sh = zwShare(S.list, P.zwAbs - D, P.zwAbs + D, PROF());
   let v = 0; for (const [d, q] of PD) v += q * sh[d + D];
   const pid = PROF().id, b3 = ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31;
-  return { p: (1 - S.doubt) * v + S.doubt * b3, pStates: v, doubt: S.doubt };
+  return { p: (1 - S.doubt) * v + S.doubt * b3, pStates: v, pp: (1 - S.doubt) * sh[D] + S.doubt * b3, doubt: S.doubt };
 }
 function zwTick(now) {
   if (!zw.on || (ZWD.t && now - ZWD.t < 250)) return; ZWD.t = now;
@@ -1276,16 +1316,16 @@ function zwTick(now) {
   const P = st.plan; if (!P || !P.mix || !P.mix.zw || P.seedNote) return;
   if (P.tPress < now - 300 || ZWD.S.key === P.zwKey) return;
   P.zwKey = ZWD.S.key;
-  const ch = zwPlanChance(P, ZWD.S), good = !!ch && ch.doubt < 0.5 && ch.p >= num('zwedge') && ch.p >= P.mix.p - 0.15;
-  if (ch) P.mix.pNow = +ch.p.toFixed(3);
+  const ch = zwPlanChance(P, ZWD.S), pk = x => (x.pp != null ? x.pp : x.p), good = !!ch && ch.doubt < 0.5 && pk(ch) >= num('zwedge') && pk(ch) >= pk(P.mix) - 0.15;     // v83: re-scored as planned, on the perfect press
+  if (ch) { P.mix.pNow = +pk(ch).toFixed(3); P.mix.pSpreadNow = +ch.p.toFixed(3); }
   if (good) return;
   const old = P.zwAbs, stop = why => { cancelBeeps(); P.seedNote = true; P.stopped = true; st.seedChange = { t: now, from: old, ok: false, stopped: true }; slog('beepsStopped', { from: old, why, p: ch ? +ch.p.toFixed(3) : null, doubt: ch ? +ch.doubt.toFixed(3) : null }); };
   if (beepsFit(P.tPress) && (onTarget() || !V.ref)) {
     zwPlan('seed changed');
     if (st.plan && st.plan !== P) { st.seedChange = { t: now, from: old, to: st.plan.zwAbs, ok: true }; slog('seedChanged', { from: old, to: st.plan.zwAbs }); }
     else stop('no new plan');
-  } else if (!ch || ch.doubt >= 0.5 || ch.p < num('zwedge')) stop('late');
-  else { P.seedNote = true; st.seedChange = { t: now, from: old, ok: false }; slog('seedChanged', { from: old, late: true, p: +ch.p.toFixed(3) }); }
+  } else if (!ch || ch.doubt >= 0.5 || pk(ch) < num('zwedge')) stop('late');
+  else { P.seedNote = true; st.seedChange = { t: now, from: old, ok: false }; slog('seedChanged', { from: old, late: true, p: +pk(ch).toFixed(3) }); }
   render();
 }
 /*@include charge_live/charge_live.js*/
@@ -1494,7 +1534,7 @@ function setText(h, d) { $('headline').textContent = h; $('detail').textContent 
 function chip(id, cls) { $(id).className = 'chip' + (cls ? ' ' + cls : ''); }
 /* session log: what the page saw and decided, with times, so a practice run can be analysed afterwards */
 const SLOG = []; let slogLock = null;
-const VERSION = 'v82';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
+const VERSION = 'v83';   // v76: the one version string (the header and the session log's "page" field read it; v74 / v75 logs still said v73)
 { const e = document.getElementById('ver'); if (e) e.textContent = VERSION; }
 function slog(ev, data) { SLOG.push(Object.assign({ t: Math.round(performance.now()), ev }, data || {})); if (SLOG.length > 20000) SLOG.shift(); }
 function downloadLog() {
@@ -1512,7 +1552,7 @@ function render() {
   else if (st.msg) setText(/^(No |Time Out is done|The seed is being|FB2)/.test(st.msg) ? 'No beeps this time' : segLabel + 'Check your taps', st.msg);
   else if (st.plan) { const P = st.plan, typ = P.type && WTYPE[P.type] ? 'Window ' + WTYPE[P.type].name + ': ' : '';
     setText(P.again ? 'Still on the target screen: next window planned' : P.switched ? 'A sooner window came up: press A on the last beep' : 'Press A on the last beep (' + (P.beeps || nBeeps()) + ' beeps)',
-      typ + (P.mix ? (P.mix.zw ? P.mix.groups + ' possible RNG states are left (carried from the Charge or the walk);' : P.mix.groups + ' Spiny Flip outcomes are still possible;') + (P.mix.p4 != null && P.prof === 'jrpb5' ? ' on the aimed frame 5+ bounces for ' + Math.round(P.mix.p * 100) + '% of them and 6+ for ' + Math.round(P.mix.p4 * 100) + '%, counting your press spread (blind: 67% and 32%).' : P.mix.p4 != null ? ' on the aimed frame 3+ copy for ' + Math.round(P.mix.p * 100) + '% of them and all 4 for ' + Math.round(P.mix.p4 * 100) + '%, counting your press spread (blind: 47% and 13%).' : ' the aimed frame works for ' + Math.round(P.mix.p * 100) + '% of them, counting your press spread (a blind press: 31%).') + ' A shine in this menu replans if it rules the frame out.'
+      typ + (P.mix ? (P.mix.zw ? P.mix.groups + ' possible RNG states are left (carried from the Charge or the walk);' : P.mix.groups + ' Spiny Flip outcomes are still possible;') + ' ' + ppText(P.mix, P.prof, true) + ' A shine in this menu replans if it rules the frame out.'
         : P.w.length + ' frame' + (P.w.length > 1 ? 's' : '') + ' in a row. ' + (P.aim4 ? (PROF().id === 'jrpb5' ? 'Aiming at a 6+ bounce frame (the frames next to it give 5+, which the Bomb finishes).' : 'Aiming at the frame where all 4 copy (the frames next to it still give 3).') : 'Aiming at the middle frame.') + ' Missed it? Press Plan again for the next window.')); }
   else if (st.lock) setText(segLabel + 'Locked: no beeps yet', V.stream ? (V.ref ? 'The beeps start when the page sees Time Out\'s target screen in the blue box (now ' + Math.round(V.score * 100) + '% match, needs ' + Math.round(num('tmatch') * 100) + '%). You can also press P (Plan press) on the target screen.' : 'No target screen saved, so the page cannot start the beeps by itself. Save the target screen, or press P (Plan press) once the hand is on Bowser.') : 'Seed 0x' + (st.lock.seed >>> 0).toString(16).padStart(8, '0') + ' from ' + nSh + ' shines. Press Plan press (P) on the target screen.');
   else if (st.cands && st.cands.length > 1) setText(segLabel + st.cands.length + ' seeds still fit', 'Keep watching. Each shine filters instantly.');
@@ -1626,8 +1666,8 @@ function stripState(d) {
   if (P && d.stale) return { cls: 'stale', text: 'Seed lost – showing old prediction. Press normally.', overlay: 'Seed lost – old prediction' };
   if (sc) return sc.ok ? { cls: 'stale', text: 'Seed changed – new window (a shine ruled the old one out). Follow the new beeps.' } : { cls: 'stale', text: 'Seed changed – too late to move the beeps; the planned frame still works for ' + Math.round(100 * (P && P.mix && P.mix.pNow != null ? P.mix.pNow : 0)) + '%.' };
   if (P) {
-    const left = P.tPress - now, typ = P.type && WTYPE[P.type] ? WTYPE[P.type].name : 'best chance', ch = P.mix ? (P.mix.p4 != null && P.prof === 'jrpb5' ? ' · 5+ bounces ' + Math.round(P.mix.p * 100) + '%, 6+ ' + Math.round(P.mix.p4 * 100) + '%' : P.mix.p4 != null ? ' · 3+ copies ' + Math.round(P.mix.p * 100) + '%, all 4 ' + Math.round(P.mix.p4 * 100) + '%' : ', ' + Math.round(P.mix.p * 100) + '% chance') : '';
-    if (left > -400) return { cls: 'plan', text: 'Beeping: ' + (P.beeps || nBeeps()) + ' beeps, press on the last · ' + typ + ' · ' + P.w.length + '-frame window' + ch };
+    const left = P.tPress - now, typ = P.type && WTYPE[P.type] ? WTYPE[P.type].name : 'best chance', ch = P.mix ? ' · ' + ppText(P.mix, P.prof) : '';
+    if (left > -400) return { cls: 'plan', text: 'Beeping: ' + (P.beeps || nBeeps()) + ' beeps, press on the last · ' + typ + (P.mix && P.mix.pp != null ? '' : ' · ' + P.w.length + '-frame window') + ch };
     return { cls: 'plan', text: onTarget() ? 'Window passed – planning the next one' : 'Window passed' };
   }
   if (d.src === 'zw' && d.doubt) return { cls: 'stale', text: 'Lock doubtful – the coin fits the tracked states badly (missed or extra shines). Press normally.', overlay: 'Lock doubtful' };
@@ -2235,7 +2275,7 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { VERSION, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
+window.__tot = { VERSION, ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
   JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },

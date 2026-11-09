@@ -125,7 +125,7 @@ function fb2PlanK(kAt) {      // kAt (tests): plan as if the earliest beepable f
   // tie-break on the T7 windows: P(Close Call and 7+ with the best target-A frame in 1 s from the earliest), on a
   // sample of the states, for the k within 3 points of the best
   const top = cand.filter(c => c.p >= cand[0].p - 0.03).slice(0, 3), sub = rows.length > 24 ? rows.filter((r, i) => i % Math.ceil(rows.length / 24) === 0) : rows;
-  for (const c of top) {
+  const p7Of = c => {
     let v = 0, w = 0;
     for (const r of sub) for (const [l, wl] of FB2_LAGS) for (const [d, q] of PRESS_ERR) {
       const K = Math.min(FB2_KMAX, Math.max(FB2_KMIN, c.k + d - l)), K2 = c.k + d - l < FB2_KMIN ? FB2_KMAX : K, a = r.A[K2 - FB2_KMIN]; w += r.w * wl * q;
@@ -133,9 +133,16 @@ function fb2PlanK(kAt) {      // kAt (tests): plan as if the earliest beepable f
       let best = 0; for (let i = 1; i <= 30; i++) best = Math.max(best, 0.25 * b[i - 1] + 0.5 * b[i] + 0.25 * b[i + 1]); v += r.w * wl * q * best;
     }
     c.p7 = w ? v / w : 0;
-  }
-  top.sort((a, b) => (b.p + b.p7) - (a.p + a.p7)); const c = top[0];
-  const tPress = fb2PressT(c.k), pl = { k: c.k, p: c.p, p7: c.p7, blind, tPress, kFirst, ms: Math.round(performance.now() - t0), states: rows.length,
+  };
+  for (const c of top) p7Of(c);
+  top.sort((a, b) => (b.p + b.p7) - (a.p + a.p7)); let c = top[0];
+  // v83, the perfect press (zwChoose's ppPick): a frame the Close Call works on for the states (the console lag 0 / 1
+  // unseen, so weighed in), the centre of the widest run of such frames; the spread-weighted p kept for the log
+  { const ppk = k => { let v = 0; for (const r of rows) for (const [l, wl] of FB2_LAGS) v += r.w * wl * luck(r, k - l); return v / tot; };
+    const a = kFirst - 1, b = FB2_KMAX - 1, sh = []; for (let k = a; k <= b; k++) sh.push(k >= kFirst ? ppk(k) : 0);
+    const pk = ppPick(sh, null, a, b, kFirst, b - kFirst, k => pcc(k) / tot, 'safe3'), q = cand.find(x => x.k === pk.target) || c;
+    if (q.p7 == null) p7Of(q); c = Object.assign({}, q, { pp: ppk(pk.target), win: pk.run.length }); }
+  const tPress = fb2PressT(c.k), pl = { k: c.k, p: c.p, pp: c.pp, win: c.win, p7: c.p7, blind, tPress, kFirst, ms: Math.round(performance.now() - t0), states: rows.length,
     alt: cand.slice(0, 5).map(x => [x.k, +x.p.toFixed(3)]) };
   if (kAt != null) return pl;
   cancelBeeps(); for (let i = 0; i < FB2_BEEPS; i++) beepAt(tPress - (FB2_BEEPS - 1 - i) * FB2_GAP, i === FB2_BEEPS - 1 ? 1320 : 880, i === FB2_BEEPS - 1 ? 0.12 : 0.06);
@@ -204,12 +211,17 @@ function fb2PlanT7(cScr) {
   const s7 = new Array(W + 1).fill(0), s6 = new Array(W + 1).fill(0);
   for (const o of S) { const b = []; for (let x = from - 1; x <= from + W + 1; x++) b.push(fb2PB(o.a.S, o.a.T + 1, x - o.l, o.h.ph));
     for (let k = 0; k <= W; k++) for (const [d, q] of PRESS_ERR) { s7[k] += o.w * q * (b[k + 1 + d] >= 7 ? 1 : 0); s6[k] += o.w * q * (b[k + 1 + d] >= 6 ? 1 : 0); } }
+  // v83, the perfect press: the 7-bounce share on each frame itself (no spread), the centre of the widest run of frames
+  // that give 7 for the states (ppPick); with no such frame, the best 7 frame as before. Spread-weighted p7 / p6 logged.
+  const e7 = new Array(W + 3).fill(0), e6 = new Array(W + 3).fill(0);
+  for (const o of S) for (let x = from - 1; x <= from + W + 1; x++) { const v = fb2PB(o.a.S, o.a.T + 1, x - o.l, o.h.ph); if (v >= 7) e7[x - from + 1] += o.w / tot; if (v >= 6) e6[x - from + 1] += o.w / tot; }
   let k = 0; for (let i = 1; i <= W; i++) if (s7[i] + 0.1 * s6[i] > s7[k] + 0.1 * s6[k] + 1e-12) k = i;
-  const d = from + k, dz = S.doubt || 0, plan = { d, p7: (1 - dz) * s7[k] / tot, p6: (1 - dz) * s6[k] / tot, doubt: +dz.toFixed(3), states: S.length, tPress: fb2PressT(d) };   // the background's share counts as no 7 (blind 7 is ~7%)
+  const pk = ppPick(e7, e6, from - 1, from + W + 1, from, W, x => (s7[x - from] || 0) / tot, 'safe3'); if (pk.ok) k = pk.target - from;
+  const d = from + k, dz = S.doubt || 0, plan = { d, p7: (1 - dz) * s7[k] / tot, p6: (1 - dz) * s6[k] / tot, pp7: (1 - dz) * e7[k + 1], pp6: (1 - dz) * e6[k + 1], win: pk.ok ? pk.run.length : 0, doubt: +dz.toFixed(3), states: S.length, tPress: fb2PressT(d) };   // the background's share counts as no 7 (blind 7 is ~7%)
   FB2.t7.plan = plan;
   if (cScr != null) return plan;
   if (cScr == null) { cancelBeeps(); playBeeps(plan.tPress);
-    st.msg = null; st.plan = { tMade: now, w: { start: d, end: d, length: 1 }, target: d, tPress: plan.tPress, tLast: CHG.trig.t, rate: fb2Rate(), carried: true, from, to: from + W, first: 0, prof: 'fb2', tab: [], tab4: null, mix: { p: plan.p7, groups: S.length, zw: true } }; }
+    st.msg = null; st.plan = { tMade: now, w: { start: d, end: d, length: 1 }, target: d, tPress: plan.tPress, tLast: CHG.trig.t, rate: fb2Rate(), carried: true, from, to: from + W, first: 0, prof: 'fb2', tab: [], tab4: null, mix: { p: plan.p7, pp: plan.pp7, win: plan.win, doubt: dz, groups: S.length, zw: true } }; }
   slog('fb2PlanT7', plan); fb2Show(); if (cScr == null) render(); return true;
 }
 function fb2Show() {
@@ -217,9 +229,9 @@ function fb2Show() {
   if (!FB2.on) { el.innerHTML = '<b>FB2 T6 → T7:</b> ' + (FB2.why ? FB2.why : 'waiting for the T6 Super Charge lock'); return; }
   const P = FB2.plan, T = FB2.t7, pc = x => Math.round(100 * x) + '%';
   el.innerHTML = '<b>FB2 T6 → T7</b> (' + FB2.hyps.length + ' RNG states after the rays)' +
-    '<br>Popup A: ' + (!P ? '…' : P.none ? 'no plan (' + P.none + '; a blind press is ' + pc(P.blind) + ')' : 'beep on +' + P.k + ': Close Call ' + pc(P.p) + ', Close Call and 7 bounces ' + pc(P.p7 || 0) + ' (no press: ' + pc(P.blind) + ')') +
+    '<br>Popup A: ' + (!P ? '…' : P.none ? 'no plan (' + P.none + '; a blind press is ' + pc(P.blind) + ')' : 'beep on +' + P.k + ': Close Call, perfect press ' + pc(P.pp != null ? P.pp : P.p) + (P.win ? ' (window ' + P.win + ')' : '') + ' (with your press spread ' + pc(P.p) + '), Close Call and 7 bounces ' + pc(P.p7 || 0) + ' (no press: ' + pc(P.blind) + ')') +
     (FB2.kObs != null ? '<br>Seen: popup A on +' + FB2.kObs + (FB2.kHow === 'bar' ? ' (from the bar)' : '') + '; Close Call ' + pc(T.pLucky) + '; Bowser ' + Object.entries(T.atk).map(([a, w]) => a + ' ' + pc(w)).join(', ') : '') +
-    (T && T.plan ? '<br>T7: ' + (T.plan.none ? 'no edge (' + T.plan.none + ')' : 'target A on +' + T.plan.d + ': 7 bounces ' + pc(T.plan.p7) + ', 6+ ' + pc(T.plan.p6) + ' (' + T.plan.states + ' states)') : '');
+    (T && T.plan ? '<br>T7: ' + (T.plan.none ? 'no edge (' + T.plan.none + ')' : 'target A on +' + T.plan.d + ': perfect press 7 bounces ' + pc(T.plan.pp7 != null ? T.plan.pp7 : T.plan.p7) + (T.plan.win ? ' (window ' + T.plan.win + ')' : '') + ', 6+ ' + pc(T.plan.pp6 != null ? T.plan.pp6 : T.plan.p6) + '; with your press spread 7 ' + pc(T.plan.p7) + ', 6+ ' + pc(T.plan.p6) + ' (' + T.plan.states + ' states)') : '');
 }
 fb2Reset();
 window.__fb2 = { FB2, planKAt: k => fb2PlanK(k), setK: (k, how, k0) => fb2SetK(k, how || 'test', k0), planT7At: c => fb2PlanT7(c), pic: t => fb2Pic(t), pressT: k => fb2PressT(k), prune: c => fb2Prune(c).length };   // for tests

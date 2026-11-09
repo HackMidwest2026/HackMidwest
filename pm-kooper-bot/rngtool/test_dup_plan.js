@@ -13,7 +13,8 @@
  *  3. No lock on the Charge-lock step: Plan press says to play it blind (47%); the Charge panel says so too.
  *  4. Leaving the step (the Do Nothing confirm moves the route on) turns the tracker off, so the Hallway's walk tracker
  *     can start; switching back to RTA drops the Charge step.
- *  6. v80, the Duplighosts goal (Settings, Advanced): the setting (default "4 when it's free"), and the three goals on the
+ *  6. v83: the perfect press: every goal's beep is a frame that gives the goal for most states, the centre of the
+ *     widest run ("4 first", the Normal Boots default, added); v80, the Duplighosts goal (Settings, Advanced): the setting (default "4 when it's free"), and the goals on the
  *     fixture cases and on 300 random Charge-locked seeds (truth: the lag-0 state's copies, checked against the model in 2),
  *     with the 25/50/25 spread and the runner's (normal, rms 1.77): 'free' gives up at most DUP_TOL.free of 3+ per plan for
  *     at least the all-4 chance of 'safe3'; 'run2' beeps a 2+ frame all-4 run when one is in reach; the table's order holds.
@@ -72,10 +73,10 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     setRoute('charge'); const gs = document.getElementById('s-dupgoal');
     out.goalSel = { v: gs && gs.value, opts: gs ? Array.from(gs.options).map(o => o.value + '=' + o.textContent) : [] };
     const norm = sd => { const o = []; let t = 0; for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); o.push([d, w]); t += w; } return o.map(([d, w]) => [d, w / t]); };
-    const SPR = { std: [[-1, 0.25], [0, 0.5], [1, 0.25]], runner: norm(1.765) }, G = ['safe3', 'free', 'run2'];
+    const SPR = { std: [[-1, 0.25], [0, 0.5], [1, 0.25]], runner: norm(1.765) }, G = ['safe3', 'free', 'run2', 'four'];
     const goalRun = (seed, q) => { T.setStep(0); T.dupTrackerAt(seed, [q], performance.now() - 2000);
       const S = T.dupStatesAt(100).sort((x, y) => y.w - x.w), o = { spr: {} };
-      for (const sp in SPR) { o.spr[sp] = {}; for (const g of G) { const pl = T.dupPlanAt(cScr, 1.5, 1, g, SPR[sp]); o.spr[sp][g] = { t: pl.target, p3: pl.p3, p4: pl.p4, goal: pl.goal, none: pl.none, from: pl.from, W: pl.W }; } }
+      for (const sp in SPR) { o.spr[sp] = {}; for (const g of G) { const pl = T.dupPlanAt(cScr, 1.5, 1, g, SPR[sp]); o.spr[sp][g] = { t: pl.target, p3: pl.p3, p4: pl.p4, pp3: pl.pp3, pp4: pl.pp4, goal: pl.goal, none: pl.none, from: pl.from, W: pl.W }; } }
       const pl = o.spr.std.safe3, a = pl.from - 6, b = pl.from + pl.W + 6; o.a = a;
       o.cls = S.map(x => T.dupClasses(x.s, x.nc, x.g, a, b).join('')); o.w = S.map(x => x.w); return o; };
     out.goalFix = FIX.cases.map(c => goalRun(parseInt(c.seed, 16), c.q));
@@ -86,7 +87,7 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
     return out;
   }, { FIX });
   console.log('version ' + r.version + ' | RTA step 0: ' + r.rta.step0 + ' | Charge step 0: ' + r.charge.step0 + ' (profile ' + r.charge.prof + ')');
-  check(r.version === 'v82', 'version v82');
+  check(r.version === 'v83', 'version v83');
   check(r.rta.route === 'rta' && !r.rta.chg, 'RTA is the default and its step has no Charge profile');
   check(r.charge.route === 'charge' && r.charge.chg === 'dup' && r.charge.prof === 'dup' && r.charge.n === r.rta.n, 'Charge-lock route: step 0 has the dup profile, same number of steps');
   check(/Charge; Bombette Do Nothing/i.test(r.charge.list) && /Power Bomb/i.test(r.charge.list), 'route list shows the Charge-lock turns');
@@ -118,25 +119,39 @@ function frames() {     // [[expected arena, clip, frame, png base64]] for the c
   check(!r.back.chg && r.back.prof == null, 'back on RTA: no Charge step');
   // 6. the Duplighosts goal
   console.log('goal setting: ' + r.goalSel.v + ' [' + r.goalSel.opts.join(', ') + ']');
-  check(r.goalSel.v === 'free' && r.goalSel.opts.length === 3 && /^free=4 when it's free/.test(r.goalSel.opts[0]) && r.goalSel.opts.some(o => /^safe3=3\+ safe/.test(o)) && r.goalSel.opts.some(o => /^run2=4 if 2\+ frame window/.test(o)), 'Settings > Advanced: Duplighosts goal, default "4 when it\'s free"');
+  check(r.goalSel.v === 'free' && r.goalSel.opts.length === 4 && /^free=4 when it's free/.test(r.goalSel.opts[0]) && r.goalSel.opts.some(o => /^safe3=3\+ safe/.test(o)) && r.goalSel.opts.some(o => /^run2=4 if 2\+ frame window/.test(o)) && r.goalSel.opts.some(o => /^four=4 first/.test(o)), 'Settings > Advanced: Duplighosts goal (4 options), default "4 when it\'s free"');
   check(r.goalSet === 'run2' && r.goalDef === 'free', 'the plan follows the setting');
-  const N4 = [[-1, 0.25], [0, 0.5], [1, 0.25]], nrm = sd => { const o = []; let t = 0; for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); o.push([d, w]); t += w; } return o.map(([d, w]) => [d, w / t]); }, SPD = { std: N4, runner: nrm(1.765) };
+  // v83, the perfect press: every goal's frame gives its goal for most states (never a failing frame between working
+  // ones), the centre of the widest run of such frames; the spread-weighted numbers are printed for comparison
+  const N4 = [[-1, 0.25], [0, 0.5], [1, 0.25]], nrm = sd => { const o = []; let t = 0; for (let d = -4; d <= 4; d++) { const w = Math.exp(-d * d / (2 * sd * sd)); o.push([d, w]); t += w; } return o.map(([d, w]) => [d, w / t]); }, SPD = { std: N4, runner: nrm(1.765), perfect: [[0, 1]] };
   const sc = (o, f, PD, st) => { let p3 = 0, p4 = 0; for (const [d, q] of PD) { const v = o.cls[st][f + d - o.a]; if (+v >= 3) p3 += q; if (v === '4') p4 += q; } return [p3, p4]; };
-  const sh4 = (o, f) => o.cls.reduce((v, c, j) => v + (c[f - o.a] === '4' ? o.w[j] : 0), 0);
+  const tw = o => o.w.reduce((a, b) => a + b, 0);
+  const sh3 = (o, f) => o.cls.reduce((v, c, j) => v + (+c[f - o.a] >= 3 ? o.w[j] : 0), 0) / tw(o), sh4 = (o, f) => o.cls.reduce((v, c, j) => v + (c[f - o.a] === '4' ? o.w[j] : 0), 0) / tw(o);
+  const runW = (o, f, fn) => { if (!(fn(o, f) >= 0.5)) return 0; let s0 = f, e0 = f; while (fn(o, s0 - 1) >= 0.5 && s0 - 1 >= o.a) s0--; while (fn(o, e0 + 1) >= 0.5 && e0 + 1 - o.a < o.cls[0].length) e0++; return e0 - s0 + 1; };
+  const GS = ['safe3', 'free', 'run2', 'four'];
   for (const [nm, set] of [['fixture', r.goalFix], ['300 random seeds', r.goalRnd]]) for (const sp of ['std', 'runner']) {
-    const tot = {}; let badFree = 0, badRun = 0, run2On = 0;
+    const tot = {}; let bad3 = 0, badFree = 0, badRun = 0, badFour = 0, run2On = 0, n4 = 0;
     for (const o of set) { const P = o.spr[sp];
-      for (const g of ['safe3', 'free', 'run2']) { const t = P[g].t; if (t == null) { check(false, nm + ' ' + sp + ' ' + g + ': no plan (' + P[g].none + ')'); continue; } const v = sc(o, t, SPD[sp], 0); tot[g] = tot[g] || [0, 0]; tot[g][0] += v[0]; tot[g][1] += v[1]; check(P[g].goal === g, 'the plan says its goal ' + g); }
-      if (P.free.p3 < P.safe3.p3 - 0.03 - 1e-9 || P.free.p4 < P.safe3.p4 - 1e-9) badFree++;
-      if (P.run2.t !== P.safe3.t) { run2On++; const t = P.run2.t; if (!(sh4(o, t) >= 0.5 && (sh4(o, t - 1) >= 0.5 || sh4(o, t + 1) >= 0.5))) badRun++; } }
-    const n = set.length, f = g => (100 * tot[g][0] / n).toFixed(1) + '% / ' + (100 * tot[g][1] / n).toFixed(1) + '%';
-    console.log('goals, ' + nm + ', spread ' + sp + ' (3+ / all 4, lag-0 truth): 3+ safe ' + f('safe3') + ' | 4 when free ' + f('free') + ' | 4 if 2+ window ' + f('run2') + ' (moved ' + run2On + ' / ' + n + ')');
-    check(!badFree, nm + ' ' + sp + ': "4 when it\'s free" never gives up more than 3 points of claimed 3+, never less all 4 (' + badFree + ' bad)');
+      for (const g of GS) { const t = P[g].t; if (t == null) { check(false, nm + ' ' + sp + ' ' + g + ': no plan (' + P[g].none + ')'); continue; } check(P[g].goal === g, 'the plan says its goal ' + g);
+        for (const s2 in SPD) { const v = sc(o, t, SPD[s2], 0), k = g + ':' + s2; tot[k] = tot[k] || [0, 0]; tot[k][0] += v[0]; tot[k][1] += v[1]; }
+        if (!(sh3(o, t) >= 0.5)) bad3++; }
+      const b3 = (() => { let m = 0; for (let f = P.free.from; f <= P.free.from + P.free.W; f++) m = Math.max(m, sh3(o, f)); return m; })(), any4 = (() => { for (let f = P.free.from; f <= P.free.from + P.free.W; f++) if (sh4(o, f) >= 0.5 && sh3(o, f) >= Math.max(0.5, b3 - 0.05) - 1e-9) return true; return false; })();
+      if (any4) n4++;
+      if (runW(o, P.free.t, sh3) < runW(o, P.safe3.t, sh3) || P.free.pp4 < P.safe3.pp4 - 1e-9) badFree++;
+      if (any4 && (!(sh4(o, P.four.t) >= 0.5) || runW(o, P.four.t, sh4) < runW(o, P.free.t, sh4))) badFour++;
+      if (P.run2.t !== P.free.t) { run2On++; const t = P.run2.t; if (!(sh4(o, t) >= 0.5 && (sh4(o, t - 1) >= 0.5 || sh4(o, t + 1) >= 0.5))) badRun++; } }
+    const n = set.length, f = k => (100 * tot[k][0] / n).toFixed(1) + '% / ' + (100 * tot[k][1] / n).toFixed(1) + '%';
+    console.log('goals, ' + nm + ', planned with spread ' + sp + ' (3+ / all 4, lag-0 truth; perfect press | 25/50/25 | runner): ' + GS.map(g => g + ' ' + f(g + ':perfect') + ' | ' + f(g + ':std') + ' | ' + f(g + ':runner')).join(' ;; ') + ' (an all-4 frame in reach ' + n4 + ' / ' + n + ', run2 moved ' + run2On + ')');
+    check(!bad3, nm + ' ' + sp + ': every goal beeps a frame most states give 3+ on (' + bad3 + ' bad)');
+    check(!badFree, nm + ' ' + sp + ': "4 when it\'s free" keeps the widest 3+ window and never less all 4 than 3+ safe (' + badFree + ' bad)');
+    check(!badFour, nm + ' ' + sp + ': "4 first" beeps the widest all-4 window (' + badFour + ' bad)');
     check(!badRun, nm + ' ' + sp + ': "4 if 2+" moves only onto a 2+ frame all-4 run (' + badRun + ' bad)');
     if (nm !== 'fixture') {
-      check(tot.safe3[0] >= tot.free[0] - 0.01 * n && tot.free[0] >= tot.run2[0] && tot.free[0] >= tot.safe3[0] - 0.01 * n, nm + ' ' + sp + ': 3+ safe >= 4 when free (within 1 point) >= 4 if 2+');
-      check(tot.run2[1] > tot.free[1] && tot.free[1] >= tot.safe3[1] - 1e-9, nm + ' ' + sp + ': all 4: 4 if 2+ > 4 when free >= 3+ safe');
-      check(run2On >= 0.15 * n, nm + ' ' + sp + ': a 2+ frame all-4 run is in reach on 15%+ of plans (' + run2On + ')');
+      check(tot['safe3:perfect'][0] >= 0.9 * n && tot['free:perfect'][0] >= 0.9 * n, nm + ' ' + sp + ': a perfect press gives 3+ on 90%+ (safe3 / free)');
+      check(tot['free:perfect'][1] >= tot['safe3:perfect'][1] - 1e-9 && tot['four:perfect'][1] >= tot['free:perfect'][1] - 1e-9, nm + ' ' + sp + ': all 4 with a perfect press: 4 first >= 4 when free >= 3+ safe');
+      check(tot['safe3:runner'][0] >= tot['four:runner'][0] - 1e-9 && tot['free:runner'][0] >= tot['safe3:runner'][0] - 0.01 * n, nm + ' ' + sp + ': with the runner\'s spread 4 when free keeps 3+ within 1 point of 3+ safe; 4 first costs 3+');
+      check(tot['four:runner'][1] > tot['free:runner'][1] && tot['free:runner'][1] >= tot['safe3:runner'][1] - 1e-9, nm + ' ' + sp + ': with the runner\'s spread all 4: 4 first > 4 when free >= 3+ safe');
+      check(run2On >= 0.03 * n, nm + ' ' + sp + ': a 2+ frame all-4 run moves the plan on 3%+ (' + run2On + ')');
     }
   }
   // 5. arena on console frames
