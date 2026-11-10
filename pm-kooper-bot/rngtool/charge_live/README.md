@@ -1,3 +1,20 @@
+# Time Out Timer v86.1: Jr. Troopa after a restart (hotfix, Nov 10)
+
+Console 2026-11-09 (page v86; logs 1794269702752 and 1794269850246, the second holds the first; clips 19-14-36 and
+19-17-03). Fight 1 died on T4 (Maple Syrup Close Call); after its T5 Charge the runner **reset, walked back in and started
+over from T1** (the clips: Jr. Troopa's speech, 10/10 HP, Super Charge, Bomb, his hit to 3 HP, T2 Bomb), clicked T1 on the
+route, and did the same again at ~1015 s after a 104 s idle. The page jumped to T3/T4 while the fight was on T1/T2:
+| # | Bug | Fix | Test |
+|---|---|---|---|
+| 1 | **The restart started a fight from the previous Charge.** `jrReset` cleared the Charge already seen, so the next frame's `jrTick` took the old burst as T1 (jrFight at the old Charge's time, k0 used up) | `jrReset` keeps the burst it has seen; a step back by hand also re-arms the Charge watcher; a lock that lands after a restart is ignored | `test_jr_restart.js` |
+| 2 | **The battle entry counted as the T1 Bomb.** On entry the bar shows 380-400 ms before Jr. Troopa's speech hides it; v86 counted hides after 300 ms of bar up | a confirm needs 600+ ms of bar up (as hudWatch's barHide and the Charge's arming; the fastest console confirm in every log: 1133 ms); a bar flash under 600 ms after the bar was gone 12 s+ is the **battle entry**: back to T1, waiting for its Charge | `test_jr_restart.js` |
+| 3 | **A hide after a long idle counted** (104883 ms of bar up, then a reset) | a hide after 30 s+ of bar up counts once the bar is back within 12 s; gone longer (a reset) it never counts. A Charge's own held hide counts at its burst (fight 1's T5 Charge after 84 s) | `test_jr_restart.js` |
+| 4 | **The resync only went forward** (the real T1 Charge read as T3: "jrResync from 4 to 4"; the T1 Bomb then planned and read as T3's Close Call, a full bar's "10" read as a death) | `jrResyncK`: from the last Charge burst (k, t) and the n confirms counted since, the later Charge c with the fewest off (abs(c - k - 1 - n)); T1 (a new fight) when the bar was gone 12 s+ since, off by the confirms after that gap; no later Charge on the route: T1 | `test_jr_restart.js` (also with no clicks and no entry flashes) |
+
+`test_jr_restart.js` replays the log's bar (each bar-up from its hide and upMs), the runner's clicks and the Charge bursts
+through the page (`fixtures/console_1109.json`: the events from t=680000, no pictures): through both restarted fights the
+page is on the clips' turn, with no Close Call outcome; v86 fails 23 of its checks.
+
 # Time Out Timer v86: Ultra Boots Final Bowser T1-T4 end to end, the Lightning Blast, the Normal Boots phase-2 turn measured (Nov 9)
 
 The runner has never reached Ultra Boots phase-2 T4 on console. Logs C (1794169517521, clip 15-24-14) and F

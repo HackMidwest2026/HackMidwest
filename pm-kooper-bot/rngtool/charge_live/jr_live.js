@@ -83,12 +83,28 @@ const JR_SHIFTS = [[-2, 0.15], [-1, 0.25], [0, 0.4], [1, 0.2]];
  * before it (jrRecover): the states left are a reconstruction, never beeped on until the coin confirms them (jrReconOk) */
 const JR_SHIFTS_WIDE = [[-4, 0.03], [-3, 0.07], [-2, 0.15], [-1, 0.2], [0, 0.25], [1, 0.15], [2, 0.08], [3, 0.05], [4, 0.02]];
 const JR_RECON_TAPS = 2;       // shines the heaviest reconstructed state must have matched (and none missed) before a beep
-const JR_UPMIN = 300;          // ms of bar up before a hide counts as a confirm (Whacka can follow the Bomb quickly)
+/* v86.1 (console 2026-11-09, logs 1794269702752 / 1794269850246, clips 19-14-36 / 19-17-03): a hide counts as a confirm
+ * after 600+ ms of bar up (as hudWatch's barHide and the Charge's arming; v86 took 300). On battle entry the bar shows
+ * 380-400 ms before Jr. Troopa's speech hides it; v86 counted that as the T1 Bomb. The fastest console confirm in every
+ * log: 1133 ms (the T1 Charge right after the speech). */
+const JR_UPMIN = 600;
+/* v86.1: the bar gone this long is no turn of the fight (a reset, the walk back, the battle loading; the longest gap inside
+ * the fight is a Power Bounce or a death + revive with the bar up): the bar's return after it may be a new battle */
+const JR_ENTRY_GAP = 12000;
+/* v86.1: a hide after this much bar up (an idle runner, or a reset after it: 104883 ms in log 1794269850246) counts only
+ * once the bar is back within JR_ENTRY_GAP; a reset never brings it back that soon (a real confirm after a long idle does:
+ * the T5 Charge 84016 ms after the T4 death, same log, is anchored by its burst at once) */
+const JR_UPHOLD = 30000;
 /* blind odds (jr_charge/README.md, jc_odds.py): Close Call 30%; Power Bounce 5+ 67.5%, 6+ 32.2% */
 const JR_BLIND = { cc: 0.30, p5: 0.675, p6: 0.322 };
 const JRT = { bar: {} };
 function jrReset(why) {
-  Object.assign(JRT, { on: false, k: 0, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null, ccSnap: null, recon: null, lost: null, lastLock: null, lostF: null, shineTry: 0, shineRec: null, seq: null, cancel: null });
+  // v86.1: the Charge already seen stays seen (v86 set it null, and the next frame's jrTick started a "new fight" at the
+  // PREVIOUS Charge's time: the restart consumed T1 with a stale burst)
+  const seen = typeof CHG !== 'undefined' && CHG ? CHG.trig || null : null;
+  if (JRT.bar) JRT.bar.held = null;
+  Object.assign(JRT, { on: false, k: 0, anchor: null, chargeK: null, inputs: [], dead: null, hp10: {}, out: {}, ccPend: null, snap: null, lockK: null, cross: null, t0: null, trigSeen: null, hides: [], hist: [], why: why || null, ccSnap: null, recon: null, lost: null, lastLock: null, lostF: null, shineTry: 0, shineRec: null, seq: null, cancel: null });
+  JRT.trigSeen = seen;
   if (zw.on && zw.fight === 'jr') zw.on = false;
 }
 jrReset();
@@ -115,17 +131,39 @@ function jrFrame(t, present) {
     if (!B.since) B.since = t;
     // back for 3 frames: a gap shorter than 8 frames was a flicker (a shine's white flash, a dropped picture) and the bar's
     // up time goes on from before it
-    if (B.gone && t - B.since >= 3 * FRAME) { if (!B.done) B.upFrom = B.prevUp; B.gone = 0; }
+    if (B.gone && t - B.since >= 3 * FRAME) { if (!B.done) B.upFrom = B.prevUp; else jrBarBack(B, B.since - B.gone); B.gone = 0; }
     if (!B.gone && !B.upFrom) B.upFrom = B.since;
   } else {
     if (B.since && !B.gone) { B.gone = t; B.prevUp = B.upFrom; B.wasUp = B.upFrom ? t - B.upFrom : 0; B.upFrom = 0; B.done = false; }
     B.since = 0;
-    if (B.gone && !B.done && t - B.gone >= 8 * FRAME) { B.done = true; if (B.wasUp >= JR_UPMIN) jrHide(B.gone, B.wasUp); }
+    if (B.gone && !B.done && t - B.gone >= 8 * FRAME) {
+      B.done = true;
+      if (B.wasUp >= JR_UPHOLD && JRT.on) { B.held = { t: B.gone, up: B.wasUp }; slog('jrHideHeld', { at: Math.round(B.gone), upMs: Math.round(B.wasUp) }); }
+      else if (B.wasUp >= JR_UPMIN) jrHide(B.gone, B.wasUp);
+      else if (B.entry && B.gone - B.entry.at < JR_UPMIN + 8 * FRAME) jrEntry(B.gone, B.entry.gap, B.wasUp);   // the bar's flash before Jr. Troopa's speech
+      B.entry = null;
+    }
   }
   nbCancelWatch(t, present);
   jrOutcomeWatch(t, present);
   jrTick(t);
   jrShineTry();
+}
+/* v86.1: the bar back after a gap (ms): a held long-idle hide counts now (a turn went on) or never (gone JR_ENTRY_GAP+:
+ * a reset); a long gap is remembered (jrResyncK) and its bar-up may be a battle entry's flash (jrEntry) */
+function jrBarBack(B, gap) {
+  if (B.held) { const h = B.held; B.held = null; if (gap < JR_ENTRY_GAP) jrHide(h.t, h.up); else slog('jrHideDropped', { at: Math.round(h.t), upMs: Math.round(h.up), goneMs: Math.round(gap) }); }
+  if (gap >= JR_ENTRY_GAP) { (B.gaps = B.gaps || []).push({ from: B.gone, to: B.since }); if (B.gaps.length > 8) B.gaps.shift(); B.entry = { at: B.since, gap }; }
+  else B.entry = null;
+}
+/* v86.1, battle entry (clips 19-14-36, 19-17-03: the runner reset and walked back in): after the bar was gone 12 s+, it
+ * shows 380-400 ms, Jr. Troopa's speech hides it, then the T1 menu. The fight starts over: T1, waiting for its Charge. */
+function jrEntry(tH, gap, upMs) {
+  if (!jrStepNow()) return;
+  slog('jrBattleEntry', { at: Math.round(tH), goneMs: Math.round(gap), upMs: Math.round(upMs), was: JRT.on ? JRT.k : null });
+  if (JRT.on || JRT.k) jrReset('battle entry');
+  if (typeof CHG !== 'undefined' && ['locked', 'nolock', 'failed', 'notseen'].includes(CHG.state)) chgReset();
+  jrGo(0);
 }
 /* Mario's HP tens place in the status bar (320-space x 61..67, y 27..36: blank at 2 HP, the "1" of 10 after a revive;
  * emulator renders, jr_charge/README.md): the share of white glyph pixels there */
@@ -442,25 +480,46 @@ function jrTick(t) {
   if (T && CHG.prof && (CHG.prof.id === 'jr' || CHG.prof.id === 'nbhw') && ['search', 'locked', 'nolock', 'failed'].includes(CHG.state) && JRT.trigSeen !== T) { JRT.trigSeen = T; jrBurst(T); }
 }
 function jrBurst(T) {
-  const tH = CHG.hideT;
-  if (!JRT.on || JRT.k >= JRS().length || (JRT.t0 && T.t - JRT.t0 > 6 * 60000)) {
-    // the first Charge on a Jr. Troopa step: T1 (a new attempt after a finished or stale fight, too)
-    jrReset(); Object.assign(JRT, { on: true, t0: T.t, seq: jrStepSeq() });
-    jrGo(0); jrConfirm(0, tH != null && tH > 0 ? tH : T.t - 13 * FRAME, 3, 'burst'); slog('jrFight', { at: Math.round(T.t) }); return;
-  }
+  const tH = CHG.hideT, tC = tH != null && tH > 0 ? tH : T.t - 13 * FRAME, B = JRT.bar;
+  // v86.1: this Charge's own hide, held after a long idle (JR_UPHOLD), counts now
+  if (B.held && Math.abs(B.held.t - tC) < 200) { const h = B.held; B.held = null; if (JRT.on && JRT.k < JRS().length) jrHide(h.t, h.up); }
+  if (!JRT.on || JRT.k >= JRS().length || (JRT.t0 && T.t - JRT.t0 > 6 * 60000)) { jrNewFight(T, tC); return; }
   const last = JRT.inputs[JRT.inputs.length - 1];
-  if (last && JRS()[last.k].charge && Math.abs(last.t - tH) < 200) { slog('jrChargeBurst', { k: last.k }); return; }    // the hide counted as this Charge
-  // the count is off (a missed or an extra hide): this burst is the Charge nearest to where the count is
-  const k = JRS().map((x, i) => (x.charge && i > 0 ? i : -1)).filter(i => i > 0).reduce((a, b) => (Math.abs(b - JRT.k) < Math.abs(a - JRT.k) ? b : a));
-  slog('jrResync', { from: JRT.k, to: k, last: last ? last.k : null });
-  if (last && last.t === tH) JRT.inputs.pop();
-  if (zw.on && zw.fight === 'jr') { zw.on = false; slog('jrCarryEnds', { k, why: 'count off' }); }
-  JRT.k = k; jrConfirm(k, tH != null && tH > 0 ? tH : T.t - 13 * FRAME, 3, 'burst');
+  if (last && JRS()[last.k].charge && Math.abs(last.t - tC) < 200) { JRT.anchor = { k: last.k, t: last.t }; slog('jrChargeBurst', { k: last.k }); return; }    // the hide counted as this Charge
+  // the count is off (a missed or an extra hide, a restart): this burst is the Charge that fits the confirms since the last
+  // Charge burst best (jrResyncK)
+  if (last && Math.abs(last.t - tC) < 200) JRT.inputs.pop();
+  const R0 = jrResyncK(tC);
+  slog('jrResync', { from: JRT.k, to: R0.k, last: last ? last.k : null, confirms: R0.n, why: R0.why });
+  if (R0.k === 0) { jrNewFight(T, tC); return; }
+  if (zw.on && zw.fight === 'jr') { zw.on = false; slog('jrCarryEnds', { k: R0.k, why: 'count off' }); }
+  JRT.k = R0.k; JRT.anchor = { k: R0.k, t: tC }; jrConfirm(R0.k, tC, 3, 'burst');
+}
+// the first Charge on a Jr. Troopa step: T1 (a new attempt after a finished, stale or restarted fight, too)
+function jrNewFight(T, tC) {
+  jrReset(); Object.assign(JRT, { on: true, t0: T.t, seq: jrStepSeq(), trigSeen: T, anchor: { k: 0, t: tC } });
+  jrGo(0); jrConfirm(0, tC, 3, 'burst'); slog('jrFight', { at: Math.round(T.t) });
+}
+/* v86.1: which Charge a burst is when the count is off (v86: the Charge index nearest the count, never back to T1; log
+ * 1794269850246: a stale restart and two non-confirm hides put the real T1 Charge at T3, "jrResync from 4 to 4", and the
+ * T1 Bomb was planned as T3's Close Call). From the last Charge burst (the anchor: k, t), n confirms were counted before
+ * this one: a later Charge c fits with |c - k - 1 - n| confirms off. T1 (a new fight) fits when the bar was gone
+ * JR_ENTRY_GAP+ since the anchor (a reset, a battle entry), off by the confirms counted after that gap; ties go to the
+ * later Charge. No later Charge on the route: a new fight. */
+function jrResyncK(tC) {
+  const S = JRS(), A = JRT.anchor || { k: 0, t: JRT.t0 != null ? JRT.t0 : -Infinity };
+  const conf = JRT.inputs.filter(x => !x.cancel && x.t > A.t + 200 && x.t < tC - 200), n = conf.length;
+  let best = null;
+  for (let c = A.k + 1; c < S.length; c++) if (S[c].charge) { const off = Math.abs(c - A.k - 1 - n); if (!best || off < best.off) best = { k: c, off, n, why: 'count' }; }
+  const gap = (JRT.bar.gaps || []).filter(g => g.to > A.t && g.to < tC).pop();
+  if (gap) { const off = conf.filter(x => x.t > gap.to).length; if (!best || off < best.off) best = { k: 0, off, n, why: 'bar gone ' + Math.round((gap.to - gap.from) / 1000) + ' s: new fight' }; }
+  return best || { k: 0, off: 0, n, why: 'no later Charge: new fight' };
 }
 /* the lock from a Jr. Troopa Charge (chgStartTracker hands it here): start the tracker from it, or, with a carry from an
  * earlier Charge, check the carry against it (the carried states stepped coin-only to this Charge's frame 0, -2..+2) */
 function jrLock(seed, qs, qw) {
   if (JRT.trigSeen !== CHG.trig && CHG.trig) { JRT.trigSeen = CHG.trig; jrBurst(CHG.trig); }
+  if (!JRT.on) { slog('jrLockIgnored', { why: 'the fight was restarted after this Charge' }); return; }      // v86.1
   const k = JRT.chargeK != null ? JRT.chargeK : 0;
   JRT.lockK = k;
   if (zw.on && zw.fight === 'jr' && !zw.dead && JRT.snap && JRT.snap.k === k) {
@@ -544,7 +603,11 @@ function jrStepChange(was) {
   const W = RT()[was], N = RT()[routeStep];
   if (JRT.stepping) return;
   if (W && W.jr != null && !(N && N.jr != null && (N.seq || 'ultra') === (W.seq || 'ultra'))) { if (JRT.on || (zw.on && zw.fight === 'jr')) jrEnd('left the Jr. Troopa steps'); if (N && N.jr != null) jrReset('another fight'); return; }
-  if (N && N.jr != null && JRT.on && N.jr < JRT.k - 1) { jrReset('route moved back by hand'); slog('jrRestart', { to: routeStep }); }
+  if (N && N.jr != null && JRT.on && N.jr < JRT.k - 1) {
+    jrReset('route moved back by hand'); slog('jrRestart', { to: routeStep });
+    // v86.1: the Charge watcher ready for the new fight's T1 Charge (the restart keeps the old burst seen: jrReset)
+    if (typeof CHG !== 'undefined' && ['locked', 'nolock', 'failed', 'notseen'].includes(CHG.state)) chgReset();
+  }
   if (N && N.jr != null && zw.on && zw.fight !== 'jr') { zw.on = false; slog('trackerOffForJr', { from: was }); }
 }
 /* ---------- what the page says ---------- */

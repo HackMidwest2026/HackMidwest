@@ -22,7 +22,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
   const r0 = await p.evaluate(() => { const T = window.__tot, sel = document.getElementById('s-boots'), row = document.getElementById('route-reset').parentElement;
     return { v: sel && sel.value, inRow: !!sel && row.contains(sel), opts: sel ? Array.from(sel.options).map(o => o.value + '=' + o.textContent) : [], ver: T.VERSION, odds: document.getElementById('route-odds').textContent, goal: document.getElementById('s-dupgoal').value }; });
   console.log(JSON.stringify(r0).slice(0, 600));
-  check(r0.ver === 'v86', 'version v86');
+  check(r0.ver === 'v86.1', 'version v86.1');
   check(r0.v === 'ultra' && r0.inRow && r0.opts.join() === 'ultra=Ultra Boots,normal=Normal Boots', 'Boots setting in the Restart route row, Ultra Boots by default');
   check(r0.goal === 'auto', 'Duplighosts goal: Auto by default');
   const U = await steps();
