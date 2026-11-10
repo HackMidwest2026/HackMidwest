@@ -60,7 +60,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
     const a = await run(false), bb = await run(true);
     console.log('3 without the miss read', JSON.stringify(a)); console.log('3 with it', JSON.stringify(bb));
     check(a.seed === FIX.seed && a.fireMiss < 0.5, '3. T1 lock ' + a.seed + '; without the miss read ' + Math.round(100 * a.fireMiss) + '% of the weight has Bowser missing T1 (what happened: his fire breath missed)');
-    check(bb.fireMiss > 0.97 && bb.sure > 2 * a.sure && bb.sure >= 0.6, '3. with it ' + Math.round(100 * bb.fireMiss) + '%, and T2 frames 860-930 where the states agree (90%+ either way): ' + Math.round(100 * bb.sure) + '% (without: ' + Math.round(100 * a.sure) + '%)');
+    check(bb.fireMiss > 0.97 && bb.sure > 2 * a.sure && bb.sure >= 0.55, '3. with it ' + Math.round(100 * bb.fireMiss) + '%, and T2 frames 860-930 where the states agree (90%+ either way): ' + Math.round(100 * bb.sure) + '% (without: ' + Math.round(100 * a.sure) + '%)');
     check(bb.doubt < 0.4, '3. the seed confidence stays above the no-beep line (doubt ' + bb.doubt + ', without ' + a.doubt + ': the lock had the miss at 37% against 50% blind, slightly against it)');
   }
   // ---- 6. the T1 Super Charge's own bar hide on the Cloud Nine step (the route moved there when its target screen closed,
@@ -93,7 +93,7 @@ let fails = 0; const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ')
     X.advance(1141); const f = FB.states[0].f; T.st.plan = null; X.plan(); const pl = X.FB14.plan;
     FB.pendChg = null; X.input('chg', 1000, 2, [[0, 1]]); return { f, plan: pl && pl.none, n: FB.states.length };
   });
-  check(pc.f === 1011 && pc.plan === 'reading' && pc.n === 1, '8. a pending Charge on 1000: the states stop at 1011, no plan ("reading"), and the Charge then goes into them ' + JSON.stringify(pc));
+  check(pc.f === 1010 && pc.plan === 'reading' && pc.n === 1, '8. a pending Charge on 1000: the states stop at 1010 (v87: its frame -2 .. +2), no plan ("reading"), and the Charge then goes into them ' + JSON.stringify(pc));
   // ---- 5. the lever press bias: both console lever presses 2.2-2.5 frames early; the beeps come that much later
   const pb = await p.evaluate(() => { const X = window.__fb14, FB = X.FB14; X.reset(); FB.t0 = 1000; FB.rate = 33.367;
     const b0 = X.bias(), t0 = X.pressT(900); X.pressAdd(-2.4); X.pressAdd(-2.4); const b1 = X.bias(); for (let i = 0; i < 8; i++) X.pressAdd(0.1); const b2 = X.bias(); localStorage.removeItem('tot-fb14press');

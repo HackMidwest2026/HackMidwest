@@ -176,3 +176,16 @@ Earlier spoiled runs, for the record: 2000 ms drop feed (T3 blind, the page drop
 - Task C.
 
 Everything above was emulator-only and has to be re-created and re-tested before committing.
+
+## Rebuild progress (after the restart, 2026-11-10)
+- Emulator, harness and states: `../make_states.sh` (committed). A MARIO_HP=10 build's T1-T4 debug-core logs are exact
+  against fb14_live.js.
+- Task A re-applied (items 1-7) in fb14_live.js / charge_live.js / fb14_e2e.py / test_fb14_page.js, tested:
+  `test_fb14_chain.js` (7 new chain logs, 2 guarded: 18643 frames checked, 28 / 28 dodge tests), `test_fb14_v87.js`
+  (the late lock, the coin-phase end check, the narrowed T2 lock with the held Charge, the cap, the wave split),
+  test_fb14_model / _ai / _v86 / _plan, test_console_1108b.
+  - New in the rebuilt chain logs: 1 of 7 T4 waves (5eed0fb2) ran its particles in a third order (a particle on the odd
+    frames from AI + 73), after T4's test: the stream is back to the model's after the wave (AI + 150), so the T4 beep and the
+    carry past it are unaffected; FB14_WAVE_POST_B (the order that moves T4's test, from the lost 13579bdf log) is kept as
+    recovered, not re-observed here. A guarded T4 (A on P + 87) blocks the wave (Lakilester not KO'd): checked to its test only.
+- Not yet: the e2e seeds, Task B, B2, the v87 README section / VERSION / suite / build.

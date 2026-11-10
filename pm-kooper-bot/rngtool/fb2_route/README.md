@@ -55,6 +55,9 @@ on console footage.
 | `t6_check.py` | model vs the collected logs |
 | `t6pay.c` | joint payoff of K and d after a lock |
 | `item_names.json` | item ids (decomp `src/item_table.yaml`) |
+| `t1menu_state.py` | v87: the phase-2 T1 menu state route_build.py starts from (`../make_states.sh` runs it) |
+| `chain_log.py` | v87: one continuous T1 -> T4 debug-core log (every lever on the first frame that makes Bowser miss; GUARD=1 an A in Bowser's turn) |
+| `chain_fixture.py` | v87: `../fixtures/fb14_chain_logs.json` from chain logs (`../test_fb14_chain.js`) |
 
 Emulator scripts run from `/tmp/claude-0/pm/bot1` (debug core `M64P_DBG=1` when draws are logged). DIAGNOSTIC RAM
 writes (setup only, labelled in the code): Mario HP 5 at phase-2 start (the route enters at Danger), Bowser HP 80

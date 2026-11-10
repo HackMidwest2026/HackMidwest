@@ -498,7 +498,7 @@ if (window.__chgDebug) {
     CHG.frames = []; CHG.G = G; CHG.state = 'search'; CHG.tSearch = E ? E.t1 : t1; chgShow();
     if (!CHG.replay) slog('chargeMaps', CHG.info);
     let res;
-    const cands = CHG.replay ? CHG.replay.cands : !E && chgP().id === 'fb2' && typeof fb14T6Cands === 'function' ? fb14T6Cands() : null;
+    const cands = CHG.replay ? CHG.replay.cands : !E && chgP().id === 'fb2' && typeof fb14T6Cands === 'function' ? fb14T6Cands() : !E && chgP().id === 'fb1' && typeof fb14ChgCands === 'function' ? fb14ChgCands() : null;   // v87: T2 / T4 on the carried stream too
     if (CHG.rec && cands) CHG.rec.cands = cands;
     if (cands) {        // T6 with the seed carried from T1-T4: only the carried stream's stretch (fb14_live.js); the full search if it does not lock
       // the runner-up off the best one's stream: the candidates here are runs of consecutive seeds, and one a few steps away
@@ -512,6 +512,7 @@ if (window.__chgDebug) {
       CHG.info.narrow = { cands: cands.length, ms: Math.round(performance.now() - CHG.tSearch), locked: !!ok, shift: sh };
       if (ok) { const N0 = near(res.top[0].seed); res.top = [res.top[0]].concat(res.top.slice(1).filter(x => !N0.has(x.seed >>> 0))); }
       slog('chargeNarrow', CHG.info.narrow);
+      if (CHG.narrow14) { CHG.narrow14.done = true; CHG.narrow14.ok = !!ok; if (ok) res.narrow14 = true; }
       if (!ok) { CHG.tSearch = performance.now(); res = await chgSearch(maps); }
     } else if (E) { E.give(maps); res = await CHG.searchP; } else res = await chgSearch(maps);
     CHG.res = res; CHG.tLock = performance.now(); CHG.attMs = CHG.tLock - t0; CHG.info.searchMs = Math.round(CHG.tLock - CHG.tSearch); CHG.info.lockAfterRaysMs = Math.round(CHG.tLock - CHG.tEnd);
@@ -585,7 +586,7 @@ function chgSearch(maps, opts) {
       if (opts.full) { const tw = performance.now(), M = await opts.full; times.waitMaps = Math.round(performance.now() - tw); await Promise.all(W.map(w => call(w, { type: 'maps', S: M.S, C: M.C, N: CHG_N }, 'mapsok'))); }   // stage 2 needs all 48 frames
       const t3 = performance.now();
       const per2 = Math.ceil(top.length / W.length), qs = [];
-      if (P.aura) { const r = await fb1Stage2(W, call, top, times, t3); W.forEach(w => w.terminate()); CHG.workers = null; resolve(Object.assign(r, { stats, workers: W.length, thr: gthr.slice(), s1 })); return; }
+      if (P.aura) { const r = await fb1Stage2(W, call, top, times, t3, !!opts.cands); W.forEach(w => w.terminate()); CHG.workers = null; resolve(Object.assign(r, { stats, workers: W.length, thr: gthr.slice(), s1 })); return; }
       if (!P.bolts) {
         for (let k = 0; k < W.length; k++) { const sd = top.slice(k * per2, (k + 1) * per2); qs.push(call(W[k], { type: 'q', seeds: sd }, 'q').then(r => r.out.map((q, i) => ({ seed: sd[i], q })))); }
         const all = [].concat(...(await Promise.all(qs))).map(o => { let b = 0; for (let q = 1; q < 48; q++) if (o.q[q] > o.q[b]) b = q; return { seed: o.seed, q: b, sc: o.q[b], qs: o.q }; }).sort((a, b) => b.sc - a.sc);
@@ -736,7 +737,11 @@ function chgDecide() {
   if (CHG.replay && CHG.replay.fb14 && CHG.res.fb1) { CHG.state = 'locked'; fb14Refine(CHG.res, G).then(r => { fb14Lock(r); chgReplayDone({ state: 'locked', fb14: FB14.states.length }); }); return; }
   if (CHG.replay) { const qs = []; if (a.qs) a.qs.forEach((s, q) => { if (s >= a.sc * (1 - CHG_QTOL)) qs.push(q); }); CHG.state = 'locked'; chgReplayDone({ state: 'locked', qsRays: qs }); return; }
   if (fb2) { CHG.state = 'locked'; CHG.qs = [a.q]; slog('chargeLock', Object.assign({ fb2: true, scored: CHG.res.fb2.scored }, CHG.info)); chgRecEnd('lock'); fb2Lock(CHG.res); chgShow(); return; }
-  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); chgRecEnd('lock'); fb14Refine(CHG.res, G).then(r => { fb14Lock(r); if (typeof fb14AfterLock === 'function') fb14AfterLock(); }); chgShow(); return; }
+  if (CHG.res.fb1) { CHG.state = 'locked'; CHG.qs = []; if (CHG.res.fb1.times) CHG.info.stage = CHG.res.fb1.times; slog('chargeLock', Object.assign({ fb1: true, hyps: CHG.res.fb1.hyps ? CHG.res.fb1.hyps.n : 0 }, CHG.info)); chgRecEnd('lock');
+    // v87: a lock on the carried stream (T2 / T4 narrowed) goes to the carried states at once; the placement and the joint
+    // fit (5-7 s) only when none of them drew these rays
+    if (CHG.res.narrow14) { CHG.res.trigT = CHG.trig.t; const how = fb14Lock(CHG.res); if (how === 'carried') { if (typeof fb14AfterLock === 'function') fb14AfterLock(); chgShow(); return; } }
+    fb14Refine(CHG.res, G).then(r => { fb14Lock(r); if (typeof fb14AfterLock === 'function') fb14AfterLock(); }); chgShow(); return; }
   // q hypotheses: every first-coin frame whose score is within CHG_QTOL of the best (late coins barely move the rays: v71
   // kept 0.5% and 6 at most, and on the Duplighost render 1234abcd the true q 42 was not among them), best first; the
   // turn-1 menu's coin then weighs them (chgQBack: a likelihood, not a filter) and the tracker's shines settle them
