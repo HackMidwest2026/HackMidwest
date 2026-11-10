@@ -550,7 +550,11 @@ function jrStartFrom(k, seed, qs, qw) {
   // a plan beeping from the old tracker: its frame in the new clock (zwTick checks it against the new states)
   const P = st.plan; if (old && P && P.mix && P.mix.zw && P.zwAbs != null) { P.zwAbs = Math.round(P.zwAbs + (old.t0 - zw.t0) / zw.rate); P.zwKey = null; }
   // v85: this Charge's own confirm is frame -13 of the new clock (the rays' frame 0 = confirm + 13): jrPlanFloor counts from it
-  if (JRS() !== JR_SEQ) { const ci = JRT.inputs.filter(x => x.k === k && !x.cancel).pop(); if (ci) ci.c = -13; }     // (Normal Boots only: Ultra Boots unchanged)
+  // v87 (console log 2f22d4dc, T3): on Ultra Boots too. v85-v86.1 left Ultra Boots' Charge confirm in the old clock: after the T3
+  // lock (cross-check agreed, a new clock) jrPlanFloor counted the Bomb's earliest frame from 872 old-clock frames, i.e. ~1050
+  // in the new one, and the replan beeped 30 s later. The confirms before this Charge move into the new clock with it.
+  if (old) for (const x of JRT.inputs) if (x.k < k && x.c != null) x.c = Math.round(x.c + (old.t0 - zw.t0) / zw.rate);
+  { const ci = JRT.inputs.filter(x => x.k === k && !x.cancel).pop(); if (ci) ci.c = -13; }
   // the confirms since this Charge (the runner may have gone on before the lock landed): in order, in the new clock
   const since = JRT.inputs.filter(x => x.k > k);
   for (const inp of since) jrApply(inp, true);

@@ -371,6 +371,7 @@ function pressTime(tLast, rate, f) { return tLast + (f - 0.5 + num('off')) * rat
  * where the page read 254.0. The Strategies box greys out on confirm + 2 and goes on + 3; the page closes the screen on the
  * grey frame (all 5 clips of 11-09), so dup3 / dup4 now read the press with vanish 2 (pmrng_core.js), and the copies
  * the clips show fit that frame (test_press_lever.js). No Duplighost correction; Jr. Troopa and Time Out unchanged. */
+const ZW_MAX_AHEAD = 10000;      // ms (zwPlan): the latest press a zero-wait plan may ask for
 const LEVER_PRESS0 = { fb14: [-2.54, -2.2] }, LEVER_STORE = { fb14: 'tot-fb14press' };
 const leverKey = id => (id === 'fb14' ? 'fb14' : null);
 function leverList(k) { if (!LEVER_STORE[k]) return []; try { const L = JSON.parse(localStorage.getItem(LEVER_STORE[k]) || 'null'); if (Array.isArray(L) && L.length) return L.slice(-8); } catch (e) {} return (LEVER_PRESS0[k] || []).slice(); }
@@ -1311,7 +1312,7 @@ function zwPlan(why, win) {     // win (v85, nbCancelPlan): { lo, hi, h }: the f
   }
   // v82: a Jr. Troopa plan made before the target screen shows (jrEarlyPlan): no earlier than a plan made on that screen
   const early = (st.planEarly || (st.plan && st.plan.early && zw.fight === 'jr')) && typeof jrPlanFloor === 'function' ? jrPlanFloor() : null;   // (a re-score of an early plan keeps its floor)
-  if (early != null) from = Math.max(from, early);
+  const from0 = from; if (early != null) from = Math.max(from, early);
   const pid = PROF().id, adj = { d: S.doubt, b3: ZW_BLIND[pid] != null ? ZW_BLIND[pid] : 0.31, b4: R.TOP[pid] && ZW_BLIND[R.TOP[pid]] != null ? ZW_BLIND[R.TOP[pid]] : ZW_BLIND.dup4 };
   const PD = pressDist(), C = zwChoose(S.list, from, W, PD, PROF(), adj, null, win ? { lo: win.lo, hi: win.hi } : null), type = C.type;
   if (C.none === 'edge') {
@@ -1323,6 +1324,10 @@ function zwPlan(why, win) {     // win (v85, nbCancelPlan): { lo, hi, h }: the f
   if (!C.none && typeof hwHpCheck === 'function') { const H = hwHpCheck(C, PD); if (H) { st.msg = H.msg + ' ' + F.normal + '.'; slog('zwNoEdgeHp', H.log); cancelBeeps(); render(); return true; } }
   if (C.none === 'window') { st.msg = 'No ' + WTYPE[type].name + ' window in the next ' + num('zwwin') + ' s of extra wait for most of the ' + S.list.length + ' possible states. ' + F.normal + ', raise Max extra wait (Settings, Advanced), or pick another window.'; slog('zwNoWindow', { type, parts: S.list.length }); render(); return true; }
   const lb = leverBias(leverKey(PROF().id));      // v87: a lever's own correction (none on the zero-wait levers so far)
+  // v87 (console log 2f22d4dc): no lever on this route is pressed more than a few seconds after its screen opens; an early
+  // floor that pushes the press more than ZW_MAX_AHEAD past the frames the page is at is a wrong frame base, not a wait: no
+  // edge instead of a far beep
+  if (early != null && (C.target - from0) * rate > ZW_MAX_AHEAD) { st.msg = 'No edge: the best frame found is ' + Math.round((C.target - from0) * rate / 1000) + ' s away, which no lever here needs (the page\'s frame count is off). ' + F.normal + '.'; slog('zwTooFar', { target: C.target, from0, floor: early }); cancelBeeps(); render(); return true; }
   const { target, w, a, b, D, share } = C, best = C.p, A = zwAnchor(S.list[0]), Fa = A.F, tLast = zw.t0 + Fa * rate, tPress = pressTime(tLast, rate, target - Fa) + lb * rate;
   ZWD.S = S;     // the strip's states are these (zwTick may not have run since the lock)
   const disp = zwDisplay(now, true), first = disp.first - Fa, tab = disp.tab.slice(), tab4 = C.share4 ? new Array(tab.length).fill(false) : null;
@@ -2394,7 +2399,7 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { VERSION, ARENA, arenaMoveOk: (i, A, t) => arenaMoveOk(i, A, t), arenaNote: (i, t) => arenaNote(i, t), arenaReset: t => arenaReset(t), chgArenaClass: (L, br, lbr) => chgArenaClass(L, br, lbr), leverKey, leverList: k => leverList(k), leverBias: k => leverBias(k), leverAdd: (k, e) => leverAdd(k, e), dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(), routeOddsLines: () => routeOddsLines(), ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
+window.__tot = { VERSION, zwMaxAhead: ZW_MAX_AHEAD, ARENA, arenaMoveOk: (i, A, t) => arenaMoveOk(i, A, t), arenaNote: (i, t) => arenaNote(i, t), arenaReset: t => arenaReset(t), chgArenaClass: (L, br, lbr) => chgArenaClass(L, br, lbr), leverKey, leverList: k => leverList(k), leverBias: k => leverBias(k), leverAdd: (k, e) => leverAdd(k, e), dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(), routeOddsLines: () => routeOddsLines(), ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
   JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },
