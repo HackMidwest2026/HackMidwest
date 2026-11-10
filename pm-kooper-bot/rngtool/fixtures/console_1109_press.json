@@ -1,0 +1,186 @@
+{
+"about": "Console session 2026-11-09 (pages v86 / v86.1): Duplighosts logs d93a4be8-1794269328954 (4 attempts; clips 19-04-22, 19-05-10, 19-05-51, 19-08-25) and bf4fbf04-1794271836485 (clip 19-50-01, input display), Jr. Troopa logs 05fcbe17-1794269702752 and 4080354f-1794272486217 (clip 19-59-56, input display). Numbers read off the clips (not committed), no pictures (chargeCaptures stripped). Copies counted on each clip's frames after the Duplighosts' turn. inputDisplay: capture frames (60 fps) from the A lighting on the input display to the Strategies box greying / going and to a Mario action's bar hide.",
+"dup": [
+{
+"clip": "5d1ed25d-2026-11-09_19-04-22.mkv",
+"seed": "d9a36b20",
+"qs": [
+38,
+39,
+40,
+41,
+42,
+43,
+44,
+45,
+46,
+47
+],
+"ratio": 5.49,
+"target": 198,
+"err": -2.36,
+"works": false,
+"near": [
+2,
+1,
+-1,
+-2
+],
+"copies": 2
+},
+{
+"clip": "2b512681-2026-11-09_19-05-10.mkv",
+"seed": "6d509617",
+"qs": [
+5,
+6,
+7,
+8
+],
+"ratio": 5.08,
+"target": 191,
+"err": -1.34,
+"works": true,
+"near": [
+1,
+0
+],
+"copies": 2
+},
+{
+"clip": "2895f99c-2026-11-09_19-05-51.mkv",
+"seed": "f4562472",
+"qs": [
+11,
+12
+],
+"ratio": 4.33,
+"target": 186,
+"err": -3.33,
+"works": false,
+"near": [
+2,
+1
+],
+"copies": 3
+},
+{
+"clip": "d2f1de3a-2026-11-09_19-08-25.mkv",
+"seed": "ed3b80d9",
+"qs": [
+4,
+10,
+11
+],
+"ratio": 4.79,
+"target": 179,
+"err": -1.82,
+"works": true,
+"near": [
+2,
+1,
+0
+],
+"copies": 3
+},
+{
+"clip": "5d0c5a43-2026-11-09_19-50-01.mkv",
+"seed": "a22b5d7c",
+"qs": [
+0
+],
+"ratio": 4.21,
+"target": 244,
+"err": -2.99,
+"works": false,
+"near": [
+2,
+1,
+-2
+],
+"copies": 3,
+"inputDisplay": {
+"chargeA": 95,
+"barHide": 108,
+"doNothingA": 608,
+"grey": 618,
+"gone": 621,
+"trigger": 136,
+"pageCloseAt": 617.5,
+"gameFramesChargeAtoDoNothingA": 256.2,
+"pageRead": 254.0
+}
+}
+],
+"jr": [
+{
+"log": "05fcbe17-1794269702752",
+"prof": "jrcc_bomb",
+"lever": "T3 Bomb (target on Jr. Troopa)",
+"err": -0.25,
+"outcome": "dodge"
+},
+{
+"log": "05fcbe17-1794269702752",
+"prof": "jrcc_syrup",
+"lever": "T4 Maple Syrup (target on Mario)",
+"err": -2.26,
+"outcome": "death"
+},
+{
+"log": "4080354f-1794272486217",
+"prof": "jrcc_nothing",
+"lever": "T5 Do Nothing (Strategies)",
+"err": -1.23,
+"outcome": "dodge",
+"inputDisplay": [
+{
+"A": 3833,
+"grey": 3843,
+"gone": 3845
+},
+{
+"A": 4172,
+"grey": 4182,
+"gone": 4184
+},
+{
+"A": 4402,
+"grey": 4413,
+"gone": 4415
+}
+],
+"barHides": [
+{
+"A": 3321,
+"hide": 3335
+},
+{
+"A": 4528,
+"hide": 4539
+}
+]
+},
+{
+"log": "4080354f-1794272486217",
+"prof": "jrcc_bomb",
+"lever": "T3 Bomb",
+"err": -0.3,
+"outcome": "dodge"
+},
+{
+"log": "4080354f-1794272486217",
+"prof": "jrcc_syrup",
+"lever": "T4 Maple Syrup",
+"err": 0.22,
+"outcome": "dodge"
+},
+{
+"log": "4080354f-1794272486217",
+"prof": "jrpb5",
+"lever": "T6 Power Bounce",
+"err": 0.26,
+"outcome": "works"
+}
+]
+}

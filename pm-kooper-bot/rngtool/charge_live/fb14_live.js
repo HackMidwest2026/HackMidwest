@@ -139,10 +139,12 @@ const fbPic = t => (t - FB14.t0) / fbRate();
  * matches the emulator's P + 2). The runner's other presses (Jr. Troopa, Hallway) are near 0 on the same offset setting,
  * so this one is the Final Bowser lever's own: the beeps come later by minus the mean of the last 8 lever presses (these two
  * to start with; clamped to 3 frames). Kept in this browser (tot-fb14press). */
-const FB14_PRESS0 = [-2.54, -2.2];
-function fb14PressList() { try { const L = JSON.parse(localStorage.getItem('tot-fb14press') || 'null'); if (Array.isArray(L) && L.length) return L.slice(-8); } catch (e) {} return FB14_PRESS0.slice(); }
-function fb14Bias() { const L = fb14PressList(); const m = L.reduce((a, x) => a + x, 0) / L.length; return Math.max(-3, Math.min(3, -m)); }
-function fb14PressAdd(err) { const L = fb14PressList().concat([+err.toFixed(2)]).slice(-8); try { localStorage.setItem('tot-fb14press', JSON.stringify(L)); } catch (e) {} return L; }
+/* v87: one of the per-lever corrections (page_template.html leverBias: Final Bowser, Duplighosts); each press is kept as the
+ * runner's own error against the beep (the measured error minus the correction the beeps had), so the correction does not
+ * decay to 0 as the presses come in on time (v86 kept the error against the target) */
+function fb14PressList() { return typeof leverList === 'function' ? leverList('fb14') : [-2.54, -2.2]; }
+function fb14Bias() { return typeof leverBias === 'function' ? leverBias('fb14') : 0; }
+function fb14PressAdd(err) { return typeof leverAdd === 'function' ? leverAdd('fb14', err) : []; }
 const fbPressT = F => FB14.t0 + (F - 1.7 + num('off') + fb14Bias()) * fbRate() - num('vlag');
 /* ---- the route: the Final Bowser steps (page_template.html ENDGAME) ---- */
 const fb14Step = () => { const s = isRoute() && RT()[routeStep]; return s && s.fb14 ? s : null; };
@@ -546,7 +548,7 @@ function fb14Plan(cAt) {      // cAt (tests): plan as if the screen showed on cl
   const tLast = FB14.t0 + (fb14Bias() - 1.2) * rate - num('vlag');      // pressTime(tLast, rate, F) = fbPressT(F)
   const a = C.a, tab = []; for (let F = from - 30; F <= from + W + 30; F++) tab.push(F >= a && F <= C.b ? C.share[F - a] >= 0.5 : false);
   st.plan = { tMade: now, w: C.w, target: C.target, tPress: pl.tPress, tLast, rate, carried: true, from, to: from + W, first: from - 30, prof: 'fb14', tab, tab4: null, type: C.type, beeps: nBeeps(),
-    mix: { p: C.p, pStates: C.pStates, pp: C.pp, ppStates: C.ppStates, win: C.w.length, doubt: pl.doubt, groups: Wg.list.length, zw: true, fb14: turn }, PD, zwAbs: C.target, fb14: turn };
+    mix: { p: C.p, pStates: C.pStates, pp: C.pp, ppStates: C.ppStates, win: C.w.length, doubt: pl.doubt, groups: Wg.list.length, zw: true, fb14: turn }, PD, zwAbs: C.target, fb14: turn, bias: fb14Bias() };
   st.msg = null; slog('fb14Plan', pl); fb14Show(); render(); return true;
 }
 /* about 4 times a second with a plan running: the coin may have moved the weights; a planned frame that no longer works
@@ -580,7 +582,7 @@ function fb14Confirm(tObs, stp, shifts, src) {
   const c = fbPic(tObs) - (FB14_VAN[stp.cat] || 2) - num('pfix'), F = Math.round(c);
   FB14.P[turn] = F; if (turn === 4) FB14.p4t = tObs; const P = st.plan && st.plan.fb14 === turn ? st.plan : null;
   slog('fb14Confirm', { turn, F, c: +c.toFixed(2), planned: P ? P.target : null, err: P ? +(c - P.target).toFixed(2) : null, src });
-  if (P && !P.stopped && src !== 'bar' && Math.abs(c - P.target) <= 5) { const L = fb14PressAdd(c - P.target); slog('fb14PressBias', { n: L.length, bias: +fb14Bias().toFixed(2) }); }
+  if (P && !P.stopped && src !== 'bar' && Math.abs(c - P.target) <= 5) { const L = fb14PressAdd(c - P.target - (P.bias || 0)); slog('fb14PressBias', { n: L.length, bias: +fb14Bias().toFixed(2) }); }
   if (FB14.on) { const h = fb14Horizon(performance.now()); fb14Advance(Math.min(h, F - 3)); fb14Input(fb14Kind(turn), F, turn, shifts || FB14_SHIFTS, tObs, (FB14_VAN[stp.cat] || 2) + num('pfix')); }
   fb14Show();
 }

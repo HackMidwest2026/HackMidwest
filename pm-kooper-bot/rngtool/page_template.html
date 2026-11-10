@@ -363,6 +363,19 @@ const BEEP_MARGIN = 150;   // ms: the first beep at least this far ahead when a 
 function earliestPress(now) { return now + Math.max(num('lead') * 1000, (nBeeps() - 1) * num('gapms') + BEEP_MARGIN); }
 // the press for confirm frame f: the middle of its input window (f - 0.5 on this clock), moved by the beep offset
 function pressTime(tLast, rate, f) { return tLast + (f - 0.5 + num('off')) * rate; }
+/* v87: per-lever press corrections, learned in this browser (only Final Bowser's levers so far). v86 kept each Final Bowser
+ * press as its error against the target, so the correction decayed to 0 as the presses came in on time; each press is now
+ * kept as the runner's error against the beep (the measured error minus the correction the beeps had).
+ * The Duplighosts' "early" presses (2026-11-07 / 11-09: -0.8 .. -3.3, mean -2.0) were mostly the page's reading, not the
+ * runner: the clip with the input display (11-09 19-50-01) puts the Do Nothing A 256.2 game frames after the Charge's A,
+ * where the page read 254.0. The Strategies box greys out on confirm + 2 and goes on + 3; the page closes the screen on the
+ * grey frame (all 5 clips of 11-09), so dup3 / dup4 now read the press with vanish 2 (pmrng_core.js), and the copies
+ * the clips show fit that frame (test_press_lever.js). No Duplighost correction; Jr. Troopa and Time Out unchanged. */
+const LEVER_PRESS0 = { fb14: [-2.54, -2.2] }, LEVER_STORE = { fb14: 'tot-fb14press' };
+const leverKey = id => (id === 'fb14' ? 'fb14' : null);
+function leverList(k) { if (!LEVER_STORE[k]) return []; try { const L = JSON.parse(localStorage.getItem(LEVER_STORE[k]) || 'null'); if (Array.isArray(L) && L.length) return L.slice(-8); } catch (e) {} return (LEVER_PRESS0[k] || []).slice(); }
+function leverBias(k) { const L = leverList(k); if (!L.length) return 0; const m = L.reduce((a, x) => a + x, 0) / L.length; return Math.max(-3, Math.min(3, -m)); }
+function leverAdd(k, e) { if (!LEVER_STORE[k]) return []; const L = leverList(k).concat([+e.toFixed(2)]).slice(-8); try { localStorage.setItem(LEVER_STORE[k], JSON.stringify(L)); } catch (x) {} return L; }
 // the earliest confirm frame (on a clock with frame 0 at tLast) whose press and every beep before it are still ahead
 function earliestFrame(tLast, rate, now) { return Math.ceil((earliestPress(now) - tLast) / rate + 0.5 - num('off') - 1e-9); }
 function playBeeps(tPress) { const n = nBeeps(), g = num('gapms'); for (let i = 0; i < n; i++) beepAt(tPress - (n - 1 - i) * g, i === n - 1 ? 1320 : 880, i === n - 1 ? 0.12 : 0.06); }
@@ -564,7 +577,7 @@ $('cal-apply').onclick = () => {
 };
 $('s-off').addEventListener('input', () => {
   saveSettings(); const P = st.plan; if (!P || P.tPress < performance.now()) return;
-  const t = pressTime(P.tLast, P.rate, P.target);
+  const t = pressTime(P.tLast, P.rate, P.target) + (P.bias || 0) * P.rate;
   if (!beepsFit(t)) { slog('offsetReplan', {}); cancelPlan(); return; }   // too late now for every beep: the next plan takes a later frame
   P.tPress = t; cancelBeeps(); playBeeps(t); render();
 });
@@ -1309,13 +1322,14 @@ function zwPlan(why, win) {     // win (v85, nbCancelPlan): { lo, hi, h }: the f
   // coin now fits the roll states too well: then a frame must work under both, and a coin that favours the roll is no edge
   if (!C.none && typeof hwHpCheck === 'function') { const H = hwHpCheck(C, PD); if (H) { st.msg = H.msg + ' ' + F.normal + '.'; slog('zwNoEdgeHp', H.log); cancelBeeps(); render(); return true; } }
   if (C.none === 'window') { st.msg = 'No ' + WTYPE[type].name + ' window in the next ' + num('zwwin') + ' s of extra wait for most of the ' + S.list.length + ' possible states. ' + F.normal + ', raise Max extra wait (Settings, Advanced), or pick another window.'; slog('zwNoWindow', { type, parts: S.list.length }); render(); return true; }
-  const { target, w, a, b, D, share } = C, best = C.p, A = zwAnchor(S.list[0]), Fa = A.F, tLast = zw.t0 + Fa * rate, tPress = pressTime(tLast, rate, target - Fa);
+  const lb = leverBias(leverKey(PROF().id));      // v87: a lever's own correction (none on the zero-wait levers so far)
+  const { target, w, a, b, D, share } = C, best = C.p, A = zwAnchor(S.list[0]), Fa = A.F, tLast = zw.t0 + Fa * rate, tPress = pressTime(tLast, rate, target - Fa) + lb * rate;
   ZWD.S = S;     // the strip's states are these (zwTick may not have run since the lock)
   const disp = zwDisplay(now, true), first = disp.first - Fa, tab = disp.tab.slice(), tab4 = C.share4 ? new Array(tab.length).fill(false) : null;
   for (let c = Math.max(a, disp.first); c <= Math.min(b - D, disp.first + tab.length - 1); c++) { tab[c - disp.first] = share[c - a] >= 0.5; if (tab4) tab4[c - disp.first] = C.share4[c - a] >= 0.5; }   // the window part from every state
   cancelBeeps();
   st.plan = { tMade: now, w: { start: w.start - Fa, end: w.end - Fa, length: w.length }, target: target - Fa, aim4: false, tPress, tLast, rate, seedBL: A.seedBL, baseF: Fa, carried: true, from: from - Fa, to: from + W - Fa, first, prof: PROF().id,
-    tab, tab4, type, beeps: nBeeps(), mix: { p: best, p4: C.p4, pStates: C.pStates, pp: C.pp, pp4: C.pp4, ppStates: C.ppStates, win: w.length, win4: C.w4 ? C.w4.length : null, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, early: early != null, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
+    tab, tab4, type, beeps: nBeeps(), bias: lb, mix: { p: best, p4: C.p4, pStates: C.pStates, pp: C.pp, pp4: C.pp4, ppStates: C.ppStates, win: w.length, win4: C.w4 ? C.w4.length : null, doubt: +S.doubt.toFixed(4), groups: S.list.length, zw: true, goal: C.goal }, PD, early: early != null, zwKey: S.key, zwState: S.list[0], zwShare0: S.list[0].w / S.list.reduce((x, q) => x + q.w, 0), zwAbs: target };
   playBeeps(tPress);
   slog('plan', { prof: PROF().id, step: routeStep, mix: st.plan.mix, type, target, tPress: Math.round(tPress), firstBeepIn: Math.round(tPress - (nBeeps() - 1) * num('gapms') - now), beeps: nBeeps(), zw: true, why: why || undefined, early: early != null || undefined, press: PD === PRESS_ERR ? '1' : +Math.sqrt(PD.reduce((x, [d, q]) => x + q * d * d, 0)).toFixed(2) });
   st.msg = null; render(); if (typeof chgShow === 'function') chgShow(); return true;
@@ -1585,7 +1599,7 @@ setInterval(maybeSwitchPlan, 250);
 function cancelPlan() { cancelBeeps(); st.plan = null; render(); }
 function reset() { stopWorkers(); cancelBeeps(); zw.on = false; chgReset(); Object.assign(WALK, { start: null, vis: 0, lastT: null, last: null }); Object.assign(st, { segs: [{ taps: [] }], chain: [], carry: null, carry0: null, wtorch: null, wtry: null, rcarry: null, wcarry: null, wbase: null, wcarryPending: null, turnEv: [], hyp: null, carryOk: 0, inputs: [], needResync: false, cands: null, lock: null, prevLock: null, searching: false, clock: null, plan: null, msg: null, note: null, example: true }); render(); }
 $('shine').addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
-$('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = reset;
+$('dl-log').onclick = downloadLog; $('find').onclick = find; $('gap').onclick = newSegment; $('plan').onclick = makePlan; $('undo').onclick = undo; $('reset').onclick = () => { reset(); if (typeof arenaReset === 'function') arenaReset(); };
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.repeat) return;
   if (e.code === 'Space') { e.preventDefault(); tap(); }
@@ -2051,7 +2065,7 @@ function applyProfile() {
   render();
 }
 function setStep(i) {
-  slog('step', { to: i }); const was = routeStep; st.hwDone = false; st.hwBackHeld = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); if (typeof fb14StepChange === 'function') fb14StepChange(was); if (typeof hwHpStepChange === 'function') hwHpStepChange(); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
+  slog('step', { to: i }); const was = routeStep; st.hwDone = false; if (typeof arenaNote === 'function') arenaNote(Math.max(0, Math.min(RT().length - 1, i))); st.hwBackHeld = false; routeStep = Math.max(0, Math.min(RT().length - 1, i)); if (routeStep !== was) { dupStepChange(was); jrStepChange(was); if (typeof fb14StepChange === 'function') fb14StepChange(was); if (typeof hwHpStepChange === 'function') hwHpStepChange(); } if (routeStep !== was && RT()[routeStep] && RT()[routeStep].turn === 'hw_spiny' && typeof chgReset === 'function' && !['search', 'maps', 'armed', 'capture'].includes(CHG.state)) chgReset();
   if (RT()[was] && /^Hallway Bowser/.test(RT()[was].t || '') && !/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '') && routeStep > was) st.hwLeft = { at: performance.now(), hides: 0 };
   else if (/^Hallway Bowser/.test((RT()[routeStep] || {}).t || '')) st.hwLeft = null; if (V.preDone) for (const k in V.preDone) if (k.startsWith(routeStep + ':')) { delete V.preDone[k]; if (V.pre) delete V.pre[k]; } try { localStorage.setItem('tot-route-step', String(routeStep)); } catch (e) {} applyProfile(); }
 $('route-list').addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) setStep(+li.dataset.i); });
@@ -2272,14 +2286,16 @@ function measurePress(tObs) {
   const P = st.plan, c = (tObs - P.tLast - num('vlag')) / P.rate - VANISH_() - num('pfix');   // continuous frame estimate (pfix: capture-specific delay of the name box vanishing)
   const f = Math.round(c), err = c - P.target;                              // frame the game read the press on, vs the aimed one
   const onBeeps = Math.abs(err) <= 5;      // only presses made on the beeps calibrate the offsets (5 frames: the runner's live presses on the beeps were up to 3.3 off; the beeps are 15 frames apart)
-  if (onBeeps) { presses.push(err); while (presses.length > 8) presses.shift(); }
+  const lk = leverKey(PROF().id);      // v87: a lever with its own correction stays out of the global calibration (Beep offset)
+  if (onBeeps && !lk) { presses.push(err); while (presses.length > 8) presses.shift(); }
   try { localStorage.setItem('tot-presses', JSON.stringify(presses)); } catch (e) {}
   const inWin = f >= P.w.start && f <= P.w.end, works = R.works(P.seedBL, 0, f, 0, PROF()), likely = !works && nearWorking(P.seedBL, f, PROF()).length > 0;
   // candidates for the carry, most likely first: the beeps put the press on the aimed frame (emulator: every press on the
   // ideal frame), while the video read can be off by a frame or two on a capture card (run 3: 1.7 frames early)
   const near = nearWorking(P.seedBL, f, PROF()).sort((a, b) => Math.abs(f + a - P.target) - Math.abs(f + b - P.target) || Math.abs(a) - Math.abs(b));
   P.measured = { frame: f, c, err, inWin, works, likely, tObs, onBeeps };
-  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, likely, near, onBeeps }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
+  if (lk && onBeeps && !P.fb14) leverAdd(lk, err - (P.bias || 0));     // v87: the lever's own press record
+  slog('press', { prof: PROF().id, step: routeStep, err: +err.toFixed(2), inWin, works, likely, near, onBeeps, bias: P.bias ? +P.bias.toFixed(2) : undefined, lever: lk ? +leverBias(lk).toFixed(2) : undefined }); st.lastPress = Object.assign({ target: P.target, seedBL: P.seedBL, rate: P.rate }, P.measured);
   const stp = isRoute() && RT()[routeStep];
   if (stp && stp.turn && !unmodeledAfter(P.tLast) && !(P.mix && P.mix.zw && !onBeeps)) { if (near.length) addTurn(P.baseF + f, stp.turn, 'Carrying the seed through this turn.', null, near, 'press'); else { st.needResync = true; st.turnEv = []; } }
   showPresses();
@@ -2302,6 +2318,7 @@ function showPresses() {
   if (presses.length >= 2) s += 'Average of ' + presses.length + ': ' + dir(avg) + ', spread ±' + r(spread) + ' frames. ';
   const ready = presses.length >= 3 && Math.abs(avg) >= 0.5, step = x => Math.round(x * 2) / 2;
   if (ready) s += 'Consistently off? Calibrate… (next to this) moves the beep and visual offsets by the measured error, after you confirm.';
+  const lkS = leverKey(PROF().id); if (lkS) s += ' This lever has its own correction (not the Beep offset): its beeps come ' + Math.abs(leverBias(lkS)).toFixed(1) + ' frames ' + (leverBias(lkS) >= 0 ? 'later' : 'earlier') + ', from your last ' + leverList(lkS).length + ' presses here.';
   const lp = P || st.lastPress, good = lp ? (lp.works ? true : lp.likely ? null : false) : null;
   const col = good === true ? 'var(--run3)' : good === false ? 'var(--run1)' : 'var(--ink)';
   $('press-msg').innerHTML = '<span style="color:' + (good === null ? 'var(--bg)' : '#fff') + '; background:' + col + '; font-weight:700; font-size:1.25em; display:inline-block; padding:4px 10px; border-radius:6px; margin-bottom:4px">' + head + (good === true ? ' ✓' : good === false ? ' ✗' : lp && lp.likely ? ' ?' : '') + '</span><br>' + s;
@@ -2377,7 +2394,7 @@ function autoPlan() {
 })();
 drawIdlePreview();
 applyProfile(); requestAnimationFrame(loop);
-window.__tot = { VERSION, dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(), routeOddsLines: () => routeOddsLines(), ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
+window.__tot = { VERSION, ARENA, arenaMoveOk: (i, A, t) => arenaMoveOk(i, A, t), arenaNote: (i, t) => arenaNote(i, t), arenaReset: t => arenaReset(t), chgArenaClass: (L, br, lbr) => chgArenaClass(L, br, lbr), leverKey, leverList: k => leverList(k), leverBias: k => leverBias(k), leverAdd: (k, e) => leverAdd(k, e), dupGoalNow: () => dupGoal(), bootsNow: () => bootsNow(), routeOddsLines: () => routeOddsLines(), ppPick: (...a) => ppPick(...a), ppText: (...a) => ppText(...a), PP_TOL, lockBadge: () => lockBadgeShow(), lockBadgeState: () => lockBadgeState(), lockFB: () => ({ FB14, FB2 }), HWHP, hwHpReset: () => hwHpReset(), hwHpHyps: r => hwHpHyps(r), hwHpShares: () => hwHpShares(), hwHpFrame: (t, pr) => hwHpFrame(t, pr), HWHP_MIN, HWHP_DIE,
   zwInput: (id, t, v, imps) => zwInput(id, t, v, imps), zwUpdate: h => zwUpdate(h), zwStatesAtT: h => zwStatesAt(h), zwTapF: f => zw.taps.push(f), VAN,
   hwTrackerAt: (seed, qs, trigT) => { chgReset(); Object.assign(CHG, { prof: CHG_PROF.hw, trig: { t: trigT }, taps: [], pres: [], state: 'locked', qs }); chgStartTracker(seed >>> 0, qs); return zw.on && zw.fight === 'hw'; },
   JRT, JR_SEQ, jrPlanAt, jrNoLockMsg, jrDodge, jrReconOk: () => jrReconOk(), jrZw: () => jrZw(), jrShineAt: h => { JRT.shineTry = -1; return jrShineSearch(h); },

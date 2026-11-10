@@ -86,11 +86,11 @@ const cls = seen => { const n = [...seen].filter(c => c === 'C').length; return 
     console.log('  ' + a.clip + ': lock ' + a.seed + ', measured frame ' + d.f + ', seen ' + a.seen + ' (' + want + '), page classes f-2..f+2 per state: ' + d.byQ.map(q => q.cls.join('')).join(' '));
     check(near, 'Duplighost ' + a.seed + ': the copies seen (' + a.seen + ') are predicted within 1 frame of the measured Do Nothing frame' + (at0 ? ' (on it)' : ''));
     const err = (a.tObs - a.tPress - FIX.vlag) / FIX.consoleRate - 0.5 + FIX.off - d.van;
-    check(Math.abs(err - a.err) < 0.05, 'press reading ' + err.toFixed(2) + ' = the log\'s ' + a.err + ' with the 3-frame box offset');
+    check(Math.abs(err - a.err - 1) < 0.05, 'press reading ' + err.toFixed(2) + ' = the log\'s ' + a.err + ' + 1 (v87: the grey-frame offset 2, not 3)');
     check(a.boxGoneCap - a.boxHighlightCap === 2, 'one highlighted game frame before the box goes (confirm + 2 / + 3, as the emulator)');
   });
   check(r.dup[0].byQ.some(q => q.cls[2] === 2), '55ee0a3f: the failed attempt (FFCC) is the model on the measured frame, 2 before the target');
-  check(r.dup.every(d => d.van === 3), 'dup3 keeps the 3-frame Strategies box offset');
+  check(r.dup.every(d => d.van === 2), 'v87: dup3 reads the press from the Strategies box\'s grey frame (confirm + 2; console input display 2026-11-09)');
   // 2
   console.log('  arena jr ' + JSON.stringify(r.arenaJr) + ' dup ' + JSON.stringify(r.arenaDup));
   check(r.arenaJr.a !== 'dup' && r.arenaJr.prof === 'jr' && r.arenaJr.step === r.arenaJr.jrI, 'Jr. Troopa\'s arena (console colours) stays on Jr. Troopa');

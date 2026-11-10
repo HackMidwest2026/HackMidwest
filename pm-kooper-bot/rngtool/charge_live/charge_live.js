@@ -116,8 +116,11 @@ function chgArenaBox(b) { const [SX, OX, SY, OY] = chgMap(); return { x: (OX + b
 function chgArena() {
   const rgb = b => { const g = sample(chgArenaBox(b), 32, 8), n = g.length / 4; let r = 0, gr = 0, bl = 0; for (let i = 0; i < g.length; i += 4) { r += g[i]; gr += g[i + 1]; bl += g[i + 2]; } return [r / n, gr / n, bl / n]; };
   const lo = rgb(CHG_ARENA_LOW), tp = rgb(CHG_ARENA_TOP), L = 0.299 * lo[0] + 0.587 * lo[1] + 0.114 * lo[2], br = tp[2] - tp[0], lbr = lo[2] - lo[0];
-  return { a: lbr > 2 && L > 30 && L < 95 && br < 30 ? 'dup' : L < 85 && br > 18 ? 'hw' : L > 95 && br < 18 && br > -15 ? 'fb' : chgArenaJr(L, br, lbr) ? 'jr' : null, L: +L.toFixed(1), br: +br.toFixed(1), lbr: +lbr.toFixed(1) };
+  // v87: Final Bowser's lit floor reads L 95-125 (console 114, emulator renders ~100); a near-white picture (a flash, a fade:
+  // console log bf4fbf04, L 245) is no arena
+  return { a: chgArenaClass(L, br, lbr), L: +L.toFixed(1), br: +br.toFixed(1), lbr: +lbr.toFixed(1) };
 }
+function chgArenaClass(L, br, lbr) { return lbr > 2 && L > 30 && L < 95 && br < 30 ? 'dup' : L < 85 && br > 18 ? 'hw' : L > 95 && L < 170 && br < 18 && br > -15 ? 'fb' : chgArenaJr(L, br, lbr) ? 'jr' : null; }
 /* Jr. Troopa's arena (Bowser's Castle) at a Charge hide: the grey stone floor (luma 59-68, B - R -1.5 .. -5.4) under grey
  * walls with the dark Bowser doors (top B - R +11 .. +15): the capture-simulated emulator renders and the one console
  * clip of the fight (8526dcdd, 2026-11-02 14:16:56: a T1 Super Charge). Tested after the other three. It moves no route
@@ -134,12 +137,39 @@ function chgArenaJr(L, br, lbr) { const A = JR_ARENA; return L > A.L[0] && L < A
  * Hallway T1), a Final Bowser picture at a real hide moves the route there. On a Hallway or Final Bowser step, the
  * Duplighost room at a real hide is that fight (a reset to an earlier save): the route goes to the Duplighost step, but
  * only on the Charge-lock route (on the RTA route the Duplighosts have no Charge to read). */
+/* v87: the arena moves are gated by the run's order and its clock (log bf4fbf04: a near-white picture on the Duplighosts' step
+ * read as Final Bowser's arena and moved the route there). Fights go Duplighosts -> Jr. Troopa -> Hallway -> Final Bowser; an
+ * automatic move forward is one fight at a time and only after that fight's minimum time since the fight before it was last
+ * active (its steps, its Charges), from the runner's console sessions (2026-11-09: Duplighosts -> Jr. Troopa 190-440 s, Jr.
+ * Troopa -> Hallway ~140 s, Hallway -> Final Bowser 173 s; Duplighosts -> Final Bowser ~20 min) with a margin; Final Bowser
+ * also needs 5 minutes after the Duplighosts. A move back (a retry or a reset to an earlier save) is allowed as before. A
+ * skipped fight is never automatic. Manual step changes always go and restart that fight's clock (setStep). Every refused
+ * move is logged (arenaRejected). */
+const ARENA_ORDER = { dup: 0, jr: 1, hw: 2, fb: 3 }, ARENA_MIN = { jr: 90000, hw: 60000, fb: 80000 }, ARENA_FB_AFTER_DUP = 300000;
+const ARENA = { seen: {} };
+function arenaFightOf(i) {
+  const s = RT()[i]; if (!s) return null;
+  if (s.chg === 'dup') return 'dup'; if (s.chg === 'jr' || s.jr != null) return 'jr'; if (s.fb14 || s.chg === 'fb1' || s.turn === CHG_PROF.fb2.turn) return 'fb';
+  if (/^Hallway Bowser/.test(s.t || '') || s.turn === 'hw_spiny' || s.chg === 'nbhw') return 'hw'; return null;
+}
+function arenaNote(i, t) { const f = arenaFightOf(i); if (f) ARENA.seen[f] = t != null ? t : performance.now(); }
+function arenaReset(t) { ARENA.seen = {}; arenaNote(routeStep, t); }
+function arenaMoveOk(toI, A, t) {
+  const now = t != null ? t : performance.now(), from = arenaFightOf(routeStep), to = arenaFightOf(toI);
+  if (!from || !to || ARENA_ORDER[to] <= ARENA_ORDER[from]) return true;
+  let why = null;
+  if (ARENA_ORDER[to] - ARENA_ORDER[from] > 1) why = 'skips a fight (' + from + ' -> ' + to + ')';
+  else { const last = ARENA.seen[from]; if (last == null || now - last < ARENA_MIN[to]) why = to + ' only ' + Math.round((now - (last == null ? now : last)) / 1000) + ' s after ' + from + ' (min ' + ARENA_MIN[to] / 1000 + ' s)'; }
+  if (!why && to === 'fb' && ARENA.seen.dup != null && now - ARENA.seen.dup < ARENA_FB_AFTER_DUP) why = 'final bowser only ' + Math.round((now - ARENA.seen.dup) / 1000) + ' s after the Duplighosts (min ' + ARENA_FB_AFTER_DUP / 1000 + ' s)';
+  if (why) { slog('arenaRejected', { from, to, step: routeStep, toStep: toI, why, L: A && A.L, br: A && A.br, lbr: A && A.lbr }); return false; }
+  return true;
+}
 function chgArenaProf(P0, real) {
   const A = chgArena(); CHG.arenaSeen = { a: A.a, L: A.L, br: A.br, lbr: A.lbr, real: !!real };
   // v85, Normal Boots: a Hallway picture on a Jr. Troopa step is the Hallway (its T1 reads with nbhw); the other moves as v84 (none)
   if (typeof bootsNow === 'function' && bootsNow() === 'normal') {
     const hwI = RT().findIndex(x => x.chg === 'nbhw');
-    if (P0 === CHG_PROF.jr && A.a === 'hw' && hwI >= 0) { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr, nb: true }); setStep(hwI); return CHG_PROF.nbhw; }
+    if (P0 === CHG_PROF.jr && A.a === 'hw' && hwI >= 0 && arenaMoveOk(hwI, A)) { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr, nb: true }); setStep(hwI); return CHG_PROF.nbhw; }
     return P0;
   } const fb1I = RT().findIndex(x => x.chg === 'fb1'), fbI = fb1I >= 0 ? fb1I : RT().findIndex(x => x.turn === CHG_PROF.fb2.turn), dupI = RT().findIndex(x => x.chg === 'dup'), jrI = RT().findIndex(x => x.chg === 'jr');
   // Jr. Troopa (jr_live.js): on his steps a Hallway picture is the Hallway (its burst sets Hallway T1), Final Bowser's arena at
@@ -152,9 +182,9 @@ function chgArenaProf(P0, real) {
   // jrFight / jrStart, and no Do Nothing was planned). The Duplighost room at a real bar hide is that fight; Jr. Troopa's
   // arena never reads as it (grey floor, B - R below 0; the rule needs B - R above +2 and is tested first).
   if (P0 === CHG_PROF.jr && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
-  if (P0 === CHG_PROF.jr && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
+  if (P0 === CHG_PROF.jr && real && A.a === 'fb' && fbI >= 0 && arenaMoveOk(fbI, A)) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
   if ((P0 === CHG_PROF.fb2 || P0 === CHG_PROF.dup || P0 === CHG_PROF.fb1) && A.a === 'hw') { slog('chargeArena', { arena: 'hallway', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); return CHG_PROF.hw; }
-  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
+  if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.dup) && real && A.a === 'fb' && fbI >= 0 && arenaMoveOk(fbI, A)) { slog('chargeArena', { arena: 'final bowser', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(fbI); return fb1I >= 0 ? CHG_PROF.fb1 : CHG_PROF.fb2; }
   if ((P0 === CHG_PROF.hw || P0 === CHG_PROF.fb2 || P0 === CHG_PROF.fb1) && real && A.a === 'dup' && dupI >= 0) { slog('chargeArena', { arena: 'duplighosts', step: routeStep, L: A.L, br: A.br, lbr: A.lbr }); chgPendDrop('arena'); setStep(dupI); return CHG_PROF.dup; }
   return P0;
 }
@@ -234,7 +264,7 @@ function chgFrame(t, present) {
         // browser dropped frame 3's pictures the first one above the menu is frame 4 (+12.5) or 5 (+19.4), and v69 took it
         // as frame 3 (or, at +19.4, did not trigger at all): every frame after it one or two off, no lock
         const d0 = m - base, cut = P.trigCut || [9.85, 15.95], n0 = P.trigN ? (d0 < cut[0] ? 3 : d0 < cut[1] ? 4 : 5) : 3;
-        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1, d0, cut }; CHG.trig0 = Object.assign({}, CHG.trig); CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); if (P.id === 'fb1' && typeof fb14Trigger === 'function') fb14Trigger(); }
+        CHG.state = 'capture'; CHG.trig = { t: t - (n0 - 3) * FRAME, tRaw: t, n: n0, base, i: CHG.ring.length - 1, d0, cut }; CHG.trig0 = Object.assign({}, CHG.trig); CHG.shapeBad = 0; if (P.id === 'fb2' && typeof fb2Reset === 'function') fb2Reset(); CHG.frames = CHG.ring.slice(); CHG.ring = []; slog('chargeTrigger', { base: +base.toFixed(1), m: +m.toFixed(1) }); arenaNote(routeStep, t); if (P.id === 'fb1' && typeof fb14Trigger === 'function') fb14Trigger(); }
     }
     return;
   }
