@@ -8,7 +8,7 @@ from pm import *
 from nav import stick_world
 BID = int(sys.argv[1], 16)
 ENC = 0x800B0EF0
-e = Emu('pm-jp.z64', '/dev/shm/pmbot/bs%d' % os.getpid())
+e = Emu(os.environ.get('PM_ROM', 'pm-jp.z64'), '/dev/shm/pmbot/bs%d' % os.getpid())
 e.load('states/nok13_e0_laki2.st'); e.step(0, 0, 0, 2)
 for i in range(e.s8(ENC + 0x1C)):
     p = e.u32(ENC + 0x28 + 4 * i)
@@ -21,6 +21,17 @@ if os.environ.get('HP'):
 if os.environ.get('PARTNER'):
     pid = int(os.environ['PARTNER']); e.w8(PLAYER_DATA + 0x14 + 8 * pid, 1); e.w8(PLAYER_DATA + 0x15 + 8 * pid, int(os.environ.get('BRANK', '0')))
     e.w8(PLAYER_DATA + 0x12, pid)
+# DIAGNOSTIC (v87, restoring the uncommitted v84-v86 options): BOOTS (0 normal, 1 super, 2 ultra), FP (cur = max), ITEMS (hex
+# item ids, in list order), STARBEAM (gPlayerData.starBeamLevel: 2 = Peach Beam, as after the kkj_25 cutscene; with it the
+# 7 star spirits and a full star bar, so the Star Spirits wheel and the Peach Beam are there)
+if os.environ.get('BOOTS'): e.w8(PLAYER_DATA + 0, int(os.environ['BOOTS']))
+if os.environ.get('FP'):
+    h = int(os.environ['FP']); e.w8(PLAYER_DATA + 5, h); e.w8(PLAYER_DATA + 6, h); e.w8(PLAYER_DATA + 7, h)
+if os.environ.get('ITEMS'):
+    il = [int(x, 16) for x in os.environ['ITEMS'].split(',')]
+    for i in range(10): e.w16(PLAYER_DATA + 0x1B4 + 2 * i, il[i] if i < len(il) else 0)
+if os.environ.get('STARBEAM'):
+    e.w8(PLAYER_DATA + 0x292, int(os.environ['STARBEAM'])); e.w8(PLAYER_DATA + 0x28E, 7); e.w16(PLAYER_DATA + 0x290, 7 * 256)
 if os.environ.get('BADGES'):
     bl = [int(x, 16) for x in os.environ['BADGES'].split(',')]
     for i in range(64): e.w16(PLAYER_DATA + 0x208 + 2 * i, bl[i] if i < len(bl) else 0)

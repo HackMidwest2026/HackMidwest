@@ -61,7 +61,14 @@ draws, and how many frames after the confirm the saved target-screen box changes
   takes 2-frame windows. Target screen: Bombette's Strategies panel (it disappears 3 frames after the confirm).
 - `e2e_dup.py SEED` (debug core): seed from coin shines in Mario's menu, menu path, resync, planned confirm:
   seeds 2468ace0, 13579bdf, 0f0f1e1e: all 4 copied.
-- `../boss_battle_start_setup.py`: battle setup with PARTNER / BRANK / BADGES (DIAGNOSTIC).
+- `../boss_battle_start_setup.py`: battle setup with PARTNER / BRANK / BADGES / BOOTS / HP / FP / ITEMS / STARBEAM (DIAGNOSTIC).
+- **After a container restart: `make_states.sh`** (one command) rebuilds the two cores (normal and debug /
+  RNG-trace, `M64P_DBG=1`), harness.so, the harness dir `/tmp/claude-0/pm/bot1` and every battle state the v84-v87
+  scripts use (Final Bowser phase 2 Ultra `boss_2304_peach_*` + `/dev/shm/fb2r/t1menu.st`, Normal Boots
+  `boss_2304_nbg_{start,menu,t2menu}`, Jr. Troopa `boss_0207_{route,nbg}_*`, Hallway `boss_2302_{route,goomba}_*`,
+  Duplighosts `boss_2402_dchg_*`), each with the setup written in the script. The Final Bowser route builds come from
+  `fb2_route/route_build.py` on `t1menu.st` (e2e: `MARIO_HP=10 ... route_build.py SEED DIR 40 84`). Not rebuilt (no
+  v84-v87 script needs them): `boss_2304_nbg_pbtarget.st`, the `jr_t*` and older study states.
 - Jr. Troopa (battle 0x0207; Bombette Super, Ultra Boots, 10 HP/10 FP; badges Super Jump Charge, Power Bounce,
   Close Call, Speedy Spin). Close Call = rand_int(100) < 30 when his attack hits Mario under 6 HP (he only targets
   Mario; base form is Leap only, no attack-choice roll; he stays in base form through T5 on this route).
